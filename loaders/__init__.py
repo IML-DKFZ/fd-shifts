@@ -1,6 +1,6 @@
-import imlone.loaders.svhn_loader
+import loaders.svhn_loader
 
-def get_loader(cfg):
+def get_loader(cf):
     """
         Return a new instance of dataset loader
     """
@@ -10,4 +10,4 @@ def get_loader(cfg):
         "svhn": svhn_loader.DataLoader,
     }
 
-    return data_loader_factory[cfg.data.dataset](cfg)
+    return data_loader_factory[cf.data.dataset](cf)

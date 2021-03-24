@@ -1,6 +1,12 @@
+defaults:
+  - hydra/hydra_logging: disabled
+  - hydra/job_logging: disabled
+
 hydra:
   run:
     dir: ${exp.dir}
+  output_subdir: null
+
 exp:
   work_dir: ${hydra:runtime.cwd}
   mode: train_test
@@ -8,17 +14,19 @@ exp:
   fold: None # placeholder for fold_dir
   fold_dir: exp/${exp.fold}
   root_dir: ${env:EXPERIMENT_ROOT_DIR}
-  dir: ${exp.root_dir}/hydra_test
+  name: dummy
+  dir: ${exp.root_dir}/${exp.name}
   seed: 1
 
 data:
   dataset: svhn
+  data_dir: ${env:DATASET_ROOT_DIR}/${data.dataset}
   pin_memory: False
   img_size: [32, 32, 3]
   num_workers: 12
 
 model:
-  name: small_conv_pl
+  name: small_conv
   confidence_mode: mpc
   n_filters: 32
   fc_dim: 512
@@ -26,20 +34,21 @@ model:
 trainer:
   num_epochs: 100
   learning_rate: 1e-3
+  momentum: 0.9
+  weight_decay: 1e-4
   do_val: True
   val_ratio: 0.1
   batch_size: 128
   num_classes: 10
-  weight_decay: 1e-4
 
 
 augmentations:
   train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
     normalize: [[0.5, 0.5, 0.5],[0.5, 0.5, 0.5]]
-#  val:
-#    normalize: [[0.5, 0.5, 0.5],[0.5, 0.5, 0.5]]
-#  test:
-#    normalize: [[0.5, 0.5, 0.5],[0.5, 0.5, 0.5]]
+  val:
+    normalize: [[0.5, 0.5, 0.5],[0.5, 0.5, 0.5]]
+  test:
+    normalize: [[0.5, 0.5, 0.5],[0.5, 0.5, 0.5]]
 
 eval:
   query_monitors: ['accuracy', 'failauc', 'failap_suc', 'failap_err', "mce", "ece", "aurcs", "default_plot"]

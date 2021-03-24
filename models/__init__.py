@@ -1,4 +1,4 @@
-from imlone.models import small_conv_pl
+from models import small_conv
 
 
 def get_model(cf):
@@ -8,7 +8,7 @@ def get_model(cf):
 
     # Available models
     model_factory = {
-        "small_conv_pl": small_conv_pl.net,
+        "small_conv": small_conv.net,
     }
 
     return model_factory[cf.model.name](cf)
