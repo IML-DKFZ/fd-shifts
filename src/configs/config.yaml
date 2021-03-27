@@ -1,0 +1,81 @@
+defaults:
+  - hydra/job_logging: disabled
+
+hydra:
+  run:
+    dir: ${exp.dir}
+  output_subdir: hydra
+
+exp:
+  group_name: checks
+  name: check_new_eval
+  seed: 20
+  version: None
+  mode: train   # train or test
+  work_dir: ${hydra:runtime.cwd}
+  fold_dir: exp/${exp.fold}
+  root_dir: ${env:EXPERIMENT_ROOT_DIR}
+  group_dir: ${env:EXPERIMENT_ROOT_DIR}/${exp.group_name}
+  dir: ${exp.group_dir}/${exp.name}
+  version_dir: ${exp.dir}/version_${exp.version}
+  fold: 0 # call folds in launcher  via command line
+  crossval_n_folds: 10
+  crossval_ids_path: ${exp.dir}/crossval_ids.pickle
+  raw_output_path: ${exp.version_dir}/softmax_labels.npy
+
+
+test:
+  version_type: latest
+  name: test_results
+  dir: ${exp.dir}/${test.name}
+  version_dir: ${test.dir}/version_${exp.version}
+
+data:
+  dataset: svhn
+  data_dir: ${env:DATASET_ROOT_DIR}/${data.dataset}
+  pin_memory: True
+  img_size: [32, 32, 3]
+  num_workers: 12
+
+model:
+  name: small_conv
+  confidence_measures: ["mcp", "pe"]  # mcp=maximum_confidence, pe=predictive_entropy
+  method: deterministic # deterministic, mcdropout, ...
+  n_filters: 32
+  fc_dim: 512
+
+trainer:
+  num_epochs: 10
+  learning_rate: 1e-3
+  momentum: 0.9
+  weight_decay: 1e-4
+  do_val: True
+  val_ratio: 0.1
+  batch_size: 128
+  num_classes: 10
+  resume_from_ckpt: False
+  selection_metric: val/loss    # in logging syntax
+  selection_mode: min    # lower is better
+  benchmark: True # set to false if input size varies during training!
+  global_seed: False # set to False to disable deterministic training.
+
+
+augmentations:
+  train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
+    normalize: [[0.5, 0.5, 0.5],[0.5, 0.5, 0.5]]
+  val:
+    normalize: [[0.5, 0.5, 0.5],[0.5, 0.5, 0.5]]
+  test:
+    normalize: [[0.5, 0.5, 0.5],[0.5, 0.5, 0.5]]
+
+eval:
+  query_monitors: ['accuracy',
+                   'failauc',
+                   'failap_suc',
+                   'failap_err',
+                   "mce",
+                   "ece",
+                   "aurcs",
+                   "fpr@95tpr",
+                   "default_plot"]
+  query_tb_hparams: ['fold']

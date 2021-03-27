@@ -1,7 +1,6 @@
 from torchvision import transforms
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-
 # transforms_collection = {
 #     "compose": lambda x: transforms.Compose(x),
 #     "to_tensor": transforms.ToTensor,

@@ -1,11 +1,6 @@
-
-
-import utils.exp_utils as utils
-import utils.model_utils as model_utils
 import torch
 from torch.nn import functional as F
 import os
-import numpy as np
 from PIL import Image
 from torch.distributions.normal import Normal
 from torchvision import transforms
@@ -20,70 +15,146 @@ import seaborn
 from torchmetrics import Metric
 import pandas as pd
 
+def get_tb_hparams(cf):
 
-def monitor_eval(confids, correct, query_monitors):
+    hparams_collection = {
+        "fold": cf.exp.fold
+    }
+    return {k:v for k,v in hparams_collection.items() if k in cf.eval.query_tb_hparams}
+
+
+def monitor_eval(confids_dict, correct, query_monitors):
 
 
     out_metrics = {}
     out_plots = {}
     bins = 20
-
-    confids_cpu = confids.cpu().data.numpy()
-    correct_cpu = correct.cpu().data.numpy()
-
-    hist_confids = np.histogram(confids_cpu, bins=bins, range=(0,1))[0]
-    bin_accs, bin_confids = calibration_curve(correct_cpu, confids_cpu, n_bins=bins)
-    bin_discrepancies = np.abs(bin_accs - bin_confids)
+    correct_cpu = torch.stack(correct, dim=0).cpu().data.numpy()
 
     if "accuracy" in query_monitors:
         out_metrics["accuracy"] = np.sum(correct_cpu) / correct_cpu.size
-    if "failauc" in query_monitors:
-        out_metrics["failauc"] = skm.roc_auc_score(correct_cpu, confids_cpu)
-    if "failap_suc" in query_monitors:
-        out_metrics["failap_suc"] = skm.average_precision_score(correct_cpu, confids_cpu, pos_label=1)
-    if "failap_err" in query_monitors:
-        out_metrics["failap_err"] = skm.average_precision_score(correct_cpu, - confids_cpu, pos_label=0)
-    if "aurcs" in query_monitors:
-        _, AURC, EAURC = RC_curve((1-correct_cpu), confids_cpu)
-        out_metrics["aurc"] = AURC
-        out_metrics["e-aurc"] = EAURC
 
-    if "mce" in query_monitors:
-        out_metrics["mce"] = (bin_discrepancies).max()
-    if "ece" in query_monitors:
-        out_metrics["ece"] = (np.dot(bin_discrepancies, hist_confids[np.argwhere(hist_confids > 0)]) / np.sum(hist_confids))[0]
+    for confid_key, confids in confids_dict.items():
 
-    if "default_plot" in query_monitors:
+        confids_cpu = torch.stack(confids, dim=0).cpu().data.numpy()
+
+        if confid_key == "pe":
+            min_confid = np.min(confids_cpu)
+            max_confid = np.max(confids_cpu)
+            confids_cpu = 1 - ((confids_cpu - min_confid) / (max_confid - min_confid))
+
+        eval = ConfidEvaluator(confids=confids_cpu,
+                         correct=correct_cpu,
+                         query_metrics=query_monitors,
+                         bins=bins)
+
+        confid_metrics = eval.get_metrics_per_confid()
+
+        for metric_key, metric in confid_metrics.items():
+            out_metrics[confid_key + "_" + metric_key] = metric
+
+        if "default_plot" in query_monitors:
+            f =  eval.get_default_plot_per_confid()
+            total = correct_cpu.size
+            correct = np.sum(correct_cpu)
+            title_string = "total: {}, corr.:{}, incorr.:{} acc:{} \n".format(total,
+                                                                              correct,
+                                                                              total - correct,
+                                                                              correct/total)
+            for ix, (k, v) in enumerate(out_metrics.items()):
+                if confid_key in k:
+                    title_string += "{}: {:.3f} ".format(k, v)
+                    if (ix % 5) == 0 and ix > 0:
+                        title_string += "\n"
+            f.suptitle(title_string)
+            out_plots[confid_key + "_" + "default_plot"] = f
+
+
+    return out_metrics, out_plots
+
+
+class ConfidEvaluator():
+    def __init__(self, confids, correct, query_metrics, bins):
+        self.confids = confids
+        self.correct = correct
+        self.query_metrics = query_metrics
+        self.bins = bins
+        self.bin_accs = None
+        self.bin_confids = None
+        self.fpr_list = None
+        self.tpr_list = None
+
+    def get_metrics_per_confid(self):
+
+        out_metrics = {}
+
+        if "failauc" in self.query_metrics or "fpr@95tpr" in self.query_metrics:
+            if self.fpr_list is None:
+                self.get_curve_stats()
+            if "failauc" in self.query_metrics:
+                out_metrics["failauc"] = skm.auc(self.fpr_list, self.tpr_list)
+            if "fpr@95tpr" in self.query_metrics:
+                out_metrics["fpr@95tpr"] = np.min(self.fpr_list[np.argwhere(self.tpr_list >= 0.95)])
+        if "failap_suc" in self.query_metrics:
+            out_metrics["failap_suc"] = skm.average_precision_score(self.correct, self.confids, pos_label=1)
+        if "failap_err" in self.query_metrics:
+            out_metrics["failap_err"] = skm.average_precision_score(self.correct, - self.confids, pos_label=0)
+        if "aurcs" in self.query_metrics:
+            _, AURC, EAURC = RC_curve((1 - self.correct), self.confids)
+            out_metrics["aurc"] = AURC
+            out_metrics["e-aurc"] = EAURC
+
+        hist_confids = np.histogram(self.confids, bins=self.bins, range=(0, 1))[0]
+        if self.bin_accs is None:
+            self.get_calibration_stats()
+        bin_discrepancies = np.abs(self.bin_accs - self.bin_confids)
+
+        if "mce" in self.query_metrics:
+            out_metrics["mce"] = (bin_discrepancies).max()
+        if "ece" in self.query_metrics:
+            try:
+                out_metrics["ece"] = \
+                (np.dot(bin_discrepancies, hist_confids[np.argwhere(hist_confids > 0)]) / np.sum(hist_confids))[0]
+            except:
+                print("sklearn calibration failed. passing -1 for ECE.")
+                out_metrics["ece"] = -1
+
+        return out_metrics
+
+    def get_curve_stats(self):
+        self.fpr_list, self.tpr_list, _ = skm.roc_curve(self.correct, self.confids)
+
+    def get_calibration_stats(self):
+        self.bin_accs, self.bin_confids = calibration_curve(self.correct, self.confids, n_bins=self.bins)
+
+    def get_default_plot_per_confid(self):
+
         seaborn.set_style('whitegrid')
         f = plt.figure(figsize=(10, 6))
-        total = correct_cpu.size
-        correct = np.sum(correct_cpu)
-        title_string = "total: {}, corr.:{}, incorr.:{} acc:{:.3f} \n".format(total, correct, total-correct, correct/total)
-        for k, v in out_metrics.items():
-            title_string += "{}: {:.3f} ".format(k, v)
-        f.suptitle(title_string)
         gs = gridspec.GridSpec(2, 2)
         gs.update(wspace=0.2, hspace=0.1)
 
         ax = plt.subplot(gs[0, 0])
-        plt.hist(confids_cpu[np.argwhere(correct_cpu == 1)], color="g", bins=bins, width=1 / bins, alpha=0.3, label="correct")      # RANGE?!!?!
-        plt.hist(confids_cpu[np.argwhere(correct_cpu == 0)], color="r", bins=bins, width=1 / bins, alpha=0.3,
+        plt.hist(self.confids[np.argwhere(self.correct == 1)], color="g", bins=self.bins, width=1 / self.bins, alpha=0.3,
+                 label="correct")  # RANGE?!!?!
+        plt.hist(self.confids[np.argwhere(self.correct == 0)], color="r", bins=self.bins, width=1 / self.bins, alpha=0.3,
                  label="incorrect")
         ax.set_xlim(-0.1, 1.1)
         ax.set_yscale('log')
         ax.legend(loc=1)
 
+        if self.bin_accs is None:
+            self.get_calibration_stats()
+
         ax = plt.subplot(gs[0, 1])
-        ax.plot(bin_confids, bin_accs, marker="o")
+        ax.plot(self.bin_confids, self.bin_accs, marker="o")
         ax.plot([0, 1], [0, 1], linestyle="--", color="black", alpha=0.5)
 
         ax = plt.subplot(gs[1, 0])
-        ax.plot(bin_confids, bin_confids - bin_accs, marker="o")
+        ax.plot(self.bin_confids, self.bin_confids - self.bin_accs, marker="o")
         ax.plot([0, 1], [0, 0], linestyle="--", color="black", alpha=0.5)
 
-        out_plots["default_plot"] = f
-
-    return out_metrics, out_plots
+        return f
 
 def RC_curve(residuals, confidence):
     # from https://github.com/geifmany/uncertainty_ICLR/blob/495f82d9d9a24e1dd62e62dd1f86d78e4f53a471/utils/uncertainty_tools.py#L13
@@ -140,6 +211,7 @@ def clean_logging(log_dir):
     df = pd.read_csv(os.path.join(log_dir, "metrics.csv"))
     df = df.groupby("step").max()
     df.to_csv(os.path.join(log_dir, "metrics.csv"))
+
 
 
 def display_image_grid(images_filepaths, predicted_labels=(), cols=5):

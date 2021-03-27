@@ -14,37 +14,37 @@ exec_path = os.path.join(exec_dir,"exec.py")
 
 
 
-job_ix = 0
+folds = [0, 1, 2, 3, 4]
 
-command_line_args = ""
-command_line_args += "exp.name={}".format("test_launcher")
+for fold in folds:
 
+    command_line_args = ""
+    command_line_args += "exp.fold={} ".format(fold)
+    command_line_args += "exp.name={} ".format("fold_{}".format(fold))
 
+    if system_name == "cluster":
 
+        launch_command = ""
+        launch_command += "bsub "
+        launch_command += "-gpu num=1:"
+        launch_command += "j_exclusive=yes:"
+        launch_command += "mode=exclusive_process:"
+        launch_command += "gmem=10.7G "
+        launch_command += "-L /bin/bash -q gpu "
+        launch_command += "'source ~/.bashrc && "
+        launch_command += "source ~/.virtualenvs/confid/bin/activate && "
+        launch_command += "python -u {} ".format(exec_path)
+        launch_command += command_line_args
+        launch_command += "'"
 
-if system_name == "cluster":
+    elif system_name == "mbi":
+        launch_command = "python -u {} ".format(exec_path)
+        launch_command += command_line_args
 
-    launch_command = ""
-    launch_command += "bsub "
-    launch_command += "-gpu num=1:"
-    launch_command += "j_exclusive=yes:"
-    launch_command += "mode=exclusive_process:"
-    launch_command += "gmem=10.7G "
-    launch_command += "-L /bin/bash -q gpu "
-    launch_command += "'source ~/.bashrc && "
-    launch_command += "source ~/.virtualenvs/confid/bin/activate && "
-    launch_command += "python -u {} ".format(exec_path)
-    launch_command += command_line_args
-    launch_command += "'"
+    else:
+        RuntimeError("system_name environment variable not known.")
 
-elif system_name == "mbi":
-    launch_command = "python -u {} ".format(exec_path)
-    launch_command += command_line_args
-
-else:
-    RuntimeError("system_name environment variable not known.")
-
-print("Launch command: ", launch_command)
-subprocess.call(launch_command, shell=True)
+    print("Launch command: ", launch_command)
+    subprocess.call(launch_command, shell=True)
 
 #subprocess.call("python {}/utils/job_surveillance.py --in_name {} --out_name {} --n_jobs {} &".format(exec_dir, log_folder, sur_out_name, job_ix), shell=True)

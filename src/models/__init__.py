@@ -1,7 +1,7 @@
-from models import small_conv
+from src.models import small_conv
 
 
-def get_model(cf):
+def get_model(model_name):
     """
         Return a new instance of model
     """
@@ -11,4 +11,4 @@ def get_model(cf):
         "small_conv": small_conv.net,
     }
 
-    return model_factory[cf.model.name](cf)
+    return model_factory[model_name]

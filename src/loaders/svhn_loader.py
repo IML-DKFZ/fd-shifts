@@ -1,7 +1,7 @@
 
 from torchvision import datasets
 import numpy as np
-from loaders.abstract_loader import AbstractDataLoader
+from src.loaders.abstract_loader import AbstractDataLoader
 
 
 class DataLoader(AbstractDataLoader):
@@ -13,7 +13,7 @@ class DataLoader(AbstractDataLoader):
             root=self.data_dir, split="train", download=False, transform=self.augmentations["val"]
         )
         self.test_dataset = SVHNAlbumentation(
-            root=self.data_dir, split="test", download=True, transform=None
+            root=self.data_dir, split="test", download=True, transform=self.augmentations["test"]
         )
 
 

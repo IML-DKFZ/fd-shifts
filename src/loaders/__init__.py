@@ -1,4 +1,4 @@
-import loaders.svhn_loader
+import src.loaders.svhn_loader
 
 def get_loader(cf):
     """

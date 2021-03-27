@@ -1,24 +1,24 @@
-from pathlib import Path
-import numpy as np
 import torch
-import os
 from torch.utils.data.sampler import SubsetRandomSampler
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf, open_dict
-from utils.aug_utils import transforms_collection
+from src.utils.aug_utils import transforms_collection
+from sklearn.model_selection import KFold
+import os
+import pickle
+
 
 class AbstractDataLoader(pl.LightningDataModule):
 
     def __init__(self, cf):
 
         super().__init__()
-        self.exp_dir = Path(cf.exp.dir)
-        #      self.resume_dir = cf.exp_dir # ???
+        self.crossval_ids_path = cf.exp.crossval_ids_path
+        self.crossval_n_folds = cf.exp.crossval_n_folds
+        self.fold = cf.exp.fold
         self.data_dir = cf.data.data_dir
         self.batch_size = cf.trainer.batch_size
-        # self.resume_dir = config_args['model']['resume'].parent if isinstance(config_args['model']['resume'], Path) else None
         self.val_ratio = cf.trainer.val_ratio
-        #   self.perturbed_folder = config_args['data'].get('perturbed_images', None)
         self.pin_memory = cf.data.pin_memory
         self.num_workers = cf.data.num_workers
 
@@ -48,25 +48,18 @@ class AbstractDataLoader(pl.LightningDataModule):
 
     def setup(self, stage=None):
 
-        # self.prepare_dataset()
-        num_train = len(self.train_dataset)
-        indices = list(range(num_train))
+        if os.path.isfile(self.crossval_ids_path):
+            with open(self.crossval_ids_path, "rb") as f:
+                train_idx, val_idx = pickle.load(f)[self.fold]
 
-        if (self.exp_dir / "train_idx.npy").exists():
-            train_idx = np.load(self.exp_dir / "train_idx.npy")
-            val_idx = np.load(self.exp_dir / "val_idx.npy")
-
-        # Splitting indices
-        # elif self.resume_dir:
-        #     LOGGER.warning("Loading existing train-val split indices from ORIGINAL training")
-        #     train_idx = np.load(self.resume_dir / "train_idx.npy")
-        #     val_idx = np.load(self.resume_dir / "val_idx.npy")
         else:
-            split = int(np.floor(self.val_ratio * num_train))
-            np.random.shuffle(indices)
-            train_idx, val_idx = indices[split:], indices[:split]
-            np.save(self.exp_dir / "train_idx.npy", train_idx)
-            np.save(self.exp_dir / "val_idx.npy", val_idx)
+            num_train = len(self.train_dataset)
+            indices = list(range(num_train))
+            kf = KFold(n_splits=self.crossval_n_folds, shuffle=True,random_state=0)
+            splits = list(kf.split(indices))
+            train_idx, val_idx = splits[self.fold]
+            with open(self.crossval_ids_path, "wb") as f:
+                pickle.dump(splits, f)
 
         # Make samplers
         self.train_sampler = SubsetRandomSampler(train_idx)
