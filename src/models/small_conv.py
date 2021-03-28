@@ -17,6 +17,7 @@ class net(pl.LightningModule):
         self.query_monitors = cf.eval.query_monitors
         self.query_confidence_measures = cf.model.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
+        self.val_every_n_epoch = cf.trainer.val_every_n_epoch
         self.raw_output_path = cf.exp.raw_output_path
         self.learning_rate = cf.trainer.learning_rate
         self.momentum = cf.trainer.momentum
@@ -70,9 +71,11 @@ class net(pl.LightningModule):
     def training_epoch_end(self, outputs):
         # optinally perform at random step with if self.global_step ... and set on_step=True. + reset!
         # the whole thing takes 0.3 sec atm.
+        do_plot = True if (self.current_epoch + 1) % self.val_every_n_epoch == 0 else False
         monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confids,
                                                                  self.running_correct,
                                                                  self.query_monitors,
+                                                                 do_plot = do_plot
                                                                  )
 
         tensorboard = self.logger[0].experiment
@@ -81,8 +84,9 @@ class net(pl.LightningModule):
             self.log("train/{}".format(k), v)
             tensorboard.add_scalar("hp/train_{}".format(k), v, global_step=self.current_epoch)
 
-        for k,v in monitor_plots.items():
-            tensorboard.add_figure("train/{}".format(k), v, self.current_epoch)
+        if do_plot:
+            for k,v in monitor_plots.items():
+                tensorboard.add_figure("train/{}".format(k), v, self.current_epoch)
 
         self.running_correct = []
         self.running_confids = {}
@@ -134,6 +138,7 @@ class net(pl.LightningModule):
         self.running_confids = {}
         for k in self.query_confidence_measures:
             self.running_confids[k] = []
+
 
     def on_fit_end(self):
         eval_utils.clean_logging(self.logger[1].experiment.log_dir)

@@ -69,8 +69,6 @@ class Analysis():
 
                 confid_dict["metrics"] = eval.get_metrics_per_confid()
                 confid_dict["plot_stats"] = eval.get_plot_stats_per_confid()
-                if "accuracy" in self.query_metrics:
-                    confid_dict["metrics"]["accuracy"] = accuracy
 
 
     def create_results_csv(self):

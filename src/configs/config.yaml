@@ -8,7 +8,7 @@ hydra:
 
 exp:
   group_name: checks
-  name: check_new_eval
+  name: check_sparse_val
   seed: 20
   version: None
   mode: train   # train or test
@@ -40,12 +40,12 @@ data:
 model:
   name: small_conv
   confidence_measures: ["mcp", "pe"]  # mcp=maximum_confidence, pe=predictive_entropy
-  method: deterministic # deterministic, mcdropout, ...
+  method: det # deterministic, mcdropout, ...
   n_filters: 32
   fc_dim: 512
 
 trainer:
-  num_epochs: 10
+  num_epochs: 100
   learning_rate: 1e-3
   momentum: 0.9
   weight_decay: 1e-4
@@ -58,6 +58,7 @@ trainer:
   selection_mode: min    # lower is better
   benchmark: True # set to false if input size varies during training!
   global_seed: False # set to False to disable deterministic training.
+  val_every_n_epoch: 10
 
 
 augmentations:
