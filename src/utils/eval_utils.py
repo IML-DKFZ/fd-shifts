@@ -7,7 +7,6 @@ from torchvision import transforms
 import math
 import random
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import numpy as np
 from sklearn.calibration import calibration_curve
 from sklearn import metrics as skm
@@ -54,19 +53,33 @@ def monitor_eval(confids_dict, correct, query_monitors):
             out_metrics[confid_key + "_" + metric_key] = metric
 
         if "default_plot" in query_monitors:
-            f =  eval.get_default_plot_per_confid()
+            confid_dict = {"plot_stats": eval.get_plot_stats_per_confid(),
+                           "confids": confids_cpu}
+            input_list = [{"confid_types": {confid_key: confid_dict},
+                           "correct": correct_cpu,
+                           "name": ""}]
+            plotter = ConfidPlotter(input_list=input_list,
+                                    query_plots = ["calibration",
+                                                   "overconfidence",
+                                                   "hist_per_confid"],
+                                    bins=20)
+
+            f = plotter.compose_plot()
             total = correct_cpu.size
             correct = np.sum(correct_cpu)
             title_string = "total: {}, corr.:{}, incorr.:{} acc:{} \n".format(total,
                                                                               correct,
                                                                               total - correct,
                                                                               correct/total)
+
             for ix, (k, v) in enumerate(out_metrics.items()):
                 if confid_key in k:
                     title_string += "{}: {:.3f} ".format(k, v)
                     if (ix % 5) == 0 and ix > 0:
                         title_string += "\n"
             f.suptitle(title_string)
+            f.tight_layout()
+
             out_plots[confid_key + "_" + "default_plot"] = f
 
 
@@ -83,6 +96,9 @@ class ConfidEvaluator():
         self.bin_confids = None
         self.fpr_list = None
         self.tpr_list = None
+        self.rc_curve = None
+        self.precision_list = None
+        self.recall_list = None
 
     def get_metrics_per_confid(self):
 
@@ -90,7 +106,7 @@ class ConfidEvaluator():
 
         if "failauc" in self.query_metrics or "fpr@95tpr" in self.query_metrics:
             if self.fpr_list is None:
-                self.get_curve_stats()
+                self.get_roc_curve_stats()
             if "failauc" in self.query_metrics:
                 out_metrics["failauc"] = skm.auc(self.fpr_list, self.tpr_list)
             if "fpr@95tpr" in self.query_metrics:
@@ -99,10 +115,13 @@ class ConfidEvaluator():
             out_metrics["failap_suc"] = skm.average_precision_score(self.correct, self.confids, pos_label=1)
         if "failap_err" in self.query_metrics:
             out_metrics["failap_err"] = skm.average_precision_score(self.correct, - self.confids, pos_label=0)
-        if "aurcs" in self.query_metrics:
-            _, AURC, EAURC = RC_curve((1 - self.correct), self.confids)
-            out_metrics["aurc"] = AURC
-            out_metrics["e-aurc"] = EAURC
+        if "aurc" in self.query_metrics or "e-aurc" in self.query_metrics:
+            if self.rc_curve is None:
+                self.get_rc_curve_stats()
+            if "aurc" in self.query_metrics:
+                out_metrics["aurc"] = self.aurc
+            if "e-aurc" in self.query_metrics:
+                out_metrics["e-aurc"] = self.eaurc
 
         hist_confids = np.histogram(self.confids, bins=self.bins, range=(0, 1))[0]
         if self.bin_accs is None:
@@ -121,40 +140,218 @@ class ConfidEvaluator():
 
         return out_metrics
 
-    def get_curve_stats(self):
+    def get_plot_stats_per_confid(self):
+        plot_stats_dict = {}
+
+        if self.fpr_list is None:
+            self.get_roc_curve_stats()
+        plot_stats_dict["fpr_list"] = self.fpr_list
+        plot_stats_dict["tpr_list"] = self.tpr_list
+
+        if self.bin_accs is None:
+            self.get_calibration_stats()
+        plot_stats_dict["bin_accs"] = self.bin_accs
+        plot_stats_dict["bin_confids"] = self.bin_confids
+
+        if self.rc_curve is None:
+            self.get_rc_curve_stats()
+        plot_stats_dict["coverage_list"] = np.array([x[0] for x in self.rc_curve])
+        plot_stats_dict["selective_risk_list"] = np.array([x[1] for x in self.rc_curve])
+
+        if self.precision_list is None:
+            self.get_err_prc_curve_stats()
+        plot_stats_dict["err_precision_list"] = self.precision_list
+        plot_stats_dict["err_recall_list"] =self.recall_list
+
+        return plot_stats_dict
+
+    def get_roc_curve_stats(self):
         self.fpr_list, self.tpr_list, _ = skm.roc_curve(self.correct, self.confids)
+
+    def get_rc_curve_stats(self):
+        self.rc_curve, self.aurc, self.eaurc = RC_curve((1 - self.correct), self.confids)
+
+    def get_err_prc_curve_stats(self):
+        self.precision_list, self.recall_list, _ = skm.precision_recall_curve(self.correct, - self.confids, pos_label=0)
 
     def get_calibration_stats(self):
         self.bin_accs, self.bin_confids = calibration_curve(self.correct, self.confids, n_bins=self.bins)
 
-    def get_default_plot_per_confid(self):
+
+
+class ConfidPlotter():
+    def __init__(self, input_list, query_plots, bins):
+        """
+        input list ist a list of methods dicts, each with keys:
+        cfg, exp, correct, confid_types
+        confid_types is a dict with keys
+        mcp, pe, ...
+        each of which is a confid dict again with keys
+        plot_stats, confids , ...
+        """
+        self.input_list = input_list
+        self.query_plots = query_plots
+        self.bins = bins
+        self.ax = None
+
+        self.method_names_list = []
+        self.fpr_list = []
+        self.tpr_list = []
+        self.coverage_list = []
+        self.selective_risk_list = []
+        self.precision_list = []
+        self.recall_list = []
+        self.bin_confids_list = []
+        self.bin_accs_list = []
+        self.confids_list = []
+        self.correct_list = []
+        self.colors_list = ["g", "b", "r", "y"]
+        # SHIFT TO LOOPS SINGLE METHODS (NOT ALWAYS ALL OF THEM EXIST!
+        # add Metrics to plot legends by having an extra metrics list!
+        for method_dict in self.input_list:
+            for confid_key, confid_dict in method_dict["confid_types"].items():
+                self.method_names_list.append("{}_{}".format(method_dict["name"], confid_key))
+                self.bin_confids_list.append(confid_dict["plot_stats"]["bin_confids"])
+                self.bin_accs_list.append(confid_dict["plot_stats"]["bin_accs"])
+                self.fpr_list.append(confid_dict["plot_stats"]["fpr_list"])
+                self.tpr_list.append(confid_dict["plot_stats"]["tpr_list"])
+                self.coverage_list.append(confid_dict["plot_stats"]["coverage_list"])
+                self.selective_risk_list.append(confid_dict["plot_stats"]["selective_risk_list"])
+                self.precision_list.append(confid_dict["plot_stats"]["err_precision_list"])
+                self.recall_list.append(confid_dict["plot_stats"]["err_recall_list"])
+                self.confids_list.append(confid_dict["confids"])
+                self.correct_list.append(method_dict["correct"])
+
+        if "hist_per_confid" in self.query_plots:
+            self.query_plots.remove("hist_per_confid")
+            self.query_plots += ["{}_hist".format(x) for x in self.method_names_list]
+
+        self.num_plots = len(self.query_plots)
+
+    def compose_plot(self):
 
         seaborn.set_style('whitegrid')
-        f = plt.figure(figsize=(10, 6))
-        gs = gridspec.GridSpec(2, 2)
-        gs.update(wspace=0.2, hspace=0.1)
+        # seaborn.set_palette()
+        n_columns = 2
+        n_rows = int(np.ceil(self.num_plots / n_columns))
+        f, _ = plt.subplots(nrows=n_rows, ncols=n_columns, figsize=(5*n_columns, 3*n_rows))
 
-        ax = plt.subplot(gs[0, 0])
-        plt.hist(self.confids[np.argwhere(self.correct == 1)], color="g", bins=self.bins, width=1 / self.bins, alpha=0.3,
-                 label="correct")  # RANGE?!!?!
-        plt.hist(self.confids[np.argwhere(self.correct == 0)], color="r", bins=self.bins, width=1 / self.bins, alpha=0.3,
-                 label="incorrect")
-        ax.set_xlim(-0.1, 1.1)
-        ax.set_yscale('log')
-        ax.legend(loc=1)
+        for name, ax in zip(self.query_plots, f.axes):
+            print("NAME QUERY PLOT", name)
+            self.ax = ax
+            if name == "calibration":
+                self.plot_calibration()
+            if name == "overconfidence":
+                self.plot_overconfidence()
+            if name == "roc_curve":
+                self.plot_roc()
+            if name == "prc_curve":
+                self.plot_prc()
+            if name == "rc_curve":
+                self.plot_rc()
+            if "_hist" in name:
+                self.plot_hist_per_confid(name.replace('_hist',''))
 
-        if self.bin_accs is None:
-            self.get_calibration_stats()
-
-        ax = plt.subplot(gs[0, 1])
-        ax.plot(self.bin_confids, self.bin_accs, marker="o")
-        ax.plot([0, 1], [0, 1], linestyle="--", color="black", alpha=0.5)
-
-        ax = plt.subplot(gs[1, 0])
-        ax.plot(self.bin_confids, self.bin_confids - self.bin_accs, marker="o")
-        ax.plot([0, 1], [0, 0], linestyle="--", color="black", alpha=0.5)
+        f.tight_layout()
 
         return f
+
+
+    def plot_hist_per_confid(self, method_name):
+
+        confids = self.confids_list[self.method_names_list.index(method_name)]
+        correct = self.correct_list[self.method_names_list.index(method_name)]
+
+        self.ax.hist(confids[np.argwhere(correct == 1)],
+                      color="g",
+                      bins=self.bins,
+                      width=1 / self.bins,
+                      alpha=0.3,
+                      label="correct")
+
+        self.ax.hist(confids[np.argwhere(correct == 0)],
+                      color="r",
+                      bins=self.bins,
+                      width=1 / self.bins,
+                      alpha=0.3,
+                      label="incorrect")
+
+        self.ax.set_xlim(-0.1, 1.1)
+        self.ax.set_yscale('log')
+        self.ax.set_xlabel("Confid")
+        self.ax.legend(loc=1)
+        self.ax.set_title("failure_pred_{}".format(method_name))
+
+
+    def plot_calibration(self):
+
+
+        for name, bin_confid, bin_acc, color in zip(self.method_names_list,
+                                                    self.bin_confids_list,
+                                                    self.bin_accs_list,
+                                                    self.colors_list):
+
+            self.ax.plot(bin_confid, bin_acc, marker="o", label=name)
+        self.ax.plot([0, 1], [0, 1], linestyle="--", color="black", alpha=0.5)
+        self.ax.legend(loc="lower right")
+        self.ax.set_title("calibration")
+        self.ax.set_ylabel("Acc")
+        self.ax.set_xlabel("Confid")
+
+
+    def plot_overconfidence(self):
+
+        for name, bin_confid, bin_acc, color in zip(self.method_names_list,
+                                                    self.bin_confids_list,
+                                                    self.bin_accs_list,
+                                                    self.colors_list):
+
+            self.ax.plot(bin_confid, bin_confid - bin_acc, marker="o",label=name)
+        self.ax.plot([0, 1], [0, 0], linestyle="--", color="black", alpha=0.5)
+        self.ax.legend(loc="lower right")
+        self.ax.set_title("overconfidence")
+        self.ax.set_ylabel("Confid - Acc")
+        self.ax.set_xlabel("Confid")
+
+
+    def plot_roc(self):
+
+        for name, fpr, tpr, color in zip(self.method_names_list,
+                                                    self.fpr_list,
+                                                    self.tpr_list,
+                                                    self.colors_list):
+            metric = self.
+            self.ax.plot(fpr, tpr, label=name + metric)
+        self.ax.plot([0, 1], [0, 1], linestyle="--", color="black", alpha=0.5)
+        self.ax.legend(loc="lower right")
+        self.ax.set_title("ROC Curve")
+        self.ax.set_ylabel("TPR")
+        self.ax.set_xlabel("FPR")
+
+    def plot_prc(self):
+
+        for name, precision, recall, color in zip(self.method_names_list,
+                                                    self.precision_list,
+                                                    self.recall_list,
+                                                    self.colors_list):
+            self.ax.plot(recall, precision, label=name)
+        self.ax.legend(loc="lower right")
+        self.ax.set_title("PRC Curve (Error=Positive)")
+        self.ax.set_ylabel("Precision")
+        self.ax.set_xlabel("Recall")
+
+    def plot_rc(self):
+
+        for name, coverage, selective_risk, color in zip(self.method_names_list,
+                                                    self.coverage_list,
+                                                    self.selective_risk_list,
+                                                    self.colors_list):
+            self.ax.plot(coverage, selective_risk * 100, label=name)
+        self.ax.legend(loc="upper left")
+        self.ax.set_title("RC Curve")
+        self.ax.set_ylabel("Selective Risk [%]")
+        self.ax.set_xlabel("Coverage")
+
 
 def RC_curve(residuals, confidence):
     # from https://github.com/geifmany/uncertainty_ICLR/blob/495f82d9d9a24e1dd62e62dd1f86d78e4f53a471/utils/uncertainty_tools.py#L13
@@ -166,12 +363,12 @@ def RC_curve(residuals, confidence):
     idx_sorted = np.argsort(confidence)
     temp1 = residuals[idx_sorted]
     cov = n
-    acc = sum(temp1)
-    curve.append((cov/ n, acc / n))
+    selective_risk = sum(temp1)
+    curve.append((cov/ n, selective_risk / n))
     for i in range(0, len(idx_sorted)-1):
         cov = cov-1
-        acc = acc-residuals[idx_sorted[i]]
-        curve.append((cov / n, acc /(n-i)))
+        selective_risk = selective_risk-residuals[idx_sorted[i]]
+        curve.append((cov / n, selective_risk /(n-i)))
     AUC = sum([a[1] for a in curve])/len(curve)
     err = np.mean(residuals)
     kappa_star_aurc = err + (1 - err) * (np.log(1 - err))

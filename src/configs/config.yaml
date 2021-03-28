@@ -75,7 +75,8 @@ eval:
                    'failap_err',
                    "mce",
                    "ece",
-                   "aurcs",
+                   "e-aurc",
+                   "aurc",
                    "fpr@95tpr",
                    "default_plot"]
   query_tb_hparams: ['fold']

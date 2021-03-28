@@ -1,13 +1,17 @@
 from omegaconf import OmegaConf
 import os
 import numpy as np
-from utils.eval_utils import ConfidEvaluator
+from src.utils.eval_utils import ConfidEvaluator, ConfidPlotter
 import pandas as pd
 
 
 
 class Analysis():
-    def __init__(self, path_list, query_metrics, analysis_out_dir):
+    def __init__(self,
+                 path_list,
+                 query_metrics,
+                 query_plots,
+                 analysis_out_dir,):
 
         self.input_list = []
         for _ in path_list:
@@ -18,6 +22,7 @@ class Analysis():
             self.input_list.append(method_dict)
 
         self.query_metrics = query_metrics
+        self.query_plots = query_plots
         self.analysis_out_dir = analysis_out_dir
         self.calibration_bins = 20
 
@@ -25,6 +30,7 @@ class Analysis():
 
         for method_dict in self.input_list:
 
+            method_dict["name"] = method_dict["cfg"].model.method
             method_dict["softmax"] = method_dict["raw_outputs"][:, :-1]
             method_dict["labels"] = method_dict["raw_outputs"][:, -1]
             # here is where threshold considerations would come int
@@ -32,38 +38,61 @@ class Analysis():
             method_dict["correct"] = (np.argmax(method_dict["softmax"], axis=1) == method_dict["labels"]) * 1
 
             confid_types = method_dict["cfg"].model.confidence_measures
-            method_dict["confids"] = {}
+            method_dict["confid_types"] = {}
             if "mcp" in confid_types:
-                method_dict["confids"]["mcp"] = np.max(method_dict["softmax"], axis=1)
+                method_dict["confid_types"]["mcp"] = {}
+                method_dict["confid_types"]["mcp"]["confids"] = np.max(method_dict["softmax"], axis=1)
             if "pe" in confid_types:
-                method_dict["confids"]["pe"] = np.sum(method_dict["softmax"] * (- np.log(method_dict["softmax"])), axis=1)
+                method_dict["confid_types"]["pe"] = {}
+                method_dict["confid_types"]["pe"]["confids"] = np.sum(method_dict["softmax"] * (- np.log(method_dict["softmax"])), axis=1)
 
 
     def compute_all_metrics(self):
 
         for method_dict in self.input_list:
-            metrics_dict = {}
-            plots_dict = {}
 
-            if "accuracy" in self.query_metrics:
-                metrics_dict["accuracy"] = np.sum(method_dict["correct"]) / method_dict["correct"].size
+            accuracy = np.sum(method_dict["correct"]) / method_dict["correct"].size
 
-            for confid_key, confids in method_dict["confids"].items():
-                eval = ConfidEvaluator(confids=confids,
+            for confid_key, confid_dict in method_dict["confid_types"].items():
+
+                method_dict[confid_key] = {}
+
+                if confid_key == "pe":
+                    min_confid = np.min(confid_dict["confids"])
+                    max_confid = np.max(confid_dict["confids"])
+                    confid_dict["confids"] = 1 - ((confid_dict["confids"] - min_confid) / (max_confid - min_confid))
+
+                eval = ConfidEvaluator(confids=confid_dict["confids"],
                                        correct=method_dict["correct"],
                                        query_metrics=self.query_metrics,
                                        bins=self.calibration_bins)
 
-                metrics_dict.update(eval.get_metrics_per_confid())
-                plots_dict["default_plot"] = eval.get_default_plot()
+                confid_dict["metrics"] = eval.get_metrics_per_confid()
+                confid_dict["plot_stats"] = eval.get_plot_stats_per_confid()
+                if "accuracy" in self.query_metrics:
+                    confid_dict["metrics"]["accuracy"] = accuracy
 
-            method_dict["metrics"] = metrics_dict
-            method_dict["plots"] = plots_dict
 
     def create_results_csv(self):
 
-        df = pd.DataFrame()
+        columns = ["name", "confid"] + self.query_metrics
+        df = pd.DataFrame(columns=columns)
+        for method_dict in self.input_list:
+            for confid_key in list(method_dict["confid_types"].keys()):
+                submit_list = [method_dict["name"], confid_key]
+                submit_list+= [method_dict["confid_types"][confid_key]["metrics"][x] for x in self.query_metrics]
+                df.loc[len(df)] = submit_list
 
+        # df = df.round(3)
+        df.to_csv(os.path.join(self.analysis_out_dir, "metrics.csv"), float_format='%.3f', decimal='.')
+        print("saved csv to ", os.path.join(self.analysis_out_dir, "metrics.csv"))
+
+
+    def create_master_plot(self):
+        plotter = ConfidPlotter(self.input_list, self.query_plots, self.calibration_bins)
+        f = plotter.compose_plot()
+        f.savefig(os.path.join(self.analysis_out_dir, "master_plot.png"))
+        print("saved masterplot to ", os.path.join(self.analysis_out_dir, "master_plot.png"))
 
 def main():
 
@@ -77,24 +106,34 @@ def main():
                      'failap_err',
                      "mce",
                      "ece",
-                     "aurcs",
+                     "e-aurc",
+                     "aurc",
                      "fpr@95tpr",
                      ]
 
-    analysis_out_dir = "mnt/hdd2/checkpoints/analysis/check_analysis"
+    query_plots = ["calibration",
+                   "overconfidence",
+                   "roc_curve",
+                   "prc_curve",
+                   "rc_curve",
+                   "hist_per_confid"]
+
+    analysis_out_dir = "/mnt/hdd2/checkpoints/analysis/check_analysis"
 
     if not os.path.exists(analysis_out_dir):
-        os.makedirs(analysis_out_dir)
+        os.mkdir(analysis_out_dir)
 
 
     analysis = Analysis(path_list=path_list,
                         query_metrics=query_metrics,
+                        query_plots=query_plots,
                         analysis_out_dir=analysis_out_dir
                         )
 
     analysis.process_outputs()
     analysis.compute_all_metrics()
     analysis.create_results_csv()
+    analysis.create_master_plot()
 
 
 
