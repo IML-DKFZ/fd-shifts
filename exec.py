@@ -9,6 +9,7 @@ from omegaconf import DictConfig, OmegaConf, open_dict
 from src.loaders import get_loader
 from src.models import get_model
 from src.utils import exp_utils
+import os
 
 
 def train(cf):
@@ -52,7 +53,8 @@ def train(cf):
                          callbacks=[checkpoint_callback],
                          resume_from_checkpoint = resume_ckpt_path,
                          benchmark=cf.trainer.benchmark,
-                         check_val_every_n_epoch = cf.trainer.val_every_n_epoch
+                         check_val_every_n_epoch = cf.trainer.val_every_n_epoch,
+                         fast_dev_run=cf.trainer.fast_dev_run
                          )
 
     print("logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version))
@@ -62,23 +64,26 @@ def train(cf):
 
 def test(cf):
 
-    ckpt_path = exp_utils.get_path_to_best_ckpt(cf.exp.dir, cf.trainer.selection_mode)
-    print("testing model from checkpoint: {}".format(ckpt_path))
-    print("logging testing to: {}, run_version: {}".format(cf.exp.dir, cf.test.name))
+    if cf.test.model_selection == "best":
+        ckpt_path = exp_utils.get_path_to_best_ckpt(cf.exp.dir, cf.trainer.selection_mode)
+    else:
+        most_recent_version = exp_utils.get_most_recent_version(cf.exp.dir)
+        ckpt_path = exp_utils.get_ckpt_path_from_previous_version(cf.exp.dir, most_recent_version)
+
+    print("testing model from checkpoint: {} from model selection tpye {}".format(
+        ckpt_path, cf.test.model_selection))
+    print("logging testing to: {}".format(cf.test.dir))
     # MIX 2 configs..ugly??? Hydra can not specify another input config. and anyway overwrites would not be included.
     # I need to make sure all potential changes are in hparams saved from pl.
     # there could also be a way via pl_checkpoint = torch.load(ckpt_path). described here under "logging hyperparamters":
     # https://pytorch-lightning.readthedocs.io/en/latest/extensions/logging.html
     model = get_model(cf.model.name).load_from_checkpoint(ckpt_path)
     datamodule = get_loader(cf)
-    tb_logger = TensorBoardLogger(save_dir=cf.exp.dir,
-                                  name=cf.test.name,
-                                  default_hp_metric=False,
-                                  version=0)
-    csv_logger = CSVLogger(save_dir=cf.exp.dir,
-                          name=cf.test.name,
-                          version=0)
-    trainer = pl.Trainer(gpus=1, logger=[tb_logger, csv_logger])
+
+    if not os.path.exists(cf.test.dir):
+        os.makedirs(cf.test.dir)
+
+    trainer = pl.Trainer(gpus=1, logger=False)
     trainer.test(model, datamodule=datamodule)
 
     # fix str bug

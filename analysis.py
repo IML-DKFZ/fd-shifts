@@ -17,7 +17,7 @@ class Analysis():
         for _ in path_list:
             method_dict = {
                 "cfg": OmegaConf.load(os.path.join(os.path.dirname(path_list[0]), "hydra", "config.yaml")),
-                "raw_outputs": np.load(os.path.join(path_list[0], "softmax_labels.npy"))
+                "raw_outputs": np.load(os.path.join(path_list[0], "raw_output.npy"))
             }
             self.input_list.append(method_dict)
 
@@ -50,8 +50,6 @@ class Analysis():
     def compute_all_metrics(self):
 
         for method_dict in self.input_list:
-
-            accuracy = np.sum(method_dict["correct"]) / method_dict["correct"].size
 
             for confid_key, confid_dict in method_dict["confid_types"].items():
 
@@ -95,7 +93,7 @@ class Analysis():
 def main():
 
     path_list = [
-        "/mnt/hdd2/checkpoints/checks/check_raw_output/version_10"
+        "/mnt/hdd2/checkpoints/checks/check_final_pipeline/test_results",
     ]
 
     query_metrics = ['accuracy',
@@ -116,7 +114,7 @@ def main():
                    "rc_curve",
                    "hist_per_confid"]
 
-    analysis_out_dir = "/mnt/hdd2/checkpoints/analysis/check_analysis"
+    analysis_out_dir = "/mnt/hdd2/checkpoints/analysis/check_analysis_3"
 
     if not os.path.exists(analysis_out_dir):
         os.mkdir(analysis_out_dir)

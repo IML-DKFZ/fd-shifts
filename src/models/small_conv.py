@@ -5,7 +5,6 @@ import pytorch_lightning as pl
 from src.utils import eval_utils
 from src.utils import exp_utils
 import numpy as np
-import time
 
 class net(pl.LightningModule):
 
@@ -14,11 +13,18 @@ class net(pl.LightningModule):
 
         self.save_hyperparameters()
         self.tensorboard_hparams = eval_utils.get_tb_hparams(cf)
-        self.query_monitors = cf.eval.query_monitors
-        self.query_confidence_measures = cf.model.confidence_measures
+        self.query_monitor_metrics = cf.eval.monitor_metrics
+        self.query_monitor_confids = cf.eval.monitor_confids
+        self.query_monitor_plots = cf.eval.monitor_plots
         self.num_epochs = cf.trainer.num_epochs
+        self.fast_dev_run = cf.trainer.fast_dev_run
+
+        # used later for actual change in computation graph?! ...also used for testing etc...
+        self.query_confidence_measures = cf.model.confidence_measures
+
         self.val_every_n_epoch = cf.trainer.val_every_n_epoch
-        self.raw_output_path = cf.exp.raw_output_path
+        self.raw_output_path_fit = cf.exp.raw_output_path
+        self.raw_output_path_test = cf.test.raw_output_path
         self.learning_rate = cf.trainer.learning_rate
         self.momentum = cf.trainer.momentum
         self.weight_decay = cf.trainer.weight_decay
@@ -29,8 +35,9 @@ class net(pl.LightningModule):
         self.running_labels = []
 
         self.running_confids = {}
-        for k in self.query_confidence_measures:
-            self.running_confids[k] = []
+        self.running_confids["train"] = {k:[] for k in self.query_monitor_confids["train"]}
+        self.running_confids["val"] = {k:[] for k in self.query_monitor_confids["val"]}
+
         self.brier_score = eval_utils.BrierScore(num_classes=self.num_classes)
         self.loss_criterion = nn.CrossEntropyLoss()
 
@@ -41,9 +48,10 @@ class net(pl.LightningModule):
 
 
     def on_train_start(self):
-        hp_metrics = {"hp/train_{}".format(k):0 for k in self.query_monitors}
-        hp_metrics.update({"hp/val_{}".format(k):0 for k in self.query_monitors})
-        self.logger[0].log_hyperparams(self.tensorboard_hparams, hp_metrics)#, {"hp/metric_1": 0, "hp/metric_2": 0})
+        if self.fast_dev_run is False:
+            hp_metrics = {"hp/train_{}".format(k):0 for k in self.query_monitor_metrics}
+            hp_metrics.update({"hp/val_{}".format(k):0 for k in self.query_monitor_metrics})
+            self.logger[0].log_hyperparams(self.tensorboard_hparams, hp_metrics)#, {"hp/metric_1": 0, "hp/metric_2": 0})
         exp_utils.set_seed(self.global_seed)
 
 
@@ -59,12 +67,12 @@ class net(pl.LightningModule):
         tmp_correct = (torch.argmax(softmax, dim=1) == y)*1
         self.running_correct.extend(tmp_correct)
 
-        if "mcp" in self.query_confidence_measures:
+        if "mcp" in self.query_monitor_confids["train"]:
             tmp_confids = torch.max(softmax, dim=1)[0]
-            self.running_confids["mcp"].extend(tmp_confids)
-        if "pe" in self.query_confidence_measures:
+            self.running_confids["train"]["mcp"].extend(tmp_confids)
+        if "pe" in self.query_monitor_confids["train"]:
             tmp_confids = torch.sum(softmax * (- torch.log(softmax)), dim=1)
-            self.running_confids["pe"].extend(tmp_confids)
+            self.running_confids["train"]["pe"].extend(tmp_confids)
 
         return loss # this will be "outputs" later, what exactly can I return here?
 
@@ -72,9 +80,10 @@ class net(pl.LightningModule):
         # optinally perform at random step with if self.global_step ... and set on_step=True. + reset!
         # the whole thing takes 0.3 sec atm.
         do_plot = True if (self.current_epoch + 1) % self.val_every_n_epoch == 0 else False
-        monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confids,
+        monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confids["train"],
                                                                  self.running_correct,
-                                                                 self.query_monitors,
+                                                                 self.query_monitor_metrics,
+                                                                 self.query_monitor_plots,
                                                                  do_plot = do_plot
                                                                  )
 
@@ -89,10 +98,7 @@ class net(pl.LightningModule):
                 tensorboard.add_figure("train/{}".format(k), v, self.current_epoch)
 
         self.running_correct = []
-        self.running_confids = {}
-        for k in self.query_confidence_measures:
-            self.running_confids[k] = []
-
+        self.running_confids["train"] = {k: [] for k in self.query_monitor_confids["train"]}
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -106,12 +112,12 @@ class net(pl.LightningModule):
         tmp_correct = (torch.argmax(softmax, dim=1) == y) * 1
         self.running_correct.extend(tmp_correct)
 
-        if "mcp" in self.query_confidence_measures:
+        if "mcp" in self.query_monitor_confids["val"]:
             tmp_confids = torch.max(softmax, dim=1)[0]
-            self.running_confids["mcp"].extend(tmp_confids)
-        if "pe" in self.query_confidence_measures:
+            self.running_confids["val"]["mcp"].extend(tmp_confids)
+        if "pe" in self.query_monitor_confids["val"]:
             tmp_confids = torch.sum(softmax * (- torch.log(softmax)), dim=1)
-            self.running_confids["pe"].extend(tmp_confids)
+            self.running_confids["val"]["pe"].extend(tmp_confids)
 
         if self.current_epoch == self.num_epochs -1:
             self.running_softmax.extend(softmax)
@@ -121,9 +127,10 @@ class net(pl.LightningModule):
 
 
     def validation_epoch_end(self, outputs):
-        monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confids,
+        monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confids["val"],
                                                                  self.running_correct,
-                                                                 self.query_monitors)
+                                                                 self.query_monitor_metrics,
+                                                                 self.query_monitor_plots)
 
         tensorboard = self.logger[0].experiment
         self.log("step", self.current_epoch)
@@ -135,52 +142,37 @@ class net(pl.LightningModule):
             tensorboard.add_figure("val/{}".format(k), v, self.current_epoch)
 
         self.running_correct = []
-        self.running_confids = {}
-        for k in self.query_confidence_measures:
-            self.running_confids[k] = []
+        self.running_confids["val"] = {k: [] for k in self.query_monitor_confids["val"]}
 
 
-    def on_fit_end(self):
-        eval_utils.clean_logging(self.logger[1].experiment.log_dir)
+    def on_train_end(self):
         raw_output = torch.cat([torch.stack(self.running_softmax, dim=0),
                                   torch.stack(self.running_labels, dim=0).unsqueeze(1)]
                                  , dim=1)
-        np.save(self.raw_output_path, raw_output.cpu().data.numpy())
+        np.save(self.raw_output_path_fit, raw_output.cpu().data.numpy())
+        print("saved raw outputs to {}".format(self.raw_output_path_fit))
 
-
-    def on_load_checkpoint(self, checkpoint):
-        self.loaded_epoch = checkpoint["epoch"]
-        print("loading checkpoint at epoch {}".format(self.loaded_epoch))
+        self.running_softmax = []
+        self.running_labels = []
 
 
     def test_step(self, batch, batch_idx):
         x, y = batch
         logits = self.encoder(x)
-        loss = self.loss_criterion(logits, y)
         softmax = F.softmax(logits, dim=1)
 
-        tmp_correct = (torch.argmax(softmax, dim=1) == y) * 1
-        self.running_correct = self.running_correct.append(tmp_correct)
+        self.running_softmax.extend(softmax)
+        self.running_labels.extend(y)
 
-        if "mcp" in self.query_confidence_measures:
-            tmp_confids = torch.max(softmax, dim=1)[0]
-            self.running_confids["mcp"] = torch.cat([self.running_confids["mcp"], tmp_confids])
-        if "pe" in self.query_confidence_measures:
-            tmp_confids = torch.sum(softmax * (- torch.log(softmax)), dim=1)
-            self.running_confids["pe"] = torch.cat([self.running_confids["pe"], tmp_confids])
 
     def on_test_end(self):
 
-        monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confids,
-                                                                 self.running_correct,
-                                                                 self.query_monitors)
+        raw_output = torch.cat([torch.stack(self.running_softmax, dim=0),
+                                torch.stack(self.running_labels, dim=0).unsqueeze(1)]
+                               , dim=1)
 
-        monitor_metrics.update({"test_epoch": self.loaded_epoch})
-        self.logger.log_metrics(monitor_metrics)
-        self.logger.save()
-        tensorboard = self.logger[0].experiment
-        for k, v in monitor_plots.items():
-            tensorboard.add_figure("test/{}".format(k), v, self.current_epoch)
+        np.save(self.raw_output_path_test, raw_output.cpu().data.numpy())
+        print("saved raw outputs to {}".format(self.raw_output_path_test))
 
 
     def configure_optimizers(self):
@@ -188,6 +180,11 @@ class net(pl.LightningModule):
                                lr=self.learning_rate,
                                momentum=self.momentum,
                                weight_decay=self.weight_decay)
+
+
+    def on_load_checkpoint(self, checkpoint):
+        self.loaded_epoch = checkpoint["epoch"]
+        print("loading checkpoint at epoch {}".format(self.loaded_epoch))
 
 
 

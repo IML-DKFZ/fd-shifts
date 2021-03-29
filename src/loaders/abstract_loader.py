@@ -18,7 +18,6 @@ class AbstractDataLoader(pl.LightningDataModule):
         self.fold = cf.exp.fold
         self.data_dir = cf.data.data_dir
         self.batch_size = cf.trainer.batch_size
-        self.val_ratio = cf.trainer.val_ratio
         self.pin_memory = cf.data.pin_memory
         self.num_workers = cf.data.num_workers
 

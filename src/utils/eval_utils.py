@@ -13,24 +13,26 @@ from sklearn import metrics as skm
 import seaborn
 from torchmetrics import Metric
 import pandas as pd
-import time
 
 def get_tb_hparams(cf):
 
     hparams_collection = {
         "fold": cf.exp.fold
     }
-    return {k:v for k,v in hparams_collection.items() if k in cf.eval.query_tb_hparams}
+    return {k:v for k,v in hparams_collection.items() if k in cf.eval.tb_hparams}
 
 
-def monitor_eval(confids_dict, correct, query_monitors, do_plot=True):
+def monitor_eval(confids_dict, correct, query_monitor_metrics, query_monitor_plots, do_plot=True):
 
     out_metrics = {}
     out_plots = {}
     bins = 20
     correct_cpu = torch.stack(correct, dim=0).cpu().data.numpy()
-    for confid_key, confids in confids_dict.items():
 
+    method_dict = {"name": "", "correct": correct_cpu}
+    method_dict["confid_types"] = {k:{} for k in list(confids_dict.keys())}
+
+    for confid_key, confids in confids_dict.items():
 
         confids_cpu = torch.stack(confids, dim=0).cpu().data.numpy()
 
@@ -38,45 +40,43 @@ def monitor_eval(confids_dict, correct, query_monitors, do_plot=True):
             min_confid = np.min(confids_cpu)
             max_confid = np.max(confids_cpu)
             confids_cpu = 1 - ((confids_cpu - min_confid) / (max_confid - min_confid))
+
         eval = ConfidEvaluator(confids=confids_cpu,
                          correct=correct_cpu,
-                         query_metrics=query_monitors,
+                         query_metrics=query_monitor_metrics,
                          bins=bins)
+
         confid_metrics = eval.get_metrics_per_confid()
 
         for metric_key, metric in confid_metrics.items():
             out_metrics[confid_key + "_" + metric_key] = metric
 
-        if "default_plot" in query_monitors and do_plot==True:
-            confid_dict = {"plot_stats": eval.get_plot_stats_per_confid(),
-                           "confids": confids_cpu,
-                           "metrics": confid_metrics}
-            input_list = [{"confid_types": {confid_key: confid_dict},
-                           "correct": correct_cpu,
-                           "name": ""}]
-            plotter = ConfidPlotter(input_list=input_list,
-                                    query_plots = ["calibration",
-                                                   "overconfidence",
-                                                   "hist_per_confid"],
-                                    bins=20)
+        method_dict["confid_types"][confid_key]["metrics"] = confid_metrics
+        method_dict["confid_types"][confid_key]["plot_stats"] = eval.get_plot_stats_per_confid()
+        method_dict["confid_types"][confid_key]["confids"] = confids_cpu
 
-            f = plotter.compose_plot()
-            total = correct_cpu.size
-            correct = np.sum(correct_cpu)
-            title_string = "total: {}, corr.:{}, incorr.:{} acc:{:.3f} \n".format(total,
-                                                                              correct,
-                                                                              total - correct,
-                                                                              correct/total)
+    if len(query_monitor_plots)>0 and do_plot==True:
 
-            for ix, (k, v) in enumerate(out_metrics.items()):
-                if confid_key in k:
-                    title_string += "{}: {:.3f} ".format(k, v)
-                    if (ix % 5) == 0 and ix > 0:
-                        title_string += "\n"
-            f.suptitle(title_string)
-            f.tight_layout()
+        plotter = ConfidPlotter(input_list=[method_dict],
+                                query_plots = query_monitor_plots,
+                                bins=20)
 
-            out_plots[confid_key + "_" + "default_plot"] = f
+        f = plotter.compose_plot()
+        total = correct_cpu.size
+        correct = np.sum(correct_cpu)
+        title_string = "total: {}, corr.:{}, incorr.:{} \n".format(total,
+                                                                          correct,
+                                                                          total - correct
+                                                                          )
+
+        for ix, (k, v) in enumerate(out_metrics.items()):
+            title_string += "{}: {:.3f} ".format(k, v)
+            if (ix % 5) == 0 and ix > 0:
+                title_string += "\n"
+        f.suptitle(title_string)
+        f.tight_layout()
+
+        out_plots["default_plot"] = f
 
 
     return out_metrics, out_plots
@@ -216,14 +216,13 @@ class ConfidPlotter():
                 self.correct_list.append(method_dict["correct"])
 
         if "hist_per_confid" in self.query_plots:
-            self.query_plots.remove("hist_per_confid")
+            self.query_plots = [x for x in self.query_plots if x!="hist_per_confid"]
             self.query_plots += ["{}_hist".format(x) for x in self.method_names_list]
 
         self.num_plots = len(self.query_plots)
 
     def compose_plot(self):
         seaborn.set_style('whitegrid')
-        # seaborn.set_palette()
         n_columns = 2
         n_rows = int(np.ceil(self.num_plots / n_columns))
         f, _ = plt.subplots(nrows=n_rows, ncols=n_columns, figsize=(5*n_columns, 3*n_rows))
@@ -241,7 +240,8 @@ class ConfidPlotter():
             if name == "rc_curve":
                 self.plot_rc()
             if "_hist" in name:
-                self.plot_hist_per_confid(name.replace('_hist',''))
+                method_name = ("_").join(name.split("_")[:-1])
+                self.plot_hist_per_confid(method_name)
 
         f.tight_layout() # this is slow af
         return f
@@ -273,7 +273,7 @@ class ConfidPlotter():
         self.ax.legend(loc=1)
         title_string = method_name
         if metrics is not None:
-            title_string += " (acc: {:.3f})".format(metrics["accuracy"])
+            title_string += " (acc: {:.3f}, total:{})".format(metrics["accuracy"], confids.size)
         self.ax.set_title("failure_pred_{}".format(title_string))
 
 
