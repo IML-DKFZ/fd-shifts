@@ -8,7 +8,7 @@ hydra:
 
 exp:
   group_name: checks
-  name: check_final_pipeline
+  name: check_mcs
   version: None
   mode: test   # train or test
   work_dir: ${hydra:runtime.cwd}
@@ -38,17 +38,16 @@ data:
 
 model:
   name: small_conv
-  confidence_measures: ["mcp", "pe"]  # mcp=maximum_confidence, pe=predictive_entropy
-  method: det # deterministic, mcdropout, ...
   n_filters: 32
   fc_dim: 512
+  monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
+  test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
 
 trainer:
-  num_epochs: 2
+  num_epochs: 1
   learning_rate: 1e-3
   momentum: 0.9
   weight_decay: 1e-4
-  do_val: True
   batch_size: 128
   num_classes: 10
   resume_from_ckpt: False
@@ -56,7 +55,7 @@ trainer:
   selection_mode: min    # lower is better
   benchmark: True # set to false if input size varies during training!
   global_seed: False # set to False to disable deterministic training.
-  val_every_n_epoch: 2
+  val_every_n_epoch: 1
   fast_dev_run: False # True/False/int
 
 
@@ -79,11 +78,13 @@ eval:
                    "aurc",
                    "fpr@95tpr",
                    "default_plot"]
-  monitor_confids:
+  confidence_measures:
     train:
-      ["mcp"]
+      ["det_mcp"]
     val:
-      ${model.confidence_measures}
+      ["det_mcp", "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee"]
+    test:
+      ["det_mcp", "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee"]
 
   monitor_plots: [ "calibration",
                    "overconfidence",

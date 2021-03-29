@@ -14,13 +14,13 @@ class net(pl.LightningModule):
         self.save_hyperparameters()
         self.tensorboard_hparams = eval_utils.get_tb_hparams(cf)
         self.query_monitor_metrics = cf.eval.monitor_metrics
-        self.query_monitor_confids = cf.eval.monitor_confids
         self.query_monitor_plots = cf.eval.monitor_plots
+        self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
         self.fast_dev_run = cf.trainer.fast_dev_run
 
-        # used later for actual change in computation graph?! ...also used for testing etc...
-        self.query_confidence_measures = cf.model.confidence_measures
+        self.monitor_mcd_samples = cf.model.monitor_mcd_samples
+        self.test_mcd_samples = cf.model.test_mcd_samples
 
         self.val_every_n_epoch = cf.trainer.val_every_n_epoch
         self.raw_output_path_fit = cf.exp.raw_output_path
@@ -30,13 +30,12 @@ class net(pl.LightningModule):
         self.weight_decay = cf.trainer.weight_decay
         self.num_classes = cf.trainer.num_classes
         self.global_seed = cf.trainer.global_seed
-        self.running_correct = []
+
         self.running_softmax = []
         self.running_labels = []
-
-        self.running_confids = {}
-        self.running_confids["train"] = {k:[] for k in self.query_monitor_confids["train"]}
-        self.running_confids["val"] = {k:[] for k in self.query_monitor_confids["val"]}
+        self.running_stats = {}
+        self.running_stats["train"] = {k: {"confids":[], "correct":[]} for k in self.query_confids["train"]}
+        self.running_stats["val"] = {k: {"confids":[], "correct":[]} for k in self.query_confids["val"]}
 
         self.brier_score = eval_utils.BrierScore(num_classes=self.num_classes)
         self.loss_criterion = nn.CrossEntropyLoss()
@@ -45,6 +44,16 @@ class net(pl.LightningModule):
 
     def forward(self, x):
         return self.encoder(x)
+
+
+    def mcd_eval_forward(self, x, n_samples, existing_softmax_list=None):
+        self.encoder.eval_mcdropout = True
+        softmax_list = existing_softmax_list if existing_softmax_list is not None else []
+        for _ in range(n_samples - len(softmax_list)):
+            softmax_list.append(F.softmax(self.encoder(x), dim=1).unsqueeze(2))
+        self.encoder.eval_mcdropout = False
+
+        return torch.cat(softmax_list, dim=2)
 
 
     def on_train_start(self):
@@ -64,24 +73,23 @@ class net(pl.LightningModule):
         self.log("train/loss", loss, on_step=False, on_epoch=True)
         self.log("train/brier_score", self.brier_score(softmax, y), on_step=False, on_epoch=True)
 
-        tmp_correct = (torch.argmax(softmax, dim=1) == y)*1
-        self.running_correct.extend(tmp_correct)
+        tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
 
-        if "mcp" in self.query_monitor_confids["train"]:
+        if "det_mcp" in self.query_confids["train"]:
             tmp_confids = torch.max(softmax, dim=1)[0]
-            self.running_confids["train"]["mcp"].extend(tmp_confids)
-        if "pe" in self.query_monitor_confids["train"]:
+            self.running_stats["train"]["det_mcp"]["confids"].extend(tmp_confids)
+            self.running_stats["train"]["det_mcp"]["correct"].extend(tmp_correct)
+        if "det_pe" in self.query_confids["train"]:
             tmp_confids = torch.sum(softmax * (- torch.log(softmax)), dim=1)
-            self.running_confids["train"]["pe"].extend(tmp_confids)
+            self.running_stats["train"]["det_pe"]["confids"].extend(tmp_confids)
+            self.running_stats["train"]["det_pe"]["correct"].extend(tmp_correct)
 
         return loss # this will be "outputs" later, what exactly can I return here?
 
     def training_epoch_end(self, outputs):
         # optinally perform at random step with if self.global_step ... and set on_step=True. + reset!
-        # the whole thing takes 0.3 sec atm.
         do_plot = True if (self.current_epoch + 1) % self.val_every_n_epoch == 0 else False
-        monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confids["train"],
-                                                                 self.running_correct,
+        monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_stats["train"],
                                                                  self.query_monitor_metrics,
                                                                  self.query_monitor_plots,
                                                                  do_plot = do_plot
@@ -97,8 +105,7 @@ class net(pl.LightningModule):
             for k,v in monitor_plots.items():
                 tensorboard.add_figure("train/{}".format(k), v, self.current_epoch)
 
-        self.running_correct = []
-        self.running_confids["train"] = {k: [] for k in self.query_monitor_confids["train"]}
+        self.running_stats["train"] = {k: {"confids": [], "correct": []} for k in self.query_confids["train"]}
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -109,26 +116,58 @@ class net(pl.LightningModule):
         self.log("val/loss", loss, on_step=False, on_epoch=True)
         self.log("val/brier_score", self.brier_score(softmax, y), on_step=False, on_epoch=True)
 
-        tmp_correct = (torch.argmax(softmax, dim=1) == y) * 1
-        self.running_correct.extend(tmp_correct)
+        tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
 
-        if "mcp" in self.query_monitor_confids["val"]:
+        if "det_mcp" in self.query_confids["val"]:
             tmp_confids = torch.max(softmax, dim=1)[0]
-            self.running_confids["val"]["mcp"].extend(tmp_confids)
-        if "pe" in self.query_monitor_confids["val"]:
+            self.running_stats["val"]["det_mcp"]["confids"].extend(tmp_confids)
+            self.running_stats["val"]["det_mcp"]["correct"].extend(tmp_correct)
+        if "det_pe" in self.query_confids["val"]:
             tmp_confids = torch.sum(softmax * (- torch.log(softmax)), dim=1)
-            self.running_confids["val"]["pe"].extend(tmp_confids)
+            self.running_stats["val"]["det_pe"]["confids"].extend(tmp_confids)
+            self.running_stats["val"]["det_pe"]["correct"].extend(tmp_correct)
+
+        softmax_dist = None
+        if any("mcd" in cfd for cfd in self.query_confids["val"]):
+            softmax_dist = self.mcd_eval_forward(x=x,
+                                                 n_samples=self.monitor_mcd_samples,
+                                                 existing_softmax_list=[softmax.unsqueeze(2)])
+            mean_softmax = torch.mean(softmax_dist, dim=2)
+            tmp_mcd_correct = (torch.argmax(mean_softmax, dim=1) == y).type(torch.cuda.ByteTensor)
+
+            if "mcd_mcp" in self.query_confids["val"]:
+                tmp_confids = torch.max(mean_softmax, dim=1)[0]
+                self.running_stats["val"]["mcd_mcp"]["confids"].extend(tmp_confids)
+                self.running_stats["val"]["mcd_mcp"]["correct"].extend(tmp_mcd_correct)
+            if "mcd_pe" in self.query_confids["val"]:
+                tmp_confids = torch.sum(mean_softmax * (- torch.log(mean_softmax)), dim=1)
+                self.running_stats["val"]["mcd_pe"]["confids"].extend(tmp_confids)
+                self.running_stats["val"]["mcd_pe"]["correct"].extend(tmp_mcd_correct)
+            if "mcd_ee" in self.query_confids["val"]:
+                tmp_confids = torch.sum(softmax_dist * (- torch.log(softmax_dist)), dim=1).mean(1)
+                self.running_stats["val"]["mcd_ee"]["confids"].extend(tmp_confids)
+                self.running_stats["val"]["mcd_ee"]["correct"].extend(tmp_mcd_correct)
+
+            #  Todo missing: softmax variance, mutual information
 
         if self.current_epoch == self.num_epochs -1:
-            self.running_softmax.extend(softmax)
+            # save mcd output for psuedo-test if actual test is with mcd.
+            if any("mcd" in cfd for cfd in self.query_confids["test"]):
+                if softmax_dist is None:
+                    softmax_dist = self.mcd_eval_forward(x=x,
+                                                         n_samples=self.monitor_mcd_samples,
+                                                         existing_softmax_list=[softmax.unsqueeze(2)])
+                out_softmax = softmax_dist
+            else:
+                out_softmax = softmax
+            self.running_softmax.extend(out_softmax)
             self.running_labels.extend(y)
 
         return loss
 
 
     def validation_epoch_end(self, outputs):
-        monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confids["val"],
-                                                                 self.running_correct,
+        monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_stats["val"],
                                                                  self.query_monitor_metrics,
                                                                  self.query_monitor_plots)
 
@@ -141,14 +180,14 @@ class net(pl.LightningModule):
         for k,v in monitor_plots.items():
             tensorboard.add_figure("val/{}".format(k), v, self.current_epoch)
 
-        self.running_correct = []
-        self.running_confids["val"] = {k: [] for k in self.query_monitor_confids["val"]}
-
+        self.running_stats["val"] = {k: {"confids": [], "correct": []} for k in self.query_confids["val"]}
 
     def on_train_end(self):
-        raw_output = torch.cat([torch.stack(self.running_softmax, dim=0),
-                                  torch.stack(self.running_labels, dim=0).unsqueeze(1)]
-                                 , dim=1)
+        stacked_softmax = torch.stack(self.running_softmax, dim=0)
+        stacked_labels = torch.stack(self.running_labels, dim=0).unsqueeze(1)
+        raw_output = torch.cat([stacked_softmax.reshape(stacked_softmax.size()[0], -1),
+                                stacked_labels],
+                                dim=1)
         np.save(self.raw_output_path_fit, raw_output.cpu().data.numpy())
         print("saved raw outputs to {}".format(self.raw_output_path_fit))
 
@@ -161,15 +200,23 @@ class net(pl.LightningModule):
         logits = self.encoder(x)
         softmax = F.softmax(logits, dim=1)
 
-        self.running_softmax.extend(softmax)
+        if any("mcd" in cfd for cfd in self.query_confids["test"]):
+            out_softmax = self.mcd_eval_forward(x=x,
+                                                n_samples=self.test_mcd_samples,
+                                                existing_softmax_list=[softmax.unsqueeze(2)])
+        else:
+            out_softmax = softmax
+        self.running_softmax.extend(out_softmax)
         self.running_labels.extend(y)
 
 
     def on_test_end(self):
 
-        raw_output = torch.cat([torch.stack(self.running_softmax, dim=0),
-                                torch.stack(self.running_labels, dim=0).unsqueeze(1)]
-                               , dim=1)
+        stacked_softmax = torch.stack(self.running_softmax, dim=0)
+        stacked_labels = torch.stack(self.running_labels, dim=0).unsqueeze(1)
+        raw_output = torch.cat([stacked_softmax.reshape(stacked_softmax.size()[0], -1),
+                                stacked_labels],
+                               dim=1)
 
         np.save(self.raw_output_path_test, raw_output.cpu().data.numpy())
         print("saved raw outputs to {}".format(self.raw_output_path_test))
@@ -210,8 +257,8 @@ class Encoder(nn.Module):
         self.img_size = cf.data.img_size
         self.fc_dim = cf.model.fc_dim
         self.num_classes = cf.trainer.num_classes
-        self.confidence_mode = cf.model.method
         self.dropout_rate = 0.3
+        self.eval_mcdropout = False
 
         self.conv1 = Conv2dSame(self.img_size[-1], 32, 3)
         self.conv1_bn = nn.BatchNorm2d(32)
@@ -244,8 +291,8 @@ class Encoder(nn.Module):
         x = F.relu(self.conv2(x))
         x = self.conv2_bn(x)
         x = self.maxpool1(x)
-        if self.confidence_mode == "mcdropout":
-            x = F.dropout(x, self.dropout_rate, training=self.training)
+        if self.eval_mcdropout:
+            x = F.dropout(x, self.dropout_rate, training=True)
         else:
             x = self.dropout1(x)
 
@@ -254,8 +301,8 @@ class Encoder(nn.Module):
         x = F.relu(self.conv4(x))
         x = self.conv4_bn(x)
         x = self.maxpool2(x)
-        if self.confidence_mode == "mcdropout":
-            x = F.dropout(x, self.dropout_rate, training=self.training)
+        if self.eval_mcdropout:
+            x = F.dropout(x, self.dropout_rate, training=True)
         else:
             x = self.dropout2(x)
 
@@ -264,15 +311,15 @@ class Encoder(nn.Module):
         x = F.relu(self.conv6(x))
         x = self.conv6_bn(x)
         x = self.maxpool3(x)
-        if self.confidence_mode == "mcdropout":
-            x = F.dropout(x, self.dropout_rate, training=self.training)
+        if self.eval_mcdropout:
+            x = F.dropout(x, self.dropout_rate, training=True)
         else:
             x = self.dropout3(x)
 
         x = x.view(x.size(0), -1)
         x = F.relu(self.fc1(x))
-        if self.confidence_mode == "mcdropout":
-            x = F.dropout(x, self.dropout_rate, training=self.training)
+        if self.eval_mcdropout:
+            x = F.dropout(x, self.dropout_rate, training=True)
         else:
             x = self.dropout4(x)
         x = self.fc2(x)
