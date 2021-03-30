@@ -8,9 +8,9 @@ hydra:
 
 exp:
   group_name: checks
-  name: check_mcs
+  name: check_clean_monitor
   version: None
-  mode: test   # train or test
+  mode: train   # train or test
   work_dir: ${hydra:runtime.cwd}
   fold_dir: exp/${exp.fold}
   root_dir: ${env:EXPERIMENT_ROOT_DIR}
@@ -44,18 +44,19 @@ model:
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
 
 trainer:
-  num_epochs: 1
+  num_epochs: 100
   learning_rate: 1e-3
   momentum: 0.9
   weight_decay: 1e-4
   batch_size: 128
   num_classes: 10
   resume_from_ckpt: False
-  selection_metric: val/loss    # in logging syntax
-  selection_mode: min    # lower is better
+  save_top_k:
+  selection_metric:     # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable
+  selection_mode: min    # min:lower is better, max: higher is better
   benchmark: True # set to false if input size varies during training!
   global_seed: False # set to False to disable deterministic training.
-  val_every_n_epoch: 1
+  val_every_n_epoch: 10
   fast_dev_run: False # True/False/int
 
 
@@ -68,23 +69,21 @@ augmentations:
     normalize: [[0.5, 0.5, 0.5],[0.5, 0.5, 0.5]]
 
 eval:
-  monitor_metrics: ['accuracy',
-                   'failauc',
-                   'failap_suc',
-                   'failap_err',
-                   "mce",
-                   "ece",
-                   "e-aurc",
-                   "aurc",
-                   "fpr@95tpr",
-                   "default_plot"]
+  performance_metrics:
+    train: ['nll', 'accuracy'] # train brier_score logging costs around 5% performance
+    val: ['nll', 'accuracy', 'brier_score']
+    test: ['nll', 'accuracy', 'brier_score']
+  confid_metrics:
+    train: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
+    val: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
+    test: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
   confidence_measures:
     train:
-      ["det_mcp"]
+      ['det_mcp'] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
-      ["det_mcp", "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee"]
+      ["det_mcp", "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
     test:
-      ["det_mcp", "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee"]
+      ["det_mcp", "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
 
   monitor_plots: [ "calibration",
                    "overconfidence",

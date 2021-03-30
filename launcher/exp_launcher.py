@@ -21,6 +21,7 @@ for fold in folds:
     command_line_args = ""
     command_line_args += "exp.fold={} ".format(fold)
     command_line_args += "exp.name={} ".format("fold_{}".format(fold))
+    command_line_args += "exp.group_name={} ".format("check_mcd")
 
     if system_name == "cluster":
 

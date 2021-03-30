@@ -13,7 +13,8 @@ class net(pl.LightningModule):
 
         self.save_hyperparameters()
         self.tensorboard_hparams = eval_utils.get_tb_hparams(cf)
-        self.query_monitor_metrics = cf.eval.monitor_metrics
+        self.query_performance_metrics = cf.eval.performance_metrics
+        self.query_confid_metrics = cf.eval.confid_metrics
         self.query_monitor_plots = cf.eval.monitor_plots
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
@@ -33,11 +34,13 @@ class net(pl.LightningModule):
 
         self.running_softmax = []
         self.running_labels = []
-        self.running_stats = {}
-        self.running_stats["train"] = {k: {"confids":[], "correct":[]} for k in self.query_confids["train"]}
-        self.running_stats["val"] = {k: {"confids":[], "correct":[]} for k in self.query_confids["val"]}
+        self.running_confid_stats = {}
+        self.running_perf_stats = {}
+        self.running_confid_stats["train"] = {k: {"confids":[], "correct":[]} for k in self.query_confids["train"]}
+        self.running_confid_stats["val"] = {k: {"confids":[], "correct":[]} for k in self.query_confids["val"]}
+        self.running_perf_stats["train"] = {k:[] for k in self.query_performance_metrics["train"]}
+        self.running_perf_stats["val"] = {k:[] for k in self.query_performance_metrics["val"]}
 
-        self.brier_score = eval_utils.BrierScore(num_classes=self.num_classes)
         self.loss_criterion = nn.CrossEntropyLoss()
 
         self.encoder = Encoder(cf)
@@ -58,8 +61,8 @@ class net(pl.LightningModule):
 
     def on_train_start(self):
         if self.fast_dev_run is False:
-            hp_metrics = {"hp/train_{}".format(k):0 for k in self.query_monitor_metrics}
-            hp_metrics.update({"hp/val_{}".format(k):0 for k in self.query_monitor_metrics})
+            hp_metrics = {"hp/train_{}".format(k):0 for k in self.query_performance_metrics}
+            hp_metrics.update({"hp/val_{}".format(k):0 for k in self.query_performance_metrics})
             self.logger[0].log_hyperparams(self.tensorboard_hparams, hp_metrics)#, {"hp/metric_1": 0, "hp/metric_2": 0})
         exp_utils.set_seed(self.global_seed)
 
@@ -70,42 +73,58 @@ class net(pl.LightningModule):
         loss = self.loss_criterion(logits, y)
         softmax = F.softmax(logits, dim=1)
 
-        self.log("train/loss", loss, on_step=False, on_epoch=True)
-        self.log("train/brier_score", self.brier_score(softmax, y), on_step=False, on_epoch=True)
+        tmp_correct = None
+        if len(self.running_perf_stats["train"].keys()) > 0:
+            stat_keys = self.running_perf_stats["train"].keys()
+            if "nll" in stat_keys:
+                self.running_perf_stats["train"]["nll"].append(loss)
+            if "accuracy" in stat_keys:
+                tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
+                self.running_perf_stats["train"]["accuracy"].append(tmp_correct.sum()/tmp_correct.numel())
+            if "brier_score" in stat_keys:
+                y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
+                self.running_perf_stats["train"]["brier_score"].append(((softmax - y_one_hot) ** 2).sum(1).mean())
 
-        tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
+        if len(self.running_confid_stats["train"].keys()) > 0:
+            stat_keys = self.running_confid_stats["train"].keys()
+            if tmp_correct is None:
+                tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
+            if "det_mcp" in stat_keys:
+                tmp_confids = torch.max(softmax, dim=1)[0]
+                self.running_confid_stats["train"]["det_mcp"]["confids"].extend(tmp_confids)
+                self.running_confid_stats["train"]["det_mcp"]["correct"].extend(tmp_correct)
+            if "det_pe" in stat_keys:
+                tmp_confids = torch.sum(softmax * (- torch.log(softmax)), dim=1)
+                self.running_confid_stats["train"]["det_pe"]["confids"].extend(tmp_confids)
+                self.running_confid_stats["train"]["det_pe"]["correct"].extend(tmp_correct)
 
-        if "det_mcp" in self.query_confids["train"]:
-            tmp_confids = torch.max(softmax, dim=1)[0]
-            self.running_stats["train"]["det_mcp"]["confids"].extend(tmp_confids)
-            self.running_stats["train"]["det_mcp"]["correct"].extend(tmp_correct)
-        if "det_pe" in self.query_confids["train"]:
-            tmp_confids = torch.sum(softmax * (- torch.log(softmax)), dim=1)
-            self.running_stats["train"]["det_pe"]["confids"].extend(tmp_confids)
-            self.running_stats["train"]["det_pe"]["correct"].extend(tmp_correct)
-
-        return loss # this will be "outputs" later, what exactly can I return here?
+        return loss
 
     def training_epoch_end(self, outputs):
-        # optinally perform at random step with if self.global_step ... and set on_step=True. + reset!
-        do_plot = True if (self.current_epoch + 1) % self.val_every_n_epoch == 0 else False
-        monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_stats["train"],
-                                                                 self.query_monitor_metrics,
-                                                                 self.query_monitor_plots,
-                                                                 do_plot = do_plot
-                                                                 )
+        if len(self.running_confid_stats["train"].keys()) > 0 or len(self.running_perf_stats["train"].keys()) > 0:
+            do_plot = True if (self.current_epoch + 1) % self.val_every_n_epoch == 0 and \
+                              len(self.query_confids["train"]) > 0 and len(self.query_monitor_plots) > 0 else False
+            monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confid_stats["train"],
+                                                                     self.running_perf_stats["train"],
+                                                                     self.query_confid_metrics,
+                                                                     self.query_monitor_plots,
+                                                                     do_plot = do_plot
+                                                                     )
 
-        tensorboard = self.logger[0].experiment
-        self.log("step", self.current_epoch)
-        for k, v in monitor_metrics.items():
-            self.log("train/{}".format(k), v)
-            tensorboard.add_scalar("hp/train_{}".format(k), v, global_step=self.current_epoch)
+            tensorboard = self.logger[0].experiment
+            self.log("step", self.current_epoch)
+            for k, v in monitor_metrics.items():
+                self.log("train/{}".format(k), v)
+                tensorboard.add_scalar("hp/train_{}".format(k), v, global_step=self.current_epoch)
 
-        if do_plot:
-            for k,v in monitor_plots.items():
-                tensorboard.add_figure("train/{}".format(k), v, self.current_epoch)
+            if do_plot:
+                for k, v in monitor_plots.items():
+                    tensorboard.add_figure("train/{}".format(k), v, self.current_epoch)
 
-        self.running_stats["train"] = {k: {"confids": [], "correct": []} for k in self.query_confids["train"]}
+            self.running_confid_stats["train"] = {k: {"confids": [], "correct": []} for k in
+                                                  self.query_confids["train"]}
+            self.running_perf_stats["train"] = {k: [] for k in self.query_performance_metrics["train"]}
+
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -113,42 +132,61 @@ class net(pl.LightningModule):
         loss = self.loss_criterion(logits, y)
         softmax = F.softmax(logits, dim=1)
 
-        self.log("val/loss", loss, on_step=False, on_epoch=True)
-        self.log("val/brier_score", self.brier_score(softmax, y), on_step=False, on_epoch=True)
+        tmp_correct = None
 
-        tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
+        if len(self.running_perf_stats["val"].keys()) > 0:
+            stat_keys = self.running_perf_stats["val"].keys()
+            if "nll" in stat_keys:
+                self.running_perf_stats["val"]["nll"].append(loss)
+            if "accuracy" in stat_keys:
+                tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
+                self.running_perf_stats["val"]["accuracy"].append(tmp_correct.sum() / tmp_correct.numel())
+            if "brier_score" in stat_keys:
+                y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
+                self.running_perf_stats["val"]["brier_score"].append(((softmax - y_one_hot) ** 2).sum(1).mean())
 
-        if "det_mcp" in self.query_confids["val"]:
-            tmp_confids = torch.max(softmax, dim=1)[0]
-            self.running_stats["val"]["det_mcp"]["confids"].extend(tmp_confids)
-            self.running_stats["val"]["det_mcp"]["correct"].extend(tmp_correct)
-        if "det_pe" in self.query_confids["val"]:
-            tmp_confids = torch.sum(softmax * (- torch.log(softmax)), dim=1)
-            self.running_stats["val"]["det_pe"]["confids"].extend(tmp_confids)
-            self.running_stats["val"]["det_pe"]["correct"].extend(tmp_correct)
+        if len(self.running_confid_stats["val"].keys()) > 0:
+            stat_keys = self.running_confid_stats["val"].keys()
+            if tmp_correct is None:
+                tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
+            if "det_mcp" in stat_keys:
+                tmp_confids = torch.max(softmax, dim=1)[0]
+                self.running_confid_stats["val"]["det_mcp"]["confids"].extend(tmp_confids)
+                self.running_confid_stats["val"]["det_mcp"]["correct"].extend(tmp_correct)
+            if "det_pe" in stat_keys:
+                tmp_confids = torch.sum(softmax * (- torch.log(softmax)), dim=1)
+                self.running_confid_stats["val"]["det_pe"]["confids"].extend(tmp_confids)
+                self.running_confid_stats["val"]["det_pe"]["correct"].extend(tmp_correct)
 
-        softmax_dist = None
-        if any("mcd" in cfd for cfd in self.query_confids["val"]):
-            softmax_dist = self.mcd_eval_forward(x=x,
-                                                 n_samples=self.monitor_mcd_samples,
-                                                 existing_softmax_list=[softmax.unsqueeze(2)])
-            mean_softmax = torch.mean(softmax_dist, dim=2)
-            tmp_mcd_correct = (torch.argmax(mean_softmax, dim=1) == y).type(torch.cuda.ByteTensor)
 
-            if "mcd_mcp" in self.query_confids["val"]:
-                tmp_confids = torch.max(mean_softmax, dim=1)[0]
-                self.running_stats["val"]["mcd_mcp"]["confids"].extend(tmp_confids)
-                self.running_stats["val"]["mcd_mcp"]["correct"].extend(tmp_mcd_correct)
-            if "mcd_pe" in self.query_confids["val"]:
-                tmp_confids = torch.sum(mean_softmax * (- torch.log(mean_softmax)), dim=1)
-                self.running_stats["val"]["mcd_pe"]["confids"].extend(tmp_confids)
-                self.running_stats["val"]["mcd_pe"]["correct"].extend(tmp_mcd_correct)
-            if "mcd_ee" in self.query_confids["val"]:
-                tmp_confids = torch.sum(softmax_dist * (- torch.log(softmax_dist)), dim=1).mean(1)
-                self.running_stats["val"]["mcd_ee"]["confids"].extend(tmp_confids)
-                self.running_stats["val"]["mcd_ee"]["correct"].extend(tmp_mcd_correct)
+            softmax_dist = None
+            if any("mcd" in cfd for cfd in stat_keys):
+                softmax_dist = self.mcd_eval_forward(x=x,
+                                                     n_samples=self.monitor_mcd_samples,
+                                                     existing_softmax_list=[softmax.unsqueeze(2)])
+                mean_softmax = torch.mean(softmax_dist, dim=2)
+                tmp_mcd_correct = (torch.argmax(mean_softmax, dim=1) == y).type(torch.cuda.ByteTensor)
 
-            #  Todo missing: softmax variance, mutual information
+                if "mcd_mcp" in stat_keys:
+                    tmp_confids = torch.max(mean_softmax, dim=1)[0]
+                    self.running_confid_stats["val"]["mcd_mcp"]["confids"].extend(tmp_confids)
+                    self.running_confid_stats["val"]["mcd_mcp"]["correct"].extend(tmp_mcd_correct)
+                if "mcd_pe" in stat_keys:
+                    pe_confids = torch.sum(mean_softmax * (- torch.log(mean_softmax)), dim=1)
+                    self.running_confid_stats["val"]["mcd_pe"]["confids"].extend(pe_confids)
+                    self.running_confid_stats["val"]["mcd_pe"]["correct"].extend(tmp_mcd_correct)
+                if "mcd_ee" in stat_keys:
+                    ee_confids = torch.sum(softmax_dist * (- torch.log(softmax_dist)), dim=1).mean(1)
+                    self.running_confid_stats["val"]["mcd_ee"]["confids"].extend(ee_confids)
+                    self.running_confid_stats["val"]["mcd_ee"]["correct"].extend(tmp_mcd_correct)
+                if "mcd_mi" in stat_keys:
+                    tmp_confids = pe_confids - ee_confids
+                    self.running_confid_stats["val"]["mcd_mi"]["confids"].extend(tmp_confids)
+                    self.running_confid_stats["val"]["mcd_mi"]["correct"].extend(tmp_mcd_correct)
+                if "mcd_sv" in stat_keys:
+                    tmp_confids = ((softmax_dist - mean_softmax.unsqueeze(2))**2).mean((1, 2))
+                    self.running_confid_stats["val"]["mcd_sv"]["confids"].extend(tmp_confids)
+                    self.running_confid_stats["val"]["mcd_sv"]["correct"].extend(tmp_mcd_correct)
 
         if self.current_epoch == self.num_epochs -1:
             # save mcd output for psuedo-test if actual test is with mcd.
@@ -167,20 +205,29 @@ class net(pl.LightningModule):
 
 
     def validation_epoch_end(self, outputs):
-        monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_stats["val"],
-                                                                 self.query_monitor_metrics,
-                                                                 self.query_monitor_plots)
+        if len(self.running_confid_stats["val"].keys()) > 0 or len(self.running_perf_stats["val"].keys()) > 0:
+            do_plot = True if len(self.query_confids["val"]) > 0 and len(self.query_monitor_plots) > 0 else False
+            monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confid_stats["val"],
+                                                                     self.running_perf_stats["val"],
+                                                                     self.query_confid_metrics,
+                                                                     self.query_monitor_plots,
+                                                                     do_plot=do_plot
+                                                                     )
 
-        tensorboard = self.logger[0].experiment
-        self.log("step", self.current_epoch)
-        for k, v in monitor_metrics.items():
-            self.log("val/{}".format(k), v)
-            tensorboard.add_scalar("hp/val_{}".format(k), v, global_step=self.current_epoch)
+            tensorboard = self.logger[0].experiment
+            self.log("step", self.current_epoch)
+            for k, v in monitor_metrics.items():
+                self.log("val/{}".format(k), v)
+                tensorboard.add_scalar("hp/val_{}".format(k), v, global_step=self.current_epoch)
 
-        for k,v in monitor_plots.items():
-            tensorboard.add_figure("val/{}".format(k), v, self.current_epoch)
+            if do_plot:
+                for k, v in monitor_plots.items():
+                    tensorboard.add_figure("val/{}".format(k), v, self.current_epoch)
 
-        self.running_stats["val"] = {k: {"confids": [], "correct": []} for k in self.query_confids["val"]}
+            self.running_confid_stats["val"] = {k: {"confids": [], "correct": []} for k in
+                                                  self.query_confids["val"]}
+            self.running_perf_stats["val"] = {k: [] for k in self.query_performance_metrics["val"]}
+
 
     def on_train_end(self):
         stacked_softmax = torch.stack(self.running_softmax, dim=0)

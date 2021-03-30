@@ -44,7 +44,7 @@ def train(cf):
                                           filename="best",
                                           monitor=cf.trainer.selection_metric,
                                           mode=cf.trainer.selection_mode,
-                                          save_top_k=1,
+                                          save_top_k=cf.trainer.save_top_k,
                                           save_last=True,
                                          )
     trainer = pl.Trainer(gpus=1,
