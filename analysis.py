@@ -164,23 +164,32 @@ class Analysis():
         f.savefig(os.path.join(self.analysis_out_dir, "master_plot.png"))
         print("saved masterplot to ", os.path.join(self.analysis_out_dir, "master_plot.png"))
 
-def main():
 
-    # path to the dir where the raw otuputs lie
 
-    path_to_test_dir_list = [
-        "/mnt/hdd2/checkpoints/checks/check_clean_monitor/version_0",
-    ]
-    # path_to_test_dir_list = [
-    #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_0/version_0",
-    #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_1/version_0",
-    #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_2/version_0",
-    #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_3/version_0",
-    #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_4/version_0",
-    # ]
 
-    analysis_out_dir = "/mnt/hdd2/checkpoints/analysis/check_analysis_final"
-    # analysis_out_dir = "/gpu/checkpoints/OE0612/jaegerp/mcd_analysis"
+def main(in_path=None, out_path=None):
+
+    # path to the dir where the raw otuputs lie. NO SLASH AT THE END!
+    if in_path is None:
+        path_to_test_dir_list = [
+            "/gpu/checkpoints/OE0612/jaegerp/repro_related_work/repro_mcd_mcp/test_results",
+        ]
+        # path_to_test_dir_list = [
+        #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_0/version_0",
+        #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_1/version_0",
+        #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_2/version_0",
+        #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_3/version_0",
+        #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_4/version_0",
+        # ]
+    else:
+        path_to_test_dir_list = [in_path]
+
+    if out_path is None:
+        # analysis_out_dir = "/mnt/hdd2/checkpoints/analysis/check_analysis_final"
+        analysis_out_dir = "/gpu/checkpoints/OE0612/jaegerp/analysis/repro_mcd_confidnet"
+    else:
+        analysis_out_dir = out_path
+
 
     query_performance_metrics = ['accuracy', 'nll', 'brier_score']
     query_confid_metrics = ['failauc',

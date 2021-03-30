@@ -2,11 +2,8 @@ import os
 import subprocess
 from itertools import product
 
-#Todo SYSTEM_NAME environment variable to change the submission command dynamically!
-
 system_name = os.environ['SYSTEM_NAME']
 # sur_out_name = os.path.join(exp_group_dir, "surveillance_sheet.txt")
-mode = "train_test"
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
@@ -14,14 +11,16 @@ exec_path = os.path.join(exec_dir,"exec.py")
 
 
 
-folds = [0, 1, 2, 3, 4]
+runs = [2, 3, 4]
 
-for fold in folds:
+for run in runs:
 
     command_line_args = ""
-    command_line_args += "exp.fold={} ".format(fold)
-    command_line_args += "exp.name={} ".format("fold_{}".format(fold))
-    command_line_args += "exp.group_name={} ".format("check_mcd")
+    # command_line_args += "exp.fold={} ".format(fold)
+    command_line_args += "exp.name={} ".format("repro_mcd_mcp_{}".format(run))
+    command_line_args += "exp.group_name={} ".format("repro_related_work")
+    command_line_args += "data.reproduce_confidnet_splits={} ".format("True")
+    command_line_args += "exp.mode={} ".format("train_test")
 
     if system_name == "cluster":
 

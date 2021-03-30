@@ -6,6 +6,7 @@ from src.utils.aug_utils import transforms_collection
 from sklearn.model_selection import KFold
 import os
 import pickle
+import numpy as np
 
 
 class AbstractDataLoader(pl.LightningDataModule):
@@ -20,6 +21,7 @@ class AbstractDataLoader(pl.LightningDataModule):
         self.batch_size = cf.trainer.batch_size
         self.pin_memory = cf.data.pin_memory
         self.num_workers = cf.data.num_workers
+        self.reproduce_confidnet_splits = cf.data.reproduce_confidnet_splits
 
         # Set up augmentations
         self.augmentations = {}
@@ -51,6 +53,14 @@ class AbstractDataLoader(pl.LightningDataModule):
             with open(self.crossval_ids_path, "rb") as f:
                 train_idx, val_idx = pickle.load(f)[self.fold]
 
+        elif self.reproduce_confidnet_splits:
+            num_train = len(self.train_dataset)
+            indices = list(range(num_train))
+            split = int(np.floor(0.1 * num_train)) # they had valid_size at 0.1 in experiments
+            np.random.seed(42)
+            np.random.shuffle(indices)
+            train_idx, val_idx = indices[split:], indices[:split]
+            print("reproduced train_val_splits from confidnet with val_idxs:", val_idx[:10])
         else:
             num_train = len(self.train_dataset)
             indices = list(range(num_train))
@@ -59,6 +69,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             train_idx, val_idx = splits[self.fold]
             with open(self.crossval_ids_path, "wb") as f:
                 pickle.dump(splits, f)
+
 
         # Make samplers
         self.train_sampler = SubsetRandomSampler(train_idx)

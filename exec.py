@@ -9,10 +9,11 @@ from omegaconf import DictConfig, OmegaConf, open_dict
 from src.loaders import get_loader
 from src.models import get_model
 from src.utils import exp_utils
+import analysis
 import os
 
 
-def train(cf):
+def train(cf, subsequent_testing=False):
     """
     perform the training routine for a given fold. saves plots and selected parameters to the experiment dir
     specified in the configs.
@@ -61,8 +62,21 @@ def train(cf):
 
     trainer.fit(model=model, datamodule=datamodule)
 
+    if subsequent_testing:
+
+        if not os.path.exists(cf.test.dir):
+            os.makedirs(cf.test.dir)
+
+        trainer.test(ckpt_path=None)
+        analysis.main(cf.test.dir, cf.test.dir)
+
+
 
 def test(cf):
+
+    # double check that this is not overwritten before it is loaded!
+    print("laoding test config from ", cf.test.cf_path)
+    cf = OmegaConf.load(cf.test.cf_path)
 
     if cf.test.model_selection == "best":
         ckpt_path = exp_utils.get_path_to_best_ckpt(cf.exp.dir, cf.trainer.selection_mode)
@@ -73,10 +87,7 @@ def test(cf):
     print("testing model from checkpoint: {} from model selection tpye {}".format(
         ckpt_path, cf.test.model_selection))
     print("logging testing to: {}".format(cf.test.dir))
-    # MIX 2 configs..ugly??? Hydra can not specify another input config. and anyway overwrites would not be included.
-    # I need to make sure all potential changes are in hparams saved from pl.
-    # there could also be a way via pl_checkpoint = torch.load(ckpt_path). described here under "logging hyperparamters":
-    # https://pytorch-lightning.readthedocs.io/en/latest/extensions/logging.html
+    # Todo overwriting training configs from checkpoint not possible atm
     model = get_model(cf.model.name).load_from_checkpoint(ckpt_path)
     datamodule = get_loader(cf)
 
@@ -97,6 +108,9 @@ def main(cf: DictConfig):
 
     if cf.exp.mode == 'train':
         train(cf)
+
+    if cf.exp.mode == 'train_test':
+        train(cf, subsequent_testing=True)
 
     if cf.exp.mode == 'test':
         test(cf)

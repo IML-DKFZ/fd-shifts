@@ -220,10 +220,16 @@ class ConfidPlotter():
         self.colors_list = seaborn.hls_palette(len(self.method_names_list)).as_hex()
         n_columns = 2
         n_rows = int(np.ceil(self.num_plots / n_columns))
-        f, _ = plt.subplots(nrows=n_rows, ncols=n_columns, figsize=(5*n_columns, 3*n_rows))
+        n_columns += 1
+        f, axs = plt.subplots(nrows=n_rows, ncols=n_columns, figsize=(5*n_columns, 3*n_rows))
+        plot_ix = 0
+        for ix in range(len(f.axes)):
+            if (ix + 1) % n_columns == 0:
+                f.axes[ix].axis("off")
+                continue
 
-        for name, ax in zip(self.query_plots, f.axes):
-            self.ax = ax
+            self.ax = f.axes[ix]
+            name = self.query_plots[plot_ix]
             if name == "calibration":
                 self.plot_calibration()
             if name == "overconfidence":
@@ -237,6 +243,14 @@ class ConfidPlotter():
             if "_hist" in name:
                 method_name = ("_").join(name.split("_")[:-1])
                 self.plot_hist_per_confid(method_name)
+            plot_ix += 1
+            if plot_ix == len(self.query_plots) - 1:
+                break
+
+        legend_info = [ax.get_legend_handles_labels() for ax in f.axes]
+        labels, ixs = np.unique(np.array([h for l in legend_info for h in l[1]]), return_index=True)
+        handles = np.array([h for l in legend_info for h in l[0]])[ixs]
+        f.legend(handles, labels, loc='upper right', prop={'size': 13})
 
         f.tight_layout() # this is slow af
         return f
@@ -265,7 +279,6 @@ class ConfidPlotter():
         self.ax.set_xlim(-0.1, 1.1)
         self.ax.set_yscale('log')
         self.ax.set_xlabel("Confid")
-        self.ax.legend(loc=1)
         title_string = method_name
         if self.performance_metrics is not None:
             title_string += " (acc: {:.3f}, total:{})".format(self.performance_metrics["accuracy"], confids.size)
@@ -290,7 +303,6 @@ class ConfidPlotter():
                 label += " (ece: {:.3f})".format(metrics["ece"])
             self.ax.plot(bin_confid, bin_acc, marker="o", markersize=3, color=color, label=label)
         self.ax.plot([0, 1], [0, 1], linestyle="--", color="black", alpha=0.5)
-        self.ax.legend(loc="lower right")
         self.ax.set_ylabel("Acc")
         self.ax.set_xlabel("Confid")
         self.ax.set_title("calibration")
@@ -313,7 +325,6 @@ class ConfidPlotter():
                 label += " (ece: {:.3f})".format(metrics["ece"])
             self.ax.plot(bin_confid, bin_confid - bin_acc, marker="o", markersize=3, label=label, color=color)
         self.ax.plot([0, 1], [0, 0], linestyle="--", color="black", alpha=0.5)
-        self.ax.legend(loc="lower right")
         self.ax.set_title("overconfidence")
         self.ax.set_ylabel("Confid - Acc")
         self.ax.set_xlabel("Confid")
@@ -338,7 +349,6 @@ class ConfidPlotter():
                 label += " (auc: {:.3f})".format(metrics["failauc"])
             self.ax.plot(fpr, tpr, label=label, color=color)
         self.ax.plot([0, 1], [0, 1], linestyle="--", color="black", alpha=0.5)
-        self.ax.legend(loc="lower right")
         self.ax.set_title("ROC Curve")
         self.ax.set_ylabel("TPR")
         self.ax.set_xlabel("FPR")
@@ -361,7 +371,6 @@ class ConfidPlotter():
             if metrics is not None:
                 label += " (ap_err: {:.3f})".format(metrics["failap_err"])
             self.ax.plot(recall, precision, label=label, color=color)
-        self.ax.legend(loc="lower right")
         self.ax.set_title("PRC Curve (Error=Positive)")
         self.ax.set_ylabel("Precision")
         self.ax.set_xlabel("Recall")
@@ -384,7 +393,6 @@ class ConfidPlotter():
             if metrics is not None:
                 label += " (aurc%: {:.3f})".format(metrics["aurc"]*100)
             self.ax.plot(coverage, selective_risk * 100, label=label, color=color)
-        self.ax.legend(loc="upper left")
         self.ax.set_title("RC Curve")
         self.ax.set_ylabel("Selective Risk [%]")
         self.ax.set_xlabel("Coverage")

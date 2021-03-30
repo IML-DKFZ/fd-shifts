@@ -1,5 +1,6 @@
 defaults:
   - hydra/job_logging: disabled
+  - data: default_data.yaml
 
 hydra:
   run:
@@ -8,9 +9,9 @@ hydra:
 
 exp:
   group_name: checks
-  name: check_clean_monitor
+  name: check_train_test_mode_3 #check_hydra_copy
   version: None
-  mode: train   # train or test
+  mode: train_test   # train or test
   work_dir: ${hydra:runtime.cwd}
   fold_dir: exp/${exp.fold}
   root_dir: ${env:EXPERIMENT_ROOT_DIR}
@@ -26,15 +27,9 @@ exp:
 test:
   name: test_results
   dir: ${exp.dir}/${test.name}
+  cf_path: ${exp.dir}/hydra/config.yaml
   raw_output_path: ${test.dir}/raw_output.npy
   model_selection: latest # latest or best
-
-data:
-  dataset: svhn
-  data_dir: ${env:DATASET_ROOT_DIR}/${data.dataset}
-  pin_memory: True
-  img_size: [32, 32, 3]
-  num_workers: 12
 
 model:
   name: small_conv

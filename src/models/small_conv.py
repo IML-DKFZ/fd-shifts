@@ -230,16 +230,17 @@ class net(pl.LightningModule):
 
 
     def on_train_end(self):
-        stacked_softmax = torch.stack(self.running_softmax, dim=0)
-        stacked_labels = torch.stack(self.running_labels, dim=0).unsqueeze(1)
-        raw_output = torch.cat([stacked_softmax.reshape(stacked_softmax.size()[0], -1),
-                                stacked_labels],
-                                dim=1)
-        np.save(self.raw_output_path_fit, raw_output.cpu().data.numpy())
-        print("saved raw outputs to {}".format(self.raw_output_path_fit))
+        if len(self.running_softmax) > 0:
+            stacked_softmax = torch.stack(self.running_softmax, dim=0)
+            stacked_labels = torch.stack(self.running_labels, dim=0).unsqueeze(1)
+            raw_output = torch.cat([stacked_softmax.reshape(stacked_softmax.size()[0], -1),
+                                    stacked_labels],
+                                    dim=1)
+            np.save(self.raw_output_path_fit, raw_output.cpu().data.numpy())
+            print("saved raw validation outputs to {}".format(self.raw_output_path_fit))
 
-        self.running_softmax = []
-        self.running_labels = []
+            self.running_softmax = []
+            self.running_labels = []
 
 
     def test_step(self, batch, batch_idx):
@@ -266,7 +267,7 @@ class net(pl.LightningModule):
                                dim=1)
 
         np.save(self.raw_output_path_test, raw_output.cpu().data.numpy())
-        print("saved raw outputs to {}".format(self.raw_output_path_test))
+        print("saved raw test outputs to {}".format(self.raw_output_path_test))
 
 
     def configure_optimizers(self):
