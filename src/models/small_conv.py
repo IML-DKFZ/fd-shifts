@@ -106,7 +106,7 @@ class net(pl.LightningModule):
                               len(self.query_confids["train"]) > 0 and len(self.query_monitor_plots) > 0 else False
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confid_stats["train"],
                                                                      self.running_perf_stats["train"],
-                                                                     self.query_confid_metrics,
+                                                                     self.query_confid_metrics["train"],
                                                                      self.query_monitor_plots,
                                                                      do_plot = do_plot
                                                                      )
@@ -130,6 +130,7 @@ class net(pl.LightningModule):
         x, y = batch
         logits = self.encoder(x)
         loss = self.loss_criterion(logits, y)
+        print(loss)
         softmax = F.softmax(logits, dim=1)
 
         tmp_correct = None
@@ -209,11 +210,10 @@ class net(pl.LightningModule):
             do_plot = True if len(self.query_confids["val"]) > 0 and len(self.query_monitor_plots) > 0 else False
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confid_stats["val"],
                                                                      self.running_perf_stats["val"],
-                                                                     self.query_confid_metrics,
+                                                                     self.query_confid_metrics["val"],
                                                                      self.query_monitor_plots,
                                                                      do_plot=do_plot
                                                                      )
-
             tensorboard = self.logger[0].experiment
             self.log("step", self.current_epoch)
             for k, v in monitor_metrics.items():

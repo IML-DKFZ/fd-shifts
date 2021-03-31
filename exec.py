@@ -61,13 +61,20 @@ def train(cf, subsequent_testing=False):
     print("logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version))
 
     trainer.fit(model=model, datamodule=datamodule)
+    analysis.main(cf.exp.version_dir, cf.exp.version_dir)
 
     if subsequent_testing:
 
         if not os.path.exists(cf.test.dir):
             os.makedirs(cf.test.dir)
 
-        trainer.test(ckpt_path=None)
+        if cf.test.model_selection == "latest":
+            ckpt_path = None
+            print("testing with latest model...")
+        elif cf.test.model_selection == "best":
+            ckpt_path = "best"
+            print("testing with best model from {}".format(trainer.checkpoint_callback.best_model_path))
+        trainer.test(ckpt_path=ckpt_path)
         analysis.main(cf.test.dir, cf.test.dir)
 
 
@@ -96,6 +103,7 @@ def test(cf):
 
     trainer = pl.Trainer(gpus=1, logger=False)
     trainer.test(model, datamodule=datamodule)
+    analysis.main(cf.test.dir, cf.test.dir)
 
     # fix str bug
     # test resuming by testing a second time in the same dir

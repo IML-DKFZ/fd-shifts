@@ -152,8 +152,8 @@ class Analysis():
                 submit_list+= [method_dict[confid_key]["metrics"][x] for x in all_metrics]
                 df.loc[len(df)] = submit_list
 
-        df.to_csv(os.path.join(self.analysis_out_dir, "metrics.csv"), float_format='%.3f', decimal='.')
-        print("saved csv to ", os.path.join(self.analysis_out_dir, "metrics.csv"))
+        df.to_csv(os.path.join(self.analysis_out_dir, "analysis_metrics.csv"), float_format='%.3f', decimal='.')
+        print("saved csv to ", os.path.join(self.analysis_out_dir, "analysis_metrics.csv"))
 
 
     def create_master_plot(self):
@@ -213,6 +213,7 @@ def main(in_path=None, out_path=None):
     if not os.path.exists(analysis_out_dir):
         os.mkdir(analysis_out_dir)
 
+    print("starting analysis with in_path(s) {} and out_path {}".format(path_to_test_dir_list, analysis_out_dir))
 
     analysis = Analysis(path_list=path_to_test_dir_list,
                         query_performance_metrics=query_performance_metrics,
