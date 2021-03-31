@@ -9,7 +9,7 @@ hydra:
 
 exp:
   group_name: checks
-  name: check_pseudo_test #check_hydra_copy
+  name: check_aurc #check_hydra_copy
   version: None
   mode: train_test   # train or test
   work_dir: ${hydra:runtime.cwd}
@@ -51,7 +51,7 @@ trainer:
   selection_mode: max    # min:lower is better, max: higher is better
   benchmark: True # set to false if input size varies during training!
   global_seed: False # set to False to disable deterministic training.
-  val_every_n_epoch: 1
+  val_every_n_epoch: 4
   fast_dev_run: False # True/False/int
 
 
@@ -74,11 +74,11 @@ eval:
     test: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
   confidence_measures:
     train:
-      ['det_mcp'] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
+      [] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
       ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
     test:
-      ["det_mcp"] #, "det_pe"], "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
+      ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
 
   monitor_plots: [ "calibration",
                    "overconfidence",

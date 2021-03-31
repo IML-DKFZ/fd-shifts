@@ -29,7 +29,6 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
     cpu_confid_stats = {k:{} for k in list(running_confid_stats.keys())}
 
     for confid_key, confid_dict in running_confid_stats.items():
-
         confids_cpu = torch.stack(confid_dict["confids"], dim=0).cpu().data.numpy()
         correct_cpu = torch.stack(confid_dict["correct"], dim=0).cpu().data.numpy()
 
@@ -106,7 +105,8 @@ class ConfidEvaluator():
                 out_metrics["failauc"] = skm.auc(self.fpr_list, self.tpr_list)
 
             if "fpr@95tpr" in self.query_metrics:
-                out_metrics["fpr@95tpr"] = np.min(self.fpr_list[np.argwhere(self.tpr_list >= 0.95)])
+                # soft threshold from corbiere et al. (confidnet)
+                out_metrics["fpr@95tpr"] = np.min(self.fpr_list[np.argwhere(self.tpr_list >= 0.9495)])
 
         if "failap_suc" in self.query_metrics:
             out_metrics["failap_suc"] = skm.average_precision_score(self.correct, self.confids, pos_label=1)
@@ -157,8 +157,8 @@ class ConfidEvaluator():
 
         if self.rc_curve is None:
             self.get_rc_curve_stats()
-        plot_stats_dict["coverage_list"] = np.array([x[0] for x in self.rc_curve])
-        plot_stats_dict["selective_risk_list"] = np.array([x[1] for x in self.rc_curve])
+        plot_stats_dict["coverage_list"] = np.array(self.rc_curve[0])
+        plot_stats_dict["selective_risk_list"] = np.array(self.rc_curve[1])
 
         if self.precision_list is None:
             self.get_err_prc_curve_stats()
@@ -403,22 +403,50 @@ def RC_curve(residuals, confidence):
     # residuals = inverted "correct_list"
     # implemented for risk = 0/1 error.
     # could be changed to other error (e.g NLL?, that would weirdly mix up kappa confidence with predictive uncertainty!)
-    curve = []
-    n = len(residuals)
-    idx_sorted = np.argsort(confidence)
-    temp1 = residuals[idx_sorted]
-    cov = n
-    selective_risk = sum(temp1)
-    curve.append((cov/ n, selective_risk / n))
-    for i in range(0, len(idx_sorted)-1):
-        cov = cov-1
-        selective_risk = selective_risk-residuals[idx_sorted[i]]
-        curve.append((cov / n, selective_risk /(n-i)))
-    AUC = sum([a[1] for a in curve])/len(curve)
-    err = np.mean(residuals)
-    kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
-    EAURC = AUC-kappa_star_aurc
-    return curve, AUC, EAURC
+    # curve = []
+    # n = len(residuals)
+    # idx_sorted = np.argsort(confidence)
+    # temp1 = residuals[idx_sorted]
+    # cov = n
+    # selective_risk = sum(temp1)
+    # curve.append((cov/ n, selective_risk / n))
+    # for i in range(0, len(idx_sorted)-1):
+    #     cov = cov-1
+    #     selective_risk = selective_risk-residuals[idx_sorted[i]]
+    #     # if confidence[idx_sorted[i]] != confidence[idx_sorted[np.max(i - 1, 0)]]:
+    #     curve.append((cov / n, selective_risk /(n-i - 1)))      # Todo: I Correceted this. report!!
+    # AUC = sum([a[1] for a in curve])/len(curve)
+    # err = np.mean(residuals)
+    # kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
+    # EAURC = AUC-kappa_star_aurc
+    # print("MY RC", AUC, EAURC, curve[-10:])
+    # print("MY AURC WITH SKM", skm.auc([c[0] for c in curve], [c[1] for c in curve]))
+    # print("MY EAURC WITH SKM", skm.auc([c[0] for c in curve], [c[1] for c in curve]))
+
+    # version from corbeire et al.
+    accuracy = 1-np.mean(residuals)
+    proba_pred = confidence
+    accurate = 1-residuals
+    risks, coverages = [], []
+    for delta in sorted(set(proba_pred))[:-1]:
+        coverages.append((proba_pred > delta).mean())
+        selected_accurate = accurate[proba_pred > delta]
+        risks.append(1. - selected_accurate.mean())
+    aurc = skm.auc(coverages, risks)
+    eaurc = aurc - ((1. - accuracy) + accuracy * np.log(accuracy))
+    curve = (coverages, risks)
+
+    return curve, aurc, eaurc
+
+ #
+ # risks, coverages = [], []
+ #    for delta in sorted(set(self.proba_pred))[:-1]:
+ #        coverages.append((self.proba_pred > delta).mean())
+ #        selected_accurate = self.accurate[self.proba_pred > delta]
+ #        risks.append(1. - selected_accurate.mean())
+ #    aurc = auc(coverages, risks)
+ #    eaurc = aurc - ((1. - accuracy) + accuracy*np.log(accuracy))
+
 
 
 

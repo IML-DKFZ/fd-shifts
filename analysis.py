@@ -125,7 +125,7 @@ class Analysis():
         for ix, method_dict in enumerate(self.input_list):
 
             for confid_key in method_dict["query_confids"]:
-
+                print(confid_key)
                 confid_dict = method_dict[confid_key]
                 if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv"]):
                     min_confid = np.min(confid_dict["confids"])
@@ -172,7 +172,7 @@ def main(in_path=None, out_path=None):
     # path to the dir where the raw otuputs lie. NO SLASH AT THE END!
     if in_path is None:
         path_to_test_dir_list = [
-            "/gpu/checkpoints/OE0612/jaegerp/repro_related_work/repro_mcd_mcp/test_results",
+            "/mnt/hdd2/checkpoints/checks/repro_mcd_mcp_3/test_results",
         ]
         # path_to_test_dir_list = [
         #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_0/version_0",
@@ -186,7 +186,7 @@ def main(in_path=None, out_path=None):
 
     if out_path is None:
         # analysis_out_dir = "/mnt/hdd2/checkpoints/analysis/check_analysis_final"
-        analysis_out_dir = "/gpu/checkpoints/OE0612/jaegerp/analysis/repro_mcd_confidnet"
+        analysis_out_dir = "/mnt/hdd2/checkpoints/checks/repro_mcd_mcp_3/test_results"
     else:
         analysis_out_dir = out_path
 

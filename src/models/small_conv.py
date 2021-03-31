@@ -130,7 +130,6 @@ class net(pl.LightningModule):
         x, y = batch
         logits = self.encoder(x)
         loss = self.loss_criterion(logits, y)
-        print(loss)
         softmax = F.softmax(logits, dim=1)
 
         tmp_correct = None
