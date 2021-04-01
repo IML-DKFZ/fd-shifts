@@ -1,4 +1,5 @@
-from src.models import default_classifier
+from src.models import det_mcd_model
+from src.models import confidnet_model
 
 
 def get_model(model_name):
@@ -8,7 +9,8 @@ def get_model(model_name):
 
     # Available models
     model_factory = {
-        "default_classifier": default_classifier.net,
+        "det_mcd_model": det_mcd_model.net,
+        "confidnet_model": confidnet_model.net,
     }
 
     return model_factory[model_name]

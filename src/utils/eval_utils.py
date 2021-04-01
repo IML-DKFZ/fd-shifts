@@ -29,27 +29,28 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
     cpu_confid_stats = {k:{} for k in list(running_confid_stats.keys())}
 
     for confid_key, confid_dict in running_confid_stats.items():
-        confids_cpu = torch.stack(confid_dict["confids"], dim=0).cpu().data.numpy()
-        correct_cpu = torch.stack(confid_dict["correct"], dim=0).cpu().data.numpy()
+        if len(confid_dict["confids"]) > 0:
+            confids_cpu = torch.stack(confid_dict["confids"], dim=0).cpu().data.numpy()
+            correct_cpu = torch.stack(confid_dict["correct"], dim=0).cpu().data.numpy()
 
-        if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv"]):
-            min_confid = np.min(confids_cpu)
-            max_confid = np.max(confids_cpu)
-            confids_cpu = 1 - ((confids_cpu - min_confid) / (max_confid - min_confid))
+            if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv"]):
+                min_confid = np.min(confids_cpu)
+                max_confid = np.max(confids_cpu)
+                confids_cpu = 1 - ((confids_cpu - min_confid) / (max_confid - min_confid))
 
-        eval = ConfidEvaluator(confids=confids_cpu,
-                         correct=correct_cpu,
-                         query_metrics=query_confid_metrics,
-                         bins=bins)
+            eval = ConfidEvaluator(confids=confids_cpu,
+                             correct=correct_cpu,
+                             query_metrics=query_confid_metrics,
+                             bins=bins)
 
-        confid_metrics = eval.get_metrics_per_confid()
+            confid_metrics = eval.get_metrics_per_confid()
 
-        for metric_key, metric in confid_metrics.items():
-            out_metrics[confid_key + "_" + metric_key] = metric
-        cpu_confid_stats[confid_key]["metrics"] = confid_metrics
-        cpu_confid_stats[confid_key]["plot_stats"] = eval.get_plot_stats_per_confid()
-        cpu_confid_stats[confid_key]["confids"] = confids_cpu
-        cpu_confid_stats[confid_key]["correct"] = correct_cpu
+            for metric_key, metric in confid_metrics.items():
+                out_metrics[confid_key + "_" + metric_key] = metric
+            cpu_confid_stats[confid_key]["metrics"] = confid_metrics
+            cpu_confid_stats[confid_key]["plot_stats"] = eval.get_plot_stats_per_confid()
+            cpu_confid_stats[confid_key]["confids"] = confids_cpu
+            cpu_confid_stats[confid_key]["correct"] = correct_cpu
 
     if do_plot:
 

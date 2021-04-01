@@ -12,7 +12,6 @@ from src.utils import exp_utils
 import analysis
 import os
 
-
 def train(cf, subsequent_testing=False):
     """
     perform the training routine for a given fold. saves plots and selected parameters to the experiment dir
@@ -105,6 +104,7 @@ def test(cf):
 
 @hydra.main(config_path="src/configs", config_name="config")
 def main(cf: DictConfig):
+
 
     print(OmegaConf.to_yaml(cf))
 

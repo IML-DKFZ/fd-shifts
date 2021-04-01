@@ -75,6 +75,14 @@ class ConfidMonitor(Callback):
                 self.running_confid_stats["train"]["det_pe"]["confids"].extend(tmp_confids)
                 self.running_confid_stats["train"]["det_pe"]["correct"].extend(tmp_correct)
 
+            if "tcp" in stat_keys:
+                tmp_confids = outputs["confid"]
+                if tmp_confids is None:
+                    print("replacing tcp confids for monitoring with 0s")    # necessary for model checkpointing
+                    tmp_confids = torch.zeros_like(tmp_correct)
+                self.running_confid_stats["val"]["tpc"]["confids"].extend(tmp_confids)
+                self.running_confid_stats["val"]["tpc"]["correct"].extend(tmp_correct)
+
 
     def on_train_epoch_end(self, trainer, pl_module, outputs):
 
@@ -110,8 +118,13 @@ class ConfidMonitor(Callback):
         tmp_correct = None
         loss = outputs["loss"]
         softmax = outputs["softmax"]
-        softmax_dist = outputs["softmax_dist"]
         y = outputs["labels"]
+
+        if "softmax_dist" in outputs.keys():
+            softmax_dist = outputs["softmax_dist"]
+        else:
+            softmax_dist = None
+
 
         if len(self.running_perf_stats["val"].keys()) > 0:
             stat_keys = self.running_perf_stats["val"].keys()
@@ -137,6 +150,14 @@ class ConfidMonitor(Callback):
                 tmp_confids = torch.sum(softmax * (- torch.log(softmax)), dim=1)
                 self.running_confid_stats["val"]["det_pe"]["confids"].extend(tmp_confids)
                 self.running_confid_stats["val"]["det_pe"]["correct"].extend(tmp_correct)
+
+            if "tcp" in stat_keys:
+                tmp_confids = outputs["confid"]
+                if tmp_confids is None:
+                    print("replacing tcp confids for monitoring with 0s")    # necessary for model checkpointing
+                    tmp_confids = torch.zeros_like(tmp_correct)
+                self.running_confid_stats["val"]["tpc"]["confids"].extend(tmp_confids)
+                self.running_confid_stats["val"]["tpc"]["correct"].extend(tmp_correct)
 
             if softmax_dist is not None:
 

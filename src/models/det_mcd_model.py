@@ -3,7 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 import pytorch_lightning as pl
 from src.utils import exp_utils
-from src.models.backbones import get_backbone
+from src.models.networks import get_network
 
 
 class net(pl.LightningModule):
@@ -24,7 +24,7 @@ class net(pl.LightningModule):
 
         self.loss_criterion = nn.CrossEntropyLoss()
 
-        self.encoder = get_backbone(cf.model.backbone.name)(cf) # todo make explciit arguemnts in factory!!
+        self.encoder = get_network(cf.model.network.name)(cf) # todo make explciit arguemnts in factory!!
 
     def forward(self, x):
         return self.encoder(x)

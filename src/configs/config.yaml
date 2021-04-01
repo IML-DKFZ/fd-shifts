@@ -9,7 +9,7 @@ hydra:
 
 exp:
   group_name: checks
-  name: check_towards_confidnet #check_hydra_copy
+  name: check_training_stages #check_hydra_copy
   version: None
   mode: train_test   # train or test
   work_dir: ${hydra:runtime.cwd}
@@ -32,28 +32,40 @@ test:
   model_selection: best # latest or best
 
 model:
-  name: default_classifier
+  name: confidnet_model #det_mcd_model
   n_filters: 32
   fc_dim: 512
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
-  backbone:
-    name: small_conv
-  callbacks: ["model_checkpoint",
-              "confid_monitor" # not nice: model_checkpoint callback depends on confid_mointor callback
-              ]
+  network:
+    name: confidnet_small_conv_and_enc      # confidnet_small_conv_and_enc / small_conv
+    backbone: small_conv # weird, the name above should be agnostic then
+
+callbacks:
+  model_checkpoint:
+    n: 2
+    selection_metric: ["val/accuracy", "val/tcp_failap_err"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
+    mode: ["max", "max"]
+    filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
+    save_top_k: [1, 1]
+  confid_monitor:
+  training_stages:
+    milestones: [1, 3 ]
+
+#    model_checkpoint:
+#    confid_monitor:     # not nice: model_checkpoint callback depends on confid_mointor callback
+
 
 trainer:
   num_epochs: 100
   learning_rate: 1e-3
+  learning_rate_confidnet: 1e-4
+  learning_rate_confidnet_finetune: 1e-6
   momentum: 0.9
   weight_decay: 1e-4
   batch_size: 128
   num_classes: 10
   resume_from_ckpt: False
-  save_top_k:
-  selection_metric: val/accuracy     # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
-  selection_mode: max    # min:lower is better, max: higher is better
   benchmark: True # set to false if input size varies during training!
   global_seed: False # set to False to disable deterministic training.
   val_every_n_epoch: 1
@@ -81,12 +93,13 @@ eval:
     train:
       [] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
-      ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
+      ["det_mcp" , "det_pe", "tcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:
-      ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
+      ["det_mcp" , "det_pe", "tcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
 
   monitor_plots: [ "calibration",
                    "overconfidence",
-                   "hist_per_confid" ]
+                   "hist_per_confid"
+                    ]
 
   tb_hparams: ['fold']

@@ -17,13 +17,27 @@ class Conv2dSame(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+
+class SmallConv(nn.Module):
+    def __init__(self, cf):
+        super(SmallConv, self).__init__()
+
+        self.encoder = Encoder(cf)
+        self.classifier = Classifier(cf)
+
+    def forward(self, x):
+
+        x = self.encoder(x)
+        x = self.classifier(x)
+
+        return x
+
 class Encoder(nn.Module):
     def __init__(self, cf):
         super(Encoder, self).__init__()
 
         self.img_size = cf.data.img_size
         self.fc_dim = cf.model.fc_dim
-        self.num_classes = cf.trainer.num_classes
         self.dropout_rate = 0.3
         self.eval_mcdropout = False
 
@@ -50,7 +64,6 @@ class Encoder(nn.Module):
 
         self.fc1 = nn.Linear(2048, self.fc_dim)
         self.dropout4 = nn.Dropout(self.dropout_rate)
-        self.fc2 = nn.Linear(self.fc_dim, self.num_classes)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -89,5 +102,17 @@ class Encoder(nn.Module):
             x = F.dropout(x, self.dropout_rate, training=True)
         else:
             x = self.dropout4(x)
-        x = self.fc2(x)
+
         return x
+
+
+class Classifier(nn.Module):
+    def __init__(self, cf):
+        super(Classifier, self).__init__()
+
+        self.num_classes = cf.trainer.num_classes
+        self.fc_dim = cf.model.fc_dim
+        self.fc2 = nn.Linear(self.fc_dim, self.num_classes)
+
+    def forward(self, x):
+        return self.fc2(x)
