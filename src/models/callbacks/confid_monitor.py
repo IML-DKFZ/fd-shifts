@@ -77,11 +77,9 @@ class ConfidMonitor(Callback):
 
             if "tcp" in stat_keys:
                 tmp_confids = outputs["confid"]
-                if tmp_confids is None:
-                    print("replacing tcp confids for monitoring with 0s")    # necessary for model checkpointing
-                    tmp_confids = torch.zeros_like(tmp_correct)
-                self.running_confid_stats["val"]["tpc"]["confids"].extend(tmp_confids)
-                self.running_confid_stats["val"]["tpc"]["correct"].extend(tmp_correct)
+                if tmp_confids is not None:
+                    self.running_confid_stats["val"]["tcp"]["confids"].extend(tmp_confids)
+                    self.running_confid_stats["val"]["tcp"]["correct"].extend(tmp_correct)
 
 
     def on_train_epoch_end(self, trainer, pl_module, outputs):
@@ -153,11 +151,9 @@ class ConfidMonitor(Callback):
 
             if "tcp" in stat_keys:
                 tmp_confids = outputs["confid"]
-                if tmp_confids is None:
-                    print("replacing tcp confids for monitoring with 0s")    # necessary for model checkpointing
-                    tmp_confids = torch.zeros_like(tmp_correct)
-                self.running_confid_stats["val"]["tpc"]["confids"].extend(tmp_confids)
-                self.running_confid_stats["val"]["tpc"]["correct"].extend(tmp_correct)
+                if tmp_confids is not None:
+                    self.running_confid_stats["val"]["tcp"]["confids"].extend(tmp_confids)
+                    self.running_confid_stats["val"]["tcp"]["correct"].extend(tmp_correct)
 
             if softmax_dist is not None:
 
@@ -213,6 +209,13 @@ class ConfidMonitor(Callback):
             self.running_confid_stats["val"] = {k: {"confids": [], "correct": []} for k in
                                                 self.query_confids["val"]}
             self.running_perf_stats["val"] = {k: [] for k in self.query_performance_metrics["val"]}
+
+
+            for metric, mode in zip(pl_module.selection_metrics, pl_module.selection_modes):
+                if metric not in monitor_metrics:
+                    dummy = 0 if mode == "max" else 1
+                    RuntimeWarning("selection metric {} not computed, replacing with {}.".format(metric, dummy))
+                    pl_module.log("{}".format(metric), dummy)
 
 
     def on_train_end(self, trainer, pl_module):

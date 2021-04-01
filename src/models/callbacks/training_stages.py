@@ -1,5 +1,6 @@
 from pytorch_lightning.callbacks import Callback
 import torch
+from collections import OrderedDict
 
 class TrainingStages(Callback):
 
@@ -10,42 +11,53 @@ class TrainingStages(Callback):
 
     def on_train_epoch_start(self, trainer, pl_module):
 
-        for ix, x in enumerate(pl_module.network.named_parameters()):
-            if ix == 0:
-                print(pl_module.current_epoch, x[0], x[1].mean())
 
         if pl_module.current_epoch == self.milestones[0]: # this is the end before the queried epoch
             print("Starting Training of ConfidNet")
-            # todo load best checkpoint of encoder into new encoder
-            pl_module.network.encoder.load_state_dict(trainer.checkpoint_callbacks[0].best_model_path, strict=True)
-            print("loading checkpoint {} into new encoder".format(trainer.checkpoint_callback[0].best_model_path))
-            self.disable_bn(pl_module)
-            new_optimizers = torch.optim.Adam([v for k,v in pl_module.named_parameters() if "uncertainty" in k], # todo need nicer naming!!
-                               lr=pl_module.learning_rate_confidnet,
-                               weight_decay=pl_module.weight_decay)
-            trainer.optimizers = [new_optimizers]
+            pl_module.training_stage = 1
+            # # todo here goes the pretraining flag!
+            # best_ckpt_path = trainer.checkpoint_callbacks[0].best_model_path
+            # loaded_state_dict = torch.load(best_ckpt_path)["state_dict"]
+            # pl_module.load_state_dict(loaded_state_dict, strict=True)
+            # loaded_state_dict = OrderedDict((k.replace("backbone.encoder.",""),v) for k, v in loaded_state_dict.items() if "backbone.encoder" in k)
+            # pl_module.network.encoder.load_state_dict(loaded_state_dict, strict=True)
+            # print("loaded checkpoint {} into new encoder".format(best_ckpt_path))
+            # self.disable_bn(pl_module.network)
+            # new_optimizer = torch.optim.Adam(pl_module.network.confid_net.parameters(), # todo need nicer naming!!
+            #                    lr=pl_module.learning_rate_confidnet,
+            #                    weight_decay=pl_module.weight_decay)
+            # trainer.optimizers = [new_optimizer]
+            # trainer.optimizer_frequencies = []
+            # self.freeze_layers(pl_module, keep_string="confid_net")
+            # print("CHECK TRAIN STAGES")
 
 
-        if pl_module.current_epoch == self.milestones[0]: # new optimizer or add param groups? both adam according to paper!
-            pl_module.network.confid_net.load_state_dict(trainer.checkpoint_callbacks[1].best_model_path, strict=False)
+
+        if pl_module.current_epoch == self.milestones[1]:
+            print("Starting Training Fine Tuning ConfidNet")# new optimizer or add param groups? both adam according to paper!
+            pl_module.training_stage = 2
+            best_ckpt_path = trainer.checkpoint_callbacks[1].best_model_path
+            loaded_state_dict = torch.load(best_ckpt_path)["state_dict"]
+            loaded_state_dict = OrderedDict((k.replace("network.confid_net.",""),v) for k, v in loaded_state_dict.items() if
+                "network.confid_net" in k)
+            pl_module.network.confid_net.load_state_dict(loaded_state_dict, strict=True)
+            print("loaded checkpoint {} into confidnet".format(trainer.checkpoint_callbacks[1].best_model_path))
             self.disable_dropout(pl_module.network)
-            new_optimizers = torch.optim.Adam(pl_module.network.parameters(),
+            new_optimizer = torch.optim.Adam(pl_module.network.parameters(),
                                               lr=pl_module.learning_rate_confidnet_finetune,
                                               weight_decay=pl_module.weight_decay)
-            trainer.optimizers = [new_optimizers]
+            trainer.optimizers = [new_optimizer]
 
-            # print("FREEZING", pl_module.current_epoch)
-            # self.freeze_layers(pl_module, freeze_string="conv1")
-            # self.disable_dropout(pl_module)
-
-        # for ix, x in enumerate(pl_module.encoder.named_parameters()):
+        # for ix, x in enumerate(pl_module.network.named_parameters()):
         #     if ix == 0:
         #         print(pl_module.current_epoch, x[0], x[1].mean())
 
 
-    def freeze_layers(self, model, freeze_string):
+    def freeze_layers(self, model, freeze_string=None, keep_string=None):
         for param in model.named_parameters():
-            if freeze_string in param[0]:
+            if freeze_string is not None and freeze_string in param[0]:
+                param[1].requires_grad = False
+            if keep_string is not None and keep_string not in param[0]:
                 param[1].requires_grad = False
 
     def disable_bn(self, model):

@@ -26,7 +26,7 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
     for perf_key, perf_list in running_perf_stats.items():
         out_metrics[perf_key] = torch.stack(perf_list, dim=0).mean().item()
 
-    cpu_confid_stats = {k:{} for k in list(running_confid_stats.keys())}
+    cpu_confid_stats = {}
 
     for confid_key, confid_dict in running_confid_stats.items():
         if len(confid_dict["confids"]) > 0:
@@ -47,6 +47,8 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
 
             for metric_key, metric in confid_metrics.items():
                 out_metrics[confid_key + "_" + metric_key] = metric
+
+            cpu_confid_stats[confid_key] = {}
             cpu_confid_stats[confid_key]["metrics"] = confid_metrics
             cpu_confid_stats[confid_key]["plot_stats"] = eval.get_plot_stats_per_confid()
             cpu_confid_stats[confid_key]["confids"] = confids_cpu

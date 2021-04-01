@@ -23,10 +23,13 @@ class net(pl.LightningModule):
         self.global_seed = cf.trainer.global_seed
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
+        self.selection_metrics = cf.callbacks.model_checkpoint.selection_metric
+        self.selection_modes = cf.callbacks.model_checkpoint.mode
 
-        self.loss_criterion = nn.CrossEntropyLoss()
+        self.loss_ce = nn.CrossEntropyLoss()
+        self.loss_mse = nn.MSELoss(reduction="sum")
 
-        self.backbone = get_network(cf.model.network.backbone)(cf) # todo make explciit arguemnts in factory!!
+        # self.backbone = get_network(cf.model.network.backbone)(cf) # todo make explciit arguemnts in factory!!
         self.network = get_network(cf.model.network.name)(cf) # todo make explciit arguemnts in factory!!
         self.training_stage = 0 # will be iincreased by TrainingStages callback
 
@@ -39,50 +42,63 @@ class net(pl.LightningModule):
 
 
     def training_step(self, batch, batch_idx):
-        if self.training_stage == 0:
+        if self.training_stage == 0 and 1==2:
             x, y = batch
             logits = self.backbone(x)
-            loss = self.loss_criterion(logits, y)
+            loss = self.loss_ce(logits, y)
             softmax = F.softmax(logits, dim=1)
             confid = None
             return {"loss":loss, "softmax": softmax, "labels": y, "confid": confid}
-        if self.training_stage == 1:
-            x, y = batch
-            tcp = self.network(x)
-            loss = self.loss_criterion(logits, y)
-            softmax = F.softmax(logits, dim=1)
-            return {"loss":loss, "softmax": softmax, "labels": y, "confid": confid}
-        else:
-            x, y = batch
-            confid = self.network(x)
-            loss = self.loss_criterion(logits, y)
-            softmax = F.softmax(logits, dim=1)
-            return {"loss":loss, "softmax": softmax, "labels": y, "confid": confid}
 
+        if self.training_stage > 0 or 1==1:
+            x, y = batch
+            pred_confid = self.network(x).squeeze()
+            # logits = self.backbone(x)
+            # pred_confid = logits
+            # softmax = F.softmax(logits, dim=1)
+            # tcp = softmax.gather(1, y.unsqueeze(1))
+            # print(softmax.size(), y.size(), tcp.size(), pred_confid.size())
+            # print(tcp.min(), tcp.max(), pred_confid.min(), pred_confid.max())
+            loss = torch.mean((pred_confid))
+            softmax = pred_confid
+            print(loss)
+            return {"loss":loss, "softmax": softmax, "labels": y, "confid": pred_confid}
 
+    def on_after_backward(self):
+        if self.trainer.global_step % 25000000 == 0 and self.training_stage>0:
+            for k, v in self.named_parameters():
+                try:
+                    min= v.min()
+                    max = v.max()
+                except:
+                    min= None
+                    max = None
+                print(k, min , max)
+        # if self.trainer.global_step % 25 == 0:  # don't make the tf file huge
+        #     for k, v in self.named_parameters():
+        #         self.logger[0].experiment.add_histogram(
+        #             tag=k, values=v.grad, global_step=self.trainer.global_step
+        #         )
 
     def validation_step(self, batch, batch_idx):
 
-        if self.training_stage == 0:
+        if self.training_stage == 0 or 1==2:
             x, y = batch
-            logits = self.backbone(x)
-            loss = self.loss_criterion(logits, y)
+            logits = self.network(x)
+            # loss = self.loss_ce(logits, y)
+            loss = self.loss_mse(logits, logits + 1e-3)
             softmax = F.softmax(logits, dim=1)
             confid = None
             return {"loss":loss, "softmax": softmax, "labels": y, "confid": confid}
 
-        if self.training_stage == 1:
+        if self.training_stage > 0 and 1==2:
             x, y = batch
-            logits, _ = self.network(x)
-            loss = self.loss_criterion(logits, y)
+            pred_confid = self.network(x)
+            logits = self.backbone(x)
             softmax = F.softmax(logits, dim=1)
-            return {"loss":loss, "softmax": softmax, "labels": y}
-        else:
-            x, y = batch
-            logits, _ = self.network(x)
-            loss = self.loss_criterion(logits, y)
-            softmax = F.softmax(logits, dim=1)
-            return {"loss":loss, "softmax": softmax, "labels": y}
+            tcp = softmax.gather(1, y.unsqueeze(1))
+            loss = self.loss_mse(pred_confid, tcp)
+            return {"loss":loss, "softmax": softmax, "labels": y, "confid": pred_confid}
 
 
 
