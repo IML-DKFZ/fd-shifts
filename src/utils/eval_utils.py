@@ -224,7 +224,8 @@ class ConfidPlotter():
         f, axs = plt.subplots(nrows=n_rows, ncols=n_columns, figsize=(5*n_columns, 3*n_rows))
         plot_ix = 0
         for ix in range(len(f.axes)):
-            if (ix + 1) % n_columns == 0:
+
+            if (ix + 1) % n_columns == 0 or plot_ix >= len(self.query_plots):
                 f.axes[ix].axis("off")
                 continue
 
@@ -243,9 +244,9 @@ class ConfidPlotter():
             if "_hist" in name:
                 method_name = ("_").join(name.split("_")[:-1])
                 self.plot_hist_per_confid(method_name)
+
             plot_ix += 1
-            if plot_ix == len(self.query_plots) - 1:
-                break
+
 
         legend_info = [ax.get_legend_handles_labels() for ax in f.axes]
         labels, ixs = np.unique(np.array([h for l in legend_info for h in l[1]]), return_index=True)
@@ -260,7 +261,6 @@ class ConfidPlotter():
 
         confids = self.confids_list[self.method_names_list.index(method_name)]
         correct = self.correct_list[self.method_names_list.index(method_name)]
-        metrics = self.metrics_list[self.method_names_list.index(method_name)]
 
         self.ax.hist(confids[np.argwhere(correct == 1)],
                       color="g",
@@ -345,7 +345,7 @@ class ConfidPlotter():
                                                     self.colors_list,
                                                     self.metrics_list):
             label = name
-            if metrics is not None:
+            if "failauc" in metrics.keys():
                 label += " (auc: {:.3f})".format(metrics["failauc"])
             self.ax.plot(fpr, tpr, label=label, color=color)
         self.ax.plot([0, 1], [0, 1], linestyle="--", color="black", alpha=0.5)
@@ -368,7 +368,7 @@ class ConfidPlotter():
                                                     self.colors_list,
                                                       self.metrics_list):
             label = name
-            if metrics is not None:
+            if "failap_err" in metrics.keys():
                 label += " (ap_err: {:.3f})".format(metrics["failap_err"])
             self.ax.plot(recall, precision, label=label, color=color)
         self.ax.set_title("PRC Curve (Error=Positive)")
@@ -390,7 +390,7 @@ class ConfidPlotter():
                                                     self.colors_list,
                                                     self.metrics_list):
             label = name
-            if metrics is not None:
+            if "aurc" in metrics.keys():
                 label += " (aurc%: {:.3f})".format(metrics["aurc"]*100)
             self.ax.plot(coverage, selective_risk * 100, label=label, color=color)
         self.ax.set_title("RC Curve")

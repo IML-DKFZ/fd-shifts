@@ -1,4 +1,4 @@
-from src.models import small_conv
+from src.models import default_classifier
 
 
 def get_model(model_name):
@@ -8,7 +8,7 @@ def get_model(model_name):
 
     # Available models
     model_factory = {
-        "small_conv": small_conv.net,
+        "default_classifier": default_classifier.net,
     }
 
     return model_factory[model_name]

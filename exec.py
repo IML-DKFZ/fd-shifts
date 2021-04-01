@@ -3,11 +3,11 @@
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import ModelCheckpoint
 import hydra
-from omegaconf import DictConfig, OmegaConf, open_dict
+from omegaconf import DictConfig, OmegaConf
 from src.loaders import get_loader
 from src.models import get_model
+from src.models.callbacks import get_callbacks
 from src.utils import exp_utils
 import analysis
 import os
@@ -41,17 +41,11 @@ def train(cf, subsequent_testing=False):
     csv_logger= CSVLogger(save_dir=cf.exp.group_dir,
                           name=cf.exp.name,
                           version=cf.exp.version)
-    checkpoint_callback = ModelCheckpoint(dirpath=cf.exp.version_dir,
-                                          filename="best",
-                                          monitor=cf.trainer.selection_metric,
-                                          mode=cf.trainer.selection_mode,
-                                          save_top_k=cf.trainer.save_top_k,
-                                          save_last=True,
-                                         )
+
     trainer = pl.Trainer(gpus=1,
                          logger=[tb_logger, csv_logger],
                          max_epochs=cf.trainer.num_epochs,
-                         callbacks=[checkpoint_callback],
+                         callbacks=get_callbacks(cf),
                          resume_from_checkpoint = resume_ckpt_path,
                          benchmark=cf.trainer.benchmark,
                          check_val_every_n_epoch = cf.trainer.val_every_n_epoch,
