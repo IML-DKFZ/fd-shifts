@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data.sampler import SubsetRandomSampler
 import pytorch_lightning as pl
-from omegaconf import DictConfig, OmegaConf, open_dict
+from omegaconf import OmegaConf
 from src.utils.aug_utils import transforms_collection
 from sklearn.model_selection import KFold
 import os
@@ -49,11 +49,7 @@ class AbstractDataLoader(pl.LightningDataModule):
 
     def setup(self, stage=None):
 
-        if os.path.isfile(self.crossval_ids_path):
-            with open(self.crossval_ids_path, "rb") as f:
-                train_idx, val_idx = pickle.load(f)[self.fold]
-
-        elif self.reproduce_confidnet_splits:
+        if self.reproduce_confidnet_splits:
             num_train = len(self.train_dataset)
             indices = list(range(num_train))
             split = int(np.floor(0.1 * num_train)) # they had valid_size at 0.1 in experiments
@@ -61,6 +57,10 @@ class AbstractDataLoader(pl.LightningDataModule):
             np.random.shuffle(indices)
             train_idx, val_idx = indices[split:], indices[:split]
             print("reproduced train_val_splits from confidnet with val_idxs:", val_idx[:10])
+
+        elif os.path.isfile(self.crossval_ids_path):
+            with open(self.crossval_ids_path, "rb") as f:
+                train_idx, val_idx = pickle.load(f)[self.fold]
         else:
             num_train = len(self.train_dataset)
             indices = list(range(num_train))
@@ -73,7 +73,7 @@ class AbstractDataLoader(pl.LightningDataModule):
 
         # Make samplers
         self.train_sampler = SubsetRandomSampler(train_idx)
-        self.val_sampler = SubsetRandomSampler(val_idx)
+        self.val_sampler = val_idx
 
 
     def train_dataloader(self):

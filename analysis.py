@@ -22,6 +22,8 @@ class Analysis():
                 "raw_outputs": np.load(os.path.join(path, "raw_output.npy")),
                 "name": path.split("/")[-2] # last level is version or test dir
             }
+            if os.path.isfile(os.path.join(path, "external_confids.npy")):
+                method_dict["external_confids"] = np.load(os.path.join(path, "external_confids.npy"))
             self.input_list.append(method_dict)
 
 
@@ -103,6 +105,13 @@ class Analysis():
                 method_dict["mcd_sv"]["correct"] = mcd_correct
                 method_dict["mcd_sv"]["metrics"] = deepcopy(mcd_performance_metrics)
 
+            if "tcp" in query_confids:
+                method_dict["tcp"] = {}
+                # [b, cl, mcd] - [b, cl]
+                method_dict["tcp"]["confids"] = method_dict["external_confids"]
+                method_dict["tcp"]["correct"] = correct
+                method_dict["tcp"]["metrics"] = deepcopy(performance_metrics)
+
             method_dict["query_confids"] = query_confids
 
     def compute_performance_metrics(self, softmax, labels, correct):
@@ -135,6 +144,7 @@ class Analysis():
                 eval = ConfidEvaluator(confids=confid_dict["confids"],
                                        correct=confid_dict["correct"],
                                        query_metrics=self.query_confid_metrics,
+                                       query_plots=self.query_plots,
                                        bins=self.calibration_bins)
 
                 confid_dict["metrics"].update(eval.get_metrics_per_confid())

@@ -1,4 +1,5 @@
 from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.trainer.connectors.logger_connector.logger_connector import LoggerConnector
 import torch
 import numpy as np
 from src.utils import eval_utils
@@ -20,11 +21,15 @@ class ConfidMonitor(Callback):
         self.query_confids = cf.eval.confidence_measures
 
         self.raw_output_path_fit = cf.exp.raw_output_path
+        self.external_confids_output_path_fit = cf.exp.external_confids_output_path
         self.raw_output_path_test = cf.test.raw_output_path
+        self.external_confids_output_path_test = cf.test.external_confids_output_path
+        self.version_dir = cf.exp.version_dir
         self.val_every_n_epoch = cf.trainer.val_every_n_epoch
 
-        self.running_softmax = []
-        self.running_labels = []
+        self.running_test_softmax = []
+        self.running_test_labels = []
+        self.running_test_external_confids = []
         self.running_confid_stats = {}
         self.running_perf_stats = {}
         self.running_confid_stats["train"] = {k: {"confids": [], "correct": []} for k in self.query_confids["train"]}
@@ -52,14 +57,18 @@ class ConfidMonitor(Callback):
         tmp_correct = None
         if len(self.running_perf_stats["train"].keys()) > 0:
             stat_keys = self.running_perf_stats["train"].keys()
+            y_one_hot = None
+            if "loss" in stat_keys:
+                self.running_perf_stats["train"]["loss"].append(loss)
             if "nll" in stat_keys:
-                self.running_perf_stats["train"]["nll"].append(loss)
+                y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
+                self.running_perf_stats["train"]["nll"].append(torch.sum(-torch.log(softmax)*y_one_hot, dim=1).mean())
             if "accuracy" in stat_keys:
                 tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
                 self.running_perf_stats["train"]["accuracy"].append(tmp_correct.sum() / tmp_correct.numel())
-                self.running_perf_stats["train"]["accuracy"].append(tmp_correct.sum() / tmp_correct.numel())
             if "brier_score" in stat_keys:
-                y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
+                if y_one_hot is None:
+                    y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
                 self.running_perf_stats["train"]["brier_score"].append(((softmax - y_one_hot) ** 2).sum(1).mean())
 
         if len(self.running_confid_stats["train"].keys()) > 0:
@@ -76,11 +85,10 @@ class ConfidMonitor(Callback):
                 self.running_confid_stats["train"]["det_pe"]["correct"].extend(tmp_correct)
 
             if "tcp" in stat_keys:
-                tmp_confids = outputs["confid"]
+                tmp_confids = outputs[0][0]["extra"]["confid"]
                 if tmp_confids is not None:
-                    self.running_confid_stats["val"]["tcp"]["confids"].extend(tmp_confids)
-                    self.running_confid_stats["val"]["tcp"]["correct"].extend(tmp_correct)
-
+                    self.running_confid_stats["train"]["tcp"]["confids"].extend(tmp_confids)
+                    self.running_confid_stats["train"]["tcp"]["correct"].extend(tmp_correct)
 
     def on_train_epoch_end(self, trainer, pl_module, outputs):
 
@@ -126,13 +134,19 @@ class ConfidMonitor(Callback):
 
         if len(self.running_perf_stats["val"].keys()) > 0:
             stat_keys = self.running_perf_stats["val"].keys()
+            y_one_hot = None
+            if "loss" in stat_keys:
+                self.running_perf_stats["val"]["loss"].append(loss)
             if "nll" in stat_keys:
-                self.running_perf_stats["val"]["nll"].append(loss)
+                y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
+                self.running_perf_stats["val"]["nll"].append(torch.sum(-torch.log(softmax) * y_one_hot, dim=1).mean())
             if "accuracy" in stat_keys:
                 tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
+                # print(tmp_correct.sum())
                 self.running_perf_stats["val"]["accuracy"].append(tmp_correct.sum() / tmp_correct.numel())
             if "brier_score" in stat_keys:
-                y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
+                if y_one_hot is None:
+                    y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
                 self.running_perf_stats["val"]["brier_score"].append(((softmax - y_one_hot) ** 2).sum(1).mean())
 
         if len(self.running_confid_stats["val"].keys()) > 0:
@@ -182,8 +196,10 @@ class ConfidMonitor(Callback):
                     self.running_confid_stats["val"]["mcd_sv"]["correct"].extend(tmp_mcd_correct)
 
         if pl_module.current_epoch == self.num_epochs - 1:
-            self.running_softmax.extend(softmax_dist if softmax_dist is not None else softmax)
-            self.running_labels.extend(y)
+            self.running_test_softmax.extend(softmax_dist if softmax_dist is not None else softmax)
+            self.running_test_labels.extend(y)
+            if "tcp" in self.running_confid_stats["val"].keys():
+                self.running_test_external_confids.extend(outputs["confid"])
 
 
     def on_validation_epoch_end(self, trainer, pl_module):
@@ -212,39 +228,59 @@ class ConfidMonitor(Callback):
 
 
             for metric, mode in zip(pl_module.selection_metrics, pl_module.selection_modes):
-                if metric not in monitor_metrics:
+                if metric.split("/")[-1] not in monitor_metrics.keys():
                     dummy = 0 if mode == "max" else 1
-                    RuntimeWarning("selection metric {} not computed, replacing with {}.".format(metric, dummy))
+                    print("selection metric {} not computed, replacing with {}.".format(metric, dummy))
+                    print(monitor_metrics.keys())
                     pl_module.log("{}".format(metric), dummy)
 
 
     def on_train_end(self, trainer, pl_module):
-        if len(self.running_softmax) > 0:
-            stacked_softmax = torch.stack(self.running_softmax, dim=0)
-            stacked_labels = torch.stack(self.running_labels, dim=0).unsqueeze(1)
+        if len(self.running_test_softmax) > 0:
+            stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
+            stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
             raw_output = torch.cat([stacked_softmax.reshape(stacked_softmax.size()[0], -1),
                                     stacked_labels],
                                    dim=1)
             np.save(self.raw_output_path_fit, raw_output.cpu().data.numpy())
             print("saved raw validation outputs to {}".format(self.raw_output_path_fit))
 
-            self.running_softmax = []
-            self.running_labels = []
+            if "tcp" in self.query_confids["test"]:
+                stacked_external_confids = torch.stack(self.running_test_external_confids, dim=0)
+                np.save(self.external_confids_output_path_fit, stacked_external_confids.cpu().data.numpy())
+                print("saved external confids validation outputs to {}".format(self.external_confids_output_path_fit))
+
+            self.running_test_softmax = []
+            self.running_test_labels = []
+            self.running_test_external_confids = []
 
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
 
-        self.running_softmax.extend(outputs["softmax"])
-        self.running_labels.extend(outputs["labels"])
+        self.running_test_softmax.extend(outputs["softmax"])
+        self.running_test_labels.extend(outputs["labels"])
+        if "tcp" in self.query_confids["test"]:
+            self.running_test_external_confids.extend(outputs["confid"])
 
 
     def on_test_end(self, trainer, pl_module):
 
-        stacked_softmax = torch.stack(self.running_softmax, dim=0)
-        stacked_labels = torch.stack(self.running_labels, dim=0).unsqueeze(1)
+        stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
+        stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
         raw_output = torch.cat([stacked_softmax.reshape(stacked_softmax.size()[0], -1),
                                 stacked_labels],
                                dim=1)
 
         np.save(self.raw_output_path_test, raw_output.cpu().data.numpy())
         print("saved raw test outputs to {}".format(self.raw_output_path_test))
+
+        if "tcp" in self.query_confids["test"]:
+            stacked_external_confids = torch.stack(self.running_test_external_confids, dim=0)
+            np.save(self.external_confids_output_path_test, stacked_external_confids.cpu().data.numpy())
+            print("saved external confids test outputs to {}".format(self.external_confids_output_path_test))
+
+        trainer.logger_connector = LoggerConnector(trainer) # reset logger to avoid logging / lightning evaluation
+
+
+    def on_fit_end(self, trainer, pl_module):
+        eval_utils.clean_logging(self.version_dir)

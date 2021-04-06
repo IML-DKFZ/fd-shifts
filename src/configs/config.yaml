@@ -9,7 +9,7 @@ hydra:
 
 exp:
   group_name: checks
-  name: check_training_stages #check_hydra_copy
+  name: check_confidnet_their_backbone
   version: None
   mode: train_test   # train or test
   work_dir: ${hydra:runtime.cwd}
@@ -22,6 +22,9 @@ exp:
   crossval_n_folds: 10
   crossval_ids_path: ${exp.dir}/crossval_ids.pickle
   raw_output_path: ${exp.version_dir}/raw_output.npy
+  external_confids_output_path: ${exp.version_dir}/external_confids.npy
+  global_seed: False # set to False to disable deterministic training.
+
 
 
 test:
@@ -29,17 +32,20 @@ test:
   dir: ${exp.dir}/${test.name}
   cf_path: ${exp.dir}/hydra/config.yaml
   raw_output_path: ${test.dir}/raw_output.npy
+  external_confids_output_path: ${test.dir}/external_confids.npy
   model_selection: best # latest or best
 
 model:
   name: confidnet_model #det_mcd_model
   n_filters: 32
   fc_dim: 512
+  confidnet_fc_dim: 400
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   network:
     name: confidnet_small_conv_and_enc      # confidnet_small_conv_and_enc / small_conv
     backbone: small_conv # weird, the name above should be agnostic then
+
 
 callbacks:
   model_checkpoint:
@@ -48,28 +54,26 @@ callbacks:
     mode: ["max", "max"]
     filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
     save_top_k: [1, 1]
-#  confid_monitor:
-#  training_stages:
-#    milestones: [1, 5]
-#    load_pretrained_backbone:
+  confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
+  training_stages:
+    milestones: [0, 0]
+    pretrained_backbone_path:  /mnt/hdd2/checkpoints/best.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
+    pretrained_confidnet_path: /mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
 
-#    model_checkpoint:
-#    confid_monitor:     # not nice: model_checkpoint callback depends on confid_mointor callback
 
 
 trainer:
-  num_epochs: 200
-  learning_rate: 1e-20
-  learning_rate_confidnet: 1e-20
-  learning_rate_confidnet_finetune: 1e-6
+  num_epochs: 2
+  learning_rate: 1e-3
+  learning_rate_confidnet: 1e-4
+  learning_rate_confidnet_finetune: 1e-7
   momentum: 0.9
-  weight_decay: 0
+  weight_decay: 1e-4
   batch_size: 128
   num_classes: 10
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
-  global_seed: False # set to False to disable deterministic training.
-  val_every_n_epoch: 120
+  val_every_n_epoch: 1
   fast_dev_run: False # True/False/int
 
 
@@ -83,23 +87,23 @@ augmentations:
 
 eval:
   performance_metrics:
-    train: ['nll', 'accuracy'] # train brier_score logging costs around 5% performance
-    val: ['nll', 'accuracy', 'brier_score']
+    train: ['loss', 'nll', 'accuracy'] # train brier_score logging costs around 5% performance
+    val: ['loss', 'nll', 'accuracy', 'brier_score']
     test: ['nll', 'accuracy', 'brier_score']
   confid_metrics:
-    train: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
-    val: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
+    train: ['failauc', 'failap_suc', 'failap_err', "fpr@95tpr"]
+    val: ['failauc', 'failap_suc', 'failap_err', "fpr@95tpr",  "e-aurc", "aurc"]
     test: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
-  confidence_measures:
+  confidence_measures: # ["det_mcp" , "det_pe", "tcp" , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
     train:
-      [] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
+      ["tcp"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
-      ["det_mcp" , "det_pe", "tcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
+      ["tcp", "det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:
       ["det_mcp" , "det_pe", "tcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
 
-  monitor_plots: [ "calibration",
-                   "overconfidence",
+  monitor_plots: [ #"calibration",
+                   #"overconfidence",
                    "hist_per_confid"
                     ]
 

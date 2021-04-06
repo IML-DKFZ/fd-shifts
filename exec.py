@@ -17,18 +17,19 @@ def train(cf, subsequent_testing=False):
     perform the training routine for a given fold. saves plots and selected parameters to the experiment dir
     specified in the configs.
     """
+
+    if cf.exp.global_seed:
+        exp_utils.set_seed(cf.exp.global_seed)
+        cf.trainer.benchmark = False
+        print("setting benchmark to False for deterministic training.")
+
+
     resume_ckpt_path = None
     cf.exp.version = exp_utils.get_next_version(cf.exp.dir)
     if cf.trainer.resume_from_ckpt:
         cf.exp.version -= 1
         resume_ckpt_path = exp_utils.get_ckpt_path_from_previous_version(cf.exp.dir, cf.exp.version)
         print("resuming previous training:", resume_ckpt_path)
-
-
-    if cf.trainer.global_seed:
-        exp_utils.set_seed(cf.trainer.global_seed)
-        cf.trainer.benchmark = False
-        print("setting benchmark to False for deterministic training.")
 
     datamodule = get_loader(cf)
     model = get_model(cf.model.name)(cf)

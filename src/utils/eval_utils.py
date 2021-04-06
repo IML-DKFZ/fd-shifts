@@ -32,7 +32,6 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
         if len(confid_dict["confids"]) > 0:
             confids_cpu = torch.stack(confid_dict["confids"], dim=0).cpu().data.numpy()
             correct_cpu = torch.stack(confid_dict["correct"], dim=0).cpu().data.numpy()
-
             if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv"]):
                 min_confid = np.min(confids_cpu)
                 max_confid = np.max(confids_cpu)
@@ -41,8 +40,8 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
             eval = ConfidEvaluator(confids=confids_cpu,
                              correct=correct_cpu,
                              query_metrics=query_confid_metrics,
+                             query_plots=query_monitor_plots,
                              bins=bins)
-
             confid_metrics = eval.get_metrics_per_confid()
 
             for metric_key, metric in confid_metrics.items():
@@ -55,7 +54,6 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
             cpu_confid_stats[confid_key]["correct"] = correct_cpu
 
     if do_plot:
-
         plotter = ConfidPlotter(input_dict=cpu_confid_stats,
                                 query_plots = query_monitor_plots,
                                 bins=20,
@@ -78,15 +76,16 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
 
         out_plots["default_plot"] = f
 
-
+    # print(out_metrics)
     return out_metrics, out_plots
 
 
 class ConfidEvaluator():
-    def __init__(self, confids, correct, query_metrics, bins):
+    def __init__(self, confids, correct, query_metrics, query_plots, bins):
         self.confids = confids
         self.correct = correct
         self.query_metrics = query_metrics
+        self.query_plots = query_plots
         self.bins = bins
         self.bin_accs = None
         self.bin_confids = None
@@ -99,7 +98,6 @@ class ConfidEvaluator():
     def get_metrics_per_confid(self):
 
         out_metrics = {}
-
         if "failauc" in self.query_metrics or "fpr@95tpr" in self.query_metrics:
             if self.fpr_list is None:
                 self.get_roc_curve_stats()
@@ -120,7 +118,6 @@ class ConfidEvaluator():
         if "aurc" in self.query_metrics or "e-aurc" in self.query_metrics:
             if self.rc_curve is None:
                 self.get_rc_curve_stats()
-
             if "aurc" in self.query_metrics:
                 out_metrics["aurc"] = self.aurc * 1000
 
@@ -146,27 +143,39 @@ class ConfidEvaluator():
         return out_metrics
 
     def get_plot_stats_per_confid(self):
+
+        # "calibration",
+        # "overconfidence",
+        # "roc_curve",
+        # "prc_curve",
+        # "rc_curve",
+        # "hist_per_confid"
+
         plot_stats_dict = {}
 
-        if self.fpr_list is None:
-            self.get_roc_curve_stats()
-        plot_stats_dict["fpr_list"] = self.fpr_list
-        plot_stats_dict["tpr_list"] = self.tpr_list
+        if "roc_curve" in self.query_plots:
+            if self.fpr_list is None:
+                self.get_roc_curve_stats()
+            plot_stats_dict["fpr_list"] = self.fpr_list
+            plot_stats_dict["tpr_list"] = self.tpr_list
 
-        if self.bin_accs is None:
-            self.get_calibration_stats()
-        plot_stats_dict["bin_accs"] = self.bin_accs
-        plot_stats_dict["bin_confids"] = self.bin_confids
+        if "calibration" in self.query_plots or "overconfidence" in self.query_plots:
+            if self.bin_accs is None:
+                self.get_calibration_stats()
+            plot_stats_dict["bin_accs"] = self.bin_accs
+            plot_stats_dict["bin_confids"] = self.bin_confids
 
-        if self.rc_curve is None:
-            self.get_rc_curve_stats()
-        plot_stats_dict["coverage_list"] = np.array(self.rc_curve[0])
-        plot_stats_dict["selective_risk_list"] = np.array(self.rc_curve[1])
+        if "rc_curve" in self.query_plots:
+            if self.rc_curve is None:
+                self.get_rc_curve_stats()
+            plot_stats_dict["coverage_list"] = np.array(self.rc_curve[0])
+            plot_stats_dict["selective_risk_list"] = np.array(self.rc_curve[1])
 
-        if self.precision_list is None:
-            self.get_err_prc_curve_stats()
-        plot_stats_dict["err_precision_list"] = self.precision_list
-        plot_stats_dict["err_recall_list"] =self.recall_list
+        if "prc_curve" in self.query_plots:
+            if self.precision_list is None:
+                self.get_err_prc_curve_stats()
+            plot_stats_dict["err_precision_list"] = self.precision_list
+            plot_stats_dict["err_recall_list"] =self.recall_list
 
         return plot_stats_dict
 
@@ -426,14 +435,18 @@ def RC_curve(residuals, confidence):
     # print("MY AURC WITH SKM", skm.auc([c[0] for c in curve], [c[1] for c in curve]))
     # print("MY EAURC WITH SKM", skm.auc([c[0] for c in curve], [c[1] for c in curve]))
 
-    # version from corbeire et al.
+    # version from corbeire et al. todo extremely inefficient. can I modify the version above to result in the sam as here?
+    # todo e.g. by putting a unique in front of argsort? or compute one in training and both in testing?
+
     accuracy = 1-np.mean(residuals)
     proba_pred = confidence
     accurate = 1-residuals
     risks, coverages = [], []
-    for delta in sorted(set(proba_pred))[:-1]:
-        coverages.append((proba_pred > delta).mean())
-        selected_accurate = accurate[proba_pred > delta]
+    sorted_unique_confs = sorted(set(proba_pred))[:-1]
+    for delta in sorted_unique_confs:
+        bool_select = proba_pred > delta
+        coverages.append((bool_select).mean())
+        selected_accurate = accurate[bool_select]
         risks.append(1. - selected_accurate.mean())
     aurc = skm.auc(coverages, risks)
     eaurc = aurc - ((1. - accuracy) + accuracy * np.log(accuracy))

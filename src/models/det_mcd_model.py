@@ -2,7 +2,6 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import pytorch_lightning as pl
-from src.utils import exp_utils
 from src.models.networks import get_network
 
 
@@ -18,7 +17,6 @@ class net(pl.LightningModule):
         self.learning_rate = cf.trainer.learning_rate
         self.momentum = cf.trainer.momentum
         self.weight_decay = cf.trainer.weight_decay
-        self.global_seed = cf.trainer.global_seed
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
 
@@ -38,10 +36,6 @@ class net(pl.LightningModule):
         self.encoder.eval_mcdropout = False
 
         return torch.cat(softmax_list, dim=2)
-
-
-    def on_train_start(self):
-        exp_utils.set_seed(self.global_seed)
 
 
     def training_step(self, batch, batch_idx):
