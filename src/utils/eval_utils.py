@@ -495,6 +495,6 @@ class BrierScore(Metric):
 
 def clean_logging(log_dir):
     df = pd.read_csv(os.path.join(log_dir, "metrics.csv"))
-    df = df.groupby("step").max()
+    df = df.groupby("step").max().round(3)
     df.to_csv(os.path.join(log_dir, "metrics.csv"))
 
