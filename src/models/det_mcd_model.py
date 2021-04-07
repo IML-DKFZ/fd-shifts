@@ -19,6 +19,8 @@ class net(pl.LightningModule):
         self.weight_decay = cf.trainer.weight_decay
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
+        self.selection_metrics = cf.trainer.callbacks.model_checkpoint.selection_metric
+        self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
 
         self.loss_criterion = nn.CrossEntropyLoss()
 

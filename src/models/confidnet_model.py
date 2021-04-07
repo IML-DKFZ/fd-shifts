@@ -21,10 +21,10 @@ class net(pl.LightningModule):
         self.weight_decay = cf.trainer.weight_decay
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
-        self.selection_metrics = cf.callbacks.model_checkpoint.selection_metric
-        self.selection_modes = cf.callbacks.model_checkpoint.mode
-        self.pretrained_backbone_path = cf.callbacks.training_stages.pretrained_backbone_path
-        self.pretrained_confidnet_path = cf.callbacks.training_stages.pretrained_confidnet_path
+        self.selection_metrics = cf.trainer.callbacks.model_checkpoint.selection_metric
+        self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
+        self.pretrained_backbone_path = cf.trainer.callbacks.training_stages.pretrained_backbone_path
+        self.pretrained_confidnet_path = cf.trainer.callbacks.training_stages.pretrained_confidnet_path
 
         self.loss_ce = nn.CrossEntropyLoss()
         self.loss_mse = nn.MSELoss(reduction="sum")

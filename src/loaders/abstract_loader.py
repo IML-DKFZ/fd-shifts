@@ -25,8 +25,8 @@ class AbstractDataLoader(pl.LightningDataModule):
 
         # Set up augmentations
         self.augmentations = {}
-        if cf.augmentations:
-            self.add_augmentations(OmegaConf.to_container(cf.augmentations, resolve=True))
+        if cf.data.augmentations:
+            self.add_augmentations(OmegaConf.to_container(cf.data.augmentations, resolve=True))
 
         self.train_dataset, self.val_dataset, self.test_dataset = None, None, None
 

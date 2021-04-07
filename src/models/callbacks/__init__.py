@@ -8,7 +8,7 @@ def get_callbacks(cf):
     """
 
     out_cb_list = []
-    for k, v in cf.callbacks.items():
+    for k, v in cf.trainer.callbacks.items():
         if k == "model_checkpoint":
             for n_mc in range(v.n):
                 out_cb_list.append(ModelCheckpoint(dirpath=cf.exp.version_dir,
@@ -22,7 +22,7 @@ def get_callbacks(cf):
             out_cb_list.append(confid_monitor.ConfidMonitor(cf)) # todo explciit arguments!!!
 
         if k == "training_stages":
-            out_cb_list.append(training_stages.TrainingStages(milestones=cf.callbacks.training_stages.milestones))
+            out_cb_list.append(training_stages.TrainingStages(milestones=cf.trainer.callbacks.training_stages.milestones))
 
     return out_cb_list
 
