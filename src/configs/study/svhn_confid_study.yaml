@@ -19,8 +19,8 @@ exp:
   global_seed: False # set to False to disable deterministic training.
 
 trainer:
-  num_epochs: 8 # has to be >1 because of incompatibility of lighting eval with psuedo test
-  val_every_n_epoch: 1
+  num_epochs: 320 # has to be >1 because of incompatibility of lighting eval with psuedo test
+  val_every_n_epoch: 2
   learning_rate: 1e-3
   learning_rate_confidnet: 1e-4
   learning_rate_confidnet_finetune: 1e-7
@@ -40,7 +40,7 @@ trainer:
       save_top_k: [1, 1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
     training_stages:
-      milestones: [3, 6]
+      milestones: [100, 300]
       pretrained_backbone_path:  #/mnt/hdd2/checkpoints/best.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
 
@@ -77,7 +77,7 @@ eval:
     test: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
   confidence_measures: # ["det_mcp" , "det_pe", "tcp" , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
     train:
-      ["tcp"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
+      [] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
       ["tcp", "det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:

@@ -10,16 +10,19 @@ exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir,"exec.py")
 
 
-
-runs = [0, 1, 2, 3, 4]
-
-for run in runs:
+runs = [0, 1, 2, 3, 4, 5]
+repro_mode = [True, True, True, False, False]
+folds = [0, 0, 0, 1, 2]
+for run, rm, fold in zip(runs, repro_mode, folds):
 
     command_line_args = ""
-    # command_line_args += "exp.fold={} ".format(fold)
-    command_line_args += "exp.name={} ".format("repro_mcd_mcp_full_log_final_{}".format(run))
+    command_line_args += "study={} ".format("svhn_confid_study")
+    command_line_args += "exp.name={} ".format("repro_confid_svhn_run_{}_fold_{}_rm_{}".format(run, fold, "yes" if rm else "no"))
     command_line_args += "exp.group_name={} ".format("repro_related_work")
-    command_line_args += "data.reproduce_confidnet_splits={} ".format("True")
+    if rm:
+        command_line_args += "data.reproduce_confidnet_splits={} ".format("True")
+    if fold>0:
+        command_line_args += "exp.fold={} ".format(fold)
     command_line_args += "exp.mode={} ".format("train_test")
 
     if system_name == "cluster":
