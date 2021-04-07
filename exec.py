@@ -11,6 +11,7 @@ from src.models.callbacks import get_callbacks
 from src.utils import exp_utils
 import analysis
 import os
+import torch
 
 def train(cf, subsequent_testing=False):
     """
@@ -62,12 +63,13 @@ def train(cf, subsequent_testing=False):
         if not os.path.exists(cf.test.dir):
             os.makedirs(cf.test.dir)
 
-        if cf.test.model_selection == "latest":
+        if cf.test.selection_criterion == "latest":
             ckpt_path = None
             print("testing with latest model...")
-        elif cf.test.model_selection == "best":
-            ckpt_path = "best"
-            print("testing with best model from {}".format(trainer.checkpoint_callback.best_model_path))
+        elif "best" in cf.test.selection_criterion:
+            ckpt_path = cf.test.best_ckpt_path
+            print("testing with best model from {} and epoch {}".format(cf.test.best_ckpt_path,
+                                                                        torch.load(ckpt_path)["epoch"]))
         trainer.test(ckpt_path=ckpt_path)
         analysis.main(cf.test.dir, cf.test.dir)
 
@@ -77,16 +79,20 @@ def test(cf):
 
     # double check that this is not overwritten before it is loaded!
     print("laoding test config from ", cf.test.cf_path)
-    cf = OmegaConf.load(cf.test.cf_path)
+    cf = OmegaConf.load(cf.test.cf_path) #
 
-    if cf.test.model_selection == "best":
-        ckpt_path = exp_utils.get_path_to_best_ckpt(cf.exp.dir, cf.trainer.selection_mode)
+    if "best" in cf.test.selection_criterion and cf.test.only_latest_version is False:
+        ckpt_path = exp_utils.get_path_to_best_ckpt(cf.exp.dir,
+                                                    cf.test.selection_criterion,
+                                                    cf.test.selection_mode)
     else:
         most_recent_version = exp_utils.get_most_recent_version(cf.exp.dir)
-        ckpt_path = exp_utils.get_ckpt_path_from_previous_version(cf.exp.dir, most_recent_version)
+        ckpt_path = exp_utils.get_ckpt_path_from_previous_version(cf.exp.dir,
+                                                                       most_recent_version,
+                                                                       cf.test.selection_criterion)
 
     print("testing model from checkpoint: {} from model selection tpye {}".format(
-        ckpt_path, cf.test.model_selection))
+        ckpt_path, cf.test.selection_criterion))
     print("logging testing to: {}".format(cf.test.dir))
     # Todo overwriting training configs from checkpoint not possible atm
     model = get_model(cf.model.name).load_from_checkpoint(ckpt_path)

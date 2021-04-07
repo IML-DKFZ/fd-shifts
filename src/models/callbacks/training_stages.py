@@ -84,8 +84,8 @@ class TrainingStages(Callback):
 
             # self.check_weight_consistency(pl_module)
 
-        if pl_module.current_epoch >= self.milestones[1]:
-            self.disable_dropout(pl_module)
+        # if pl_module.current_epoch >= self.milestones[1]:
+        #     self.disable_dropout(pl_module)
 
 
     def freeze_layers(self, model, freeze_string=None, keep_string=None):

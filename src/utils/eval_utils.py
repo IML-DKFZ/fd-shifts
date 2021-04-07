@@ -53,7 +53,7 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
             cpu_confid_stats[confid_key]["confids"] = confids_cpu
             cpu_confid_stats[confid_key]["correct"] = correct_cpu
 
-    if do_plot:
+    if do_plot and len(cpu_confid_stats)>0:
         plotter = ConfidPlotter(input_dict=cpu_confid_stats,
                                 query_plots = query_monitor_plots,
                                 bins=20,

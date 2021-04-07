@@ -36,6 +36,13 @@ class net(pl.LightningModule):
     def forward(self, x):
         return self.network(x)
 
+    def mcd_eval_forward(self, x, n_samples, existing_softmax_list=None):
+        self.backbone.encoder.eval_mcdropout = True
+        softmax_list = existing_softmax_list if existing_softmax_list is not None else []
+        for _ in range(n_samples - len(softmax_list)):
+            softmax_list.append(F.softmax(self.backbone(x), dim=1).unsqueeze(2))
+        self.backbone.encoder.eval_mcdropout = False
+        return torch.cat(softmax_list, dim=2)
 
     def training_step(self, batch, batch_idx):
         if self.training_stage == 0:
@@ -118,11 +125,17 @@ class net(pl.LightningModule):
             _, pred_confid = self.network(x)
             pred_confid = torch.sigmoid(pred_confid)
             tcp = softmax.gather(1, y.unsqueeze(1))
-            # print("CHECK PRED CONFID", pred_confid.mean(), pred_confid.min(), pred_confid.max())
-            # print("CHECK TCP", tcp.mean(), tcp.min(), tcp.max())
-            # print(pred_confid[0].item(), y[0].item(), tcp[0].item(), softmax[0])
             loss = F.mse_loss(pred_confid, tcp)  # self.loss_mse(pred_confid, tcp) #
-            return {"loss": loss, "softmax": softmax, "labels": y, "confid": pred_confid.squeeze(1)}
+
+            softmax_dist = None
+            if self.current_epoch == self.num_epochs - 1:
+                # save mcd output for psuedo-test if actual test is with mcd.
+                if any("mcd" in cfd for cfd in self.query_confids["test"]):
+                    softmax_dist = self.mcd_eval_forward(x=x,
+                                                         n_samples=self.monitor_mcd_samples,
+                                                         existing_softmax_list=[softmax.unsqueeze(2)])
+
+            return {"loss": loss, "softmax": softmax, "softmax_dist": softmax_dist, "labels": y, "confid": pred_confid.squeeze(1)}
 
 
     def test_step(self, batch, batch_idx):
@@ -137,7 +150,7 @@ class net(pl.LightningModule):
                                             n_samples=self.test_mcd_samples,
                                             existing_softmax_list=[softmax.unsqueeze(2)])
 
-        return {"softmax": softmax, "softmax_dist": softmax_dist, "labels": y, "confid": pred_confid.squeeze(1)}
+        self.test_results = {"softmax": softmax, "softmax_dist": softmax_dist, "labels": y, "confid": pred_confid.squeeze(1)}
 
 
     def configure_optimizers(self):

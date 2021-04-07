@@ -81,7 +81,7 @@ class net(pl.LightningModule):
                                             n_samples=self.test_mcd_samples,
                                             existing_softmax_list=[softmax.unsqueeze(2)])
 
-        return {"softmax": softmax, "softmax_dist": softmax_dist, "labels": y}
+        self.test_results = {"softmax": softmax, "softmax_dist": softmax_dist, "labels": y}
 
 
     def configure_optimizers(self):

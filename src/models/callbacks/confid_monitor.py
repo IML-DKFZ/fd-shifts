@@ -125,11 +125,7 @@ class ConfidMonitor(Callback):
         loss = outputs["loss"]
         softmax = outputs["softmax"]
         y = outputs["labels"]
-
-        if "softmax_dist" in outputs.keys():
-            softmax_dist = outputs["softmax_dist"]
-        else:
-            softmax_dist = None
+        softmax_dist = outputs.get("softmax_dist")
 
 
         if len(self.running_perf_stats["val"].keys()) > 0:
@@ -257,7 +253,10 @@ class ConfidMonitor(Callback):
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
 
-        self.running_test_softmax.extend(outputs["softmax"])
+        outputs = pl_module.test_results
+        softmax = outputs["softmax"]
+        softmax_dist = outputs.get("softmax_dist")
+        self.running_test_softmax.extend(softmax_dist if softmax_dist is not None else softmax)
         self.running_test_labels.extend(outputs["labels"])
         if "tcp" in self.query_confids["test"]:
             self.running_test_external_confids.extend(outputs["confid"])
@@ -279,7 +278,6 @@ class ConfidMonitor(Callback):
             np.save(self.external_confids_output_path_test, stacked_external_confids.cpu().data.numpy())
             print("saved external confids test outputs to {}".format(self.external_confids_output_path_test))
 
-        trainer.logger_connector = LoggerConnector(trainer) # reset logger to avoid logging / lightning evaluation
 
 
     def on_fit_end(self, trainer, pl_module):

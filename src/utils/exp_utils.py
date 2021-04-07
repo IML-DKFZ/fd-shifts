@@ -31,17 +31,17 @@ def get_most_recent_version(exp_dir):
     max_ver = max(ver_list)
     return max_ver
 
-def get_ckpt_path_from_previous_version(exp_dir,version):
-    resume_ckpt = os.path.join(exp_dir, "version_{}".format(version), "last.ckpt")
+def get_ckpt_path_from_previous_version(exp_dir,version, selection_criterion):
+    resume_ckpt = os.path.join(exp_dir, "version_{}".format(version), "{}.ckpt".format(selection_criterion))
     if not os.path.isfile(resume_ckpt):
         RuntimeError("requested resume ckpt does not exist.")
     return resume_ckpt
 
 
-def get_path_to_best_ckpt(exp_dir, selection_mode):
+def get_path_to_best_ckpt(exp_dir, selection_criterion, selection_mode):
     path_list = []
     for r,d,f in os.walk(exp_dir):
-        path_list.extend([os.path.join(r, x) for x in f if "best" in x])
+        path_list.extend([os.path.join(r, x) for x in f if selection_criterion in x])
 
     if len(path_list) == 1:
         return path_list[0]

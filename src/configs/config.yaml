@@ -9,7 +9,7 @@ hydra:
 
 exp:
   group_name: checks
-  name: check_confidnet_their_backbone
+  name: check_entire_pipeline
   version: None
   mode: train_test   # train or test
   work_dir: ${hydra:runtime.cwd}
@@ -33,7 +33,10 @@ test:
   cf_path: ${exp.dir}/hydra/config.yaml
   raw_output_path: ${test.dir}/raw_output.npy
   external_confids_output_path: ${test.dir}/external_confids.npy
-  model_selection: best # latest or best
+  selection_criterion: best_failap_err # model selection criterion or "latest"
+  selection_mode: max # model selection criterion or "latest"
+  best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
+  only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
 
 model:
   name: confidnet_model #det_mcd_model
@@ -56,14 +59,12 @@ callbacks:
     save_top_k: [1, 1]
   confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
   training_stages:
-    milestones: [0, 0]
-    pretrained_backbone_path:  /mnt/hdd2/checkpoints/best.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
-    pretrained_confidnet_path: /mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
-
-
+    milestones: [3, 6]
+    pretrained_backbone_path:  #/mnt/hdd2/checkpoints/best.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
+    pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
 
 trainer:
-  num_epochs: 2
+  num_epochs: 8 # has to be >1 because of incompatibility of lighting eval with psuedo test
   learning_rate: 1e-3
   learning_rate_confidnet: 1e-4
   learning_rate_confidnet_finetune: 1e-7
@@ -75,7 +76,6 @@ trainer:
   benchmark: True # set to false if input size varies during training!
   val_every_n_epoch: 1
   fast_dev_run: False # True/False/int
-
 
 augmentations:
   train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
@@ -100,7 +100,7 @@ eval:
     val:
       ["tcp", "det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:
-      ["det_mcp" , "det_pe", "tcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
+      ["det_mcp" , "det_pe", "tcp", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
 
   monitor_plots: [ #"calibration",
                    #"overconfidence",
