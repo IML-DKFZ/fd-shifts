@@ -24,7 +24,7 @@ for dataset in ["cifar10", "cifar100"]:
             command_line_args += "data.reproduce_confidnet_splits={} ".format("True")
         if fold>0:
             command_line_args += "exp.fold={} ".format(fold)
-        command_line_args += "exp.mode={} ".format("train_test")
+        command_line_args += "exp.mode={} ".format("test")
 
 
         if system_name == "cluster":

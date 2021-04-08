@@ -12,13 +12,13 @@ from src.utils import exp_utils
 import analysis
 import os
 import torch
+import sys
 
 def train(cf, subsequent_testing=False):
     """
     perform the training routine for a given fold. saves plots and selected parameters to the experiment dir
     specified in the configs.
     """
-
     if cf.exp.global_seed:
         exp_utils.set_seed(cf.exp.global_seed)
         cf.trainer.benchmark = False
@@ -55,7 +55,6 @@ def train(cf, subsequent_testing=False):
                          )
 
     print("logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version))
-
     trainer.fit(model=model, datamodule=datamodule)
     analysis.main(cf.exp.version_dir, cf.exp.version_dir)
 
@@ -102,7 +101,7 @@ def test(cf):
     if not os.path.exists(cf.test.dir):
         os.makedirs(cf.test.dir)
 
-    trainer = pl.Trainer(gpus=1, logger=False)
+    trainer = pl.Trainer(gpus=1, logger=False, callbacks=get_callbacks(cf))
     trainer.test(model, datamodule=datamodule)
     analysis.main(cf.test.dir, cf.test.dir)
 
@@ -113,7 +112,8 @@ def test(cf):
 @hydra.main(config_path="src/configs", config_name="config")
 def main(cf: DictConfig):
 
-
+    sys.stdout = exp_utils.Logger(cf.exp.log_path)
+    sys.stderr = exp_utils.Logger(cf.exp.log_path)
     print(OmegaConf.to_yaml(cf))
 
     if cf.exp.mode == 'train':

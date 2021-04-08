@@ -2,6 +2,7 @@ import os
 import torch
 import random
 import numpy as np
+import sys
 
 def set_seed(seed):
     print("SETTING GLOBAL SEED")
@@ -51,3 +52,21 @@ def get_path_to_best_ckpt(exp_dir, selection_criterion, selection_mode):
             return path_list[scores_list.index(min(scores_list))]
         else:
             return path_list[scores_list.index(max(scores_list))]
+
+
+
+
+class Logger(object):
+    def __init__(self, file_path):
+        self.terminal = sys.stdout
+        self.log = open(file_path, "a")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+
+

@@ -1,7 +1,7 @@
 defaults:
   - hydra/job_logging: disabled
-  - data: cifar100_data.yaml #svhn_data.yaml
-  - study: cifar_confid_study.yaml # svhn_confid_study.yaml
+  - data: svhn_data.yaml #svhn_data.yaml
+  - study: svhn_det_mcd_study.yaml # svhn_confid_study.yaml
 
 
 
@@ -9,6 +9,26 @@ hydra:
   run:
     dir: ${exp.dir}
   output_subdir: hydra
+
+
+exp:
+  group_name: checks
+  name: check_global_traintest
+  version: None
+  mode: test   # train or test
+  work_dir: ${hydra:runtime.cwd}
+  fold_dir: exp/${exp.fold}
+  root_dir: ${env:EXPERIMENT_ROOT_DIR}
+  group_dir: ${env:EXPERIMENT_ROOT_DIR}/${exp.group_name}
+  dir: ${exp.group_dir}/${exp.name}
+  version_dir: ${exp.dir}/version_${exp.version}
+  fold: 0 # call folds in launcher  via command line
+  crossval_n_folds: 10
+  crossval_ids_path: ${exp.dir}/crossval_ids.pickle
+  raw_output_path: ${exp.version_dir}/raw_output.npy
+  external_confids_output_path: ${exp.version_dir}/external_confids.npy
+  log_path: ${exp.dir}/log.txt
+  global_seed: False # set to False to disable deterministic training.
 
 
 

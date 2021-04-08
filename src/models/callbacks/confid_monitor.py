@@ -250,6 +250,8 @@ class ConfidMonitor(Callback):
             self.running_test_labels = []
             self.running_test_external_confids = []
 
+        eval_utils.clean_logging(self.version_dir)
+
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
 
@@ -280,5 +282,3 @@ class ConfidMonitor(Callback):
 
 
 
-    def on_fit_end(self, trainer, pl_module):
-        eval_utils.clean_logging(self.version_dir)

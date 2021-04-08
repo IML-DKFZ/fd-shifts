@@ -32,7 +32,7 @@ class Analysis():
         self.query_plots = query_plots
         self.analysis_out_dir = analysis_out_dir
         self.calibration_bins = 20
-        self.num_classes = self.input_list[0]["cfg"].trainer.num_classes
+        self.num_classes = self.input_list[0]["cfg"].data.num_classes
 
     def process_outputs(self):
 
@@ -43,7 +43,7 @@ class Analysis():
             labels = method_dict["raw_outputs"][:, -1]
             query_confids = method_dict["cfg"].eval.confidence_measures["test"]
             if any("mcd" in cfd for cfd in query_confids):
-                mcd_softmax_dist = softmax.reshape(softmax.shape[0], method_dict["cfg"].trainer.num_classes, -1)
+                mcd_softmax_dist = softmax.reshape(softmax.shape[0], method_dict["cfg"].data.num_classes, -1)
                 mcd_softmax_mean = np.mean(mcd_softmax_dist, axis=2)
                 softmax = mcd_softmax_dist[:,:, 0]
                 mcd_correct = (np.argmax(mcd_softmax_mean, axis=1) == labels) * 1
