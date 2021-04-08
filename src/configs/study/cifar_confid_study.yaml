@@ -2,7 +2,7 @@
 
 exp:
   group_name: checks
-  name: check_clean_configs
+  name: check_cifar10
   version: None
   mode: train_test   # train or test
   work_dir: ${hydra:runtime.cwd}
@@ -19,7 +19,7 @@ exp:
   global_seed: False # set to False to disable deterministic training.
 
 trainer:
-  num_epochs: 320 # has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs: 500 # has to be >1 because of incompatibility of lighting eval with psuedo test
   val_every_n_epoch: 2
   learning_rate: 1e-3
   learning_rate_confidnet: 1e-4
@@ -39,7 +39,7 @@ trainer:
       save_top_k: [1, 1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
     training_stages:
-      milestones: [100, 300]  #  Make sure milestones match val_every_n_epoch!!
+      milestones: [250, 450] #  Make sure milestones match val_every_n_epoch!!
       pretrained_backbone_path:  #/mnt/hdd2/checkpoints/best.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
       disable_dropout_at_finetuning: True
@@ -52,7 +52,8 @@ model:
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   network:
     name: confidnet_and_enc      # confidnet_small_conv_and_enc / small_conv
-    backbone: svhn_small_conv
+    backbone: cifar_vgg16
+    imagenet_weights_path: ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 test:
   name: test_results
@@ -88,3 +89,6 @@ eval:
                     ]
 
   tb_hparams: ['fold']
+
+
+# cifar 100: lr schedule, wd, ..., num_classes

@@ -25,7 +25,6 @@ trainer:
   momentum: 0.9
   weight_decay: 1e-4
   batch_size: 128
-  num_classes: 10
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
@@ -40,12 +39,11 @@ trainer:
 
 model:
   name: det_mcd_model
-  n_filters: 32
   fc_dim: 512
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   network:
-    name: small_conv      # confidnet_small_conv_and_enc / small_conv
+    name: svhn_small_conv      # confidnet_small_conv_and_enc / small_conv
 
 test:
   name: test_results

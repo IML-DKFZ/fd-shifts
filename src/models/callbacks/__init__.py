@@ -17,12 +17,14 @@ def get_callbacks(cf):
                                           mode=v.mode[n_mc],
                                           save_top_k=v.save_top_k[n_mc],
                                           save_last=True,
+                                          verbose = False
                                          ))
         if k == "confid_monitor":
             out_cb_list.append(confid_monitor.ConfidMonitor(cf)) # todo explciit arguments!!!
 
         if k == "training_stages":
-            out_cb_list.append(training_stages.TrainingStages(milestones=cf.trainer.callbacks.training_stages.milestones))
+            out_cb_list.append(training_stages.TrainingStages(milestones=cf.trainer.callbacks.training_stages.milestones,
+                                                              disable_dropout_at_finetuning=cf.trainer.callbacks.training_stages.disable_dropout_at_finetuning))
 
     return out_cb_list
 

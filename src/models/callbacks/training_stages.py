@@ -4,9 +4,9 @@ from collections import OrderedDict
 
 class TrainingStages(Callback):
 
-    def __init__(self, milestones: tuple = (5, 10), train_bn: bool = False):
+    def __init__(self, milestones, disable_dropout_at_finetuning):
         self.milestones = milestones
-        self.train_bn = train_bn
+        self.disable_dropout_at_finetuning = disable_dropout_at_finetuning
 
 
     def on_train_epoch_start(self, trainer, pl_module):
@@ -36,7 +36,7 @@ class TrainingStages(Callback):
                 loaded_state_dict = OrderedDict(
                     (k.replace("encoder.", ""), v) if
                     "encoder" in k else (k, v) for k, v in loaded_state_dict.items())
-                # TODO TRY TO LAOD MINE LIKE BNELOW
+
                 # load their backbone for sanity checking
                 # loaded_state_dict = loaded_ckpt["model_state_dict"]
 
@@ -52,9 +52,10 @@ class TrainingStages(Callback):
             self.freeze_layers(pl_module.network.encoder)
             self.freeze_layers(pl_module.network.classifier)
 
-            new_optimizer = torch.optim.Adam(pl_module.network.confid_net.parameters(), # todo need nicer naming!!
+            new_optimizer = torch.optim.Adam(pl_module.network.confid_net.parameters(),
                                lr=pl_module.learning_rate_confidnet,
-                               weight_decay=pl_module.weight_decay)
+                               # weight_decay=pl_module.weight_decay
+                                )
             trainer.optimizers = [new_optimizer]
             trainer.optimizer_frequencies = []
 
@@ -75,7 +76,7 @@ class TrainingStages(Callback):
 
             print("loaded checkpoint {} from epoch {} into new encoder".format(best_ckpt_path, loaded_ckpt["epoch"]))
             self.unfreeze_layers(pl_module.network.encoder)
-            new_optimizer = torch.optim.Adam(pl_module.network.parameters(),  # TODO check if classifier still frozen
+            new_optimizer = torch.optim.Adam(pl_module.network.parameters(),
                                               lr=pl_module.learning_rate_confidnet_finetune,
                                               # weight_decay=pl_module.weight_decay
                                              )
@@ -84,8 +85,9 @@ class TrainingStages(Callback):
 
             # self.check_weight_consistency(pl_module)
 
-        # if pl_module.current_epoch >= self.milestones[1]:
-        #     self.disable_dropout(pl_module)
+        if self.disable_dropout_at_finetuning:
+            if pl_module.current_epoch >= self.milestones[1]:
+                self.disable_dropout(pl_module)
 
 
     def freeze_layers(self, model, freeze_string=None, keep_string=None):

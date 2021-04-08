@@ -110,7 +110,7 @@ class Classifier(nn.Module):
     def __init__(self, cf):
         super(Classifier, self).__init__()
 
-        self.num_classes = cf.trainer.num_classes
+        self.num_classes = cf.data.num_classes
         self.fc_dim = cf.model.fc_dim
         self.fc2 = nn.Linear(self.fc_dim, self.num_classes)
 

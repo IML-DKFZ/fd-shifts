@@ -17,13 +17,15 @@ for run, rm, fold in zip(runs, repro_mode, folds):
 
     command_line_args = ""
     command_line_args += "study={} ".format("svhn_confid_study")
+    command_line_args += "data={} ".format("svhn_data")
+    command_line_args += "exp.group_name={} ".format("repro_svhn_final")
     command_line_args += "exp.name={} ".format("repro_confid_svhn_run_{}_fold_{}_rm_{}".format(run, fold, "yes" if rm else "no"))
-    command_line_args += "exp.group_name={} ".format("repro_related_work")
     if rm:
         command_line_args += "data.reproduce_confidnet_splits={} ".format("True")
     if fold>0:
         command_line_args += "exp.fold={} ".format(fold)
     command_line_args += "exp.mode={} ".format("train_test")
+
 
     if system_name == "cluster":
 
@@ -34,6 +36,7 @@ for run, rm, fold in zip(runs, repro_mode, folds):
         launch_command += "mode=exclusive_process:"
         launch_command += "gmem=10.7G "
         launch_command += "-L /bin/bash -q gpu "
+        launch_command += "-u 'p.jaeger@dkfz-heidelberg.de' -B -N "
         launch_command += "'source ~/.bashrc && "
         launch_command += "source ~/.virtualenvs/confid/bin/activate && "
         launch_command += "python -u {} ".format(exec_path)

@@ -2,7 +2,7 @@
 
 exp:
   group_name: checks
-  name: check_clean_configs
+  name: check_mnist_mlp
   version: None
   mode: train_test   # train or test
   work_dir: ${hydra:runtime.cwd}
@@ -45,14 +45,14 @@ trainer:
       disable_dropout_at_finetuning: True
 
 model:
-  name: confidnet_model #det_mcd_model
-  fc_dim: 512
+  name: confidnet_model
+  fc_dim: 1000 #128 # MNIST! set to 1000 for mlp
   confidnet_fc_dim: 400
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   network:
-    name: confidnet_and_enc      # confidnet_small_conv_and_enc / small_conv
-    backbone: svhn_small_conv
+    name: confidnet_and_enc
+    backbone: mnist_mlp #mnist_small_conv
 
 test:
   name: test_results

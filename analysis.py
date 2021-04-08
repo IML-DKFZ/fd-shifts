@@ -64,7 +64,7 @@ class Analysis():
 
             if "det_pe" in query_confids:
                 method_dict["det_pe"] = {}
-                method_dict["det_pe"]["confids"] = np.sum(softmax * (- np.log(softmax)), axis=1)
+                method_dict["det_pe"]["confids"] = np.sum(softmax * (- np.log(softmax + 1e-9)), axis=1)
                 method_dict["det_pe"]["correct"] = correct
                 method_dict["det_pe"]["metrics"] = deepcopy(performance_metrics)
 
@@ -86,7 +86,7 @@ class Analysis():
             if "mcd_ee" in query_confids:
                 method_dict["mcd_ee"] = {}
                 tmp_confids = np.mean(np.sum(mcd_softmax_dist *
-                                             (- np.log(mcd_softmax_dist)), axis=1), axis=1)
+                                             (- np.log(mcd_softmax_dist + 1e-9)), axis=1), axis=1)
                 method_dict["mcd_ee"]["confids"] = tmp_confids
                 method_dict["mcd_ee"]["correct"] = mcd_correct
                 method_dict["mcd_ee"]["metrics"] = deepcopy(mcd_performance_metrics)
@@ -154,11 +154,11 @@ class Analysis():
     def create_results_csv(self):
 
         all_metrics = self.query_performance_metrics + self.query_confid_metrics
-        columns = ["name", "model", "confid"] + all_metrics
+        columns = ["name", "model", "network", "fold", "confid"] + all_metrics
         df = pd.DataFrame(columns=columns)
         for method_dict in self.input_list:
             for confid_key in method_dict["query_confids"]:
-                submit_list = [method_dict["name"], method_dict["cfg"].model.name, confid_key]
+                submit_list = [method_dict["name"], method_dict["cfg"].model.name, method_dict["cfg"].model.network.backbone, method_dict["cfg"].exp.fold, confid_key]
                 submit_list+= [method_dict[confid_key]["metrics"][x] for x in all_metrics]
                 df.loc[len(df)] = submit_list
 
@@ -182,7 +182,7 @@ def main(in_path=None, out_path=None):
     # path to the dir where the raw otuputs lie. NO SLASH AT THE END!
     if in_path is None:
         path_to_test_dir_list = [
-            "/mnt/hdd2/checkpoints/checks/check_confidnet_their_backbone/test_results",
+            "/mnt/hdd2/checkpoints/checks/check_mnist/test_results",
         ]
         # path_to_test_dir_list = [
         #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_0/version_0",
@@ -196,7 +196,8 @@ def main(in_path=None, out_path=None):
 
     if out_path is None:
         # analysis_out_dir = "/mnt/hdd2/checkpoints/analysis/check_analysis_final"
-        analysis_out_dir = "/mnt/hdd2/checkpoints/checks/check_confidnet_their_backbone/test_results"
+        # analysis_out_dir = "/mnt/hdd2/checkpoints/checks/check_confidnet_their_backbone/test_results"
+        analysis_out_dir = path_to_test_dir_list[0]
     else:
         analysis_out_dir = out_path
 

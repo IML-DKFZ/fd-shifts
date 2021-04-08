@@ -10,7 +10,7 @@ class ConfidMonitor(Callback):
     def __init__(self, cf):
 
         self.num_epochs = cf.trainer.num_epochs
-        self.num_classes = cf.trainer.num_classes
+        self.num_classes = cf.data.num_classes
         self.fast_dev_run = cf.trainer.fast_dev_run
 
 

@@ -1,17 +1,17 @@
 
-from src.models.networks.small_conv import Encoder
-from src.models.networks.small_conv import Classifier
+import src.models.networks as networks
 from torch import nn
 from torch.nn import functional as F
 
 
-class ConfidNetAndENcoder(nn.Module):
+class ConfidNetAndEncoder(nn.Module):
     def __init__(self, cf):
         super().__init__()
 
-        self.encoder = Encoder(cf) # todo make arguments explcit!
+        network = networks.get_network(cf.model.network.backbone)(cf) # todo make arguments explcit!
+        self.encoder = network.encoder
+        self.classifier = network.classifier
         self.confid_net = ConfidNet(cf) # todo make arguments explcit!
-        self.classifier = Classifier(cf)
 
     def forward(self, x):
 

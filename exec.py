@@ -50,7 +50,8 @@ def train(cf, subsequent_testing=False):
                          resume_from_checkpoint = resume_ckpt_path,
                          benchmark=cf.trainer.benchmark,
                          check_val_every_n_epoch = cf.trainer.val_every_n_epoch,
-                         fast_dev_run=cf.trainer.fast_dev_run
+                         fast_dev_run=cf.trainer.fast_dev_run,
+                         num_sanity_val_steps = 2
                          )
 
     print("logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version))
