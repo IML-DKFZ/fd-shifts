@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 from src.models.networks import get_network
 
 
+
 class net(pl.LightningModule):
 
     def __init__(self, cf):
@@ -17,6 +18,7 @@ class net(pl.LightningModule):
         self.learning_rate = cf.trainer.learning_rate
         self.learning_rate_confidnet = cf.trainer.learning_rate_confidnet
         self.learning_rate_confidnet_finetune = cf.trainer.learning_rate_confidnet_finetune
+        self.multistep_lr_milestones = cf.trainer.multistep_lr_milestones
         self.momentum = cf.trainer.momentum
         self.weight_decay = cf.trainer.weight_decay
         self.query_confids = cf.eval.confidence_measures
@@ -154,10 +156,17 @@ class net(pl.LightningModule):
 
 
     def configure_optimizers(self):
-        return torch.optim.SGD(self.backbone.parameters(),
+         optimizers = [torch.optim.SGD(self.backbone.parameters(),
                                lr=self.learning_rate,
                                momentum=self.momentum,
-                               weight_decay=self.weight_decay)
+                               weight_decay=self.weight_decay)]
+         schedulers = []
+         if self.multistep_lr_milestones is not None:
+             schedulers.append(torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizers[0],
+                                                                    milestones=self.multistep_lr_milestones,
+                                                                    verbose=True))
+
+         return optimizers, schedulers
 
 
     def on_load_checkpoint(self, checkpoint):

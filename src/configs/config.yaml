@@ -1,7 +1,7 @@
 defaults:
   - hydra/job_logging: disabled
-  - data: svhn_data.yaml #svhn_data.yaml
-  - study: svhn_det_mcd_study.yaml # svhn_confid_study.yaml
+  - data: mnist_data.yaml #svhn_data.yaml
+  - study: mnist_confid_study.yaml # svhn_confid_study.yaml
 
 
 
@@ -15,7 +15,7 @@ exp:
   group_name: checks
   name: check_global_traintest
   version: None
-  mode: test   # train or test
+  mode: train   # train or test
   work_dir: ${hydra:runtime.cwd}
   fold_dir: exp/${exp.fold}
   root_dir: ${env:EXPERIMENT_ROOT_DIR}
