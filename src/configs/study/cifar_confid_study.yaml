@@ -3,13 +3,16 @@
 
 trainer:
   num_epochs: 500 # has to be >1 because of incompatibility of lighting eval with psuedo test
-  val_every_n_epoch: 2
-  learning_rate: 1e-3
+  val_every_n_epoch: 1
+  learning_rate: 1e-1
   learning_rate_confidnet: 1e-4
   learning_rate_confidnet_finetune: 1e-7
-  multistep_lr_milestones: [50, 120, 200, 250] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
+  lr_scheduler:
+    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
+#    milestones: [50, 120, 200, 250] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
+    max_epochs: 250
   momentum: 0.9
-  weight_decay: 1e-4
+  weight_decay: 0.0005
   batch_size: 128
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
@@ -27,6 +30,7 @@ trainer:
       pretrained_backbone_path:  #/mnt/hdd2/checkpoints/best.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
       disable_dropout_at_finetuning: True
+    learning_rate_monitor:
 
 model:
   name: confidnet_model #det_mcd_model

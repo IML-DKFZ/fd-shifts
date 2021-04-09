@@ -1,6 +1,7 @@
 from src.models.callbacks import confid_monitor
 from src.models.callbacks import training_stages
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import LearningRateMonitor
 
 def get_callbacks(cf):
     """
@@ -25,6 +26,9 @@ def get_callbacks(cf):
         if k == "training_stages":
             out_cb_list.append(training_stages.TrainingStages(milestones=cf.trainer.callbacks.training_stages.milestones,
                                                               disable_dropout_at_finetuning=cf.trainer.callbacks.training_stages.disable_dropout_at_finetuning))
+
+        if k== "learning_rate_monitor":
+            out_cb_list.append(LearningRateMonitor(logging_interval="epoch"))
 
     return out_cb_list
 

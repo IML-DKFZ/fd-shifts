@@ -12,23 +12,21 @@ exec_path = os.path.join(exec_dir,"exec.py")
 datasets = ["cifar10", "cifar100"]
 runs = range(2)
 repro_mode = [True, True]
-wds = [0.0005, 0.0001]
-milestones = [[50, 120, 200, 250], [90, 135]]
-for run, rm, wd, ms, dataset in zip(runs, repro_mode, wds, milestones, datasets):
+for run, rm, dataset in zip(runs, repro_mode, datasets):
 
         command_line_args = ""
         command_line_args += "study={} ".format("cifar_confid_study")
         command_line_args += "data={} ".format("{}_data".format(dataset))
         command_line_args += "exp.group_name={} ".format("repro_cifar_confid")
-        command_line_args += "exp.name={} ".format("{}_run_{}_no_img".format(dataset,run))
+        command_line_args += "exp.name={} ".format("{}_run_{}_sebastian".format(dataset,run))
         if rm:
             command_line_args += "data.reproduce_confidnet_splits={} ".format("True")
         # if fold>0:
         #     command_line_args += "exp.fold={} ".format(fold)
         command_line_args += "exp.mode={} ".format("train_test")
-        command_line_args += "trainer.weight_decay={} ".format(wd)
-        command_line_args += "trainer.multistep_lr_milestones=\"{}\" ".format(ms)
-        command_line_args += "model.network.imagenet_weights_path=null"
+        # command_line_args += "trainer.weight_decay={} ".format(wd)
+        # command_line_args += "trainer.multistep_lr_milestones=\"{}\" ".format(ms)
+        # command_line_args += "model.network.imagenet_weights_path=null"
 
 
         if system_name == "cluster":

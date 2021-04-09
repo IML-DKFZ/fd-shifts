@@ -18,7 +18,7 @@ class net(pl.LightningModule):
         self.learning_rate = cf.trainer.learning_rate
         self.learning_rate_confidnet = cf.trainer.learning_rate_confidnet
         self.learning_rate_confidnet_finetune = cf.trainer.learning_rate_confidnet_finetune
-        self.multistep_lr_milestones = cf.trainer.multistep_lr_milestones
+        self.lr_scheduler = cf.trainer.lr_scheduler
         self.momentum = cf.trainer.momentum
         self.weight_decay = cf.trainer.weight_decay
         self.query_confids = cf.eval.confidence_measures
@@ -28,6 +28,7 @@ class net(pl.LightningModule):
         self.pretrained_backbone_path = cf.trainer.callbacks.training_stages.pretrained_backbone_path
         self.pretrained_confidnet_path = cf.trainer.callbacks.training_stages.pretrained_confidnet_path
         self.iamgenet_weights_path = cf.model.network.get("imagenet_weights_path")
+
         self.loss_ce = nn.CrossEntropyLoss()
         self.loss_mse = nn.MSELoss(reduction="sum")
 
@@ -167,15 +168,20 @@ class net(pl.LightningModule):
                                momentum=self.momentum,
                                weight_decay=self.weight_decay)]
          schedulers = []
-         # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
-         if self.multistep_lr_milestones is not None:
-             normed_milestones = [m/self.trainer.check_val_every_n_epoch for m in self.multistep_lr_milestones]
-             schedulers.append({"scheduler": torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizers[0],
-                                                                    milestones=normed_milestones,
-                                                                    verbose=True),
-                                "interval": "epoch",
-                                "frequency": 1}
-                               )
+         if self.lr_scheduler is not None:
+             if self.lr_scheduler.name == "MultiStep":
+                 # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
+                 normed_milestones = [m/self.trainer.check_val_every_n_epoch for m in self.lr_scheduler.milestones]
+                 schedulers.append(torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizers[0],
+                                                                        milestones=normed_milestones,
+                                                                        verbose=True))
+
+             if self.lr_scheduler.name == "CosineAnnealing":
+                 # only works with check_val_every_n_epoch = 1
+                print("initializing COsineAnnealing scheduler...")
+                schedulers.append(torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizers[0],
+                                                           T_max=self.lr_scheduler.max_epochs,
+                                                           verbose=True))
 
          return optimizers, schedulers
 

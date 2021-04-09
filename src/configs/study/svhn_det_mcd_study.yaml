@@ -5,7 +5,7 @@ trainer:
   num_epochs: 8 # has to be >1 because of incompatibility of lighting eval with psuedo test
   val_every_n_epoch: 1
   learning_rate: 1e-3
-  multistep_lr_milestones:
+  lr_scheduler:
   momentum: 0.9
   weight_decay: 1e-4
   batch_size: 128
