@@ -36,6 +36,7 @@ model:
   network:
     name: confidnet_and_enc      # confidnet_small_conv_and_enc / small_conv
     backbone: svhn_small_conv
+    imagenet_weights_path:
 
 test:
   name: test_results

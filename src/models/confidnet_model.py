@@ -27,7 +27,7 @@ class net(pl.LightningModule):
         self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
         self.pretrained_backbone_path = cf.trainer.callbacks.training_stages.pretrained_backbone_path
         self.pretrained_confidnet_path = cf.trainer.callbacks.training_stages.pretrained_confidnet_path
-
+        self.iamgenet_weights_path = cf.model.network.get("imagenet_weights_path")
         self.loss_ce = nn.CrossEntropyLoss()
         self.loss_mse = nn.MSELoss(reduction="sum")
 
@@ -45,6 +45,12 @@ class net(pl.LightningModule):
             softmax_list.append(F.softmax(self.backbone(x), dim=1).unsqueeze(2))
         self.backbone.encoder.eval_mcdropout = False
         return torch.cat(softmax_list, dim=2)
+
+    def on_train_start(self):
+        # what if resume? is this called before checkpoint?
+        if self.iamgenet_weights_path:
+            self.backbone.encoder.load_pretrained_imagenet_params(self.iamgenet_weights_path)
+
 
     def training_step(self, batch, batch_idx):
         if self.training_stage == 0:
@@ -161,10 +167,15 @@ class net(pl.LightningModule):
                                momentum=self.momentum,
                                weight_decay=self.weight_decay)]
          schedulers = []
+         # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
          if self.multistep_lr_milestones is not None:
-             schedulers.append(torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizers[0],
-                                                                    milestones=self.multistep_lr_milestones,
-                                                                    verbose=True))
+             normed_milestones = [m/self.trainer.check_val_every_n_epoch for m in self.multistep_lr_milestones]
+             schedulers.append({"scheduler": torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizers[0],
+                                                                    milestones=normed_milestones,
+                                                                    verbose=True),
+                                "interval": "epoch",
+                                "frequency": 1}
+                               )
 
          return optimizers, schedulers
 

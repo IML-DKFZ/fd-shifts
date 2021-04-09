@@ -7,7 +7,7 @@ trainer:
   learning_rate: 1e-3
   learning_rate_confidnet: 1e-4
   learning_rate_confidnet_finetune: 1e-7
-  multistep_lr_milestones: [50, 120, 200, 250]
+  multistep_lr_milestones: [50, 120, 200, 250] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
   momentum: 0.9
   weight_decay: 1e-4
   batch_size: 128
