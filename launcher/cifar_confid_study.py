@@ -13,12 +13,12 @@ datasets = ["cifar10", "cifar100"]
 runs = range(2)
 repro_mode = [True, True]
 for run, rm, dataset in zip(runs, repro_mode, datasets):
-
+    if run == 1:
         command_line_args = ""
         command_line_args += "study={} ".format("cifar_confid_study")
         command_line_args += "data={} ".format("{}_data".format(dataset))
         command_line_args += "exp.group_name={} ".format("repro_cifar_confid")
-        command_line_args += "exp.name={} ".format("{}_run_{}_sebastian".format(dataset,run))
+        command_line_args += "exp.name={} ".format("{}_run_{}_annealconfid".format(dataset,run))
         if rm:
             command_line_args += "data.reproduce_confidnet_splits={} ".format("True")
         # if fold>0:

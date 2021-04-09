@@ -5,11 +5,11 @@ trainer:
   num_epochs: 500 # has to be >1 because of incompatibility of lighting eval with psuedo test
   val_every_n_epoch: 1
   learning_rate: 1e-1
-  learning_rate_confidnet: 1e-4
+  learning_rate_confidnet: 1e-2 # only so high with annealing!
   learning_rate_confidnet_finetune: 1e-7
   lr_scheduler:
     name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
-#    milestones: [50, 120, 200, 250] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
+#    milestones: [90, 135] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
     max_epochs: 250
   momentum: 0.9
   weight_decay: 0.0005
@@ -41,7 +41,7 @@ model:
   network:
     name: confidnet_and_enc      # confidnet_small_conv_and_enc / small_conv
     backbone: cifar_vgg16
-    imagenet_weights_path: ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
+    imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 test:
   name: test_results

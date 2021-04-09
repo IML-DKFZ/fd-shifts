@@ -51,7 +51,7 @@ def train(cf, subsequent_testing=False):
                          benchmark=cf.trainer.benchmark,
                          check_val_every_n_epoch = cf.trainer.val_every_n_epoch,
                          fast_dev_run=cf.trainer.fast_dev_run,
-                         num_sanity_val_steps = 2
+                         num_sanity_val_steps = 20
                          )
 
     print("logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version))

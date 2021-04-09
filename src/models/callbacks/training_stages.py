@@ -56,13 +56,24 @@ class TrainingStages(Callback):
                                lr=pl_module.learning_rate_confidnet,
                                # weight_decay=pl_module.weight_decay
                                 )
+            new_scheduler = {"scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=new_optimizer,
+                                                                                     T_max=self.milestones[1]-self.milestones[0],
+                                                                                     verbose=True),
+
+                            "interval": "epoch",
+                             "frequency": 1,
+                             "reduce_on_plateau": None}
+
             trainer.optimizers = [new_optimizer]
-            trainer.optimizer_frequencies = []
+            # trainer.lr_schedulers = [new_scheduler]
 
             # self.check_weight_consistency(pl_module)
 
         if pl_module.current_epoch >= self.milestones[0]:
             self.disable_bn(pl_module)
+            for param_group in trainer.optimizers[0].param_groups:
+                print("CHECK ConfidNet RATE", param_group["lr"])
+
 
         if pl_module.current_epoch == self.milestones[1]:
             print("Starting Training Fine Tuning ConfidNet")# new optimizer or add param groups? both adam according to paper!
