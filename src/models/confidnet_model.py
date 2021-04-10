@@ -27,6 +27,7 @@ class net(pl.LightningModule):
         self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
         self.pretrained_backbone_path = cf.trainer.callbacks.training_stages.pretrained_backbone_path
         self.pretrained_confidnet_path = cf.trainer.callbacks.training_stages.pretrained_confidnet_path
+        self.confidnet_lr_scheduler = cf.trainer.callbacks.training_stages.confidnet_lr_scheduler
         self.iamgenet_weights_path = cf.model.network.get("imagenet_weights_path")
 
         self.loss_ce = nn.CrossEntropyLoss()
@@ -170,6 +171,7 @@ class net(pl.LightningModule):
          schedulers = []
          if self.lr_scheduler is not None:
              if self.lr_scheduler.name == "MultiStep":
+                 print("initializing MultiStep scheduler...")
                  # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
                  normed_milestones = [m/self.trainer.check_val_every_n_epoch for m in self.lr_scheduler.milestones]
                  schedulers.append(torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizers[0],
@@ -179,9 +181,10 @@ class net(pl.LightningModule):
              if self.lr_scheduler.name == "CosineAnnealing":
                  # only works with check_val_every_n_epoch = 1
                 print("initializing COsineAnnealing scheduler...")
-                schedulers.append(torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizers[0],
+                schedulers.append({"scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizers[0],
                                                            T_max=self.lr_scheduler.max_epochs,
-                                                           verbose=True))
+                                                           verbose=True),
+                                  "name": "backbone_sgd"})
 
          return optimizers, schedulers
 

@@ -10,15 +10,18 @@ exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir,"exec.py")
 
 datasets = ["cifar10", "cifar100"]
+pt_paths = ["/gpu/checkpoints/OE0612/jaegerp/repro_cifar_confid/cifar10_run_0_sebastian/version_1/best_valacc.ckpt",
+            "/gpu/checkpoints/OE0612/jaegerp/repro_cifar_confid/cifar100_run_1_sebastian/version_1/best_valacc.ckpt"
+            ]
 runs = range(2)
 repro_mode = [True, True]
-for run, rm, dataset in zip(runs, repro_mode, datasets):
-    if run == 1:
+for run, rm, dataset, pretrained_path in zip(runs, repro_mode, datasets, pt_paths):
+    # if run == 0:
         command_line_args = ""
         command_line_args += "study={} ".format("cifar_confid_study")
         command_line_args += "data={} ".format("{}_data".format(dataset))
         command_line_args += "exp.group_name={} ".format("repro_cifar_confid")
-        command_line_args += "exp.name={} ".format("{}_run_{}_annealconfid".format(dataset,run))
+        command_line_args += "exp.name={} ".format("{}_run_{}_annealconfidFIX".format(dataset,run))
         if rm:
             command_line_args += "data.reproduce_confidnet_splits={} ".format("True")
         # if fold>0:
@@ -27,6 +30,7 @@ for run, rm, dataset in zip(runs, repro_mode, datasets):
         # command_line_args += "trainer.weight_decay={} ".format(wd)
         # command_line_args += "trainer.multistep_lr_milestones=\"{}\" ".format(ms)
         # command_line_args += "model.network.imagenet_weights_path=null"
+        command_line_args += "trainer.callbacks.training_stages.pretrained_backbone_path={}".format(pretrained_path)
 
 
         if system_name == "cluster":

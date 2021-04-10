@@ -19,53 +19,55 @@ class TrainingStages(Callback):
             pl_module.training_stage = 1
             if pl_module.pretrained_backbone_path is None: # trained from scratch, reload best epoch
                 best_ckpt_path = trainer.checkpoint_callbacks[0].best_model_path
-                loaded_ckpt = torch.load(best_ckpt_path)
-                loaded_state_dict = loaded_ckpt["state_dict"]
-                pl_module.load_state_dict(loaded_state_dict, strict=True) # load epoch for all models
-                loaded_state_dict = OrderedDict(
-                    (k.replace("backbone.", ""), v) for k, v in loaded_state_dict.items() if
-                    "backbone" in k)
-                pl_module.network.load_state_dict(loaded_state_dict, strict=False) # copy backbone into new encoder
-
             else:
                 best_ckpt_path = pl_module.pretrained_backbone_path
-                loaded_ckpt = torch.load(best_ckpt_path)
 
-                # relict from old pretrained backbone naming. Todo if it was not for this relcit the if else could only be differing in the path!
-                loaded_state_dict = loaded_ckpt["state_dict"]
-                loaded_state_dict = OrderedDict(
-                    (k.replace("encoder.", ""), v) if
-                    "encoder" in k else (k, v) for k, v in loaded_state_dict.items())
+            loaded_ckpt = torch.load(best_ckpt_path)
+            loaded_state_dict = loaded_ckpt["state_dict"]
 
-                # load their backbone for sanity checking
-                # loaded_state_dict = loaded_ckpt["model_state_dict"]
+            backbone_encoder_state_dict = OrderedDict(
+                (k.replace("backbone.encoder.", ""), v) for k, v in loaded_state_dict.items() if
+                "backbone.encoder." in k)
+            backbone_classifier_state_dict = OrderedDict(
+                (k.replace("backbone.classifier.", ""), v) for k, v in loaded_state_dict.items() if
+                "backbone.classifier." in k)
 
-                pl_module.backbone.encoder.load_state_dict(loaded_state_dict, strict=False)
-                pl_module.backbone.classifier.load_state_dict(loaded_state_dict, strict=False)
-                pl_module.network.encoder.load_state_dict(loaded_state_dict, strict=False)
-                pl_module.network.classifier.load_state_dict(loaded_state_dict, strict=False)
+            pl_module.backbone.encoder.load_state_dict(backbone_encoder_state_dict, strict=True)
+            pl_module.backbone.classifier.load_state_dict(backbone_classifier_state_dict, strict=True)
+            pl_module.network.encoder.load_state_dict(backbone_encoder_state_dict, strict=True)
+            pl_module.network.classifier.load_state_dict(backbone_classifier_state_dict, strict=True)
 
-
-
-            print("loaded checkpoint {} from epoch {} into new encoder".format(best_ckpt_path, loaded_ckpt["epoch"]))
+            print("loaded checkpoint {} from epoch {} into backbone and network.".format(best_ckpt_path, loaded_ckpt["epoch"]))
             self.freeze_layers(pl_module.backbone)
             self.freeze_layers(pl_module.network.encoder)
             self.freeze_layers(pl_module.network.classifier)
 
             new_optimizer = torch.optim.Adam(pl_module.network.confid_net.parameters(),
                                lr=pl_module.learning_rate_confidnet,
-                               # weight_decay=pl_module.weight_decay
                                 )
-            new_scheduler = {"scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=new_optimizer,
-                                                                                     T_max=self.milestones[1]-self.milestones[0],
-                                                                                     verbose=True),
-
-                            "interval": "epoch",
-                             "frequency": 1,
-                             "reduce_on_plateau": None}
 
             trainer.optimizers = [new_optimizer]
-            # trainer.lr_schedulers = [new_scheduler]
+            trainer.lr_schedulers = []
+            new_schedulers = []
+            if pl_module.confidnet_lr_scheduler or 1==1:
+                print("initializing new scheduler for confidnet...")
+                new_schedulers.append({"scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=new_optimizer,
+                                                                                         T_max=self.milestones[1]-self.milestones[0],
+                                                                                         verbose=True),
+
+                                "interval": "epoch",
+                                 "frequency": 1,
+                                 "name": "confidnet_adam"})
+
+
+                trainer.lr_schedulers = trainer.configure_schedulers(new_schedulers)
+
+            lr_monitor = [x for x in trainer.callbacks if "lr_monitor" in x.__str__()]
+            if len(lr_monitor) > 0:
+                lr_monitor[0].__init__()
+                lr_monitor[0].on_train_start(trainer)
+
+
 
             # self.check_weight_consistency(pl_module)
 
@@ -89,7 +91,6 @@ class TrainingStages(Callback):
             self.unfreeze_layers(pl_module.network.encoder)
             new_optimizer = torch.optim.Adam(pl_module.network.parameters(),
                                               lr=pl_module.learning_rate_confidnet_finetune,
-                                              # weight_decay=pl_module.weight_decay
                                              )
             trainer.optimizers = [new_optimizer]
             trainer.optimizer_frequencies = []
@@ -145,4 +146,4 @@ class TrainingStages(Callback):
 
         for ix, x in enumerate(pl_module.network.classifier.named_parameters()):
             if ix == 0:
-                print("CLassifier", x[0], x[1].mean().item())
+                print("CONFID CLassifier", x[0], x[1].mean().item())

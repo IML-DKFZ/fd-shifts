@@ -448,7 +448,10 @@ def RC_curve(residuals, confidence):
         coverages.append((bool_select).mean())
         selected_accurate = accurate[bool_select]
         risks.append(1. - selected_accurate.mean())
-    aurc = skm.auc(coverages, risks)
+    if len(sorted_unique_confs)>1:
+        aurc = skm.auc(coverages, risks)
+    else:
+        aurc = 999
     eaurc = aurc - ((1. - accuracy) + accuracy * np.log(accuracy))
     curve = (coverages, risks)
 
