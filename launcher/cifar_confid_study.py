@@ -16,12 +16,12 @@ pt_paths = ["/gpu/checkpoints/OE0612/jaegerp/repro_cifar_confid/cifar10_run_0_se
 runs = range(2)
 repro_mode = [True, True]
 for run, rm, dataset, pretrained_path in zip(runs, repro_mode, datasets, pt_paths):
-    # if run == 0:
+    if run == 0:
         command_line_args = ""
         command_line_args += "study={} ".format("cifar_confid_study")
         command_line_args += "data={} ".format("{}_data".format(dataset))
         command_line_args += "exp.group_name={} ".format("repro_cifar_confid")
-        command_line_args += "exp.name={} ".format("{}_run_{}_annealconfidFIX".format(dataset,run))
+        command_line_args += "exp.name={} ".format("{}_run_{}_annealconfidFIXsmall".format(dataset,run))
         if rm:
             command_line_args += "data.reproduce_confidnet_splits={} ".format("True")
         # if fold>0:
