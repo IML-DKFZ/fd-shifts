@@ -104,14 +104,12 @@ class ConfidEvaluator():
 
             if "failauc" in self.query_metrics:
                 out_metrics["failauc"] = skm.auc(self.fpr_list, self.tpr_list)
-
             if "fpr@95tpr" in self.query_metrics:
                 # soft threshold from corbiere et al. (confidnet)
                 out_metrics["fpr@95tpr"] = np.min(self.fpr_list[np.argwhere(self.tpr_list >= 0.9495)])
 
         if "failap_suc" in self.query_metrics:
             out_metrics["failap_suc"] = skm.average_precision_score(self.correct, self.confids, pos_label=1)
-
         if "failap_err" in self.query_metrics:
             out_metrics["failap_err"] = skm.average_precision_score(self.correct, - self.confids, pos_label=0)
 
@@ -181,6 +179,7 @@ class ConfidEvaluator():
 
     def get_roc_curve_stats(self):
         self.fpr_list, self.tpr_list, _ = skm.roc_curve(self.correct, self.confids)
+        print("DIRECT AUC SCORE", skm.roc_auc_score(self.correct, self.confids))
 
     def get_rc_curve_stats(self):
         self.rc_curve, self.aurc, self.eaurc = RC_curve((1 - self.correct), self.confids)
@@ -193,7 +192,7 @@ class ConfidEvaluator():
 
 
 class ConfidPlotter():
-    def __init__(self, input_dict, query_plots, bins, performance_metrics=None):
+    def __init__(self, input_dict, query_plots, bins, performance_metrics=None, fig_scale=1):
         """
         input list ist a list of methods dicts, each with keys:
         cfg, exp, correct, confid_types
@@ -214,6 +213,7 @@ class ConfidPlotter():
         self.metrics_list = []
         self.colors_list = []
         self.performance_metrics = performance_metrics
+        self.fig_scale = fig_scale
 
         for confid_key, confid_dict in self.input_dict.items():
             self.method_names_list.append(confid_key)
@@ -228,12 +228,12 @@ class ConfidPlotter():
         self.num_plots = len(self.query_plots)
 
     def compose_plot(self):
-        seaborn.set_style('whitegrid')
+        seaborn.set(font_scale=self.fig_scale, style="whitegrid")
         self.colors_list = seaborn.hls_palette(len(self.method_names_list)).as_hex()
         n_columns = 2
         n_rows = int(np.ceil(self.num_plots / n_columns))
         n_columns += 1
-        f, axs = plt.subplots(nrows=n_rows, ncols=n_columns, figsize=(5*n_columns, 3*n_rows))
+        f, axs = plt.subplots(nrows=n_rows, ncols=n_columns, figsize=(5*n_columns*self.fig_scale, 3*n_rows*self.fig_scale))
         plot_ix = 0
         for ix in range(len(f.axes)):
 
@@ -263,7 +263,7 @@ class ConfidPlotter():
         legend_info = [ax.get_legend_handles_labels() for ax in f.axes]
         labels, ixs = np.unique(np.array([h for l in legend_info for h in l[1]]), return_index=True)
         handles = np.array([h for l in legend_info for h in l[0]])[ixs]
-        f.legend(handles, labels, loc='upper right', prop={'size': 13})
+        f.legend(handles, labels, loc='upper right', prop={'size': 10*self.fig_scale})
 
         f.tight_layout() # this is slow af
         return f
@@ -274,27 +274,34 @@ class ConfidPlotter():
         confids = self.confids_list[self.method_names_list.index(method_name)]
         correct = self.correct_list[self.method_names_list.index(method_name)]
 
-        self.ax.hist(confids[np.argwhere(correct == 1)],
+        (n_correct, binsc, patchesc) = self.ax.hist(confids[np.argwhere(correct == 1)],
                       color="g",
                       bins=self.bins,
+                      range=(0,1),
                       width=1 / self.bins,
                       alpha=0.3,
                       label="correct")
 
-        self.ax.hist(confids[np.argwhere(correct == 0)],
+        (n_incorrect, bins, patches) = self.ax.hist(confids[np.argwhere(correct == 0)],
                       color="r",
                       bins=self.bins,
+                      range=(0, 1),
                       width=1 / self.bins,
                       alpha=0.3,
                       label="incorrect")
 
+        max_data = np.max([np.max(n_correct), np.max(n_incorrect)])
+        self.ax.vlines(np.mean(confids[np.argwhere(correct == 0)]), ymin=0, ymax=max_data, color="r", linestyles="-", label="incorrect mean")
+        self.ax.vlines(np.median(confids[np.argwhere(correct == 0)]), ymin=0, ymax=max_data, color="r", linestyles="--", label="incorrect median")
+        self.ax.vlines(np.mean(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_data, color="g", linestyles="-", label="correct mean")
+        self.ax.vlines(np.median(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_data, color="g", linestyles="--", label="correct median")
         self.ax.set_xlim(-0.1, 1.1)
+        self.ax.set_ylim(0.1, max_data)
         self.ax.set_yscale('log')
         self.ax.set_xlabel("Confid")
         title_string = method_name
-        if self.performance_metrics is not None:
-            title_string += " (acc: {:.3f}, total:{})".format(self.performance_metrics["accuracy"], confids.size)
-        self.ax.set_title("failure_pred_{}".format(title_string))
+        title_string += " (incorr.:{}, tot:{})".format(correct.size-correct.sum(), correct.size)
+        self.ax.set_title("{}".format(title_string))
 
 
     def plot_calibration(self):
@@ -391,6 +398,8 @@ class ConfidPlotter():
 
         coverage_list = []
         selective_risk_list = []
+        coverage_list_geif = []
+        selective_risk_list_geif = []
 
         for confid_key, confid_dict in self.input_dict.items():
             coverage_list.append(confid_dict["plot_stats"]["coverage_list"])
@@ -404,7 +413,7 @@ class ConfidPlotter():
             label = name
             if "aurc" in metrics.keys():
                 label += " (aurc%: {:.3f})".format(metrics["aurc"]*100)
-            self.ax.plot(coverage, selective_risk * 100, label=label, color=color)
+            self.ax.plot(coverage, selective_risk * 100, label=label, color=color, alpha=1)
         self.ax.set_title("RC Curve")
         self.ax.set_ylabel("Selective Risk [%]")
         self.ax.set_xlabel("Coverage")
@@ -415,58 +424,48 @@ def RC_curve(residuals, confidence):
     # residuals = inverted "correct_list"
     # implemented for risk = 0/1 error.
     # could be changed to other error (e.g NLL?, that would weirdly mix up kappa confidence with predictive uncertainty!)
-    # curve = []
-    # n = len(residuals)
-    # idx_sorted = np.argsort(confidence)
-    # temp1 = residuals[idx_sorted]
-    # cov = n
-    # selective_risk = sum(temp1)
-    # curve.append((cov/ n, selective_risk / n))
-    # for i in range(0, len(idx_sorted)-1):
-    #     cov = cov-1
-    #     selective_risk = selective_risk-residuals[idx_sorted[i]]
-    #     # if confidence[idx_sorted[i]] != confidence[idx_sorted[np.max(i - 1, 0)]]:
-    #     curve.append((cov / n, selective_risk /(n-i - 1)))      # Todo: I Correceted this. report!!
-    # AUC = sum([a[1] for a in curve])/len(curve)
-    # err = np.mean(residuals)
-    # kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
-    # EAURC = AUC-kappa_star_aurc
+    coverages = []
+    risks = []
+    n = len(residuals)
+    idx_sorted = np.argsort(confidence)
+    temp1 = residuals[idx_sorted]
+    cov = n
+    selective_risk = sum(temp1)
+    coverages.append(cov/ n),
+    risks.append(selective_risk / n)
+    writeout_risk = selective_risk / n
+    weights = []
+    tmp_weight = 0
+    for i in range(0, len(idx_sorted) - 1):
+        cov = cov-1
+        selective_risk = selective_risk-residuals[idx_sorted[i]]
+        normed_risk = selective_risk /(n-i - 1)
+        tmp_weight +=1
+        if confidence[idx_sorted[i]] != confidence[idx_sorted[np.max(i - 1, 0)]]:
+            coverages.append(cov / n)
+            risks.append(normed_risk)
+            weights.append(tmp_weight / n)
+            tmp_weight =0# Todo: I Correceted this. report!!
+
+    if tmp_weight > 0:
+        coverages.append(0)
+        risks.append(risks[-1])
+        weights.append(tmp_weight / n)
+
+    # AUC = sum([a for a in risks])/len(risks)
+    # print("LAST WEIGHT", tmp_weight, n-i - 1)
+    # print("COVS", coverages[-3:])
+    # print("RISKS", risks[-3:])
+    # print("WEIGHTS", weights[-3:])
+    AUC = sum([a*w for a, w in zip(risks,weights)])
+    err = np.mean(residuals)
+    kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
+    EAURC = AUC-kappa_star_aurc
+    curve = (coverages, risks)
     # print("MY RC", AUC, EAURC, curve[-10:])
     # print("MY AURC WITH SKM", skm.auc([c[0] for c in curve], [c[1] for c in curve]))
     # print("MY EAURC WITH SKM", skm.auc([c[0] for c in curve], [c[1] for c in curve]))
-
-    # version from corbeire et al. todo extremely inefficient. can I modify the version above to result in the sam as here?
-    # todo e.g. by putting a unique in front of argsort? or compute one in training and both in testing?
-
-    accuracy = 1-np.mean(residuals)
-    proba_pred = confidence
-    accurate = 1-residuals
-    risks, coverages = [], []
-    sorted_unique_confs = sorted(set(proba_pred))[:-1]
-    for delta in sorted_unique_confs:
-        bool_select = proba_pred > delta
-        coverages.append((bool_select).mean())
-        selected_accurate = accurate[bool_select]
-        risks.append(1. - selected_accurate.mean())
-    if len(sorted_unique_confs)>1:
-        aurc = skm.auc(coverages, risks)
-    else:
-        aurc = 999
-    eaurc = aurc - ((1. - accuracy) + accuracy * np.log(accuracy))
-    curve = (coverages, risks)
-
-    return curve, aurc, eaurc
-
- #
- # risks, coverages = [], []
- #    for delta in sorted(set(self.proba_pred))[:-1]:
- #        coverages.append((self.proba_pred > delta).mean())
- #        selected_accurate = self.accurate[self.proba_pred > delta]
- #        risks.append(1. - selected_accurate.mean())
- #    aurc = auc(coverages, risks)
- #    eaurc = aurc - ((1. - accuracy) + accuracy*np.log(accuracy))
-
-
+    return curve, AUC, EAURC
 
 
 class BrierScore(Metric):

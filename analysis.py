@@ -24,6 +24,8 @@ class Analysis():
             }
             if os.path.isfile(os.path.join(path, "external_confids.npy")):
                 method_dict["external_confids"] = np.load(os.path.join(path, "external_confids.npy"))
+            if method_dict["cfg"].data.num_classes is None:
+                method_dict["cfg"].data.num_classes = method_dict["cfg"].trainer.num_classes
             self.input_list.append(method_dict)
 
 
@@ -59,20 +61,20 @@ class Analysis():
             if "det_mcp" in query_confids:
                 method_dict["det_mcp"] = {}
                 method_dict["det_mcp"]["confids"] = np.max(softmax, axis=1)
-                method_dict["det_mcp"]["correct"] = correct
+                method_dict["det_mcp"]["correct"] = deepcopy(correct)
                 method_dict["det_mcp"]["metrics"] = deepcopy(performance_metrics)
 
             if "det_pe" in query_confids:
                 method_dict["det_pe"] = {}
                 method_dict["det_pe"]["confids"] = np.sum(softmax * (- np.log(softmax + 1e-9)), axis=1)
-                method_dict["det_pe"]["correct"] = correct
+                method_dict["det_pe"]["correct"] = deepcopy(correct)
                 method_dict["det_pe"]["metrics"] = deepcopy(performance_metrics)
 
             if "mcd_mcp" in query_confids:
                 method_dict["mcd_mcp"] = {}
                 tmp_confids = np.max(mcd_softmax_mean, axis=1)
                 method_dict["mcd_mcp"]["confids"] = tmp_confids
-                method_dict["mcd_mcp"]["correct"] = mcd_correct
+                method_dict["mcd_mcp"]["correct"] = deepcopy(mcd_correct)
                 method_dict["mcd_mcp"]["metrics"] = deepcopy(mcd_performance_metrics)
 
             if "mcd_pe" in query_confids:
@@ -80,7 +82,7 @@ class Analysis():
                 tmp_confids = np.sum(mcd_softmax_mean *
                                      (- np.log(mcd_softmax_mean)), axis=1)
                 method_dict["mcd_pe"]["confids"] = tmp_confids
-                method_dict["mcd_pe"]["correct"] = mcd_correct
+                method_dict["mcd_pe"]["correct"] = deepcopy(mcd_correct)
                 method_dict["mcd_pe"]["metrics"] = deepcopy(mcd_performance_metrics)
 
             if "mcd_ee" in query_confids:
@@ -88,14 +90,14 @@ class Analysis():
                 tmp_confids = np.mean(np.sum(mcd_softmax_dist *
                                              (- np.log(mcd_softmax_dist + 1e-9)), axis=1), axis=1)
                 method_dict["mcd_ee"]["confids"] = tmp_confids
-                method_dict["mcd_ee"]["correct"] = mcd_correct
+                method_dict["mcd_ee"]["correct"] = deepcopy(mcd_correct)
                 method_dict["mcd_ee"]["metrics"] = deepcopy(mcd_performance_metrics)
 
             if "mcd_mi" in query_confids:
                 method_dict["mcd_mi"] = {}
                 tmp_confids = method_dict["mcd_pe"]["confids"]-method_dict["mcd_ee"]["confids"]
                 method_dict["mcd_mi"]["confids"] = tmp_confids
-                method_dict["mcd_mi"]["correct"] = mcd_correct
+                method_dict["mcd_mi"]["correct"] = deepcopy(mcd_correct)
                 method_dict["mcd_mi"]["metrics"] = deepcopy(mcd_performance_metrics)
 
             if "mcd_sv" in query_confids:
@@ -103,14 +105,14 @@ class Analysis():
                 # [b, cl, mcd] - [b, cl]
                 tmp_confids = np.mean((mcd_softmax_dist - np.expand_dims(mcd_softmax_mean, axis=2))**2, axis=(1,2))
                 method_dict["mcd_sv"]["confids"] = tmp_confids
-                method_dict["mcd_sv"]["correct"] = mcd_correct
+                method_dict["mcd_sv"]["correct"] = deepcopy(mcd_correct)
                 method_dict["mcd_sv"]["metrics"] = deepcopy(mcd_performance_metrics)
 
             if "tcp" in query_confids:
                 method_dict["tcp"] = {}
                 # [b, cl, mcd] - [b, cl]
                 method_dict["tcp"]["confids"] = method_dict["external_confids"]
-                method_dict["tcp"]["correct"] = correct
+                method_dict["tcp"]["correct"] = deepcopy(correct)
                 method_dict["tcp"]["metrics"] = deepcopy(performance_metrics)
 
             method_dict["query_confids"] = query_confids
@@ -135,6 +137,7 @@ class Analysis():
         for ix, method_dict in enumerate(self.input_list):
 
             for confid_key in method_dict["query_confids"]:
+                print("CONFID KEY", confid_key)
                 confid_dict = method_dict[confid_key]
                 if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv"]):
                     min_confid = np.min(confid_dict["confids"])
@@ -162,14 +165,14 @@ class Analysis():
                 submit_list+= [method_dict[confid_key]["metrics"][x] for x in all_metrics]
                 df.loc[len(df)] = submit_list
 
-        df.to_csv(os.path.join(self.analysis_out_dir, "analysis_metrics.csv"), float_format='%.3f', decimal='.')
+        df.to_csv(os.path.join(self.analysis_out_dir, "analysis_metrics.csv"), float_format='%.5f', decimal='.')
         print("saved csv to ", os.path.join(self.analysis_out_dir, "analysis_metrics.csv"))
 
 
     def create_master_plot(self):
         # get overall with one dict per compared_method (i.e confid)
         input_dict = {"{}_{}".format(method_dict["name"], k):method_dict[k] for method_dict in self.input_list for k in method_dict["query_confids"] }
-        plotter = ConfidPlotter(input_dict, self.query_plots, self.calibration_bins)
+        plotter = ConfidPlotter(input_dict, self.query_plots, self.calibration_bins, fig_scale=5)
         f = plotter.compose_plot()
         f.savefig(os.path.join(self.analysis_out_dir, "master_plot.png"))
         print("saved masterplot to ", os.path.join(self.analysis_out_dir, "master_plot.png"))
@@ -182,7 +185,8 @@ def main(in_path=None, out_path=None):
     # path to the dir where the raw otuputs lie. NO SLASH AT THE END!
     if in_path is None:
         path_to_test_dir_list = [
-            "/mnt/hdd2/checkpoints/checks/check_mnist/test_results",
+            # "/mnt/hdd2/checkpoints/checks/check_mnist/test_results",
+            "/mnt/hdd2/checkpoints/analysis/check_metrics/repro_confid_svhn_run_4_fold_2_rm_no/test_results",
         ]
         # path_to_test_dir_list = [
         #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_0/version_0",
