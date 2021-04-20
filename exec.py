@@ -29,7 +29,9 @@ def train(cf, subsequent_testing=False):
     cf.exp.version = exp_utils.get_next_version(cf.exp.dir)
     if cf.trainer.resume_from_ckpt:
         cf.exp.version -= 1
-        resume_ckpt_path = exp_utils.get_ckpt_path_from_previous_version(cf.exp.dir, cf.exp.version)
+        resume_ckpt_path = exp_utils.get_ckpt_path_from_previous_version(cf.exp.dir,
+                                                                         cf.exp.version,
+                                                                         cf.trainer.callbacks.selection_metrics[0])
         print("resuming previous training:", resume_ckpt_path)
 
     datamodule = get_loader(cf)
@@ -86,16 +88,17 @@ def test(cf):
                                                     cf.test.selection_criterion,
                                                     cf.test.selection_mode)
     else:
-        most_recent_version = exp_utils.get_most_recent_version(cf.exp.dir)
+        print("CHECK cf.exp.dir", cf.exp.dir)
+        cf.exp.version = exp_utils.get_most_recent_version(cf.exp.dir)
         ckpt_path = exp_utils.get_ckpt_path_from_previous_version(cf.exp.dir,
-                                                                       most_recent_version,
+                                                                       cf.exp.version,
                                                                        cf.test.selection_criterion)
 
     print("testing model from checkpoint: {} from model selection tpye {}".format(
         ckpt_path, cf.test.selection_criterion))
     print("logging testing to: {}".format(cf.test.dir))
-    # Todo overwriting training configs from checkpoint not possible atm
-    model = get_model(cf.model.name).load_from_checkpoint(ckpt_path)
+    # via kwargs I can overwrite test configs at least manually in theconfig file for now.
+    model = get_model(cf.model.name).load_from_checkpoint(ckpt_path, hparams_file=os.path.join(cf.exp.version_dir, "hparams.yaml"))
     datamodule = get_loader(cf)
 
     if not os.path.exists(cf.test.dir):

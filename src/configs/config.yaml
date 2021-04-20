@@ -8,14 +8,14 @@ defaults:
 hydra:
   run:
     dir: ${exp.dir}
-  output_subdir: hydra
+  output_subdir: null # hydra
 
 
 exp:
-  group_name: checks
-  name: check_global_traintest
+  group_name: shifteval
+  name: cifar10_run_0_sebastian
   version: None
-  mode: train   # train or test
+  mode: test   # train or test
   work_dir: ${hydra:runtime.cwd}
   fold_dir: exp/${exp.fold}
   root_dir: ${env:EXPERIMENT_ROOT_DIR}

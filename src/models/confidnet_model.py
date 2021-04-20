@@ -148,8 +148,9 @@ class net(pl.LightningModule):
             return {"loss": loss, "softmax": softmax, "softmax_dist": softmax_dist, "labels": y, "confid": pred_confid.squeeze(1)}
 
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch, batch_idx, *args):
         x, y = batch
+        print("DATASET IDX", args)
         softmax = F.softmax(self.backbone(x), dim=1)
         _, pred_confid = self.network(x)
         pred_confid = torch.sigmoid(pred_confid)

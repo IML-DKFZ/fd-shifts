@@ -254,7 +254,7 @@ class ConfidMonitor(Callback):
 
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
-
+        print("TEST LOADER", dataloader_idx)
         outputs = pl_module.test_results
         softmax = outputs["softmax"]
         softmax_dist = outputs.get("softmax_dist")

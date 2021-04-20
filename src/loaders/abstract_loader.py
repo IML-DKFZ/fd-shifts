@@ -95,14 +95,13 @@ class AbstractDataLoader(pl.LightningDataModule):
             num_workers=self.num_workers,
             )
 
-
     def test_dataloader(self):
-        return torch.utils.data.DataLoader(
+        test_loader = torch.utils.data.DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,
             shuffle=False,
             pin_memory=self.pin_memory,
             num_workers=self.num_workers,
         )
-
+        return test_loader #[test_loader, test_loader]
 
