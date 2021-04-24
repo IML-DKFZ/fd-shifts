@@ -7,6 +7,7 @@ from robustness.tools.breeds_helpers import make_entity13
 from robustness.tools.breeds_helpers import print_dataset_info
 from robustness.tools.helpers import get_label_mapping
 from robustness.tools.breeds_helpers import ClassHierarchy
+from wilds.datasets.iwildcam_dataset import IWildCamDataset
 import numpy as np
 from PIL import Image
 import io
@@ -18,11 +19,6 @@ def get_dataset(name, root, train, download, transform, kwargs):
     """
         Return a new instance of dataset loader
     """
-    if name == "svhn":
-        train = "train" if train else "test"
-    pass_kwargs = {"root": root, "train": train, "download": download, "transform": transform}
-    if name == "imagenet":
-        pass_kwargs["kwargs"] = kwargs
     dataset_factory = {
         "svhn": datasets.SVHN,
         "mnist": datasets.MNIST,
@@ -34,8 +30,16 @@ def get_dataset(name, root, train, download, transform, kwargs):
         "imagenet": BREEDImageNet,
     }
 
-    return dataset_factory[name](**pass_kwargs)
+    if name == "svhn":
+        train = "train" if train else "test"
+    pass_kwargs = {"root": root, "train": train, "download": download, "transform": transform}
+    if name == "imagenet":
+        pass_kwargs["kwargs"] = kwargs
 
+    if not "wilds" in name:
+        return dataset_factory[name](**pass_kwargs)
+    else:
+        return dataset_factory[name](**pass_kwargs).get_subset("train" if train else "test", frac=1.0, transform=transform)
 
 class SuperCIFAR100(datasets.VisionDataset):
     """`CIFAR10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset.
@@ -351,6 +355,20 @@ class BREEDImageNet(ImageFolder):
             target = self.target_transform(target)
 
         return sample, target
+
+
+
+class WILDSAnimals(IWildCamDataset):
+    def __init__(self, root, train, download, transform):
+        super().__init__(self, version=None, root_dir=root, download=download, split_scheme='official')
+
+    def __getitem__(self, idx):
+        # Any transformations are handled by the WILDSSubset
+        # since different subsets (e.g., train vs test) might have different transforms
+        x = self.get_input(idx)
+        y = self.y_array[idx]
+        metadata = self.metadata_array[idx]
+        return x, y, metadata
 
 
 # import matplotlib.pyplot as plt
