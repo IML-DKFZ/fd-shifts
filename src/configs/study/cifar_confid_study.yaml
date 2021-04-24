@@ -26,7 +26,7 @@ trainer:
       save_top_k: [1, 1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
     training_stages:
-      milestones: [0, 200] # 250, 450  Make sure milestones match val_every_n_epoch!!
+      milestones: [300, 500] # 250, 450  Make sure milestones match val_every_n_epoch!!
       pretrained_backbone_path:  #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
       disable_dropout_at_finetuning: True
@@ -54,6 +54,8 @@ test:
   selection_mode: max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
+  external_test_sets:  # []
+
 
 eval:
   performance_metrics:
@@ -68,9 +70,9 @@ eval:
     train:
       [] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
-      ["tcp", "det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
+      ["det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:
-      ["det_mcp" , "det_pe", "tcp", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
+      ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
 
   monitor_plots: [ #"calibration",
                    #"overconfidence",
@@ -78,6 +80,8 @@ eval:
                     ]
 
   tb_hparams: ['fold']
+
+  query_studies: # iid_study, new_class_study, sub_class_study, noise_study
 
 
 # cifar 100: lr schedule, wd, ..., num_classes

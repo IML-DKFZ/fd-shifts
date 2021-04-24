@@ -3,6 +3,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 import pytorch_lightning as pl
 from omegaconf import OmegaConf
 from src.utils.aug_utils import transforms_collection
+from src.loaders.dataset_collection import get_dataset
 from sklearn.model_selection import KFold
 import os
 import pickle
@@ -18,33 +19,98 @@ class AbstractDataLoader(pl.LightningDataModule):
         self.crossval_n_folds = cf.exp.crossval_n_folds
         self.fold = cf.exp.fold
         self.data_dir = cf.data.data_dir
+        self.data_root_dir = cf.exp.data_root_dir
+        self.dataset_name = cf.data.dataset
         self.batch_size = cf.trainer.batch_size
         self.pin_memory = cf.data.pin_memory
         self.num_workers = cf.data.num_workers
         self.reproduce_confidnet_splits = cf.data.reproduce_confidnet_splits
+        self.dataset_kwargs = cf.data.get("kwargs")
+
+        self.query_studies = cf.eval.get("query_studies")
+        if self.query_studies is not None:
+            self.external_test_sets = []
+            for k in self.query_studies.keys():
+                if k !="iid_study" and self.query_studies[k] is not None:
+                    self.external_test_sets.extend([v for v in self.query_studies[k]])
+            print("CHECK flat list of external datasets", self.external_test_sets)
+
+            if len(self.external_test_sets) > 0:
+                self.external_test_configs = {}
+                for ext_set in self.external_test_sets:
+                    self.external_test_configs[ext_set] = OmegaConf.load(os.path.join(cf.exp.work_dir, "src", "configs", "data", "{}_data.yaml".format(ext_set)))
 
         # Set up augmentations
         self.augmentations = {}
         if cf.data.augmentations:
             self.add_augmentations(OmegaConf.to_container(cf.data.augmentations, resolve=True))
 
-        self.train_dataset, self.val_dataset, self.test_dataset = None, None, None
-
-
+        self.train_dataset, self.val_dataset, self.test_datasets = None, None, None
 
     def add_augmentations(self, query_augs):
 
+        if self.query_studies is not None and self.external_test_sets is not None:
+            for ext_set in self.external_test_sets:
+                query_augs["external_{}".format(ext_set)] = self.external_test_configs[ext_set].augmentations["test"]
         for datasplit_k, datasplit_v in query_augs.items():
             augmentations, aug_after = [], []
-            for aug_key, aug_param in datasplit_v.items():
-                augmentations.append(transforms_collection[aug_key](aug_param))
-
+            if datasplit_v is not None:
+                for aug_key, aug_param in datasplit_v.items():
+                    if aug_key != "normalize":
+                        print("adding augmentation: ", datasplit_k, aug_key)
+                        augmentations.append(transforms_collection[aug_key](aug_param))
             augmentations.append(transforms_collection["to_tensor"]())
+            if "normalize" in datasplit_v.keys():
+                print("adding augmentation: ", datasplit_k, "normalize")
+                augmentations.append(transforms_collection["normalize"](datasplit_v["normalize"]))
             self.augmentations[datasplit_k] = transforms_collection["compose"](augmentations)
 
 
     def prepare_data(self):
-        pass
+
+        self.train_dataset = get_dataset(name=self.dataset_name,
+                                         root=self.data_dir,
+                                         train=True,
+                                         download=True,
+                                         transform=self.augmentations["train"],
+                                         kwargs=self.dataset_kwargs
+                                         )
+        print("Len Training data: ", len(self.train_dataset))
+
+        self.val_dataset = get_dataset(name=self.dataset_name,
+                                         root=self.data_dir,
+                                         train=True,
+                                         download=True,
+                                         transform=self.augmentations["val"],
+                                         kwargs=self.dataset_kwargs
+                                         )
+        print("Len Val data: ", len(self.val_dataset))
+
+        self.test_datasets = []
+        if not (self.query_studies is not None and "iid_study" not in self.query_studies):
+            print("Adding internal test dataset.")
+            self.test_datasets.append(get_dataset(name=self.dataset_name,
+                                         root=self.data_dir,
+                                         train=False,
+                                         download=True,
+                                         transform=self.augmentations["test"],
+                                         kwargs=self.dataset_kwargs
+                                         ))
+            print("Len Test data: ", len(self.test_datasets[-1]))
+
+        if self.query_studies is not None and len(self.external_test_sets) > 0:
+            for ext_set in self.external_test_sets:
+                print("Adding external test dataset:", ext_set)
+                self.test_datasets.append(
+                    get_dataset(name=ext_set,
+                                root=self.data_dir,
+                                train=False,
+                                download=True,
+                                transform=self.augmentations["test"],
+                                kwargs=self.dataset_kwargs
+                                ))
+                print("Len Test data: ", len(self.test_datasets[-1]))
+
 
 
     def setup(self, stage=None):
@@ -67,6 +133,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             kf = KFold(n_splits=self.crossval_n_folds, shuffle=True,random_state=0)
             splits = list(kf.split(indices))
             train_idx, val_idx = splits[self.fold]
+
             with open(self.crossval_ids_path, "wb") as f:
                 pickle.dump(splits, f)
 
@@ -96,12 +163,14 @@ class AbstractDataLoader(pl.LightningDataModule):
             )
 
     def test_dataloader(self):
-        test_loader = torch.utils.data.DataLoader(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            pin_memory=self.pin_memory,
-            num_workers=self.num_workers,
-        )
-        return test_loader #[test_loader, test_loader]
+        test_loaders = []
+        for test_dataset in self.test_datasets:
+            test_loaders.append(torch.utils.data.DataLoader(
+                test_dataset,
+                batch_size=self.batch_size,
+                shuffle=False,
+                pin_memory=self.pin_memory,
+                num_workers=self.num_workers,
+            ))
+        return test_loaders
 

@@ -144,17 +144,16 @@ class net(pl.LightningModule):
                     softmax_dist = self.mcd_eval_forward(x=x,
                                                          n_samples=self.monitor_mcd_samples,
                                                          existing_softmax_list=[softmax.unsqueeze(2)])
+                # print("CHECK DIST", softmax_dist[0, 0].std(), softmax_dist.shape, softmax_dist[0])
 
             return {"loss": loss, "softmax": softmax, "softmax_dist": softmax_dist, "labels": y, "confid": pred_confid.squeeze(1)}
 
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
-        print("DATASET IDX", args)
         softmax = F.softmax(self.backbone(x), dim=1)
         _, pred_confid = self.network(x)
         pred_confid = torch.sigmoid(pred_confid)
-
         softmax_dist = None
         if any("mcd" in cfd for cfd in self.query_confids["test"]):
             softmax_dist = self.mcd_eval_forward(x=x,
@@ -162,6 +161,8 @@ class net(pl.LightningModule):
                                             existing_softmax_list=[softmax.unsqueeze(2)])
 
         self.test_results = {"softmax": softmax, "softmax_dist": softmax_dist, "labels": y, "confid": pred_confid.squeeze(1)}
+        # print("CHECK TEST NORM", x.mean(), x.std(), args)
+        # print("CHECK Monitor Accuracy", (softmax.argmax(1) == y).sum()/y.numel())
 
 
     def configure_optimizers(self):

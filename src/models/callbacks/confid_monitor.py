@@ -29,11 +29,13 @@ class ConfidMonitor(Callback):
 
         self.running_test_softmax = []
         self.running_test_labels = []
+        self.running_test_dataset_idx = []
         self.running_test_external_confids = []
         self.running_confid_stats = {}
         self.running_perf_stats = {}
         self.running_confid_stats["train"] = {k: {"confids": [], "correct": []} for k in self.query_confids["train"]}
         self.running_confid_stats["val"] = {k: {"confids": [], "correct": []} for k in self.query_confids["val"]}
+        self.running_val_correct_sum_sanity = 0
         self.running_perf_stats["train"] = {k: [] for k in self.query_performance_metrics["train"]}
         self.running_perf_stats["val"] = {k: [] for k in self.query_performance_metrics["val"]}
 
@@ -145,11 +147,12 @@ class ConfidMonitor(Callback):
                     y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
                 self.running_perf_stats["val"]["brier_score"].append(((softmax - y_one_hot) ** 2).sum(1).mean())
 
-        if len(self.running_confid_stats["val"].keys()) > 0:
+        if len(self.running_confid_stats["val"].keys()) > 0 or softmax_dist is not None:
 
             stat_keys = self.running_confid_stats["val"].keys()
             if tmp_correct is None:
                 tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
+            self.running_val_correct_sum_sanity += tmp_correct.sum()
             if "det_mcp" in stat_keys:
                 tmp_confids = torch.max(softmax, dim=1)[0]
                 self.running_confid_stats["val"]["det_mcp"]["confids"].extend(tmp_confids)
@@ -200,7 +203,9 @@ class ConfidMonitor(Callback):
 
     def on_validation_epoch_end(self, trainer, pl_module):
 
-        if len(self.running_confid_stats["val"].keys()) > 0 or len(self.running_perf_stats["val"].keys()) > 0:
+        monitor_metrics = None
+        if (len(self.running_confid_stats["val"].keys()) > 0 or len(self.running_perf_stats["val"].keys()) > 0) \
+                and (self.running_val_correct_sum_sanity > 0):
             do_plot = True if len(self.query_confids["val"]) > 0 and len(self.query_monitor_plots) > 0 else False
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confid_stats["val"],
                                                                      self.running_perf_stats["val"],
@@ -218,25 +223,26 @@ class ConfidMonitor(Callback):
                 for k, v in monitor_plots.items():
                     tensorboard.add_figure("val/{}".format(k), v, pl_module.current_epoch)
 
-            self.running_confid_stats["val"] = {k: {"confids": [], "correct": []} for k in
-                                                self.query_confids["val"]}
-            self.running_perf_stats["val"] = {k: [] for k in self.query_performance_metrics["val"]}
 
+        for metric, mode in zip(pl_module.selection_metrics, pl_module.selection_modes):
+            if monitor_metrics is None or metric.split("/")[-1] not in monitor_metrics.keys():
+                dummy = 0 if mode == "max" else 1
+                print("selection metric {} not computed, replacing with {}.".format(metric, dummy))
+                pl_module.log("{}".format(metric), dummy)
 
-            for metric, mode in zip(pl_module.selection_metrics, pl_module.selection_modes):
-                if metric.split("/")[-1] not in monitor_metrics.keys():
-                    dummy = 0 if mode == "max" else 1
-                    print("selection metric {} not computed, replacing with {}.".format(metric, dummy))
-                    print(monitor_metrics.keys())
-                    pl_module.log("{}".format(metric), dummy)
+        self.running_confid_stats["val"] = {k: {"confids": [], "correct": []} for k in
+                                            self.query_confids["val"]}
+        self.running_perf_stats["val"] = {k: [] for k in self.query_performance_metrics["val"]}
+        self.running_val_correct_sum_sanity = 0
 
 
     def on_train_end(self, trainer, pl_module):
         if len(self.running_test_softmax) > 0:
             stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
             stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
+            stacked_dataset_idx = torch.zeros_like(stacked_labels)
             raw_output = torch.cat([stacked_softmax.reshape(stacked_softmax.size()[0], -1),
-                                    stacked_labels],
+                                    stacked_labels, stacked_dataset_idx],
                                    dim=1)
             np.save(self.raw_output_path_fit, raw_output.cpu().data.numpy())
             print("saved raw validation outputs to {}".format(self.raw_output_path_fit))
@@ -254,22 +260,26 @@ class ConfidMonitor(Callback):
 
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
-        print("TEST LOADER", dataloader_idx)
         outputs = pl_module.test_results
         softmax = outputs["softmax"]
         softmax_dist = outputs.get("softmax_dist")
-        self.running_test_softmax.extend(softmax_dist if softmax_dist is not None else softmax)
-        self.running_test_labels.extend(outputs["labels"])
+        out_softmax = softmax_dist.to(dtype=torch.float16).cpu() if softmax_dist.to(dtype=torch.float16).cpu() is not None else softmax
+        self.running_test_softmax.extend(out_softmax)
+        self.running_test_labels.extend(outputs["labels"].cpu())
         if "tcp" in self.query_confids["test"]:
-            self.running_test_external_confids.extend(outputs["confid"])
+            self.running_test_external_confids.extend(outputs["confid"].to(dtype=torch.float16).cpu())
+
+        self.running_test_dataset_idx.extend(torch.ones_like(outputs["labels"].cpu()) * dataloader_idx)
 
 
     def on_test_end(self, trainer, pl_module):
 
         stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
         stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
+        stacked_dataset_idx = torch.stack(self.running_test_dataset_idx, dim=0).unsqueeze(1)
+        print("CHECK STACKED IDX", stacked_dataset_idx.size())
         raw_output = torch.cat([stacked_softmax.reshape(stacked_softmax.size()[0], -1),
-                                stacked_labels],
+                                stacked_labels, stacked_dataset_idx],
                                dim=1)
 
         np.save(self.raw_output_path_test, raw_output.cpu().data.numpy())

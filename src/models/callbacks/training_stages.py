@@ -49,7 +49,7 @@ class TrainingStages(Callback):
             trainer.optimizers = [new_optimizer]
             trainer.lr_schedulers = []
             new_schedulers = []
-            if pl_module.confidnet_lr_scheduler or 1==1:
+            if pl_module.confidnet_lr_scheduler:
                 print("initializing new scheduler for confidnet...")
                 new_schedulers.append({"scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=new_optimizer,
                                                                                          T_max=self.milestones[1]-self.milestones[0],

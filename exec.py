@@ -5,7 +5,7 @@ from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.loggers import TensorBoardLogger
 import hydra
 from omegaconf import DictConfig, OmegaConf
-from src.loaders import get_loader
+from src.loaders.abstract_loader import AbstractDataLoader
 from src.models import get_model
 from src.models.callbacks import get_callbacks
 from src.utils import exp_utils
@@ -34,7 +34,7 @@ def train(cf, subsequent_testing=False):
                                                                          cf.trainer.callbacks.selection_metrics[0])
         print("resuming previous training:", resume_ckpt_path)
 
-    datamodule = get_loader(cf)
+    datamodule = AbstractDataLoader(cf)
     model = get_model(cf.model.name)(cf)
     tb_logger= TensorBoardLogger(save_dir=cf.exp.group_dir,
                                  name=cf.exp.name,
@@ -53,12 +53,18 @@ def train(cf, subsequent_testing=False):
                          benchmark=cf.trainer.benchmark,
                          check_val_every_n_epoch = cf.trainer.val_every_n_epoch,
                          fast_dev_run=cf.trainer.fast_dev_run,
-                         num_sanity_val_steps = 20
+                         num_sanity_val_steps=20,
+                         limit_train_batches=1,
+                         limit_val_batches=1,
+                         # replace_sampler_ddp=False,
+                         # accelerator="ddp"
                          )
 
     print("logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version))
     trainer.fit(model=model, datamodule=datamodule)
-    analysis.main(cf.exp.version_dir, cf.exp.version_dir)
+    analysis.main(in_path=cf.exp.version_dir,
+                  out_path=cf.exp.version_dir,
+                  query_studies=cf.eval.query_studies)
 
     if subsequent_testing:
 
@@ -73,7 +79,9 @@ def train(cf, subsequent_testing=False):
             print("testing with best model from {} and epoch {}".format(cf.test.best_ckpt_path,
                                                                         torch.load(ckpt_path)["epoch"]))
         trainer.test(ckpt_path=ckpt_path)
-        analysis.main(cf.test.dir, cf.test.dir)
+        analysis.main(in_path=cf.test.dir,
+                      out_path=cf.test.dir,
+                      query_studies=cf.eval.query_studies)
 
 
 
@@ -99,14 +107,16 @@ def test(cf):
     print("logging testing to: {}".format(cf.test.dir))
     # via kwargs I can overwrite test configs at least manually in theconfig file for now.
     model = get_model(cf.model.name).load_from_checkpoint(ckpt_path, hparams_file=os.path.join(cf.exp.version_dir, "hparams.yaml"))
-    datamodule = get_loader(cf)
+    datamodule = AbstractDataLoader(cf)
 
     if not os.path.exists(cf.test.dir):
         os.makedirs(cf.test.dir)
 
     trainer = pl.Trainer(gpus=1, logger=False, callbacks=get_callbacks(cf))
     trainer.test(model, datamodule=datamodule)
-    analysis.main(cf.test.dir, cf.test.dir)
+    analysis.main(in_path=cf.test.dir,
+                  out_path=cf.test.dir,
+                  query_studies=cf.eval.query_studies)
 
     # fix str bug
     # test resuming by testing a second time in the same dir

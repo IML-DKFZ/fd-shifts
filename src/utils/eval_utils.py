@@ -179,7 +179,6 @@ class ConfidEvaluator():
 
     def get_roc_curve_stats(self):
         self.fpr_list, self.tpr_list, _ = skm.roc_curve(self.correct, self.confids)
-        print("DIRECT AUC SCORE", skm.roc_auc_score(self.correct, self.confids))
 
     def get_rc_curve_stats(self):
         self.rc_curve, self.aurc, self.eaurc = RC_curve((1 - self.correct), self.confids)
