@@ -2,15 +2,18 @@
 
 
 trainer:
-  num_epochs: 320 # has to be >1 because of incompatibility of lighting eval with psuedo test
-  val_every_n_epoch: 2
-  learning_rate: 1e-3
-  learning_rate_confidnet: 1e-4
+  num_epochs: 10 # 35 has to be >1 because of incompatibility of lighting eval with psuedo test
+  val_every_n_epoch: 1
+  learning_rate: 1e-2 #actually1e-3
+  learning_rate_confidnet: 1e-4 # only high with annealing! if not: 1e-4
   learning_rate_confidnet_finetune: 1e-7
   lr_scheduler:
+    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
+#    milestones: [90, 135] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
+    max_epochs: 5
   momentum: 0.9
-  weight_decay: 1e-4
-  batch_size: 128
+  weight_decay: 0.01
+  batch_size: 32
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
@@ -23,22 +26,25 @@ trainer:
       save_top_k: [1, 1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
     training_stages:
-      milestones: [100, 300]  #  Make sure milestones match val_every_n_epoch!!
-      pretrained_backbone_path:  #/mnt/hdd2/checkpoints/best.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
+      milestones: [5, 8] # 20, 30  Make sure milestones match val_every_n_epoch!!
+      pretrained_backbone_path:  #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
       disable_dropout_at_finetuning: True
+      confidnet_lr_scheduler: False
+    learning_rate_monitor:
 
 model:
-  name: confidnet_model
-  fc_dim: 1000 #128 # MNIST! set to 1000 for mlp
+  name: confidnet_model #det_mcd_model
+  fc_dim: 2048
   confidnet_fc_dim: 400
+  dropout_rate: 0.1
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   spatial_encoder_output: False
   network:
-    name: confidnet_and_enc
-    backbone: mnist_mlp #mnist_small_conv
-    imagenet_weights_path:
+    name: confidnet_and_enc      # confidnet_small_conv_and_enc / small_conv
+    backbone: resnet50
+    imagenet_weights_path: #${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/resnet50-19c8e357.pth # does not work  because different num_classes. Load only encoder?  todo (check wilds)
 
 test:
   name: test_results
@@ -50,6 +56,8 @@ test:
   selection_mode: max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
+  external_test_sets:  # []
+
 
 eval:
   performance_metrics:
@@ -62,11 +70,11 @@ eval:
     test: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
   confidence_measures: # ["det_mcp" , "det_pe", "tcp" , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
     train:
-      [] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
+      ["det_mcp"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
-      ["tcp", "det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
+      ["det_mcp", "tcp"]
     test:
-      ["det_mcp" , "det_pe", "tcp", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
+      ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv", "tcp"]
 
   monitor_plots: [ #"calibration",
                    #"overconfidence",
@@ -76,3 +84,4 @@ eval:
   tb_hparams: ['fold']
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
+    iid_study: ${data.dataset}

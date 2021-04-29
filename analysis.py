@@ -50,7 +50,7 @@ class Analysis():
                 flat_test_set_list.extend([dataset for dataset in v])
             else:
                 flat_test_set_list.append(v)
-        print("CHECK flat list of external datasets", flat_test_set_list)
+        print("CHECK flat list of all test datasets", flat_test_set_list)
 
         for study_name in self.query_studies.keys():
 
@@ -302,7 +302,7 @@ class Analysis():
 
             for confid_key in method_dict["query_confids"]:
                 confid_dict = method_dict[confid_key]
-                if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv"]):
+                if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv", "bpd"]):
                     min_confid = np.min(confid_dict["confids"])
                     max_confid = np.max(confid_dict["confids"])
                     confid_dict["confids"] = 1 - ((confid_dict["confids"] - min_confid) / (max_confid - min_confid))

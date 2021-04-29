@@ -12,7 +12,7 @@ transforms_collection = {
     "center_crop": lambda x: transforms.CenterCrop(x),
     "randomresized_crop": lambda x: transforms.RandomResizedCrop(x),
     "hflip": lambda x: transforms.RandomHorizontalFlip() if x else None,
-    "resize": lambda x: transforms.Resize(x),
+    "resize": lambda x: transforms.Resize(size=x),
     "rotate": lambda x: transforms.RandomRotation(x),
     "color_jitter": lambda x: transforms.ColorJitter(brightness=x[0], contrast=x[1], saturation=x[2]),
     "lighting": lambda x: Lighting()

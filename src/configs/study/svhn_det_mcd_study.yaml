@@ -26,6 +26,8 @@ model:
   fc_dim: 512
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
+  spatial_encoder_output: False
+  dropout_rate: 0
   network:
     name: svhn_small_conv      # confidnet_small_conv_and_enc / small_conv
     imagenet_weights_path:

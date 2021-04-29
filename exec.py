@@ -19,6 +19,7 @@ def train(cf, subsequent_testing=False):
     perform the training routine for a given fold. saves plots and selected parameters to the experiment dir
     specified in the configs.
     """
+    print("CHECK CUDNN VERSION", torch.backends.cudnn.version())
     if cf.exp.global_seed:
         exp_utils.set_seed(cf.exp.global_seed)
         cf.trainer.benchmark = False
@@ -53,9 +54,9 @@ def train(cf, subsequent_testing=False):
                          benchmark=cf.trainer.benchmark,
                          check_val_every_n_epoch = cf.trainer.val_every_n_epoch,
                          fast_dev_run=cf.trainer.fast_dev_run,
-                         num_sanity_val_steps=20,
-                         limit_train_batches=1,
-                         limit_val_batches=1,
+                         num_sanity_val_steps=5,
+                         # limit_train_batches=0.1,
+                         # limit_val_batches=0.1,
                          # replace_sampler_ddp=False,
                          # accelerator="ddp"
                          )

@@ -8,6 +8,9 @@ from robustness.tools.breeds_helpers import print_dataset_info
 from robustness.tools.helpers import get_label_mapping
 from robustness.tools.breeds_helpers import ClassHierarchy
 from wilds.datasets.iwildcam_dataset import IWildCamDataset
+from wilds.datasets.camelyon17_dataset import Camelyon17Dataset
+from wilds.datasets.wilds_dataset import WILDSSubset
+from src.loaders import breeds_hierarchies
 import numpy as np
 from PIL import Image
 import io
@@ -28,11 +31,14 @@ def get_dataset(name, root, train, download, transform, kwargs):
         "corrupt_cifar100": CorruptCIFAR,
         "corrupt_cifar10": CorruptCIFAR,
         "imagenet": BREEDImageNet,
+        "wilds_animals": WILDSAnimals,
+        "wilds_camelyon": WILDSCamelyon,
     }
 
-    if name == "svhn":
-        train = "train" if train else "test"
     pass_kwargs = {"root": root, "train": train, "download": download, "transform": transform}
+    if name == "svhn":
+        pass_kwargs = {"root": root, "split": "train" if train else "test", "download": download, "transform": transform}
+
     if name == "imagenet":
         pass_kwargs["kwargs"] = kwargs
 
@@ -310,7 +316,8 @@ class ImageNet(datasets.ImageNet):
 class BREEDImageNet(ImageFolder):
     def __init__(self, root, train, download, transform, kwargs):
         target_transform = None
-        ret = make_entity13(kwargs["info_dir_path"], split="rand")
+        infor_dir_path = os.path.abspath(os.path.dirname(breeds_hierarchies.__file__))
+        ret = make_entity13(infor_dir_path, split="rand")
         superclasses, subclass_split, label_map = ret
         train_subclasses, test_subclasses = subclass_split
         base_path = "ILSVRC/Data/CLS-LOC"
@@ -356,19 +363,71 @@ class BREEDImageNet(ImageFolder):
 
         return sample, target
 
-
-
+#
+#
 class WILDSAnimals(IWildCamDataset):
     def __init__(self, root, train, download, transform):
-        super().__init__(self, version=None, root_dir=root, download=download, split_scheme='official')
+        super().__init__(version=None, root_dir=root, download=download, split_scheme='official')
+
+    def get_subset(self, split, frac=1.0, transform=None):
+        """
+        Args:
+            - split (str): Split identifier, e.g., 'train', 'val', 'test'.
+                           Must be in self.split_dict.
+            - frac (float): What fraction of the split to randomly sample.
+                            Used for fast development on a small dataset.
+            - transform (function): Any data transformations to be applied to the input x.
+        Output:
+            - subset (WILDSSubset): A (potentially subsampled) subset of the WILDSDataset.
+        """
+        if split not in self.split_dict:
+            raise ValueError(f"Split {split} not found in dataset's split_dict.")
+        split_mask = self.split_array == self.split_dict[split]
+        split_idx = np.where(split_mask)[0]
+        if frac < 1.0:
+            num_to_retain = int(np.round(float(len(split_idx)) * frac))
+            split_idx = np.sort(np.random.permutation(split_idx)[:num_to_retain])
+        subset = myWILDSSubset(self, split_idx, transform)
+        return subset
+
+class myWILDSSubset(WILDSSubset):
+    def __init__(self, dataset, indices, transform):
+        super().__init__(dataset, indices, transform)
 
     def __getitem__(self, idx):
-        # Any transformations are handled by the WILDSSubset
-        # since different subsets (e.g., train vs test) might have different transforms
-        x = self.get_input(idx)
-        y = self.y_array[idx]
-        metadata = self.metadata_array[idx]
-        return x, y, metadata
+        x, y, metadata = self.dataset[self.indices[idx]]
+        if self.transform is not None:
+            x = self.transform(x)
+        return x, y
+
+
+
+class WILDSCamelyon(Camelyon17Dataset):
+    def __init__(self, root, train, download, transform):
+        super().__init__(version=None, root_dir=root, download=download, split_scheme='official')
+
+    def get_subset(self, split, frac=1.0, transform=None):
+        """
+        Args:
+            - split (str): Split identifier, e.g., 'train', 'val', 'test'.
+                           Must be in self.split_dict.
+            - frac (float): What fraction of the split to randomly sample.
+                            Used for fast development on a small dataset.
+            - transform (function): Any data transformations to be applied to the input x.
+        Output:
+            - subset (WILDSSubset): A (potentially subsampled) subset of the WILDSDataset.
+        """
+        if split not in self.split_dict:
+            raise ValueError(f"Split {split} not found in dataset's split_dict.")
+        split_mask = self.split_array == self.split_dict[split]
+        split_idx = np.where(split_mask)[0]
+        if frac < 1.0:
+            num_to_retain = int(np.round(float(len(split_idx)) * frac))
+            split_idx = np.sort(np.random.permutation(split_idx)[:num_to_retain])
+        subset = myWILDSSubset(self, split_idx, transform)
+        return subset
+
+
 
 
 # import matplotlib.pyplot as plt

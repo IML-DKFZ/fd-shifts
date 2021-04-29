@@ -39,6 +39,7 @@ model:
   confidnet_fc_dim: 400
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
+  spatial_encoder_output: False
   network:
     name: confidnet_and_enc      # confidnet_small_conv_and_enc / small_conv
     backbone: cifar_vgg16

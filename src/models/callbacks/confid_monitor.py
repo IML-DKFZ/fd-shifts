@@ -35,6 +35,7 @@ class ConfidMonitor(Callback):
         self.running_perf_stats = {}
         self.running_confid_stats["train"] = {k: {"confids": [], "correct": []} for k in self.query_confids["train"]}
         self.running_confid_stats["val"] = {k: {"confids": [], "correct": []} for k in self.query_confids["val"]}
+        self.running_train_correct_sum_sanity = 0
         self.running_val_correct_sum_sanity = 0
         self.running_perf_stats["train"] = {k: [] for k in self.query_performance_metrics["train"]}
         self.running_perf_stats["val"] = {k: [] for k in self.query_performance_metrics["val"]}
@@ -74,6 +75,7 @@ class ConfidMonitor(Callback):
                 self.running_perf_stats["train"]["brier_score"].append(((softmax - y_one_hot) ** 2).sum(1).mean())
 
         if len(self.running_confid_stats["train"].keys()) > 0:
+            self.running_train_correct_sum_sanity += tmp_correct.sum()
             stat_keys = self.running_confid_stats["train"].keys()
             if tmp_correct is None:
                 tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
@@ -92,9 +94,18 @@ class ConfidMonitor(Callback):
                     self.running_confid_stats["train"]["tcp"]["confids"].extend(tmp_confids)
                     self.running_confid_stats["train"]["tcp"]["correct"].extend(tmp_correct)
 
+            if "bpd" in stat_keys:
+                tmp_confids = outputs[0][0]["extra"]["confid"]
+
+                if tmp_confids is not None:
+                    print("CHECK CONFIDS", tmp_confids.min(), tmp_confids.max())
+                    self.running_confid_stats["train"]["bpd"]["confids"].extend(tmp_confids)
+                    self.running_confid_stats["train"]["bpd"]["correct"].extend(tmp_correct)
+
     def on_train_epoch_end(self, trainer, pl_module, outputs):
 
-        if len(self.running_confid_stats["train"].keys()) > 0 or len(self.running_perf_stats["train"].keys()) > 0:
+        if (len(self.running_confid_stats["train"].keys()) > 0 or len(self.running_perf_stats["train"].keys()) > 0)\
+                and (self.running_train_correct_sum_sanity > 0):
             do_plot = True if (pl_module.current_epoch + 1) % self.val_every_n_epoch == 0 and \
                               len(self.query_confids["train"]) > 0 and len(self.query_monitor_plots) > 0 else False
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confid_stats["train"],
@@ -114,9 +125,10 @@ class ConfidMonitor(Callback):
                 for k, v in monitor_plots.items():
                     tensorboard.add_figure("train/{}".format(k), v, pl_module.current_epoch)
 
-            self.running_confid_stats["train"] = {k: {"confids": [], "correct": []} for k in
-                                                  self.query_confids["train"]}
-            self.running_perf_stats["train"] = {k: [] for k in self.query_performance_metrics["train"]}
+        self.running_confid_stats["train"] = {k: {"confids": [], "correct": []} for k in
+                                              self.query_confids["train"]}
+        self.running_perf_stats["train"] = {k: [] for k in self.query_performance_metrics["train"]}
+        self.running_train_correct_sum_sanity = 0
 
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
@@ -168,6 +180,12 @@ class ConfidMonitor(Callback):
                     self.running_confid_stats["val"]["tcp"]["confids"].extend(tmp_confids)
                     self.running_confid_stats["val"]["tcp"]["correct"].extend(tmp_correct)
 
+            if "bpd" in stat_keys:
+                tmp_confids = outputs["confid"]
+                if tmp_confids is not None:
+                    self.running_confid_stats["val"]["bpd"]["confids"].extend(tmp_confids)
+                    self.running_confid_stats["val"]["bpd"]["correct"].extend(tmp_correct)
+
             if softmax_dist is not None:
 
                 mean_softmax = torch.mean(softmax_dist, dim=2)
@@ -197,7 +215,7 @@ class ConfidMonitor(Callback):
         if pl_module.current_epoch == self.num_epochs - 1:
             self.running_test_softmax.extend(softmax_dist if softmax_dist is not None else softmax)
             self.running_test_labels.extend(y)
-            if "tcp" in self.running_confid_stats["val"].keys():
+            if "tcp" in self.running_confid_stats["val"].keys() or "bpd" in self.running_confid_stats["val"].keys():
                 self.running_test_external_confids.extend(outputs["confid"])
 
 
@@ -247,7 +265,7 @@ class ConfidMonitor(Callback):
             np.save(self.raw_output_path_fit, raw_output.cpu().data.numpy())
             print("saved raw validation outputs to {}".format(self.raw_output_path_fit))
 
-            if "tcp" in self.query_confids["test"]:
+            if "tcp" in self.query_confids["test"] or "bpd" in self.query_confids["test"]:
                 stacked_external_confids = torch.stack(self.running_test_external_confids, dim=0)
                 np.save(self.external_confids_output_path_fit, stacked_external_confids.cpu().data.numpy())
                 print("saved external confids validation outputs to {}".format(self.external_confids_output_path_fit))
@@ -266,7 +284,7 @@ class ConfidMonitor(Callback):
         out_softmax = softmax_dist.to(dtype=torch.float16).cpu() if softmax_dist.to(dtype=torch.float16).cpu() is not None else softmax
         self.running_test_softmax.extend(out_softmax)
         self.running_test_labels.extend(outputs["labels"].cpu())
-        if "tcp" in self.query_confids["test"]:
+        if "tcp" in self.query_confids["test"] or "bpd" in self.query_confids["test"]:
             self.running_test_external_confids.extend(outputs["confid"].to(dtype=torch.float16).cpu())
 
         self.running_test_dataset_idx.extend(torch.ones_like(outputs["labels"].cpu()) * dataloader_idx)
@@ -285,7 +303,7 @@ class ConfidMonitor(Callback):
         np.save(self.raw_output_path_test, raw_output.cpu().data.numpy())
         print("saved raw test outputs to {}".format(self.raw_output_path_test))
 
-        if "tcp" in self.query_confids["test"]:
+        if "tcp" in self.query_confids["test"] or "bpd" in self.query_confids["test"]:
             stacked_external_confids = torch.stack(self.running_test_external_confids, dim=0)
             np.save(self.external_confids_output_path_test, stacked_external_confids.cpu().data.numpy())
             print("saved external confids test outputs to {}".format(self.external_confids_output_path_test))

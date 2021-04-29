@@ -13,14 +13,14 @@ folds = range(2)
 for fold in folds:
     # if run == 0:
         command_line_args = ""
-        command_line_args += "study={} ".format("imagenet_confid_study")
-        command_line_args += "data={} ".format("{}_data".format("imagenet"))
-        command_line_args += "exp.group_name={} ".format("breeds_confid")
-        command_line_args += "exp.name={} ".format("breeds_fold_{}".format(fold))
+        command_line_args += "study={} ".format("wildsanimals_confid_study")
+        command_line_args += "data={} ".format("{}_data".format("wilds_animals"))
+        command_line_args += "exp.group_name={} ".format("wildsanimals_confid")
+        command_line_args += "exp.name={} ".format("wildsanimals_fold_{}".format(fold))
         command_line_args += "exp.fold={} ".format(fold)
 
         command_line_args += "exp.mode={} ".format("train_test")
-        command_line_args += "trainer.batch_size={} ".format(128)
+        # command_line_args += "trainer.batch_size={} ".format(16)
         # command_line_args += "trainer.benchmark={} ".format(True)
         # command_line_args += "trainer.weight_decay={} ".format(wd)
         # command_line_args += "trainer.multistep_lr_milestones=\"{}\" ".format(ms)
@@ -36,7 +36,7 @@ for fold in folds:
             launch_command += "-gpu num=1:"
             launch_command += "j_exclusive=yes:"
             launch_command += "mode=exclusive_process:"
-            launch_command += "gmem=15.0G "
+            launch_command += "gmem=10.0G "
             launch_command += "-L /bin/bash -q gpu "
             launch_command += "-u 'p.jaeger@dkfz-heidelberg.de' -B -N "
             launch_command += "'source ~/.bashrc && "

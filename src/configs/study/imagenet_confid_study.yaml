@@ -2,7 +2,7 @@
 
 
 trainer:
-  num_epochs: 520 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs: 470 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
   val_every_n_epoch: 1
   learning_rate: 1e-1
   learning_rate_confidnet: 1e-4 # only high with annealing! if not: 1e-4
@@ -13,7 +13,7 @@ trainer:
     max_epochs: 300
   momentum: 0.9
   weight_decay: 0.0001
-  batch_size: 128
+  batch_size: 16
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
@@ -26,7 +26,7 @@ trainer:
       save_top_k: [1, 1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
     training_stages:
-      milestones: [300, 520] # 250, 450  Make sure milestones match val_every_n_epoch!!
+      milestones: [250, 450] # 250, 450  Make sure milestones match val_every_n_epoch!!
       pretrained_backbone_path:  #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
       disable_dropout_at_finetuning: True
@@ -40,6 +40,7 @@ model:
   dropout_rate: 0.1
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
+  spatial_encoder_output: False
   network:
     name: confidnet_and_enc      # confidnet_small_conv_and_enc / small_conv
     backbone: resnet50

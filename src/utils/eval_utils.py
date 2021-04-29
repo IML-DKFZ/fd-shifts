@@ -32,7 +32,7 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
         if len(confid_dict["confids"]) > 0:
             confids_cpu = torch.stack(confid_dict["confids"], dim=0).cpu().data.numpy()
             correct_cpu = torch.stack(confid_dict["correct"], dim=0).cpu().data.numpy()
-            if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv"]):
+            if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv", "bpd"]):
                 min_confid = np.min(confids_cpu)
                 max_confid = np.max(confids_cpu)
                 confids_cpu = 1 - ((confids_cpu - min_confid) / (max_confid - min_confid))
@@ -187,6 +187,7 @@ class ConfidEvaluator():
         self.precision_list, self.recall_list, _ = skm.precision_recall_curve(self.correct, - self.confids, pos_label=0)
 
     def get_calibration_stats(self):
+        print("CHECK CALIB", self.confids.min(), self.confids.max())
         self.bin_accs, self.bin_confids = calibration_curve(self.correct, self.confids, n_bins=self.bins)
 
 
@@ -272,7 +273,6 @@ class ConfidPlotter():
 
         confids = self.confids_list[self.method_names_list.index(method_name)]
         correct = self.correct_list[self.method_names_list.index(method_name)]
-
         (n_correct, binsc, patchesc) = self.ax.hist(confids[np.argwhere(correct == 1)],
                       color="g",
                       bins=self.bins,

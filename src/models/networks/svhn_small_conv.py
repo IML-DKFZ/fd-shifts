@@ -1,6 +1,7 @@
 
 from torch import nn
 from torch.nn import functional as F
+from copy import deepcopy
 
 class Conv2dSame(nn.Module):
     def __init__(
@@ -38,8 +39,9 @@ class Encoder(nn.Module):
 
         self.img_size = cf.data.img_size
         self.fc_dim = cf.model.fc_dim
-        self.dropout_rate = 0.3
+        self.dropout_rate = cf.model.dropout_rate
         self.eval_mcdropout = False
+        self.spatial_encoder_output = cf.model.spatial_encoder_output
 
         self.conv1 = Conv2dSame(self.img_size[-1], 32, 3)
         self.conv1_bn = nn.BatchNorm2d(32)
@@ -96,6 +98,9 @@ class Encoder(nn.Module):
         else:
             x = self.dropout3(x)
 
+        if self.spatial_encoder_output:
+            spatial_output = x
+
         x = x.view(x.size(0), -1)
         x = F.relu(self.fc1(x))
         if self.eval_mcdropout:
@@ -103,7 +108,10 @@ class Encoder(nn.Module):
         else:
             x = self.dropout4(x)
 
-        return x
+        if self.spatial_encoder_output:
+            return x, spatial_output
+        else:
+            return x
 
 
 class Classifier(nn.Module):

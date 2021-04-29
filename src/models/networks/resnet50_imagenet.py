@@ -315,6 +315,9 @@ class ResNetEncoder(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         return self._forward_impl(x)
 
+    def load_pretrained_imagenet_params(self, pretrained_path):
+        print("loading pretrained imagenet weights into encoder from ", pretrained_path)
+        self.load_state_dict(torch.load(pretrained_path), strict=False)
 
 def _resnet(
     block: Type[Union[BasicBlock, Bottleneck]],
@@ -322,14 +325,9 @@ def _resnet(
     num_classes: int,
     progress: bool,
     dropout_rate: float,
-    pretrained_path: Optional[Callable] = None,
     **kwargs: Any
 ) -> ResNet:
     model = ResNet(block, layers, num_classes, dropout_rate=dropout_rate, **kwargs)
-    if pretrained_path is not None:
-        print("loading pretrained imagenet weights from ", pretrained_path)
-        model.encoder.load_state_dict(torch.load(pretrained_path), strict=False)
-        model.classifier.load_state_dict(torch.load(pretrained_path), strict=False)
     return model
 
 
@@ -345,7 +343,6 @@ def resnet50(cf, pretrained: bool = False, progress: bool = True, **kwargs: Any)
     # todo add cf pretrained here from cf
     num_classes = cf.data.num_classes
     dropout_rate = cf.model.dropout_rate
-    pretrained_path = cf.model.network.imagenet_weights_path
-    return _resnet(Bottleneck, [3, 4, 6, 3], num_classes, progress, dropout_rate, pretrained_path,
-                   **kwargs)
+    return _resnet(Bottleneck, [3, 4, 6, 3], num_classes, progress, dropout_rate, **kwargs)
+
 
