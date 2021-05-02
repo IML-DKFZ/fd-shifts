@@ -11,15 +11,21 @@ def get_callbacks(cf):
     out_cb_list = []
     for k, v in cf.trainer.callbacks.items():
         if k == "model_checkpoint":
-            for n_mc in range(v.n):
+            if hasattr(v, "n"):
+                for n_mc in range(v.n):
+                    out_cb_list.append(ModelCheckpoint(dirpath=cf.exp.version_dir,
+                                              filename=v.filename[n_mc],
+                                              monitor=v.selection_metric[n_mc],
+                                              mode=v.mode[n_mc],
+                                              save_top_k=v.save_top_k[n_mc],
+                                              save_last=True,
+                                              verbose = False
+                                             ))
+            else:
                 out_cb_list.append(ModelCheckpoint(dirpath=cf.exp.version_dir,
-                                          filename=v.filename[n_mc],
-                                          monitor=v.selection_metric[n_mc],
-                                          mode=v.mode[n_mc],
-                                          save_top_k=v.save_top_k[n_mc],
-                                          save_last=True,
-                                          verbose = False
-                                         ))
+                                                   save_last=True,
+                                                   ))
+
         if k == "confid_monitor":
             out_cb_list.append(confid_monitor.ConfidMonitor(cf)) # todo explciit arguments!!!
 

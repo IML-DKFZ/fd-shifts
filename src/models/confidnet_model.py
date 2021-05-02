@@ -32,6 +32,7 @@ class net(pl.LightningModule):
 
         self.loss_ce = nn.CrossEntropyLoss()
         self.loss_mse = nn.MSELoss(reduction="sum")
+        self.ext_confid_name = cf.eval.get("ext_confid_name")
 
         self.network = get_network(cf.model.network.name)(cf) # todo make explciit arguemnts in factory!!
         self.backbone = get_network(cf.model.network.backbone)(cf)  # todo make explciit arguemnts in factory!!

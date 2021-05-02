@@ -21,9 +21,9 @@ class ZhangAndEncoder(nn.Module):
 
     def forward(self, x):
 
-        x, spatial_output = self.encoder(x)
+        x = self.encoder(x)
         pred_class = self.classifier(x)
-        pred_confid = self.zhang_net(spatial_output)
+        pred_confid = self.zhang_net(x)
 
         return pred_class, pred_confid
 
@@ -33,7 +33,7 @@ class ZhangNet(nn.Module):
         super().__init__()
 
         # seems like the defaults of the function itself are settings from I-ResNet while the argparse defaults are the settings from ResidualFlows.
-        self.input_size = (cf.trainer.batch_size, 128, 4, 4) # b, c, h, w
+        self.input_size = (cf.trainer.batch_size, 512, 1, 1) # b, c, h, w
 
         self.residual_flow = ResidualFlow(
         input_size = self.input_size,
@@ -75,6 +75,7 @@ class ZhangNet(nn.Module):
         self.nvals = 1 # norm factor of the padded values. todo weird: also scales loss if no padding is used! Set to 1?
         self.beta = 1
         self.squeeze_first = False
+        self.epsilon_noise =cf.model.epsilon_noise
 
     def forward(self, x):
 
@@ -83,23 +84,27 @@ class ZhangNet(nn.Module):
         if self.squeeze_first:
             raise NotImplementedError
 
-        batch_size, channels, height, width = x.size()
-        x = x.view(x.size(0), -1)
-        x -= x.min(1, keepdim=True)[0]
-        x /= x.max(1, keepdim=True)[0]
-        x = x.view(batch_size, channels, height, width)
+        # x = x.view(x.size(0), -1)
+        # x -= x.min(1, keepdim=True)[0]
+        # x /= x.max(1, keepdim=True)[0]
+        # x = x.view(batch_size, channels, height, width)
+        x = self.clamp_to_unit_sphere(x)
+        noise = x.new().resize_as_(x).normal_()
+        x += noise * self.epsilon_noise
+        # print("CLAMPED X", x.min(), x.max(), x.mean(), x.std())
+        x = x.unsqueeze(2).unsqueeze(3)
         # x = torch.linalg.norm(x) #self.clamp_to_unit_sphere(x, components=x.size()[-1]**2)  # this is typically done in add_noise operation as part of data augmentation.
         # print("CHECK X 1", x.shape, x.min(), x.max())
         z, delta_logp = self.residual_flow(x, 0) # logpx=0 means we want to compute logpx later,
         # so we need to track the logdetgrad term throguhout (output: delta_logp) the flow and start by feeding in 0.
         # this is always done except for their hybrid classification case (irrelevant here).
 
+        # print("CHECK NETWORK OUTPUT", "z", z.shape, z.min().item(), z.max().item(), z.mean().item(), z.std().item())
 
         logpz = self.standard_normal_logprob(z).view(z.size(0), -1).sum(1, keepdim=True)
         norm =  np.log(self.nvals) * (x.size()[-1] * x.size()[-1] * (x.size()[1] + self.padding)) - logpu # todo weird, ijust get an extra norm here for free via nvals?!
         logpx = logpz - self.beta * delta_logp - norm
         bits_per_dim = - logpx / (x.size()[-1] * x.size()[-1] * x.size()[1]) / np.log(2)
-        # print("CHECK NETWORK OUTPUT", "z", z.shape, z.min().item(), z.max().item(), z.mean().item(), z.std().item())
         # print("CHECK NETWORK OUTPUT", "norm", norm.min().item(), norm.max().item())
         # print("CHECK NETWORK OUTPUT", "logpz", logpz.shape, logpz.min().item(), logpz.max().item(), logpz.mean().item())
         # print("CHECK NETWORK OUTPUT", "delta_logp", delta_logp.shape, delta_logp.min().item(), delta_logp.max().item())
@@ -136,7 +141,7 @@ class ZhangNet(nn.Module):
         [0, 1] -> [0, nvals] -> add noise -> [0, 1]
         """
 
-        noise = x.new().resize_as_(x).uniform_()
+        noise = x.new().resize_as_(x).normal_()
         x = x * (nvals - 1) + noise
         x = x / nvals
         return x

@@ -65,7 +65,7 @@ class ConfidMonitor(Callback):
                 self.running_perf_stats["train"]["loss"].append(loss)
             if "nll" in stat_keys:
                 y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
-                self.running_perf_stats["train"]["nll"].append(torch.sum(-torch.log(softmax)*y_one_hot, dim=1).mean())
+                self.running_perf_stats["train"]["nll"].append(torch.sum(-torch.log(softmax + 1e-7)*y_one_hot, dim=1).mean())
             if "accuracy" in stat_keys:
                 tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
                 self.running_perf_stats["train"]["accuracy"].append(tmp_correct.sum() / tmp_correct.numel())
@@ -84,23 +84,16 @@ class ConfidMonitor(Callback):
                 self.running_confid_stats["train"]["det_mcp"]["confids"].extend(tmp_confids)
                 self.running_confid_stats["train"]["det_mcp"]["correct"].extend(tmp_correct)
             if "det_pe" in stat_keys:
-                tmp_confids = torch.sum(softmax * (- torch.log(softmax)), dim=1)
+                tmp_confids = torch.sum(softmax * (- torch.log(softmax + 1e-7)), dim=1)
                 self.running_confid_stats["train"]["det_pe"]["confids"].extend(tmp_confids)
                 self.running_confid_stats["train"]["det_pe"]["correct"].extend(tmp_correct)
 
-            if "tcp" in stat_keys:
+            if "ext" in stat_keys:
                 tmp_confids = outputs[0][0]["extra"]["confid"]
                 if tmp_confids is not None:
-                    self.running_confid_stats["train"]["tcp"]["confids"].extend(tmp_confids)
-                    self.running_confid_stats["train"]["tcp"]["correct"].extend(tmp_correct)
+                    self.running_confid_stats["train"]["ext"]["confids"].extend(tmp_confids)
+                    self.running_confid_stats["train"]["ext"]["correct"].extend(tmp_correct)
 
-            if "bpd" in stat_keys:
-                tmp_confids = outputs[0][0]["extra"]["confid"]
-
-                if tmp_confids is not None:
-                    print("CHECK CONFIDS", tmp_confids.min(), tmp_confids.max())
-                    self.running_confid_stats["train"]["bpd"]["confids"].extend(tmp_confids)
-                    self.running_confid_stats["train"]["bpd"]["correct"].extend(tmp_correct)
 
     def on_train_epoch_end(self, trainer, pl_module, outputs):
 
@@ -112,9 +105,10 @@ class ConfidMonitor(Callback):
                                                                      self.running_perf_stats["train"],
                                                                      self.query_confid_metrics["train"],
                                                                      self.query_monitor_plots,
-                                                                     do_plot = do_plot
+                                                                     do_plot = do_plot,
+                                                                     ext_confid_name=pl_module.ext_confid_name
                                                                      )
-
+            print("CHECK TRAIN METRICS", monitor_metrics)
             tensorboard = pl_module.logger[0].experiment
             pl_module.log("step", pl_module.current_epoch)
             for k, v in monitor_metrics.items():
@@ -149,7 +143,7 @@ class ConfidMonitor(Callback):
                 self.running_perf_stats["val"]["loss"].append(loss)
             if "nll" in stat_keys:
                 y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
-                self.running_perf_stats["val"]["nll"].append(torch.sum(-torch.log(softmax) * y_one_hot, dim=1).mean())
+                self.running_perf_stats["val"]["nll"].append(torch.sum(-torch.log(softmax + 1e-7) * y_one_hot, dim=1).mean())
             if "accuracy" in stat_keys:
                 tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
                 # print(tmp_correct.sum())
@@ -170,21 +164,17 @@ class ConfidMonitor(Callback):
                 self.running_confid_stats["val"]["det_mcp"]["confids"].extend(tmp_confids)
                 self.running_confid_stats["val"]["det_mcp"]["correct"].extend(tmp_correct)
             if "det_pe" in stat_keys:
-                tmp_confids = torch.sum(softmax * (- torch.log(softmax)), dim=1)
+                tmp_confids = torch.sum(softmax * (- torch.log(softmax + 1e-7)), dim=1)
                 self.running_confid_stats["val"]["det_pe"]["confids"].extend(tmp_confids)
                 self.running_confid_stats["val"]["det_pe"]["correct"].extend(tmp_correct)
 
-            if "tcp" in stat_keys:
+            if "ext" in stat_keys:
                 tmp_confids = outputs["confid"]
                 if tmp_confids is not None:
-                    self.running_confid_stats["val"]["tcp"]["confids"].extend(tmp_confids)
-                    self.running_confid_stats["val"]["tcp"]["correct"].extend(tmp_correct)
+                    self.running_confid_stats["val"]["ext"]["confids"].extend(tmp_confids)
+                    self.running_confid_stats["val"]["ext"]["correct"].extend(tmp_correct)
 
-            if "bpd" in stat_keys:
-                tmp_confids = outputs["confid"]
-                if tmp_confids is not None:
-                    self.running_confid_stats["val"]["bpd"]["confids"].extend(tmp_confids)
-                    self.running_confid_stats["val"]["bpd"]["correct"].extend(tmp_correct)
+
 
             if softmax_dist is not None:
 
@@ -196,11 +186,11 @@ class ConfidMonitor(Callback):
                     self.running_confid_stats["val"]["mcd_mcp"]["confids"].extend(tmp_confids)
                     self.running_confid_stats["val"]["mcd_mcp"]["correct"].extend(tmp_mcd_correct)
                 if "mcd_pe" in stat_keys:
-                    pe_confids = torch.sum(mean_softmax * (- torch.log(mean_softmax)), dim=1)
+                    pe_confids = torch.sum(mean_softmax * (- torch.log(mean_softmax + 1e-7)), dim=1)
                     self.running_confid_stats["val"]["mcd_pe"]["confids"].extend(pe_confids)
                     self.running_confid_stats["val"]["mcd_pe"]["correct"].extend(tmp_mcd_correct)
                 if "mcd_ee" in stat_keys:
-                    ee_confids = torch.sum(softmax_dist * (- torch.log(softmax_dist)), dim=1).mean(1)
+                    ee_confids = torch.sum(softmax_dist * (- torch.log(softmax_dist + 1e-7)), dim=1).mean(1)
                     self.running_confid_stats["val"]["mcd_ee"]["confids"].extend(ee_confids)
                     self.running_confid_stats["val"]["mcd_ee"]["correct"].extend(tmp_mcd_correct)
                 if "mcd_mi" in stat_keys:
@@ -215,7 +205,7 @@ class ConfidMonitor(Callback):
         if pl_module.current_epoch == self.num_epochs - 1:
             self.running_test_softmax.extend(softmax_dist if softmax_dist is not None else softmax)
             self.running_test_labels.extend(y)
-            if "tcp" in self.running_confid_stats["val"].keys() or "bpd" in self.running_confid_stats["val"].keys():
+            if "ext" in self.running_confid_stats["val"].keys():
                 self.running_test_external_confids.extend(outputs["confid"])
 
 
@@ -229,7 +219,8 @@ class ConfidMonitor(Callback):
                                                                      self.running_perf_stats["val"],
                                                                      self.query_confid_metrics["val"],
                                                                      self.query_monitor_plots,
-                                                                     do_plot=do_plot
+                                                                     do_plot=do_plot,
+                                                                     ext_confid_name=pl_module.ext_confid_name
                                                                      )
             tensorboard = pl_module.logger[0].experiment
             pl_module.log("step", pl_module.current_epoch)
@@ -241,12 +232,13 @@ class ConfidMonitor(Callback):
                 for k, v in monitor_plots.items():
                     tensorboard.add_figure("val/{}".format(k), v, pl_module.current_epoch)
 
-
-        for metric, mode in zip(pl_module.selection_metrics, pl_module.selection_modes):
-            if monitor_metrics is None or metric.split("/")[-1] not in monitor_metrics.keys():
-                dummy = 0 if mode == "max" else 1
-                print("selection metric {} not computed, replacing with {}.".format(metric, dummy))
-                pl_module.log("{}".format(metric), dummy)
+        print("CHECK VAL METRICS", monitor_metrics)
+        if hasattr(pl_module, "selection_metrics"):
+            for metric, mode in zip(pl_module.selection_metrics, pl_module.selection_modes):
+                if monitor_metrics is None or metric.split("/")[-1] not in monitor_metrics.keys():
+                    dummy = 0 if mode == "max" else 1
+                    print("selection metric {} not computed, replacing with {}.".format(metric, dummy))
+                    pl_module.log("{}".format(metric), dummy)
 
         self.running_confid_stats["val"] = {k: {"confids": [], "correct": []} for k in
                                             self.query_confids["val"]}
@@ -265,7 +257,7 @@ class ConfidMonitor(Callback):
             np.save(self.raw_output_path_fit, raw_output.cpu().data.numpy())
             print("saved raw validation outputs to {}".format(self.raw_output_path_fit))
 
-            if "tcp" in self.query_confids["test"] or "bpd" in self.query_confids["test"]:
+            if "ext" in self.query_confids["test"]:
                 stacked_external_confids = torch.stack(self.running_test_external_confids, dim=0)
                 np.save(self.external_confids_output_path_fit, stacked_external_confids.cpu().data.numpy())
                 print("saved external confids validation outputs to {}".format(self.external_confids_output_path_fit))
@@ -281,12 +273,11 @@ class ConfidMonitor(Callback):
         outputs = pl_module.test_results
         softmax = outputs["softmax"]
         softmax_dist = outputs.get("softmax_dist")
-        out_softmax = softmax_dist.to(dtype=torch.float16).cpu() if softmax_dist.to(dtype=torch.float16).cpu() is not None else softmax
+        out_softmax = softmax_dist.to(dtype=torch.float16).cpu() if softmax_dist is not None else softmax.to(dtype=torch.float32).cpu()
         self.running_test_softmax.extend(out_softmax)
         self.running_test_labels.extend(outputs["labels"].cpu())
-        if "tcp" in self.query_confids["test"] or "bpd" in self.query_confids["test"]:
-            self.running_test_external_confids.extend(outputs["confid"].to(dtype=torch.float16).cpu())
-
+        if "ext" in self.query_confids["test"]:
+            self.running_test_external_confids.extend(outputs["confid"].to(dtype=torch.float32).cpu())
         self.running_test_dataset_idx.extend(torch.ones_like(outputs["labels"].cpu()) * dataloader_idx)
 
 
@@ -295,7 +286,6 @@ class ConfidMonitor(Callback):
         stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
         stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
         stacked_dataset_idx = torch.stack(self.running_test_dataset_idx, dim=0).unsqueeze(1)
-        print("CHECK STACKED IDX", stacked_dataset_idx.size())
         raw_output = torch.cat([stacked_softmax.reshape(stacked_softmax.size()[0], -1),
                                 stacked_labels, stacked_dataset_idx],
                                dim=1)
@@ -303,10 +293,9 @@ class ConfidMonitor(Callback):
         np.save(self.raw_output_path_test, raw_output.cpu().data.numpy())
         print("saved raw test outputs to {}".format(self.raw_output_path_test))
 
-        if "tcp" in self.query_confids["test"] or "bpd" in self.query_confids["test"]:
+        if "ext" in self.query_confids["test"]:
             stacked_external_confids = torch.stack(self.running_test_external_confids, dim=0)
             np.save(self.external_confids_output_path_test, stacked_external_confids.cpu().data.numpy())
-            print("saved external confids test outputs to {}".format(self.external_confids_output_path_test))
 
 
 

@@ -12,5 +12,6 @@
     val:
       normalize: [ [ 0.5, 0.5, 0.5 ],[ 0.5, 0.5, 0.5 ] ]
     test:
-      random_crop: [32, 32] # OoD for Cifar
+#      random_crop: [32, 32] # OoD for Cifar
+      resize: [32, 32]
       normalize: [ [ 0.5, 0.5, 0.5 ],[ 0.5, 0.5, 0.5 ] ]

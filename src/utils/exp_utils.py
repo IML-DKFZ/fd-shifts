@@ -3,9 +3,11 @@ import torch
 import random
 import numpy as np
 import sys
+import pytorch_lightning as pl
 
 def set_seed(seed):
     print("SETTING GLOBAL SEED")
+    pl.seed_everything(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
@@ -33,6 +35,8 @@ def get_most_recent_version(exp_dir):
     return max_ver
 
 def get_ckpt_path_from_previous_version(exp_dir,version, selection_criterion):
+    if selection_criterion == "latest":
+        selection_criterion = "last"
     resume_ckpt = os.path.join(exp_dir, "version_{}".format(version), "{}.ckpt".format(selection_criterion))
     if not os.path.isfile(resume_ckpt):
         RuntimeError("requested resume ckpt does not exist.")

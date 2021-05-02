@@ -1,15 +1,18 @@
 # @package _global_
 
 trainer:
-  num_epochs: 320 # has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs: 40 # has to be >1 because of incompatibility of lighting eval with psuedo test
   val_every_n_epoch: 1
   learning_rate:
     classifier: 1e-2
-    flow: 1e-4
+    flow: 0.0005
   lr_scheduler:
+    max_epochs: 40
   momentum: 0.9
-  weight_decay: 0
-  batch_size: 128
+  weight_decay:
+    classifier: 1e-4
+    flow: 1e-3
+  batch_size: 512
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
@@ -21,16 +24,14 @@ trainer:
       filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
       save_top_k: [1, 1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
+    learning_rate_monitor:
 
 
 model:
   name: zhang_model #det_mcd_model
   fc_dim: 512
-  confidnet_fc_dim: 400
-  monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
-  test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
-  spatial_encoder_output: True
-  dropout_rate: 0
+  epsilon_noise: 1e-3
+  dropout_rate: 0.3
   network:
     name: zhang_and_enc      # confidnet_small_conv_and_enc / small_conv
     backbone: svhn_small_conv
@@ -42,7 +43,7 @@ test:
   cf_path: ${exp.dir}/hydra/config.yaml
   raw_output_path: ${test.dir}/raw_output.npy
   external_confids_output_path: ${test.dir}/external_confids.npy
-  selection_criterion: best_failap_err # model selection criterion or "latest"
+  selection_criterion: best_valacc # model selection criterion or "latest"
   selection_mode: max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
@@ -72,3 +73,7 @@ eval:
   tb_hparams: ['fold']
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
+    iid_study: svhn
+    new_class_study:
+    - cifar10
+    - cifar100

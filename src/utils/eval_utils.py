@@ -16,7 +16,7 @@ def get_tb_hparams(cf):
     return {k:v for k,v in hparams_collection.items() if k in cf.eval.tb_hparams}
 
 
-def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics, query_monitor_plots, do_plot=True):
+def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics, query_monitor_plots, do_plot=True, ext_confid_name=None):
 
     out_metrics = {}
     out_plots = {}
@@ -30,9 +30,14 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
 
     for confid_key, confid_dict in running_confid_stats.items():
         if len(confid_dict["confids"]) > 0:
+            print("CONFID KEY", confid_key)
             confids_cpu = torch.stack(confid_dict["confids"], dim=0).cpu().data.numpy()
             correct_cpu = torch.stack(confid_dict["correct"], dim=0).cpu().data.numpy()
-            if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv", "bpd"]):
+
+            if confid_key == "bpd":
+                out_metrics["bpd_mean"] = np.mean(confids_cpu)
+
+            if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv"]) or (confid_key == "ext" and ext_confid_name=="bpd"):
                 min_confid = np.min(confids_cpu)
                 max_confid = np.max(confids_cpu)
                 confids_cpu = 1 - ((confids_cpu - min_confid) / (max_confid - min_confid))
@@ -46,6 +51,7 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
 
             for metric_key, metric in confid_metrics.items():
                 out_metrics[confid_key + "_" + metric_key] = metric
+
 
             cpu_confid_stats[confid_key] = {}
             cpu_confid_stats[confid_key]["metrics"] = confid_metrics
@@ -178,8 +184,10 @@ class ConfidEvaluator():
         return plot_stats_dict
 
     def get_roc_curve_stats(self):
-        self.fpr_list, self.tpr_list, _ = skm.roc_curve(self.correct, self.confids)
-
+        try:
+            self.fpr_list, self.tpr_list, _ = skm.roc_curve(self.correct, self.confids)
+        except:
+            print("FAIL CHEKC", np.min(self.correct), np.max(self.correct), np.min(self.confids), np.max(self.confids))
     def get_rc_curve_stats(self):
         self.rc_curve, self.aurc, self.eaurc = RC_curve((1 - self.correct), self.confids)
 
@@ -187,7 +195,6 @@ class ConfidEvaluator():
         self.precision_list, self.recall_list, _ = skm.precision_recall_curve(self.correct, - self.confids, pos_label=0)
 
     def get_calibration_stats(self):
-        print("CHECK CALIB", self.confids.min(), self.confids.max())
         self.bin_accs, self.bin_confids = calibration_curve(self.correct, self.confids, n_bins=self.bins)
 
 
@@ -270,22 +277,22 @@ class ConfidPlotter():
 
 
     def plot_hist_per_confid(self, method_name):
-
+        min_plot_x = 0
         confids = self.confids_list[self.method_names_list.index(method_name)]
         correct = self.correct_list[self.method_names_list.index(method_name)]
         (n_correct, binsc, patchesc) = self.ax.hist(confids[np.argwhere(correct == 1)],
                       color="g",
                       bins=self.bins,
-                      range=(0,1),
-                      width=1 / self.bins,
+                      range=(min_plot_x, 1),
+                      width=0.9 * (1- min_plot_x) / (self.bins),
                       alpha=0.3,
                       label="correct")
 
         (n_incorrect, bins, patches) = self.ax.hist(confids[np.argwhere(correct == 0)],
                       color="r",
                       bins=self.bins,
-                      range=(0, 1),
-                      width=1 / self.bins,
+                      range=(min_plot_x, 1),
+                      width=0.9 * (1- min_plot_x) / (self.bins),
                       alpha=0.3,
                       label="incorrect")
 
@@ -294,7 +301,7 @@ class ConfidPlotter():
         self.ax.vlines(np.median(confids[np.argwhere(correct == 0)]), ymin=0, ymax=max_data, color="r", linestyles="--", label="incorrect median")
         self.ax.vlines(np.mean(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_data, color="g", linestyles="-", label="correct mean")
         self.ax.vlines(np.median(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_data, color="g", linestyles="--", label="correct median")
-        self.ax.set_xlim(-0.1, 1.1)
+        self.ax.set_xlim(min_plot_x-0.1, 1.1)
         self.ax.set_ylim(0.1, max_data)
         self.ax.set_yscale('log')
         self.ax.set_xlabel("Confid")

@@ -24,6 +24,8 @@ def get_dataset(name, root, train, download, transform, kwargs):
     """
     dataset_factory = {
         "svhn": datasets.SVHN,
+        "tinyimagenet": datasets.ImageFolder,
+        "tinyimagenet_resize": datasets.ImageFolder,
         "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
@@ -38,6 +40,11 @@ def get_dataset(name, root, train, download, transform, kwargs):
     pass_kwargs = {"root": root, "train": train, "download": download, "transform": transform}
     if name == "svhn":
         pass_kwargs = {"root": root, "split": "train" if train else "test", "download": download, "transform": transform}
+    if name == "tinyimagenet":
+        pass_kwargs = {"root": os.path.join(root, "test"), "transform": transform}
+    if name == "tinyimagenet_resize":
+        pass_kwargs = {"root": root, "transform": transform}
+
 
     if name == "imagenet":
         pass_kwargs["kwargs"] = kwargs

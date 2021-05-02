@@ -14,15 +14,21 @@ class net(pl.LightningModule):
 
         self.test_mcd_samples = cf.model.test_mcd_samples
         self.monitor_mcd_samples = cf.model.monitor_mcd_samples
-        self.learning_rate = cf.trainer.learning_rate
-        self.momentum = cf.trainer.momentum
-        self.weight_decay = cf.trainer.weight_decay
-        self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
-        self.selection_metrics = cf.trainer.callbacks.model_checkpoint.selection_metric
-        self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
 
         self.loss_criterion = nn.CrossEntropyLoss()
+        self.ext_confid_name = cf.eval.get("ext_confid_name")
+
+
+        self.optimizer_cfgs = cf.trainer.optimizer
+        self.lr_scheduler_cfgs = cf.trainer.lr_scheduler
+
+        if not cf.trainer.no_val_mode:
+            self.selection_metrics = cf.trainer.callbacks.model_checkpoint.selection_metric
+            self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
+
+        self.query_confids = cf.eval.confidence_measures
+        self.num_classes = cf.data.num_classes
 
         self.model = get_network(cf.model.network.name)(cf) # todo make explciit arguemnts in factory!!
 
@@ -70,7 +76,7 @@ class net(pl.LightningModule):
         return {"loss":loss, "softmax": softmax, "labels": y, "softmax_dist": softmax_dist}
 
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch, batch_idx, *args):
         x, y = batch
         logits = self.model(x)
         softmax = F.softmax(logits, dim=1)
@@ -85,10 +91,25 @@ class net(pl.LightningModule):
 
 
     def configure_optimizers(self):
-        return torch.optim.SGD(self.parameters(),
-                               lr=self.learning_rate,
-                               momentum=self.momentum,
-                               weight_decay=self.weight_decay)
+        optimizers = [torch.optim.SGD(self.parameters(),
+                               lr=self.optimizer_cfgs.learning_rate,
+                               momentum=self.optimizer_cfgs.momentum,
+                               nesterov = self.optimizer_cfgs.nesterov,
+                               weight_decay=self.optimizer_cfgs.weight_decay)]
+
+        schedulers = []
+        if self.lr_scheduler_cfgs.name == "MultiStep":
+            schedulers = [torch.optim.lr_scheduler.MultiStepLR(optimizers[0],
+                                                               milestones=self.lr_scheduler_cfgs.milestones,
+                                                               gamma=0.2,
+                                                               verbose=True)]
+        elif self.lr_scheduler_cfgs.name == "CosineAnnealing":
+            schedulers = [torch.optim.lr_scheduler.CosineAnnealingLR(optimizers[0],
+                                                                     T_max=self.lr_scheduler_cfgs.max_epochs,
+                                                                     verbose=True)]
+
+        return optimizers, schedulers
+
 
 
     def on_load_checkpoint(self, checkpoint):

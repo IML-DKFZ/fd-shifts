@@ -94,14 +94,15 @@ class ResidualFlow(nn.Module):
         self.transforms = self._build_net(input_size)
 
         self.dims = [o[1:] for o in self.calc_output_size(input_size)]
-
+        print("OUTPUT SIZE", self.calc_output_size((input_size)))
+        print("DIMS", self.dims)
         if self.classification:
             self.build_multiscale_classifier(input_size)
 
     def _build_net(self, input_size):
         _, c, h, w = input_size
         transforms = []
-        _stacked_blocks = StackediResBlocks if self.block_type == 'resblock' else StackedCouplingBlocks
+        _stacked_blocks = StackediResBlocks #if self.block_type == 'resblock' else StackedCouplingBlocks
         for i in range(self.n_scale):
             transforms.append(
                 _stacked_blocks(
@@ -140,12 +141,13 @@ class ResidualFlow(nn.Module):
         return nn.ModuleList(transforms)
 
     def _calc_n_scale(self, input_size):
-        _, _, h, w = input_size
-        n_scale = 0
-        while h >= 4 and w >= 4:
-            n_scale += 1
-            h = h // 2
-            w = w // 2
+        # _, _, h, w = input_size
+        # n_scale = 0
+        # while h >= 4 and w >= 4:
+        #     n_scale += 1
+        #     h = h // 2
+        #     w = w // 2
+        n_scale = 1
         return n_scale
 
     def calc_output_size(self, input_size):

@@ -14,16 +14,21 @@ import os
 import torch
 import sys
 
+
+
 def train(cf, subsequent_testing=False):
     """
     perform the training routine for a given fold. saves plots and selected parameters to the experiment dir
     specified in the configs.
     """
     print("CHECK CUDNN VERSION", torch.backends.cudnn.version())
-    if cf.exp.global_seed:
+    train_deterministic_flag = False
+    if cf.exp.global_seed is not False:
+        # exp_utils.set_seed(cf.exp.global_seed)
         exp_utils.set_seed(cf.exp.global_seed)
         cf.trainer.benchmark = False
-        print("setting benchmark to False for deterministic training.")
+        train_deterministic_flag = True
+        print("setting seed {}, benchmark to False for deterministic training.".format(cf.exp.global_seed))
 
 
     resume_ckpt_path = None
@@ -32,7 +37,7 @@ def train(cf, subsequent_testing=False):
         cf.exp.version -= 1
         resume_ckpt_path = exp_utils.get_ckpt_path_from_previous_version(cf.exp.dir,
                                                                          cf.exp.version,
-                                                                         cf.trainer.callbacks.selection_metrics[0])
+                                                                         "last")
         print("resuming previous training:", resume_ckpt_path)
 
     datamodule = AbstractDataLoader(cf)
@@ -52,20 +57,21 @@ def train(cf, subsequent_testing=False):
                          callbacks=get_callbacks(cf),
                          resume_from_checkpoint = resume_ckpt_path,
                          benchmark=cf.trainer.benchmark,
-                         check_val_every_n_epoch = cf.trainer.val_every_n_epoch,
+                         check_val_every_n_epoch = 1,
                          fast_dev_run=cf.trainer.fast_dev_run,
                          num_sanity_val_steps=5,
+                         deterministic= train_deterministic_flag,
                          # limit_train_batches=0.1,
-                         # limit_val_batches=0.1,
+                         limit_val_batches=0 if cf.trainer.no_val_mode else 1.0,
                          # replace_sampler_ddp=False,
                          # accelerator="ddp"
                          )
 
     print("logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version))
     trainer.fit(model=model, datamodule=datamodule)
-    analysis.main(in_path=cf.exp.version_dir,
-                  out_path=cf.exp.version_dir,
-                  query_studies=cf.eval.query_studies)
+    # analysis.main(in_path=cf.exp.version_dir,
+    #               out_path=cf.exp.version_dir,
+    #               query_studies={"iid_study": cf.data.dataset})
 
     if subsequent_testing:
 
@@ -87,10 +93,6 @@ def train(cf, subsequent_testing=False):
 
 
 def test(cf):
-
-    # double check that this is not overwritten before it is loaded!
-    print("laoding test config from ", cf.test.cf_path)
-    cf = OmegaConf.load(cf.test.cf_path) #
 
     if "best" in cf.test.selection_criterion and cf.test.only_latest_version is False:
         ckpt_path = exp_utils.get_path_to_best_ckpt(cf.exp.dir,

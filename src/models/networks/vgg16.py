@@ -43,6 +43,8 @@ class Encoder(nn.Module):
         self.img_size = cf.data.img_size
         self.fc_dim = cf.model.fc_dim
         self.eval_mcdropout = False
+        self.dropout_flag = cf.model.dropout_flag
+        print("CHECK DROPOUT IN VGG", self.dropout_flag)
 
         self.conv1 = Conv2dSame(self.img_size[-1], 64, 3)
         self.conv1_bn = nn.BatchNorm2d(64)
@@ -99,7 +101,7 @@ class Encoder(nn.Module):
         out = self.conv1_bn(out)
         if self.eval_mcdropout:
             out = F.dropout(out, 0.3, training=True)
-        else:
+        elif self.dropout_flag:
             out = self.conv1_dropout(out)
         out = F.relu(self.conv2(out))
         out = self.conv2_bn(out)
@@ -109,7 +111,7 @@ class Encoder(nn.Module):
         out = self.conv3_bn(out)
         if self.eval_mcdropout:
             out = F.dropout(out, 0.4, training=True)
-        else:
+        elif self.dropout_flag:
             out = self.conv3_dropout(out)
         out = F.relu(self.conv4(out))
         out = self.conv4_bn(out)
@@ -119,13 +121,13 @@ class Encoder(nn.Module):
         out = self.conv5_bn(out)
         if self.eval_mcdropout:
             out = F.dropout(out, 0.4, training=True)
-        else:
+        elif self.dropout_flag:
             out = self.conv5_dropout(out)
         out = F.relu(self.conv6(out))
         out = self.conv6_bn(out)
         if self.eval_mcdropout:
             out = F.dropout(out, 0.4, training=True)
-        else:
+        elif self.dropout_flag:
             out = self.conv6_dropout(out)
         out = F.relu(self.conv7(out))
         out = self.conv7_bn(out)
@@ -135,13 +137,13 @@ class Encoder(nn.Module):
         out = self.conv8_bn(out)
         if self.eval_mcdropout:
             out = F.dropout(out, 0.4, training=True)
-        else:
+        elif self.dropout_flag:
             out = self.conv8_dropout(out)
         out = F.relu(self.conv9(out))
         out = self.conv9_bn(out)
         if self.eval_mcdropout:
             out = F.dropout(out, 0.4, training=True)
-        else:
+        elif self.dropout_flag:
             out = self.conv9_dropout(out)
         out = F.relu(self.conv10(out))
         out = self.conv10_bn(out)
@@ -151,13 +153,13 @@ class Encoder(nn.Module):
         out = self.conv11_bn(out)
         if self.eval_mcdropout:
             out = F.dropout(out, 0.4, training=True)
-        else:
+        elif self.dropout_flag:
             out = self.conv11_dropout(out)
         out = F.relu(self.conv12(out))
         out = self.conv12_bn(out)
         if self.eval_mcdropout:
             out = F.dropout(out, 0.4, training=True)
-        else:
+        elif self.dropout_flag:
             out = self.conv12_dropout(out)
         out = F.relu(self.conv13(out))
         out = self.conv13_bn(out)
@@ -165,13 +167,13 @@ class Encoder(nn.Module):
 
         if self.eval_mcdropout:
             out = F.dropout(out, 0.5, training=True)
-        else:
+        elif self.dropout_flag:
             out = self.end_dropout(out)
         out = out.view(out.size(0), -1)
-        out = F.relu(self.fc1(out))
+        out = F.relu(self.fc1(out)) # todo average pool in devries?
         if self.eval_mcdropout:
             out = F.dropout(out, 0.5, training=True)
-        else:
+        elif self.dropout_flag:
             out = self.dropout_fc(out)
 
         return out

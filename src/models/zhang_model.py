@@ -13,8 +13,6 @@ class net(pl.LightningModule):
 
         self.save_hyperparameters()
 
-        self.test_mcd_samples = cf.model.test_mcd_samples
-        self.monitor_mcd_samples = cf.model.monitor_mcd_samples
         self.learning_rate = cf.trainer.learning_rate
         self.lr_scheduler = cf.trainer.lr_scheduler
         self.momentum = cf.trainer.momentum
@@ -27,6 +25,7 @@ class net(pl.LightningModule):
 
         self.loss_ce = nn.CrossEntropyLoss()
         self.loss_mse = nn.MSELoss(reduction="sum")
+        self.ext_confid_name = cf.eval.get("ext_confid_name")
 
         self.network = get_network(cf.model.network.name)(cf) # todo make explciit arguemnts in factory!!
 
@@ -41,23 +40,22 @@ class net(pl.LightningModule):
         # for ix, (k, v) in enumerate(self.network.zhang_net.named_parameters()):
         #     print("START", ix,  k, v.mean())
 
-    def training_step(self, batch, batch_idx):
-
+    def training_step(self, batch, batch_idx, optimizer_idx):
         x, y = batch
         # print("CHECK OPT IX", optimizer_idx)
         # for ix, (k, v) in enumerate(self.network.zhang_net.named_parameters()):
         #     if "weight" in k or "bias" in k:
         #         print("GRADS", k,  v.requires_grad)
-        # if optimizer_idx == 1: # classifier
-        #     logits = self.network.classifier(self.network.encoder(x)[0])
-        #     loss = self.loss_ce(logits, y)
-        #     softmax = F.softmax(logits, dim=1)
-        #     return {"loss": loss, "softmax": softmax, "labels": y, "confid": None}
-        # if optimizer_idx == 0:
-        logits, bpd = self.network(x)
-        loss = bpd.mean()
-        softmax = F.softmax(logits, dim=1)
-        return {"loss": loss, "softmax": softmax, "labels": y, "confid": bpd.squeeze(1)}
+        if optimizer_idx == 0: # classifier
+            logits = self.network.classifier(self.network.encoder(x))
+            loss = self.loss_ce(logits, y)
+            softmax = F.softmax(logits, dim=1)
+            return {"loss": loss, "softmax": softmax, "labels": y, "confid": None}
+        if optimizer_idx == 1:
+            logits, bpd = self.network(x)
+            loss = bpd.mean()
+            softmax = F.softmax(logits, dim=1)
+            return {"loss": loss, "softmax": softmax, "labels": y, "confid": bpd.squeeze(1)}
 
 
     # def on_after_backward(self):
@@ -96,7 +94,6 @@ class net(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
 
         x, y = batch
-        print("VAL FROM DATALOADER", x.min(), x.max())
         logits, bpd = self.network(x)
         loss = self.loss_ce(logits, y)
         softmax = F.softmax(logits, dim=1)
@@ -108,27 +105,34 @@ class net(pl.LightningModule):
         x, y = batch
         logits, bpd = self.network(x)
         softmax = F.softmax(logits, dim=1)
-        _, pred_confid = self.network(x)
-        pred_confid = torch.sigmoid(pred_confid)
 
-        self.test_results = {"softmax": softmax, "labels": y, "confid": bpd}
+        self.test_results = {"softmax": softmax, "labels": y, "confid": bpd.squeeze(1)}
         # print("CHECK TEST NORM", x.mean(), x.std(), args)
         # print("CHECK Monitor Accuracy", (softmax.argmax(1) == y).sum()/y.numel())
 
 
     def configure_optimizers(self):
-         params1 = list(self.network.encoder.parameters()) + list(self.network.classifier.parameters())
-         params2 = list(self.network.encoder.parameters()) + list(self.network.zhang_net.parameters())
-         optimizers = (
-                       {"optimizer": torch.optim.Adam(params2,
+         params_class = list(self.network.encoder.parameters()) + list(self.network.classifier.parameters())
+         params_flow = list(self.network.encoder.parameters()) + list(self.network.zhang_net.parameters())
+         optim_class = torch.optim.SGD(params_class,
+                                       lr=self.learning_rate.classifier,
+                                       momentum=self.momentum,
+                                       weight_decay=self.weight_decay.classifier)
+         optim_flow = torch.optim.Adam(params_flow,
                                        lr=self.learning_rate.flow,
-                                       weight_decay=self.weight_decay), "frequency": 1},
-                       # {"optimizer": torch.optim.SGD(params1,
-                       #                               lr=self.learning_rate.classifier,
-                       #                               momentum=self.momentum,
-                       #                               weight_decay=self.weight_decay), "frequency": 1},
+                                       weight_decay=self.weight_decay.flow)
+
+         optimizers = ( {"optimizer": optim_class,
+                        "lr_scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optim_class,
+                                                           T_max=self.lr_scheduler.max_epochs,
+                                                           verbose=True),
+                        "frequency": 1},
+                       {"optimizer": optim_flow,
+                        "lr_scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optim_flow,
+                                                                                T_max=self.lr_scheduler.max_epochs,
+                                                                                verbose=True),
+                        "frequency": 1}
                        )
-         schedulers = [] # todo now as key in dict!!
 
          # if self.lr_scheduler is not None:
          #     if self.lr_scheduler.name == "MultiStep":
