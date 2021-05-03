@@ -37,12 +37,10 @@ class net(pl.LightningModule):
 
 
     def mcd_eval_forward(self, x, n_samples, existing_softmax_list=None):
-        self.model.encoder.eval_mcdropout = True
+        # self.model.encoder.eval_mcdropout = True
         softmax_list = existing_softmax_list if existing_softmax_list is not None else []
         for _ in range(n_samples - len(softmax_list)):
             softmax_list.append(F.softmax(self.model(x), dim=1).unsqueeze(2))
-        self.model.encoder.eval_mcdropout = False
-
         return torch.cat(softmax_list, dim=2)
 
 
@@ -75,19 +73,22 @@ class net(pl.LightningModule):
 
         return {"loss":loss, "softmax": softmax, "labels": y, "softmax_dist": softmax_dist}
 
+    def on_test_start(self):
+        self.model.encoder.enable_dropout()
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
-        logits = self.model(x)
-        softmax = F.softmax(logits, dim=1)
 
-        softmax_dist = None
         if any("mcd" in cfd for cfd in self.query_confids["test"]):
-            softmax_dist = self.mcd_eval_forward(x=x,
+            softmax = self.mcd_eval_forward(x=x,
                                             n_samples=self.test_mcd_samples,
-                                            existing_softmax_list=[softmax.unsqueeze(2)])
+                                            )
+            # print(softmax[0,0].std())
+        else:
+            logits = self.model(x)
+            softmax = F.softmax(logits, dim=1)
 
-        self.test_results = {"softmax": softmax, "softmax_dist": softmax_dist, "labels": y}
+        self.test_results = {"softmax": softmax, "labels": y}
 
 
     def configure_optimizers(self):

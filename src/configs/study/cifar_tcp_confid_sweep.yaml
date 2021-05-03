@@ -2,50 +2,48 @@
 
 
 trainer:
-  num_epochs: 1 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
-  val_every_n_epoch: 1 #has to be 1 because of schedulers
-  val_mode: "devries"
+  num_epochs: 420 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
+  val_every_n_epoch: 1
+  val_mode: "devries" # None, "devries", "cv", "repro_confidnet"
+  learning_rate: 1e-1
+  learning_rate_confidnet: 1e-4 # only so high with annealing! if not: 1e-4
+  learning_rate_confidnet_finetune: 1e-7
+  lr_scheduler:
+    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
+    max_epochs: 200
+  momentum: 0.9
+  weight_decay: 0.0005
   batch_size: 128
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
-  lr_scheduler:
-    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
-    milestones: [60, 120, 160] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
-    max_epochs: ${trainer.num_epochs}
-  optimizer:
-    name: SGD
-    learning_rate: 1e-1
-    momentum: 0.9
-    nesterov: True
-    weight_decay: 0.0005
   callbacks:
-    model_checkpoint: # without specs saves last epoch
+    model_checkpoint:
+      n: 2
+      selection_metric: ["val/accuracy", "val/ext_failap_err"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
+      mode: ["max", "max"]
+      filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
+      save_top_k: [1, 1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
+    training_stages:
+      milestones: [200, 200] # 250, 450  Make sure milestones match val_every_n_epoch!!
+      pretrained_backbone_path:  #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
+      pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
+      disable_dropout_at_finetuning: True
+      confidnet_lr_scheduler: False
     learning_rate_monitor:
 
-#model:
-#  name: devries_model #det_mcd_model
-#  fc_dim: 512
-#  budget: 0.3
-#  dropout_flag: True
-#  network:
-#    name: devries_and_enc      # confidnet_small_conv_and_enc / small_conv
-#    backbone: vgg16
-#    imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 model:
-  name: det_mcd_model #det_mcd_model
+  name: confidnet_model #det_mcd_model
   fc_dim: 512
-  dropout_rate: 0.4 # 0 sets dropout to false
+  confidnet_fc_dim: 400
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
-  budget: 0.3
   network:
-    name: vgg16 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
-    backbone: None
+    name: confidnet_and_enc      # confidnet_small_conv_and_enc / small_conv
+    backbone: vgg16
     imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
-
 
 test:
   name: test_results
@@ -53,13 +51,12 @@ test:
   cf_path: ${exp.dir}/hydra/config.yaml
   raw_output_path: ${test.dir}/raw_output.npy
   external_confids_output_path: ${test.dir}/external_confids.npy
-  selection_criterion: "latest" #best_valacc # model selection criterion or "latest"
-#  selection_mode: "l#max # model selection criterion or "latest"
+  selection_criterion: best_failap_err # model selection criterion or "latest"
+  selection_mode: max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
   devries_repro_ood_split: True
   assim_ood_norm_flag: False
-
 
 eval:
   performance_metrics:
@@ -74,9 +71,9 @@ eval:
     train:
       [] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
-      [] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
+       ["det_mcp" , "det_pe", "ext"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:
-      ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
+      ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv", "ext"]
 
   monitor_plots: [ #"calibration",
                    #"overconfidence",
@@ -84,13 +81,13 @@ eval:
                     ]
 
   tb_hparams: ['fold']
-  ext_confid_name: "devries"
-  test_conf_scaling: False
   val_tuning: False
+  ext_confid_name: "tcp"
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
     iid_study: cifar10
     new_class_study:
       - tinyimagenet
       - tinyimagenet_resize
+
 

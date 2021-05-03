@@ -271,13 +271,12 @@ class ConfidMonitor(Callback):
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
         outputs = pl_module.test_results
-        softmax = outputs["softmax"]
-        softmax_dist = outputs.get("softmax_dist")
-        out_softmax = softmax_dist.to(dtype=torch.float16).cpu() if softmax_dist is not None else softmax.to(dtype=torch.float32).cpu()
-        self.running_test_softmax.extend(out_softmax)
+
+        self.running_test_softmax.extend(outputs["softmax"].to(dtype=torch.float16).cpu())
         self.running_test_labels.extend(outputs["labels"].cpu())
         if "ext" in self.query_confids["test"]:
             self.running_test_external_confids.extend(outputs["confid"].to(dtype=torch.float32).cpu())
+
         self.running_test_dataset_idx.extend(torch.ones_like(outputs["labels"].cpu()) * dataloader_idx)
 
 

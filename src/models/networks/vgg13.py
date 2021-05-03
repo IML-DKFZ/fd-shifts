@@ -7,10 +7,10 @@ from torch.autograd import Variable
 
 
 cfg = {
-    'VGG11': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
-    'VGG13': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
-    'VGG16': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
-    'VGG19': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
+    'vgg11': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    'vgg13': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    'vgg16': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
+    'vgg19': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
 }
 
 class VGG13(nn.Module):
@@ -28,8 +28,10 @@ class VGG13(nn.Module):
 class Encoder(nn.Module):
     def __init__(self, cf):
         super(Encoder, self).__init__()
-        self.features = self._make_layers(cfg['VGG13'])
-
+        name = cf.model.network.name if "vgg" in cf.model.network.name else cf.model.network.backbone
+        print("Init VGG type:{}".format(name))
+        self.dropout_rate = cf.model.dropout_rate
+        self.features = self._make_layers(cfg[name])
     def _make_layers(self, cfg):
         layers = []
         in_channels = 3
@@ -38,11 +40,26 @@ class Encoder(nn.Module):
                 layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
             else:
                 layers += [nn.Conv2d(in_channels, x, kernel_size=3, padding=1),
-                           nn.BatchNorm2d(x),
-                           nn.ReLU(inplace=True)]
+                           nn.BatchNorm2d(x)]
+                if self.dropout_rate > 0:
+                    layers += [nn.Dropout(self.dropout_rate)]
+                layers += [nn.ReLU(inplace=True)]
                 in_channels = x
         layers += [nn.AvgPool2d(kernel_size=1, stride=1)]
         return nn.Sequential(*layers)
+
+    def disable_dropout(self):
+
+        for layer in self.named_modules():
+            if isinstance(layer[1],torch.nn.modules.dropout.Dropout):
+                layer[1].eval()
+
+    def enable_dropout(self):
+
+        for layer in self.named_modules():
+            if isinstance(layer[1],torch.nn.modules.dropout.Dropout):
+                layer[1].train()
+
 
     def forward(self, x):
         x = self.features(x)

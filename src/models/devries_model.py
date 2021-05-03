@@ -32,99 +32,82 @@ class net(pl.LightningModule):
     def forward(self, x):
         return self.model(x)
 
+    def mcd_eval_forward(self, x, n_samples):
+        # self.model.encoder.eval_mcdropout = True
+        softmax_list = []
+        conf_list =  []
+        for _ in range(n_samples - len(softmax_list)):
+            logits, confidence = self.model(x)
+            softmax = F.softmax(logits, dim=1)
+            confidence = torch.sigmoid(confidence).squeeze(1)
+            softmax_list.append(softmax.unsqueeze(2))
+            conf_list.append(confidence.unsqueeze(1))
+        return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
+
 
     def training_step(self, batch, batch_idx):
 
         x, y = batch
-        logits, confidence = self.model(x)
-        confidence = torch.sigmoid(confidence)
-        pred_original = F.softmax(logits, dim=1)
-        labels_onehot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
 
-        # Make sure we don't have any numerical instability
-        eps = 1e-12
-        pred_original = torch.clamp(pred_original, 0. + eps, 1. - eps)
-        confidence = torch.clamp(confidence, 0. + eps, 1. - eps)
+        if self.ext_confid_name == "devries":
+            logits, confidence = self.model(x)
+            confidence = torch.sigmoid(confidence)
+            pred_original = F.softmax(logits, dim=1)
+            labels_onehot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
 
-        # Randomly set half of the confidences to 1 (i.e. no hints)
-        b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).cuda()
-        conf = confidence * b + (1 - b)
-        pred_new = pred_original * conf.expand_as(pred_original) + labels_onehot * (
-                    1 - conf.expand_as(labels_onehot))
-        pred_new = torch.log(pred_new)
+            # Make sure we don't have any numerical instability
+            eps = 1e-12
+            pred_original = torch.clamp(pred_original, 0. + eps, 1. - eps)
+            confidence = torch.clamp(confidence, 0. + eps, 1. - eps)
 
-        xentropy_loss = self.loss_criterion(pred_new, y)
-        confidence_loss = torch.mean(-torch.log(confidence))
+            # Randomly set half of the confidences to 1 (i.e. no hints)
+            b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).cuda()
+            conf = confidence * b + (1 - b)
+            pred_new = pred_original * conf.expand_as(pred_original) + labels_onehot * (
+                        1 - conf.expand_as(labels_onehot))
+            pred_new = torch.log(pred_new)
 
-        total_loss = xentropy_loss + (self.lmbda * confidence_loss)
-        # print(self.lmbda, confidence_loss.item())
-        if self.budget > confidence_loss:
-            self.lmbda = self.lmbda / 1.01
-        elif self.budget <= confidence_loss:
-            self.lmbda = self.lmbda / 0.99
+            xentropy_loss = self.loss_criterion(pred_new, y)
+            confidence_loss = torch.mean(-torch.log(confidence))
 
-        # total_loss = self.loss_criterion(pred_original, y)
+            loss = xentropy_loss + (self.lmbda * confidence_loss)
+            # print(self.lmbda, confidence_loss.item())
+            if self.budget > confidence_loss:
+                self.lmbda = self.lmbda / 1.01
+            elif self.budget <= confidence_loss:
+                self.lmbda = self.lmbda / 0.99
 
-        return {"loss":total_loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)}
+        elif self.ext_confid_name == "tcp":
+            logits, confidence = self.model(x)
+            confidence = torch.sigmoid(confidence)
+            pred_original = F.softmax(logits, dim=1)
+            tcp = pred_original.gather(1, y.unsqueeze(1))
+            loss =self.loss_criterion(logits, y) + 1e-2 * F.mse_loss(confidence, tcp)
+
+        else:
+            raise NotImplementedError
+
+        return {"loss":loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)}
 
 
     def validation_step(self, batch, batch_idx):
 
-        x, y = batch
-        logits, confidence = self.model(x)
-        confidence = torch.sigmoid(confidence)
-        pred_original = F.softmax(logits, dim=1)
-        labels_onehot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
-
-        # Make sure we don't have any numerical instability
-        eps = 1e-12
-        pred_original = torch.clamp(pred_original, 0. + eps, 1. - eps)
-        confidence = torch.clamp(confidence, 0. + eps, 1. - eps)
-
-
-        # Randomly set half of the confidences to 1 (i.e. no hints)
-        b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).cuda()
-        conf = confidence * b + (1 - b)
-        pred_new = pred_original * conf.expand_as(pred_original) + labels_onehot * (
-                    1 - conf.expand_as(labels_onehot))
-        pred_new = torch.log(pred_new)
-
-        xentropy_loss = self.loss_criterion(pred_new, y)
-        confidence_loss = torch.mean(-torch.log(confidence))
-
-        total_loss = xentropy_loss + (self.lmbda * confidence_loss)
-
-        # total_loss = self.loss_criterion(pred_original, y)
-
-        return {"loss":total_loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)}
+        pass
 
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
-        # x = Variable(x, requires_grad=True).cuda()
-        # with torch.enable_grad():
-        #     torch.set_printoptions(precision=10)
-        #     x.requires_grad_(True)
-        #     x.retain_grad()
-        logits, confidence = self.model(x)
-        pred_original = F.softmax(logits, dim=1)
-        confidence = torch.sigmoid(confidence).squeeze(1)
-        softmax_dist = None
 
-        # for param in self.model.named_parameters():
-        #     print(param[0], param[1].requires_grad)
+        if any("mcd" in cfd for cfd in self.query_confids["test"]):
+            softmax, confidence = self.mcd_eval_forward(x=x,
+                                                 n_samples=self.test_mcd_samples,
+                                                 )
+        else:
+            logits, confidence = self.model(x)
+            softmax = F.softmax(logits, dim=1)
+            confidence = torch.sigmoid(confidence).squeeze(1)
 
-            # if self.test_conf_scaling:
-            #     epsilon = 0.001
-            #
-            #     loss = torch.mean(-torch.log(confidence))
-            #     loss.backward()
-            #     x = x - epsilon * torch.sign(x.grad)
-            #
-            #     _, confidence = self.model(x)
-            #     confidence = torch.sigmoid(confidence).squeeze(1)
-
-        self.test_results = {"softmax": pred_original, "softmax_dist": softmax_dist, "labels": y, "confid": confidence}
+        self.test_results = {"softmax": softmax, "labels": y, "confid": confidence}
 
 
     def configure_optimizers(self):

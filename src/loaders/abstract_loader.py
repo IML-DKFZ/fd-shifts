@@ -29,7 +29,7 @@ class AbstractDataLoader(pl.LightningDataModule):
         self.reproduce_confidnet_splits = cf.data.reproduce_confidnet_splits
         self.dataset_kwargs = cf.data.get("kwargs")
         self.devries_repro_ood_split = cf.test.devries_repro_ood_split
-        self.no_val_mode = cf.trainer.no_val_mode
+        self.val_mode = cf.trainer.val_mode
         self.assim_ood_norm_flag = cf.test.get("assim_ood_norm_flag")
 
         self.add_val_tuning = cf.eval.get("val_tuning")
@@ -85,14 +85,6 @@ class AbstractDataLoader(pl.LightningDataModule):
                                          )
         print("Len Training data: ", len(self.train_dataset))
 
-        self.val_dataset = get_dataset(name=self.dataset_name,
-                                       root=self.data_dir,
-                                       train=True,
-                                       download=True,
-                                       transform=self.augmentations["val"],
-                                       kwargs=self.dataset_kwargs
-                                       )
-        print("Len Val data: ", len(self.val_dataset))
 
         self.iid_test_set = get_dataset(name=self.dataset_name,
                                                   root=self.data_dir,
@@ -103,7 +95,44 @@ class AbstractDataLoader(pl.LightningDataModule):
                                                   )
 
 
-        print("Len iid test data: ", len(self.iid_test_set))
+        if self.val_mode == "devries":
+            self.val_dataset = get_dataset(name=self.dataset_name,
+                                           root=self.data_dir,
+                                           train=False,
+                                           download=True,
+                                           transform=self.augmentations["val"],
+                                           kwargs=self.dataset_kwargs
+                                           )
+            try:
+                self.val_dataset.imgs = self.val_dataset.imgs[:1000]
+                self.val_dataset.samples = self.val_dataset.samples[:1000]
+                self.val_dataset.targets = self.val_dataset.targets[:1000]
+                self.val_dataset.__len__ = len(self.val_dataset.imgs)
+                self.iid_test_set.imgs = self.iid_test_set.imgs[1000:]
+                self.iid_test_set.samples = self.iid_test_set.samples[1000:]
+                self.iid_test_set.targets = self.iid_test_set.targets[1000:]
+                self.iid_test_set.__len__ = len(self.iid_test_set.imgs)
+            except:
+                self.val_dataset.data = self.val_dataset.data[:1000]
+                self.val_dataset.targets = self.val_dataset.targets[:1000]
+                self.val_dataset.__len__ = len(self.val_dataset.data)
+                self.iid_test_set.data = self.iid_test_set.data[1000:]
+                self.iid_test_set.targets = self.iid_test_set.targets[1000:]
+                self.iid_test_set.__len__ = len(self.iid_test_set.data)
+            print("Len Val data: ", len(self.val_dataset))
+            print("Len iid test data: ", len(self.iid_test_set))
+
+
+        else:
+            self.val_dataset = get_dataset(name=self.dataset_name,
+                                           root=self.data_dir,
+                                           train=True,
+                                           download=True,
+                                           transform=self.augmentations["val"],
+                                           kwargs=self.dataset_kwargs
+                                           )
+            print("Len Val data: ", len(self.val_dataset))
+
 
         self.test_datasets = []
 
@@ -142,13 +171,15 @@ class AbstractDataLoader(pl.LightningDataModule):
 
     def setup(self, stage=None):
 
-
-        if self.no_val_mode:
+        # val_mode: None, repro_confidnet, devries, cv
+        if self.val_mode is None or self.val_mode == "devries":
             num_train = len(self.train_dataset)
             train_idx = list(range(num_train))
             val_idx = []
+            self.val_sampler = None
 
-        elif self.reproduce_confidnet_splits:
+
+        elif self.val_mode == "repro_confidnet":
             num_train = len(self.train_dataset)
             indices = list(range(num_train))
             split = int(np.floor(0.1 * num_train)) # they had valid_size at 0.1 in experiments
@@ -156,24 +187,29 @@ class AbstractDataLoader(pl.LightningDataModule):
             np.random.shuffle(indices)
             train_idx, val_idx = indices[split:], indices[:split]
             print("reproduced train_val_splits from confidnet with val_idxs:", val_idx[:10])
+            self.val_sampler = val_idx
 
-        elif os.path.isfile(self.crossval_ids_path):
-            with open(self.crossval_ids_path, "rb") as f:
-                train_idx, val_idx = pickle.load(f)[self.fold]
+        elif self.val_mode == "cv":
+            if os.path.isfile(self.crossval_ids_path):
+                with open(self.crossval_ids_path, "rb") as f:
+                    train_idx, val_idx = pickle.load(f)[self.fold]
+            else:
+                num_train = len(self.train_dataset)
+                indices = list(range(num_train))
+                kf = KFold(n_splits=self.crossval_n_folds, shuffle=True,random_state=0)
+                splits = list(kf.split(indices))
+                train_idx, val_idx = splits[self.fold]
+                self.val_sampler = val_idx
+
+                with open(self.crossval_ids_path, "wb") as f:
+                    pickle.dump(splits, f)
+
         else:
-            num_train = len(self.train_dataset)
-            indices = list(range(num_train))
-            kf = KFold(n_splits=self.crossval_n_folds, shuffle=True,random_state=0)
-            splits = list(kf.split(indices))
-            train_idx, val_idx = splits[self.fold]
-
-            with open(self.crossval_ids_path, "wb") as f:
-                pickle.dump(splits, f)
+            raise NotImplementedError
 
 
         # Make samplers
         self.train_sampler = SubsetRandomSampler(train_idx)
-        self.val_sampler = val_idx
 
         print("len train sampler", len(self.train_sampler))
         print("len val sampler", len(val_idx))
@@ -195,7 +231,7 @@ class AbstractDataLoader(pl.LightningDataModule):
         val_loader = torch.utils.data.DataLoader(
             dataset=self.val_dataset, #same dataset as train but potentially differing augs.
             batch_size=self.batch_size,
-            sampler=None,
+            sampler=self.val_sampler,
             pin_memory=self.pin_memory,
             num_workers=self.num_workers,
             )

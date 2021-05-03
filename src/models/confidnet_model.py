@@ -41,13 +41,18 @@ class net(pl.LightningModule):
     def forward(self, x):
         return self.network(x)
 
-    def mcd_eval_forward(self, x, n_samples, existing_softmax_list=None):
-        self.backbone.encoder.eval_mcdropout = True
-        softmax_list = existing_softmax_list if existing_softmax_list is not None else []
+    def mcd_eval_forward(self, x, n_samples):
+        # self.model.encoder.eval_mcdropout = True
+        softmax_list = []
+        conf_list =  []
         for _ in range(n_samples - len(softmax_list)):
-            softmax_list.append(F.softmax(self.backbone(x), dim=1).unsqueeze(2))
-        self.backbone.encoder.eval_mcdropout = False
-        return torch.cat(softmax_list, dim=2)
+            logits = self.backbone(x)
+            _, confidence = self.network(x)
+            softmax = F.softmax(logits, dim=1)
+            confidence = torch.sigmoid(confidence).squeeze(1)
+            softmax_list.append(softmax.unsqueeze(2))
+            conf_list.append(confidence.unsqueeze(1))
+        return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
 
     def on_train_start(self):
         # what if resume? is this called before checkpoint?
@@ -152,16 +157,16 @@ class net(pl.LightningModule):
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
-        softmax = F.softmax(self.backbone(x), dim=1)
-        _, pred_confid = self.network(x)
-        pred_confid = torch.sigmoid(pred_confid)
-        softmax_dist = None
         if any("mcd" in cfd for cfd in self.query_confids["test"]):
-            softmax_dist = self.mcd_eval_forward(x=x,
+            softmax, pred_confid = self.mcd_eval_forward(x=x,
                                             n_samples=self.test_mcd_samples,
-                                            existing_softmax_list=[softmax.unsqueeze(2)])
+                                           )
+        else:
+            softmax = F.softmax(self.backbone(x), dim=1)
+            _, pred_confid = self.network(x)
+            pred_confid = torch.sigmoid(pred_confid).squeeze(1)
 
-        self.test_results = {"softmax": softmax, "softmax_dist": softmax_dist, "labels": y, "confid": pred_confid.squeeze(1)}
+        self.test_results = {"softmax": softmax, "labels": y, "confid": pred_confid}
         # print("CHECK TEST NORM", x.mean(), x.std(), args)
         # print("CHECK Monitor Accuracy", (softmax.argmax(1) == y).sum()/y.numel())
 

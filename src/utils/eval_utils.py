@@ -502,7 +502,9 @@ class BrierScore(Metric):
 
 
 def clean_logging(log_dir):
-    df = pd.read_csv(os.path.join(log_dir, "metrics.csv"))
-    df = df.groupby("step").max().round(3)
-    df.to_csv(os.path.join(log_dir, "metrics.csv"))
-
+    try:
+        df = pd.read_csv(os.path.join(log_dir, "metrics.csv"))
+        df = df.groupby("step").max().round(3)
+        df.to_csv(os.path.join(log_dir, "metrics.csv"))
+    except:
+        print("no metrics.csv found in clean logging!")

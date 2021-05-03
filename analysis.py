@@ -68,7 +68,7 @@ class Analysis():
             method_dict["raw_labels"] = labels
             method_dict["raw_correct"] = correct
             method_dict["raw_dataset_ix"] = dataset_ix
-            method_dict["raw_external_confids"] = method_dict.get("raw_external_confids")
+            method_dict["raw_external_confids"] = method_dict.get("raw_external_confids") # todo! mcd_confid!
 
 
     def register_and_perform_studies(self):
@@ -287,7 +287,7 @@ class Analysis():
                 method_dict["mcd_sv"]["metrics"] = deepcopy(mcd_performance_metrics)
 
             if any(cfd in method_dict["query_confids"] for cfd  in ["ext", "bpd", "tcp", "devries"]):
-                ext_confid_name = method_dict["cfg"].eval.ext_confid_name
+                ext_confid_name = method_dict["cfg"].eval.ext_confid_name # todo! WAIC MEAN!
                 method_dict[ext_confid_name] = {}
                 # [b, cl, mcd] - [b, cl]
                 method_dict[ext_confid_name]["confids"] = external_confids

@@ -10,16 +10,18 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir,"exec.py")
 
+#todo val split = val from test set!
+
 mode = "train" # "test" / "train"
 backbones = ["vgg13","vgg16"]
 dropouts = [0, 0.4] # only true for vgg16
-models = ["devries_model", "det_mcd_model"]
+models = ["confidnet_model", "devries_model"]
 
 for ix, (bb, do, model) in enumerate(product(backbones, dropouts, models)):
 
     if not (do==True and model=="devries_model"):
 
-        exp_group_name = "backbone_sweep"
+        exp_group_name = "tcp_sweep"
         exp_name = "{}_bb{}_do{}".format(model, bb, do)
         command_line_args = ""
 
@@ -27,27 +29,27 @@ for ix, (bb, do, model) in enumerate(product(backbones, dropouts, models)):
             command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(os.path.join(exp_group_name, exp_name, "hydra"))
             command_line_args += "exp.mode=test "
         else:
-            command_line_args += "study={} ".format("cifar_devries_study")
+            if "devries" in model:
+                command_line_args += "study={} ".format("cifar_tcp_devries_sweep")
+                command_line_args += "model.network.name={} ".format("confidnet_and_enc")
+            else:
+                command_line_args += "study={} ".format("cifar_tcp_confid_sweep")
             command_line_args += "data={} ".format("cifar10_data")
             command_line_args += "exp.group_name={} ".format(exp_group_name)
             command_line_args += "exp.name={} ".format(exp_name)
             command_line_args += "exp.mode={} ".format("train_test")
-            command_line_args += "trainer.num_epochs={} ".format(200)
-
             command_line_args += "model.dropout_rate={} ".format(do)
             command_line_args += "model.name={} ".format(model) # todo careful, name vs backbone!
-            if "devries" in model:
-                command_line_args += "model.network.name={} ".format("devries_and_enc") # todo careful, name vs backbone!
-                command_line_args += "model.network.backbone={} ".format(bb) # todo careful, name vs backbone!
-                command_line_args += "eval.confidence_measures.test=\"{}\" ".format(["det_mcp" , "det_pe", "ext"])
+            command_line_args += "eval.ext_confid_name={} ".format("tcp")
+
+
+            if do:
+                command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
+                    ["det_mcp" , "det_pe", "ext", "mcd_ext", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"])
+
             else:
-                command_line_args += "model.network.name={} ".format(bb)
-                if do:
-                    command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
-                        ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"])
-                else:
-                    command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
-                        ["det_mcp", "det_pe"])
+                command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
+                    ["det_mcp", "det_pe", "ext"])
 
         if system_name == "cluster":
 
