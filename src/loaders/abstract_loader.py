@@ -29,7 +29,8 @@ class AbstractDataLoader(pl.LightningDataModule):
         self.reproduce_confidnet_splits = cf.data.reproduce_confidnet_splits
         self.dataset_kwargs = cf.data.get("kwargs")
         self.devries_repro_ood_split = cf.test.devries_repro_ood_split
-        self.val_mode = cf.trainer.val_mode
+        self.val_split = cf.trainer.val_split
+        self.test_iid_split = cf.test.iid_set_split
         self.assim_ood_norm_flag = cf.test.get("assim_ood_norm_flag")
 
         self.add_val_tuning = cf.eval.get("val_tuning")
@@ -94,8 +95,18 @@ class AbstractDataLoader(pl.LightningDataModule):
                                                   kwargs=self.dataset_kwargs
                                                   )
 
+        if self.test_iid_split == "devries":
+            try:
+                self.iid_test_set.imgs = self.iid_test_set.imgs[1000:]
+                self.iid_test_set.samples = self.iid_test_set.samples[1000:]
+                self.iid_test_set.targets = self.iid_test_set.targets[1000:]
+                self.iid_test_set.__len__ = len(self.iid_test_set.imgs)
+            except:
+                self.iid_test_set.data = self.iid_test_set.data[1000:]
+                self.iid_test_set.targets = self.iid_test_set.targets[1000:]
+                self.iid_test_set.__len__ = len(self.iid_test_set.data)
 
-        if self.val_mode == "devries":
+        if self.val_split == "devries":
             self.val_dataset = get_dataset(name=self.dataset_name,
                                            root=self.data_dir,
                                            train=False,
@@ -108,20 +119,10 @@ class AbstractDataLoader(pl.LightningDataModule):
                 self.val_dataset.samples = self.val_dataset.samples[:1000]
                 self.val_dataset.targets = self.val_dataset.targets[:1000]
                 self.val_dataset.__len__ = len(self.val_dataset.imgs)
-                self.iid_test_set.imgs = self.iid_test_set.imgs[1000:]
-                self.iid_test_set.samples = self.iid_test_set.samples[1000:]
-                self.iid_test_set.targets = self.iid_test_set.targets[1000:]
-                self.iid_test_set.__len__ = len(self.iid_test_set.imgs)
             except:
                 self.val_dataset.data = self.val_dataset.data[:1000]
                 self.val_dataset.targets = self.val_dataset.targets[:1000]
                 self.val_dataset.__len__ = len(self.val_dataset.data)
-                self.iid_test_set.data = self.iid_test_set.data[1000:]
-                self.iid_test_set.targets = self.iid_test_set.targets[1000:]
-                self.iid_test_set.__len__ = len(self.iid_test_set.data)
-            print("Len Val data: ", len(self.val_dataset))
-            print("Len iid test data: ", len(self.iid_test_set))
-
 
         else:
             self.val_dataset = get_dataset(name=self.dataset_name,
@@ -131,8 +132,9 @@ class AbstractDataLoader(pl.LightningDataModule):
                                            transform=self.augmentations["val"],
                                            kwargs=self.dataset_kwargs
                                            )
-            print("Len Val data: ", len(self.val_dataset))
 
+        print("Len Val data: ", len(self.val_dataset))
+        print("Len iid test data: ", len(self.iid_test_set))
 
         self.test_datasets = []
 
@@ -171,15 +173,15 @@ class AbstractDataLoader(pl.LightningDataModule):
 
     def setup(self, stage=None):
 
-        # val_mode: None, repro_confidnet, devries, cv
-        if self.val_mode is None or self.val_mode == "devries":
+        # val_split: None, repro_confidnet, devries, cv
+        if self.val_split is None or self.val_split == "devries":
             num_train = len(self.train_dataset)
             train_idx = list(range(num_train))
             val_idx = []
             self.val_sampler = None
 
 
-        elif self.val_mode == "repro_confidnet":
+        elif self.val_split == "repro_confidnet":
             num_train = len(self.train_dataset)
             indices = list(range(num_train))
             split = int(np.floor(0.1 * num_train)) # they had valid_size at 0.1 in experiments
@@ -189,7 +191,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             print("reproduced train_val_splits from confidnet with val_idxs:", val_idx[:10])
             self.val_sampler = val_idx
 
-        elif self.val_mode == "cv":
+        elif self.val_split == "cv":
             if os.path.isfile(self.crossval_ids_path):
                 with open(self.crossval_ids_path, "rb") as f:
                     train_idx, val_idx = pickle.load(f)[self.fold]

@@ -23,16 +23,18 @@ class net(pl.LightningModule):
         self.weight_decay = cf.trainer.weight_decay
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
-        self.selection_metrics = cf.trainer.callbacks.model_checkpoint.selection_metric
-        self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
+        if cf.trainer.callbacks.model_checkpoint is not None:
+            print("Initializing custom Model Selector.", cf.trainer.callbacks.model_checkpoint)
+            self.selection_metrics = cf.trainer.callbacks.model_checkpoint.selection_metric
+            self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
         self.pretrained_backbone_path = cf.trainer.callbacks.training_stages.pretrained_backbone_path
         self.pretrained_confidnet_path = cf.trainer.callbacks.training_stages.pretrained_confidnet_path
         self.confidnet_lr_scheduler = cf.trainer.callbacks.training_stages.confidnet_lr_scheduler
-        self.iamgenet_weights_path = cf.model.network.get("imagenet_weights_path")
+        self.iamgenet_weights_path = dict(cf.model.network).get("imagenet_weights_path")
 
         self.loss_ce = nn.CrossEntropyLoss()
         self.loss_mse = nn.MSELoss(reduction="sum")
-        self.ext_confid_name = cf.eval.get("ext_confid_name")
+        self.ext_confid_name = dict(cf.eval).get("ext_confid_name")
 
         self.network = get_network(cf.model.network.name)(cf) # todo make explciit arguemnts in factory!!
         self.backbone = get_network(cf.model.network.backbone)(cf)  # todo make explciit arguemnts in factory!!
@@ -43,6 +45,9 @@ class net(pl.LightningModule):
 
     def mcd_eval_forward(self, x, n_samples):
         # self.model.encoder.eval_mcdropout = True
+        self.network.encoder.enable_dropout()
+        self.backbone.encoder.enable_dropout()
+
         softmax_list = []
         conf_list =  []
         for _ in range(n_samples - len(softmax_list)):
@@ -52,6 +57,10 @@ class net(pl.LightningModule):
             confidence = torch.sigmoid(confidence).squeeze(1)
             softmax_list.append(softmax.unsqueeze(2))
             conf_list.append(confidence.unsqueeze(1))
+
+        self.network.encoder.disable_dropout()
+        self.backbone.encoder.disable_dropout()
+
         return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
 
     def on_train_start(self):
@@ -144,29 +153,30 @@ class net(pl.LightningModule):
             loss = F.mse_loss(pred_confid, tcp)  # self.loss_mse(pred_confid, tcp) #
 
             softmax_dist = None
-            if self.current_epoch == self.num_epochs - 1:
-                # save mcd output for psuedo-test if actual test is with mcd.
-                if any("mcd" in cfd for cfd in self.query_confids["test"]):
-                    softmax_dist = self.mcd_eval_forward(x=x,
-                                                         n_samples=self.monitor_mcd_samples,
-                                                         existing_softmax_list=[softmax.unsqueeze(2)])
-                # print("CHECK DIST", softmax_dist[0, 0].std(), softmax_dist.shape, softmax_dist[0])
-
+            # if self.current_epoch == self.num_epochs - 1:
+            #     # save mcd output for psuedo-test if actual test is with mcd.
+            #     if any("mcd" in cfd for cfd in self.query_confids["test"]):
+            #         softmax_dist, _ = self.mcd_eval_forward(x=x,
+            #                                              n_samples=self.monitor_mcd_samples,
+            #                                              )
+            #
             return {"loss": loss, "softmax": softmax, "softmax_dist": softmax_dist, "labels": y, "confid": pred_confid.squeeze(1)}
 
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
-        if any("mcd" in cfd for cfd in self.query_confids["test"]):
-            softmax, pred_confid = self.mcd_eval_forward(x=x,
-                                            n_samples=self.test_mcd_samples,
-                                           )
-        else:
-            softmax = F.softmax(self.backbone(x), dim=1)
-            _, pred_confid = self.network(x)
-            pred_confid = torch.sigmoid(pred_confid).squeeze(1)
 
-        self.test_results = {"softmax": softmax, "labels": y, "confid": pred_confid}
+        softmax = F.softmax(self.backbone(x), dim=1)
+        _, pred_confid = self.network(x)
+        pred_confid = torch.sigmoid(pred_confid).squeeze(1)
+
+        softmax_dist = None
+        pred_confid_dist = None
+
+        if any("mcd" in cfd for cfd in self.query_confids["test"]):
+            softmax_dist, pred_confid_dist = self.mcd_eval_forward(x=x, n_samples=self.test_mcd_samples)
+
+        self.test_results = {"softmax": softmax, "softmax_dist": softmax_dist, "labels": y, "confid": pred_confid, "confid_dist": pred_confid_dist}
         # print("CHECK TEST NORM", x.mean(), x.std(), args)
         # print("CHECK Monitor Accuracy", (softmax.argmax(1) == y).sum()/y.numel())
 

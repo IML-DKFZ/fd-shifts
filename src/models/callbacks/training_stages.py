@@ -1,6 +1,7 @@
 from pytorch_lightning.callbacks import Callback
 import torch
 from collections import OrderedDict
+from copy import deepcopy
 
 class TrainingStages(Callback):
 
@@ -38,6 +39,11 @@ class TrainingStages(Callback):
             pl_module.network.classifier.load_state_dict(backbone_classifier_state_dict, strict=True)
 
             print("loaded checkpoint {} from epoch {} into backbone and network.".format(best_ckpt_path, loaded_ckpt["epoch"]))
+
+            pl_module.network.encoder = deepcopy(pl_module.backbone.encoder)
+            pl_module.network.classifier = deepcopy(pl_module.backbone.classifier)
+
+            print("freezing backbone and enabling confidnet")
             self.freeze_layers(pl_module.backbone)
             self.freeze_layers(pl_module.network.encoder)
             self.freeze_layers(pl_module.network.classifier)
@@ -54,10 +60,9 @@ class TrainingStages(Callback):
                 new_schedulers.append({"scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=new_optimizer,
                                                                                          T_max=self.milestones[1]-self.milestones[0],
                                                                                          verbose=True),
-
-                                "interval": "epoch",
-                                 "frequency": 1,
-                                 "name": "confidnet_adam"})
+                                      "interval": "epoch",
+                                      "frequency": 1,
+                                      "name": "confidnet_adam"})
 
 
                 trainer.lr_schedulers = trainer.configure_schedulers(new_schedulers)
@@ -80,14 +85,20 @@ class TrainingStages(Callback):
         if pl_module.current_epoch == self.milestones[1]:
             print("Starting Training Fine Tuning ConfidNet")# new optimizer or add param groups? both adam according to paper!
             pl_module.training_stage = 2
-            best_ckpt_path = pl_module.pretrained_confidnet_path if pl_module.pretrained_confidnet_path is not None else trainer.checkpoint_callbacks[1].best_model_path
-            loaded_ckpt = torch.load(best_ckpt_path)
-            loaded_state_dict = loaded_ckpt["state_dict"]
-            loaded_state_dict = OrderedDict((k.replace("network.confid_net.",""),v) for k, v in loaded_state_dict.items() if
-                "network.confid_net" in k)
-            pl_module.network.confid_net.load_state_dict(loaded_state_dict, strict=True)
+            if pl_module.pretrained_confidnet_path is not None:
+                best_ckpt_path = pl_module.pretrained_confidnet_path
+            elif hasattr(pl_module, "selection_metrics"):
+                best_ckpt_path = trainer.checkpoint_callbacks[1].best_model_path
+            else:
+                best_ckpt_path = None
+            if best_ckpt_path is not None:
+                loaded_ckpt = torch.load(best_ckpt_path)
+                loaded_state_dict = loaded_ckpt["state_dict"]
+                loaded_state_dict = OrderedDict((k.replace("network.confid_net.",""),v) for k, v in loaded_state_dict.items() if
+                    "network.confid_net" in k)
+                pl_module.network.confid_net.load_state_dict(loaded_state_dict, strict=True)
+                print("loaded checkpoint {} from epoch {} into new encoder".format(best_ckpt_path, loaded_ckpt["epoch"]))
 
-            print("loaded checkpoint {} from epoch {} into new encoder".format(best_ckpt_path, loaded_ckpt["epoch"]))
             self.unfreeze_layers(pl_module.network.encoder)
             new_optimizer = torch.optim.Adam(pl_module.network.parameters(),
                                               lr=pl_module.learning_rate_confidnet_finetune,

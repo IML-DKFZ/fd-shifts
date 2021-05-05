@@ -20,17 +20,16 @@ class ConfidMonitor(Callback):
         self.query_monitor_plots = cf.eval.monitor_plots
         self.query_confids = cf.eval.confidence_measures
 
-        self.raw_output_path_fit = cf.exp.raw_output_path
-        self.external_confids_output_path_fit = cf.exp.external_confids_output_path
-        self.raw_output_path_test = cf.test.raw_output_path
-        self.external_confids_output_path_test = cf.test.external_confids_output_path
+        self.output_paths = cf.exp.output_paths
         self.version_dir = cf.exp.version_dir
         self.val_every_n_epoch = cf.trainer.val_every_n_epoch
 
         self.running_test_softmax = []
+        self.running_test_softmax_dist = []
         self.running_test_labels = []
         self.running_test_dataset_idx = []
         self.running_test_external_confids = []
+        self.running_test_external_confids_dist = []
         self.running_confid_stats = {}
         self.running_perf_stats = {}
         self.running_confid_stats["train"] = {k: {"confids": [], "correct": []} for k in self.query_confids["train"]}
@@ -254,13 +253,13 @@ class ConfidMonitor(Callback):
             raw_output = torch.cat([stacked_softmax.reshape(stacked_softmax.size()[0], -1),
                                     stacked_labels, stacked_dataset_idx],
                                    dim=1)
-            np.save(self.raw_output_path_fit, raw_output.cpu().data.numpy())
-            print("saved raw validation outputs to {}".format(self.raw_output_path_fit))
+            np.save(self.output_paths.fit.raw_output, raw_output.cpu().data.numpy())
+            print("saved raw validation outputs to {}".format(self.output_paths.fit.raw_output))
 
             if "ext" in self.query_confids["test"]:
                 stacked_external_confids = torch.stack(self.running_test_external_confids, dim=0)
-                np.save(self.external_confids_output_path_fit, stacked_external_confids.cpu().data.numpy())
-                print("saved external confids validation outputs to {}".format(self.external_confids_output_path_fit))
+                np.save(self.output_paths.fit.external_confids, stacked_external_confids.cpu().data.numpy())
+                print("saved external confids validation outputs to {}".format(self.output_paths.fit.external_confids))
 
             self.running_test_softmax = []
             self.running_test_labels = []
@@ -276,6 +275,10 @@ class ConfidMonitor(Callback):
         self.running_test_labels.extend(outputs["labels"].cpu())
         if "ext" in self.query_confids["test"]:
             self.running_test_external_confids.extend(outputs["confid"].to(dtype=torch.float32).cpu())
+        if outputs.get("softmax_dist") is not None:
+            self.running_test_softmax_dist.extend(outputs["softmax_dist"].to(dtype=torch.float32).cpu())
+        if outputs.get("confid_dist") is not None:
+            self.running_test_external_confids_dist.extend(outputs["confid_dist"].to(dtype=torch.float32).cpu())
 
         self.running_test_dataset_idx.extend(torch.ones_like(outputs["labels"].cpu()) * dataloader_idx)
 
@@ -289,12 +292,25 @@ class ConfidMonitor(Callback):
                                 stacked_labels, stacked_dataset_idx],
                                dim=1)
 
-        np.save(self.raw_output_path_test, raw_output.cpu().data.numpy())
-        print("saved raw test outputs to {}".format(self.raw_output_path_test))
+        np.save(self.output_paths.raw_output, raw_output.cpu().data.numpy())
+        print("saved raw test outputs to {}".format(self.output_paths.raw_output_path_test))
 
-        if "ext" in self.query_confids["test"]:
+        if len(self.running_test_softmax_dist) > 0:
+            stacked_softmax = torch.stack(self.running_test_softmax_dist, dim=0)
+            np.save(self.output_paths.raw_outputs_dist, stacked_softmax.cpu().data.numpy())
+            print("saved softmax dist raw test outputs to {}".format(self.output_paths.raw_outputs_dist))
+
+        if len(self.running_test_external_confids) > 0:
             stacked_external_confids = torch.stack(self.running_test_external_confids, dim=0)
-            np.save(self.external_confids_output_path_test, stacked_external_confids.cpu().data.numpy())
+            np.save(self.output_paths.external_confids, stacked_external_confids.cpu().data.numpy())
+            print("saved ext confid raw test outputs to {}".format(self.output_paths.external_confids))
+
+        if len(self.running_test_external_confids_dist) > 0:
+            stacked_external_confids_dist = torch.stack(self.running_test_external_confids_dist, dim=0)
+            np.save(self.output_paths.external_confids_dist, stacked_external_confids_dist.cpu().data.numpy())
+            print("saved ext confid dist raw test outputs to {}".format(self.output_paths.external_confids_dist))
+
+
 
 
 

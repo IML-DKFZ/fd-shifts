@@ -187,7 +187,7 @@ class ConfidEvaluator():
         try:
             self.fpr_list, self.tpr_list, _ = skm.roc_curve(self.correct, self.confids)
         except:
-            print("FAIL CHEKC", np.min(self.correct), np.max(self.correct), np.min(self.confids), np.max(self.confids))
+            print("FAIL CHECK", self.correct.shape, self.confids.shape, np.min(self.correct), np.max(self.correct), np.min(self.confids), np.max(self.confids))
     def get_rc_curve_stats(self):
         self.rc_curve, self.aurc, self.eaurc = RC_curve((1 - self.correct), self.confids)
 
@@ -195,7 +195,8 @@ class ConfidEvaluator():
         self.precision_list, self.recall_list, _ = skm.precision_recall_curve(self.correct, - self.confids, pos_label=0)
 
     def get_calibration_stats(self):
-        self.bin_accs, self.bin_confids = calibration_curve(self.correct, self.confids, n_bins=self.bins)
+        calib_confids = np.clip(self.confids, 0 , 1) # necessary for waic
+        self.bin_accs, self.bin_confids = calibration_curve(self.correct, calib_confids, n_bins=self.bins)
 
 
 class ConfidPlotter():

@@ -36,12 +36,26 @@ class net(pl.LightningModule):
         return self.model(x)
 
 
-    def mcd_eval_forward(self, x, n_samples, existing_softmax_list=None):
+
+    def mcd_eval_forward(self, x, n_samples):
         # self.model.encoder.eval_mcdropout = True
-        softmax_list = existing_softmax_list if existing_softmax_list is not None else []
+        self.network.encoder.enable_dropout()
+        self.backbone.encoder.enable_dropout()
+
+        softmax_list = []
+        conf_list =  []
         for _ in range(n_samples - len(softmax_list)):
-            softmax_list.append(F.softmax(self.model(x), dim=1).unsqueeze(2))
-        return torch.cat(softmax_list, dim=2)
+            logits = self.backbone(x)
+            _, confidence = self.network(x)
+            softmax = F.softmax(logits, dim=1)
+            confidence = torch.sigmoid(confidence).squeeze(1)
+            softmax_list.append(softmax.unsqueeze(2))
+            conf_list.append(confidence.unsqueeze(1))
+
+        self.network.encoder.disable_dropout()
+        self.backbone.encoder.disable_dropout()
+
+        return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
 
 
     def training_step(self, batch, batch_idx):
@@ -73,22 +87,17 @@ class net(pl.LightningModule):
 
         return {"loss":loss, "softmax": softmax, "labels": y, "softmax_dist": softmax_dist}
 
-    def on_test_start(self):
-        self.model.encoder.enable_dropout()
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
+        logits = self.model(x)
+        softmax = F.softmax(logits, dim=1)
 
+        softmax_dist = None
         if any("mcd" in cfd for cfd in self.query_confids["test"]):
-            softmax = self.mcd_eval_forward(x=x,
-                                            n_samples=self.test_mcd_samples,
-                                            )
-            # print(softmax[0,0].std())
-        else:
-            logits = self.model(x)
-            softmax = F.softmax(logits, dim=1)
+            softmax_dist = self.mcd_eval_forward(x=x, n_samples=self.test_mcd_samples)
 
-        self.test_results = {"softmax": softmax, "labels": y}
+        self.test_results = {"softmax": softmax, "labels": y, "softmax_dist": softmax_dist}
 
 
     def configure_optimizers(self):

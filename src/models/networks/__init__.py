@@ -4,7 +4,7 @@ from src.models.networks import mnist_mlp
 from src.models.networks import vgg16
 from src.models.networks import confidnet
 from src.models.networks import devries_network
-from src.models.networks import vgg13
+from src.models.networks import vgg
 from src.models.networks import zhang_network
 from src.models.networks import resnet50_imagenet
 
@@ -22,8 +22,8 @@ def get_network(network_name):
         # "vgg16": vgg16.VGG16, # todo make explciit arguments!!
         "confidnet_and_enc": confidnet.ConfidNetAndEncoder, # todo make explciit arguments!!
         "devries_and_enc": devries_network.DeVriesAndEncoder, # todo make explciit arguments!!
-        "vgg13": vgg13.VGG13, # todo make explciit arguments!!
-        "vgg16": vgg13.VGG13, # todo make explciit arguments!!
+        "vgg13": vgg.VGG, # todo make explciit arguments!!
+        "vgg16": vgg.VGG, # todo make explciit arguments!!
         "zhang_and_enc": zhang_network.ZhangAndEncoder, # todo make explciit arguments!!
         "resnet50": resnet50_imagenet.resnet50, # todo make explciit arguments!!
     }

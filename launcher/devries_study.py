@@ -42,12 +42,13 @@ for ix, (bb, do, model) in enumerate(product(backbones, dropouts, models)):
                 command_line_args += "eval.confidence_measures.test=\"{}\" ".format(["det_mcp" , "det_pe", "ext"])
             else:
                 command_line_args += "model.network.name={} ".format(bb)
-                if do:
-                    command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
-                        ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"])
-                else:
-                    command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
-                        ["det_mcp", "det_pe"])
+
+            if do:
+                command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
+                    ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"])
+            else:
+                command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
+                    ["det_mcp", "det_pe"])
 
         if system_name == "cluster":
 

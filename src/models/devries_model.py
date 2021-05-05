@@ -15,7 +15,7 @@ class net(pl.LightningModule):
         self.optimizer_cfgs = cf.trainer.optimizer
         self.lr_scheduler_cfgs = cf.trainer.lr_scheduler
 
-        if not cf.trainer.no_val_mode:
+        if cf.trainer.val_mode is not None:
             self.selection_metrics = cf.trainer.callbacks.model_checkpoint.selection_metric
             self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
 
@@ -29,19 +29,31 @@ class net(pl.LightningModule):
         self.ext_confid_name = cf.eval.ext_confid_name
         self.model = get_network(cf.model.network.name)(cf) # todo make explciit arguments in factory!!
 
+        self.test_mcd_samples = cf.model.test_mcd_samples
+        self.monitor_mcd_samples = cf.model.monitor_mcd_samples
+
     def forward(self, x):
         return self.model(x)
 
+
     def mcd_eval_forward(self, x, n_samples):
         # self.model.encoder.eval_mcdropout = True
+        self.network.encoder.enable_dropout()
+        self.backbone.encoder.enable_dropout()
+
         softmax_list = []
         conf_list =  []
         for _ in range(n_samples - len(softmax_list)):
-            logits, confidence = self.model(x)
+            logits = self.backbone(x)
+            _, confidence = self.network(x)
             softmax = F.softmax(logits, dim=1)
             confidence = torch.sigmoid(confidence).squeeze(1)
             softmax_list.append(softmax.unsqueeze(2))
             conf_list.append(confidence.unsqueeze(1))
+
+        self.network.encoder.disable_dropout()
+        self.backbone.encoder.disable_dropout()
+
         return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
 
 
@@ -82,7 +94,8 @@ class net(pl.LightningModule):
             confidence = torch.sigmoid(confidence)
             pred_original = F.softmax(logits, dim=1)
             tcp = pred_original.gather(1, y.unsqueeze(1))
-            loss =self.loss_criterion(logits, y) + 1e-2 * F.mse_loss(confidence, tcp)
+            loss =self.loss_criterion(logits, y) + 1e-3 * F.mse_loss(confidence, tcp)
+            print("CHECK TCP", confidence.min(), confidence.max(), tcp.min(), tcp.max())
 
         else:
             raise NotImplementedError
@@ -94,20 +107,19 @@ class net(pl.LightningModule):
 
         pass
 
-
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
+        logits, confidence = self.model(x)
+        softmax = F.softmax(logits, dim=1)
+        confidence = torch.sigmoid(confidence).squeeze(1)
 
+        softmax_dist = None
+        confid_dist = None
         if any("mcd" in cfd for cfd in self.query_confids["test"]):
-            softmax, confidence = self.mcd_eval_forward(x=x,
+            softmax_dist, confidence_dist = self.mcd_eval_forward(x=x,
                                                  n_samples=self.test_mcd_samples,
                                                  )
-        else:
-            logits, confidence = self.model(x)
-            softmax = F.softmax(logits, dim=1)
-            confidence = torch.sigmoid(confidence).squeeze(1)
-
-        self.test_results = {"softmax": softmax, "labels": y, "confid": confidence}
+        self.test_results = {"softmax": softmax, "labels": y, "confid": confidence, "softmax_dist": softmax_dist, "confid_dist": confid_dist}
 
 
     def configure_optimizers(self):

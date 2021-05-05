@@ -13,9 +13,9 @@ cfg = {
     'vgg19': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
 }
 
-class VGG13(nn.Module):
+class VGG(nn.Module):
     def __init__(self, cf):
-        super(VGG13, self).__init__()
+        super(VGG, self).__init__()
         self.encoder = Encoder(cf)
         self.classifier = Classifier(cf)
 
@@ -31,7 +31,10 @@ class Encoder(nn.Module):
         name = cf.model.network.name if "vgg" in cf.model.network.name else cf.model.network.backbone
         print("Init VGG type:{}".format(name))
         self.dropout_rate = cf.model.dropout_rate
+        self.fc_dim = cf.model.fc_dim
+        self.avg_pool = cf.model.avg_pool
         self.features = self._make_layers(cfg[name])
+
     def _make_layers(self, cfg):
         layers = []
         in_channels = 3
@@ -41,11 +44,19 @@ class Encoder(nn.Module):
             else:
                 layers += [nn.Conv2d(in_channels, x, kernel_size=3, padding=1),
                            nn.BatchNorm2d(x)]
-                if self.dropout_rate > 0:
-                    layers += [nn.Dropout(self.dropout_rate)]
                 layers += [nn.ReLU(inplace=True)]
+                if self.dropout_rate > 0:
+                    layers += [nn.Dropout(self.dropout_rate * 0.4)]
                 in_channels = x
-        layers += [nn.AvgPool2d(kernel_size=1, stride=1)]
+        if self.avg_pool:
+            layers += [nn.AvgPool2d(kernel_size=1, stride=1), Flatten()]
+        else:
+            layers+= [nn.Dropout(self.dropout_rate * 0.5),
+                      Flatten(),
+                      nn.Linear(512, self.fc_dim),
+                      nn.ReLU(inplace=True),
+                      nn.Dropout(self.dropout_rate * 0.5)]
+
         return nn.Sequential(*layers)
 
     def disable_dropout(self):
@@ -63,7 +74,6 @@ class Encoder(nn.Module):
 
     def forward(self, x):
         x = self.features(x)
-        x = x.squeeze(3).squeeze(2)
         return x
 
 class Classifier(nn.Module):
@@ -76,3 +86,17 @@ class Classifier(nn.Module):
 
     def forward(self, x):
         return self.fc2(x)
+
+
+
+class Flatten(nn.Module):
+    def forward(self, input):
+        '''
+        Note that input.size(0) is usually the batch size.
+        So what it does is that given any input with input.size(0) # of batches,
+        will flatten to be 1 * nb_elements.
+        '''
+        # out = out.view(out.size(0), -1)
+        batch_size = input.size(0)
+        out = input.view(batch_size,-1)
+        return out # (batch_size, *size)

@@ -2,9 +2,9 @@
 
 
 trainer:
-  num_epochs: 1 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs: 200 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
   val_every_n_epoch: 1 #has to be 1 because of schedulers
-  val_mode: "devries"
+  val_mode:   # leave empty for no val
   batch_size: 128
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
@@ -35,15 +35,16 @@ trainer:
 #    imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 model:
-  name: det_mcd_model #det_mcd_model
+  name: devries_model #det_mcd_model
   fc_dim: 512
+  confidnet_fc_dim: 400
   dropout_rate: 0.4 # 0 sets dropout to false
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   budget: 0.3
   network:
-    name: vgg16 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
-    backbone: None
+    name: confidnet_and_enc #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
+    backbone: vgg13
     imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 
@@ -84,7 +85,7 @@ eval:
                     ]
 
   tb_hparams: ['fold']
-  ext_confid_name: "devries"
+  ext_confid_name: "tcp"
   test_conf_scaling: False
   val_tuning: False
 

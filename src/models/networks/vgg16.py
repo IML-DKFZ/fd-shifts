@@ -95,7 +95,7 @@ class Encoder(nn.Module):
         self.fc1 = nn.Linear(512, self.fc_dim)
         self.dropout_fc = nn.Dropout(0.5)
 
-
+    #'vgg16': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     def forward(self, x):
         out = F.relu(self.conv1(x))
         out = self.conv1_bn(out)

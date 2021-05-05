@@ -1,7 +1,7 @@
 defaults:
   - hydra/job_logging: disabled
   - data: cifar10_data.yaml #svhn_data.yaml
-  - study: cifar_devries_study.yaml # svhn_confid_study.yaml
+  - study: cifar_tcp_confid_sweep.yaml # svhn_confid_study.yaml
 
 
 
@@ -13,7 +13,7 @@ hydra:
 
 exp:
   group_name: checks
-  name: check_hydra_new # cifar10_run_0_sebastian
+  name: check_confidnet_noms # cifar10_run_0_sebastian
   version: None
   mode: train_test   # train or test
   work_dir: ${hydra:runtime.cwd}
@@ -26,8 +26,17 @@ exp:
   fold: 0 # call folds in launcher  via command line
   crossval_n_folds: 10
   crossval_ids_path: ${exp.dir}/crossval_ids.pickle
-  raw_output_path: ${exp.version_dir}/raw_output.npy
-  external_confids_output_path: ${exp.version_dir}/external_confids.npy
+  output_paths:
+    fit:
+      raw_output: ${exp.version_dir}/raw_output.npy
+      raw_output_dist: ${exp.version_dir}/raw_output_dist.npy
+      external_confids: ${exp.version_dir}/external_confids.npy
+      external_confids_dist: ${exp.version_dir}/external_confids_dist.npy
+    test:
+      raw_output: ${test.dir}/raw_output.npy
+      raw_output_dist: ${test.dir}/raw_output_dist.npy
+      external_confids: ${test.dir}/external_confids.npy
+      external_confids_dist: ${test.dir}/external_confids_dist.npy
   log_path: ${exp.dir}/log.txt
   global_seed: False # set to False to disable deterministic training.
 

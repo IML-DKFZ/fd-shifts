@@ -10,42 +10,57 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir,"exec.py")
 
-#todo val split = val from test set!
 
-mode = "train" # "test" / "train"
-backbones = ["vgg13","vgg16"]
-dropouts = [0, 0.4] # only true for vgg16
-models = ["confidnet_model", "devries_model"]
+
+mode = "analysis" # "test" / "train" / "analysis"
+backbones = ["vgg13","vgg16"] #
+dropouts = [1] # #
+models = ["confidnet_model"]
+# nesterov = [True, False] # todo
+avg_pools = [True]
+mss = [False, True] #
 
 for ix, (bb, do, model) in enumerate(product(backbones, dropouts, models)):
 
-    if not (do==True and model=="devries_model"):
+    # if ms == False:
 
-        exp_group_name = "tcp_sweep"
-        exp_name = "{}_bb{}_do{}".format(model, bb, do)
+        exp_group_name = "dropout_ms_sweep"
+        # exp_name = "{}_bb{}_do{}_avgpoolTrue_ms{}".format(model, bb, do, ms)
+        exp_name = "{}_bb{}_do{}_avgpoolTrue".format(model, bb, do)
         command_line_args = ""
 
         if mode == "test":
             command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(os.path.join(exp_group_name, exp_name, "hydra"))
             command_line_args += "exp.mode=test "
+            command_line_args += "test.selection_criterion=latest "
+
+        elif mode == "analysis":
+            command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(
+                os.path.join(exp_group_name, exp_name, "hydra"))
+            command_line_args += "exp.mode=analysis "
         else:
             if "devries" in model:
-                command_line_args += "study={} ".format("cifar_tcp_devries_sweep")
+                command_line_args += "study={} ".format("cifar_devries_study")
                 command_line_args += "model.network.name={} ".format("confidnet_and_enc")
             else:
                 command_line_args += "study={} ".format("cifar_tcp_confid_sweep")
+
             command_line_args += "data={} ".format("cifar10_data")
             command_line_args += "exp.group_name={} ".format(exp_group_name)
             command_line_args += "exp.name={} ".format(exp_name)
             command_line_args += "exp.mode={} ".format("train_test")
             command_line_args += "model.dropout_rate={} ".format(do)
-            command_line_args += "model.name={} ".format(model) # todo careful, name vs backbone!
+            command_line_args += "model.name={} ".format(model)
+            command_line_args += "model.network.backbone={} ".format(bb)
+            # command_line_args += "model.avg_pool={} ".format(avg_pool)
             command_line_args += "eval.ext_confid_name={} ".format("tcp")
-
+            # if ms == False:
+            #     command_line_args += "trainer.callbacks.model_checkpoint={} ".format("null")
+            #     command_line_args += "test.selection_criterion=latest "
 
             if do:
                 command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
-                    ["det_mcp" , "det_pe", "ext", "mcd_ext", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"])
+                    ["det_mcp" , "det_pe", "ext", "ext_mcd", "ext_waic", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv", "mcd_waic"])
 
             else:
                 command_line_args += "eval.confidence_measures.test=\"{}\" ".format(

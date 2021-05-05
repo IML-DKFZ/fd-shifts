@@ -2,9 +2,9 @@
 
 
 trainer:
-  num_epochs: 420 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs: 520 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
   val_every_n_epoch: 1
-  val_mode: "devries" # None, "devries", "cv", "repro_confidnet"
+  val_split: "devries" # empty (no val), "devries", "cv", "repro_confidnet",
   learning_rate: 1e-1
   learning_rate_confidnet: 1e-4 # only so high with annealing! if not: 1e-4
   learning_rate_confidnet_finetune: 1e-7
@@ -26,7 +26,7 @@ trainer:
       save_top_k: [1, 1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
     training_stages:
-      milestones: [200, 200] # 250, 450  Make sure milestones match val_every_n_epoch!!
+      milestones: [250, 450] # 250, 450  Make sure milestones match val_every_n_epoch!!
       pretrained_backbone_path:  #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
       disable_dropout_at_finetuning: True
@@ -37,7 +37,9 @@ trainer:
 model:
   name: confidnet_model #det_mcd_model
   fc_dim: 512
+  avg_pool: True
   confidnet_fc_dim: 400
+  dropout_rate: 0
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   network:
@@ -49,14 +51,13 @@ test:
   name: test_results
   dir: ${exp.dir}/${test.name}
   cf_path: ${exp.dir}/hydra/config.yaml
-  raw_output_path: ${test.dir}/raw_output.npy
-  external_confids_output_path: ${test.dir}/external_confids.npy
   selection_criterion: best_failap_err # model selection criterion or "latest"
   selection_mode: max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
   devries_repro_ood_split: True
   assim_ood_norm_flag: False
+  iid_set_split: "devries"  # all, devries
 
 eval:
   performance_metrics:
@@ -69,7 +70,7 @@ eval:
     test: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
   confidence_measures: # ["det_mcp" , "det_pe", "tcp" , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
     train:
-      [] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
+      ["det_mcp"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
        ["det_mcp" , "det_pe", "ext"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:

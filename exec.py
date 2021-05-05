@@ -62,7 +62,7 @@ def train(cf, subsequent_testing=False):
                          num_sanity_val_steps=5,
                          deterministic= train_deterministic_flag,
                          # limit_train_batches=10,
-                         limit_val_batches=0 if cf.trainer.no_val_mode else 1.0,
+                         limit_val_batches=0 if cf.trainer.val_split is None else 1.0,
                          # replace_sampler_ddp=False,
                          # accelerator="ddp"
                          )
@@ -140,6 +140,11 @@ def main(cf: DictConfig):
 
     if cf.exp.mode == 'test':
         test(cf)
+
+    if cf.exp.mode == 'analysis':
+        analysis.main(in_path=cf.test.dir,
+                      out_path=cf.test.dir,
+                      query_studies=cf.eval.query_studies)
 
 
 if __name__ == '__main__':
