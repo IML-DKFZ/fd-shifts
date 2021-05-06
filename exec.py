@@ -57,7 +57,7 @@ def train(cf, subsequent_testing=False):
                          callbacks=get_callbacks(cf),
                          resume_from_checkpoint = resume_ckpt_path,
                          benchmark=cf.trainer.benchmark,
-                         check_val_every_n_epoch = 1,
+                         check_val_every_n_epoch = cf.trainer.val_every_n_epoch,
                          fast_dev_run=cf.trainer.fast_dev_run,
                          num_sanity_val_steps=5,
                          deterministic= train_deterministic_flag,
@@ -88,7 +88,8 @@ def train(cf, subsequent_testing=False):
         trainer.test(ckpt_path=ckpt_path)
         analysis.main(in_path=cf.test.dir,
                       out_path=cf.test.dir,
-                      query_studies=cf.eval.query_studies)
+                      query_studies=cf.eval.query_studies,
+                      cf=cf)
 
 
 
@@ -144,7 +145,8 @@ def main(cf: DictConfig):
     if cf.exp.mode == 'analysis':
         analysis.main(in_path=cf.test.dir,
                       out_path=cf.test.dir,
-                      query_studies=cf.eval.query_studies)
+                      query_studies=cf.eval.query_studies,
+                      cf=cf)
 
 
 if __name__ == '__main__':

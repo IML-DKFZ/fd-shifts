@@ -68,6 +68,9 @@ class net(pl.LightningModule):
         if self.iamgenet_weights_path:
             self.backbone.encoder.load_pretrained_imagenet_params(self.iamgenet_weights_path)
 
+        for ix, x in enumerate(self.backbone.named_modules()):
+            print(ix, x[1])
+
 
     def training_step(self, batch, batch_idx):
         if self.training_stage == 0:
@@ -198,7 +201,7 @@ class net(pl.LightningModule):
 
              if self.lr_scheduler.name == "CosineAnnealing":
                  # only works with check_val_every_n_epoch = 1
-                print("initializing COsineAnnealing scheduler...")
+                print("initializing COsineAnnealing scheduler...", self.lr_scheduler.max_epochs)
                 schedulers.append({"scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizers[0],
                                                            T_max=self.lr_scheduler.max_epochs,
                                                            verbose=True),

@@ -43,7 +43,7 @@ class Encoder(nn.Module):
         self.img_size = cf.data.img_size
         self.fc_dim = cf.model.fc_dim
         self.eval_mcdropout = False
-        self.dropout_flag = cf.model.dropout_flag
+        self.dropout_flag = True #cf.model.dropout_flag
         print("CHECK DROPOUT IN VGG", self.dropout_flag)
 
         self.conv1 = Conv2dSame(self.img_size[-1], 64, 3)
@@ -170,7 +170,7 @@ class Encoder(nn.Module):
         elif self.dropout_flag:
             out = self.end_dropout(out)
         out = out.view(out.size(0), -1)
-        out = F.relu(self.fc1(out)) # todo average pool in devries?
+        out = F.relu(self.fc1(out))
         if self.eval_mcdropout:
             out = F.dropout(out, 0.5, training=True)
         elif self.dropout_flag:

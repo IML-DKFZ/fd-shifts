@@ -11,16 +11,17 @@ exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir,"exec.py")
 
 mode = "train" # "test" / "train"
-backbones = ["vgg13","vgg16"]
-dropouts = [0, 0.4] # only true for vgg16
-models = ["devries_model", "det_mcd_model"]
+backbones = ["vgg_devries"]
+dropouts = [0] # only true for vgg16
+models = ["devries_model"]
+runs = [0, 1]
 
-for ix, (bb, do, model) in enumerate(product(backbones, dropouts, models)):
+for ix, (bb, do, model, run) in enumerate(product(backbones, dropouts, models, runs)):
 
     if not (do==True and model=="devries_model"):
 
-        exp_group_name = "backbone_sweep"
-        exp_name = "{}_bb{}_do{}".format(model, bb, do)
+        exp_group_name = "goback_devries_sweep"
+        exp_name = "{}_bb{}_do{}_run{}".format(model, bb, do, run)
         command_line_args = ""
 
         if mode == "test":
@@ -36,19 +37,26 @@ for ix, (bb, do, model) in enumerate(product(backbones, dropouts, models)):
 
             command_line_args += "model.dropout_rate={} ".format(do)
             command_line_args += "model.name={} ".format(model) # todo careful, name vs backbone!
-            if "devries" in model:
-                command_line_args += "model.network.name={} ".format("devries_and_enc") # todo careful, name vs backbone!
-                command_line_args += "model.network.backbone={} ".format(bb) # todo careful, name vs backbone!
-                command_line_args += "eval.confidence_measures.test=\"{}\" ".format(["det_mcp" , "det_pe", "ext"])
+            if bb == "vgg_devries":
+                command_line_args += "model.network.name={} ".format(bb) # todo careful, name vs backbone!
+                # command_line_args += "model.network.backbone={} ".format(bb) # todo careful, name vs backbone!
             else:
-                command_line_args += "model.network.name={} ".format(bb)
+                command_line_args += "model.network.name={} ".format(
+                    "devries_and_enc")  # todo careful, name vs backbone!
+                command_line_args += "model.network.backbone={} ".format(bb)  # todo careful, name vs backbone!
+            command_line_args += "eval.confidence_measures.test=\"{}\" ".format(["det_mcp" , "det_pe", "ext"])
 
-            if do:
-                command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
-                    ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"])
-            else:
-                command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
-                    ["det_mcp", "det_pe"])
+            if do == 1:
+                command_line_args += "model.avg_pool={} ".format(False)
+            # else:
+            #     command_line_args += "model.network.name={} ".format(bb)
+
+            # if do:
+            #     command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
+            #         ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"])
+            # else:
+            #     command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
+            #         ["det_mcp", "det_pe"])
 
         if system_name == "cluster":
 

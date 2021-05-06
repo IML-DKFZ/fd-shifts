@@ -40,7 +40,7 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
             if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv"]) or (confid_key == "ext" and ext_confid_name=="bpd"):
                 min_confid = np.min(confids_cpu)
                 max_confid = np.max(confids_cpu)
-                confids_cpu = 1 - ((confids_cpu - min_confid) / (max_confid - min_confid))
+                confids_cpu = 1 - ((confids_cpu - min_confid) / (max_confid - min_confid + 1e-9))
 
             eval = ConfidEvaluator(confids=confids_cpu,
                              correct=correct_cpu,

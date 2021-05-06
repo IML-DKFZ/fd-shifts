@@ -12,26 +12,29 @@ exec_path = os.path.join(exec_dir,"exec.py")
 
 
 
-mode = "analysis" # "test" / "train" / "analysis"
+mode = "train" # "test" / "train" / "analysis"
 backbones = ["vgg13","vgg16"] #
-dropouts = [0] # #
-models = ["confidnet_model"]
-# nesterov = [True, False] # todo
-avg_pools = [True, False]
-mss = [False, True] #
+dropouts = [0, 1] # #
+models = ["devries_model"]
+# nesterov = [True, False] #
+# avg_pools = [True]
+cutouts = [True]
+scheduler_max = [200, 250]
+# mss = [False, True] #
 
-for ix, (bb, do, model, avg_pool, ms) in enumerate(product(backbones, dropouts, models, avg_pools, mss)):
+for ix, (bb, do, model, cutout, sm) in enumerate(product(backbones, dropouts, models, cutouts, scheduler_max)):
 
-    if avg_pool == True:
 
-        exp_group_name = "dropout_ms_sweep"
-        exp_name = "{}_bb{}_do{}_avgpoolTrue_ms{}".format(model, bb, do, ms)
-        # exp_name = "{}_bb{}_do{}_avgpool{}".format(model, bb, do, avg_pool)
+        exp_group_name = "ultimate_cifar_sweep"
+        # exp_name = "{}_bb{}_do{}_avgpoolTrue_ms{}".format(model, bb, do, ms)
+        exp_name = "{}_bb{}_do{}_sm{}_dnorm".format(model, bb, do, sm)
         command_line_args = ""
 
         if mode == "test":
             command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(os.path.join(exp_group_name, exp_name, "hydra"))
             command_line_args += "exp.mode=test "
+            command_line_args += "test.iid_set_split=all "
+
             # command_line_args += "test.selection_criterion=latest " # todo if not ms!!
 
             # command_line_args += " +exp.output_paths={} "
@@ -50,11 +53,13 @@ for ix, (bb, do, model, avg_pool, ms) in enumerate(product(backbones, dropouts, 
                 os.path.join(exp_group_name, exp_name, "hydra"))
             command_line_args += "exp.mode=analysis "
         else:
+
             if "devries" in model:
                 command_line_args += "study={} ".format("cifar_devries_study")
-                command_line_args += "model.network.name={} ".format("confidnet_and_enc")
+                command_line_args += "eval.ext_confid_name={} ".format("devries")
             else:
                 command_line_args += "study={} ".format("cifar_tcp_confid_sweep")
+                command_line_args += "eval.ext_confid_name={} ".format("tcp")
 
             command_line_args += "data={} ".format("cifar10_data")
             command_line_args += "exp.group_name={} ".format(exp_group_name)
@@ -63,11 +68,15 @@ for ix, (bb, do, model, avg_pool, ms) in enumerate(product(backbones, dropouts, 
             command_line_args += "model.dropout_rate={} ".format(do)
             command_line_args += "model.name={} ".format(model)
             command_line_args += "model.network.backbone={} ".format(bb)
-            command_line_args += "model.avg_pool={} ".format(avg_pool)
-            command_line_args += "eval.ext_confid_name={} ".format("tcp")
-            if ms == False:
-                command_line_args += "trainer.callbacks.model_checkpoint={} ".format("null")
-                command_line_args += "test.selection_criterion=latest "
+            # if cutout == False:
+            #     command_line_args += "~data.augmentations.train.cutout "
+            command_line_args += "trainer.lr_scheduler.max_epochs={} ".format(sm)
+
+            # command_line_args += "model.avg_pool={} ".format(avg_pool)
+
+            # if ms == False:
+            #     command_line_args += "trainer.callbacks.model_checkpoint={} ".format("null")
+            #     command_line_args += "test.selection_criterion=latest "
 
             if do:
                 command_line_args += "eval.confidence_measures.test=\"{}\" ".format(

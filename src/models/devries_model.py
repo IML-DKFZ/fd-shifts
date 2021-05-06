@@ -15,7 +15,8 @@ class net(pl.LightningModule):
         self.optimizer_cfgs = cf.trainer.optimizer
         self.lr_scheduler_cfgs = cf.trainer.lr_scheduler
 
-        if cf.trainer.val_mode is not None:
+        if cf.trainer.callbacks.model_checkpoint is not None:
+            print("Initializing custom Model Selector.", cf.trainer.callbacks.model_checkpoint)
             self.selection_metrics = cf.trainer.callbacks.model_checkpoint.selection_metric
             self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
 
@@ -38,21 +39,18 @@ class net(pl.LightningModule):
 
     def mcd_eval_forward(self, x, n_samples):
         # self.model.encoder.eval_mcdropout = True
-        self.network.encoder.enable_dropout()
-        self.backbone.encoder.enable_dropout()
+        self.model.encoder.enable_dropout()
 
         softmax_list = []
         conf_list =  []
         for _ in range(n_samples - len(softmax_list)):
-            logits = self.backbone(x)
-            _, confidence = self.network(x)
+            logits, confidence = self.model(x)
             softmax = F.softmax(logits, dim=1)
             confidence = torch.sigmoid(confidence).squeeze(1)
             softmax_list.append(softmax.unsqueeze(2))
             conf_list.append(confidence.unsqueeze(1))
 
-        self.network.encoder.disable_dropout()
-        self.backbone.encoder.disable_dropout()
+        self.model.encoder.disable_dropout()
 
         return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
 
@@ -116,7 +114,7 @@ class net(pl.LightningModule):
         softmax_dist = None
         confid_dist = None
         if any("mcd" in cfd for cfd in self.query_confids["test"]):
-            softmax_dist, confidence_dist = self.mcd_eval_forward(x=x,
+            softmax_dist, confid_dist = self.mcd_eval_forward(x=x,
                                                  n_samples=self.test_mcd_samples,
                                                  )
         self.test_results = {"softmax": softmax, "labels": y, "confid": confidence, "softmax_dist": softmax_dist, "confid_dist": confid_dist}

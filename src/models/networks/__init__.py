@@ -7,6 +7,7 @@ from src.models.networks import devries_network
 from src.models.networks import vgg
 from src.models.networks import zhang_network
 from src.models.networks import resnet50_imagenet
+from src.models.networks import vgg_devries
 
 
 def get_network(network_name):
@@ -24,6 +25,8 @@ def get_network(network_name):
         "devries_and_enc": devries_network.DeVriesAndEncoder, # todo make explciit arguments!!
         "vgg13": vgg.VGG, # todo make explciit arguments!!
         "vgg16": vgg.VGG, # todo make explciit arguments!!
+        "vgg_old": vgg16.VGG16, # todo make explciit arguments!!
+        "vgg_devries": vgg_devries.VGG, # todo make explciit arguments!!
         "zhang_and_enc": zhang_network.ZhangAndEncoder, # todo make explciit arguments!!
         "resnet50": resnet50_imagenet.resnet50, # todo make explciit arguments!!
     }

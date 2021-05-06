@@ -39,23 +39,17 @@ class net(pl.LightningModule):
 
     def mcd_eval_forward(self, x, n_samples):
         # self.model.encoder.eval_mcdropout = True
-        self.network.encoder.enable_dropout()
-        self.backbone.encoder.enable_dropout()
+        self.model.encoder.enable_dropout()
 
         softmax_list = []
-        conf_list =  []
         for _ in range(n_samples - len(softmax_list)):
-            logits = self.backbone(x)
-            _, confidence = self.network(x)
+            logits = self.model(x)
             softmax = F.softmax(logits, dim=1)
-            confidence = torch.sigmoid(confidence).squeeze(1)
             softmax_list.append(softmax.unsqueeze(2))
-            conf_list.append(confidence.unsqueeze(1))
 
-        self.network.encoder.disable_dropout()
-        self.backbone.encoder.disable_dropout()
+        self.model.encoder.disable_dropout()
 
-        return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
+        return torch.cat(softmax_list, dim=2)
 
 
     def training_step(self, batch, batch_idx):
@@ -74,16 +68,13 @@ class net(pl.LightningModule):
 
         softmax_dist = None
         if any("mcd" in cfd for cfd in self.query_confids["val"]):
-            softmax_dist = self.mcd_eval_forward(x=x,
-                                                 n_samples=self.monitor_mcd_samples,
-                                                 existing_softmax_list=[softmax.unsqueeze(2)])
+            softmax_dist = self.mcd_eval_forward(x=x,  n_samples=self.monitor_mcd_samples)
 
         if self.current_epoch == self.num_epochs - 1:
             # save mcd output for psuedo-test if actual test is with mcd.
             if any("mcd" in cfd for cfd in self.query_confids["test"]) and softmax_dist is None:
                     softmax_dist = self.mcd_eval_forward(x=x,
-                                                         n_samples=self.monitor_mcd_samples,
-                                                         existing_softmax_list=[softmax.unsqueeze(2)])
+                                                         n_samples=self.monitor_mcd_samples)
 
         return {"loss":loss, "softmax": softmax, "labels": y, "softmax_dist": softmax_dist}
 

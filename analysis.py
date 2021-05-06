@@ -14,14 +14,15 @@ class Analysis():
                  query_confid_metrics,
                  query_plots,
                  query_studies,
-                 analysis_out_dir,):
+                 analysis_out_dir,
+                 cf):
 
         self.input_list = []
         self.names_list = []
         for path in path_list:
             method_dict = {
-                "cfg": OmegaConf.load(os.path.join(os.path.dirname(path), "hydra", "config.yaml")),
-                "raw_outputs": np.load(os.path.join(path, "raw_output.npy")),
+                "cfg": OmegaConf.load(os.path.join(os.path.dirname(path), "hydra", "config.yaml")) if cf is None else cf,
+                "raw_output": np.load(os.path.join(path, "raw_output.npy")),
                 "name": path.split("/")[-2] # last level is version or test dir
             }
 
@@ -31,6 +32,7 @@ class Analysis():
                 method_dict["raw_external_confids"] = np.load(os.path.join(path, "external_confids.npy"))
             if os.path.isfile(os.path.join(path, "external_confids_dist.npy")):
                 method_dict["raw_external_confids_dist"] = np.load(os.path.join(path, "external_confids_dist.npy"))
+                print("CHECK IN EXT DIST SHAPE", method_dict["raw_external_confids_dist"].shape)
 
             if method_dict["cfg"].data.num_classes is None:
                 method_dict["cfg"].data.num_classes = method_dict["cfg"].trainer.num_classes
@@ -52,7 +54,7 @@ class Analysis():
 
         for method_dict in self.input_list:
 
-            raw_outputs = method_dict["raw_outputs"]
+            raw_outputs = method_dict["raw_output"]
             method_dict["raw_dataset_ix"] = raw_outputs[:, -1]
             method_dict["raw_labels"] = raw_outputs[:, -2]
             method_dict["raw_softmax"] = raw_outputs[:, :-2]
@@ -105,12 +107,12 @@ class Analysis():
                     method_dict["study_labels"] = deepcopy(method_dict["raw_labels"][select_ix])
                     method_dict["study_correct"] = deepcopy(method_dict["raw_correct"][select_ix])
 
-                    if method_dict["raw_external_confids"] is not None:
+                    if method_dict.get("raw_external_confids") is not None:
                         method_dict["study_external_confids"] = deepcopy(method_dict["raw_external_confids"][select_ix])
-                    if method_dict["raw_external_confids_dist"] is not None:
+                    if method_dict.get("raw_external_confids_dist") is not None:
                         method_dict["study_external_confids_dist"] = deepcopy(method_dict["raw_external_confids_dist"][select_ix])
 
-                    if method_dict["raw_softmax_dist"] is not None:
+                    if method_dict.get("raw_mcd_softmax_dist") is not None:
                         method_dict["study_mcd_softmax_mean"] = deepcopy(method_dict["raw_mcd_softmax_mean"][select_ix])
                         method_dict["study_mcd_softmax_dist"] = deepcopy(method_dict["raw_mcd_softmax_dist"][select_ix])
                         method_dict["study_mcd_correct"] = deepcopy(method_dict["raw_mcd_correct"][select_ix])
@@ -143,10 +145,10 @@ class Analysis():
                             method_dict["study_softmax"] = deepcopy(method_dict["raw_softmax"])[select_ix_all]
                             method_dict["study_labels"] = labels[select_ix_all]
                             method_dict["study_correct"] = correct[select_ix_all]
-                            if method_dict["raw_external_confids"] is not None:
+                            if method_dict.get("raw_external_confids") is not None:
                                 method_dict["study_external_confids"] = deepcopy(method_dict["raw_external_confids"][select_ix_all])
 
-                            if method_dict["raw_softmax_dist"] is not None:
+                            if method_dict.get("raw_mcd_softmax_dist") is not None:
                                 correct = deepcopy(method_dict["raw_mcd_correct"])
                                 correct[select_ix_out] = 0
                                 if mode == "original_mode":
@@ -156,9 +158,9 @@ class Analysis():
                                 method_dict["study_mcd_softmax_mean"] = deepcopy(method_dict["raw_mcd_softmax_mean"][select_ix_all])
                                 method_dict["study_mcd_softmax_dist"] = deepcopy(method_dict["raw_mcd_softmax_dist"][select_ix_all])
                                 method_dict["study_mcd_correct"] = correct[select_ix_all]
-                                if method_dict["raw_external_confids"] is not None:
+                                if method_dict.get("raw_external_confids_dist") is not None:
                                     method_dict["study_external_confids_dist"] = deepcopy(
-                                        method_dict["raw_external_confids"][select_ix_all])
+                                        method_dict["raw_external_confids_dist"][select_ix_all])
 
                             self.perform_study(study_name="{}_{}_{}".format(study_name, new_class_set, mode))
 
@@ -185,10 +187,10 @@ class Analysis():
                                 15, 5, -1)[:, intensity_level].reshape(-1)
                             method_dict["study_correct"] = deepcopy(method_dict["raw_correct"][select_ix]).reshape(
                                 15, 5, -1)[:, intensity_level].reshape(-1)
-                            if method_dict["raw_external_confids"] is not None:
+                            if method_dict.get("raw_external_confids") is not None:
                                 method_dict["study_external_confids"] = deepcopy(
                                     method_dict["raw_external_confids"][select_ix]).reshape(15, 5, -1)[:, intensity_level].reshape(-1)
-                            if method_dict["raw_external_confids_dist"] is not None:
+                            if method_dict.get("raw_external_confids_dist") is not None:
                                 method_dict["study_external_confids_dist"] = deepcopy(
                                     method_dict["raw_external_confids_dist"][select_ix]).reshape(15, 5, -1)[:, intensity_level].reshape(-1)
 
@@ -356,6 +358,7 @@ class Analysis():
             for confid_key in method_dict["query_confids"]:
                 print(confid_key)
                 confid_dict = method_dict[confid_key]
+                print(confid_key, method_dict["query_confids"])
                 if confid_key == "bpd":
                     print("CHECK BEFORE NORM VALUES CORRECT", np.median(confid_dict["confids"][confid_dict["correct"] == 1]))
                     print("CHECK BEFORE NORM VALUES INCORRECT", np.median(confid_dict["confids"][confid_dict["correct"] == 0]))
@@ -363,7 +366,6 @@ class Analysis():
                     confids = confid_dict["confids"].astype(np.float64)
                     min_confid = np.min(confids)
                     max_confid = np.max(confids)
-                    confid_dict["confids"] = 1 - ((confids - min_confid) / (max_confid - min_confid + 1e-9))
                     confid_dict["confids"] = 1 - ((confids - min_confid) / (max_confid - min_confid + 1e-9))
 
                 if confid_key == "bpd":
@@ -421,7 +423,7 @@ class Analysis():
 
 
 
-def main(in_path=None, out_path=None, query_studies=None):
+def main(in_path=None, out_path=None, query_studies=None, cf=None):
 
     # path to the dir where the raw otuputs lie. NO SLASH AT THE END!
     if in_path is None: # NO SLASH AT THE END OF PATH !
@@ -483,7 +485,8 @@ def main(in_path=None, out_path=None, query_studies=None):
                         query_confid_metrics=query_confid_metrics,
                         query_plots=query_plots,
                         query_studies=query_studies,
-                        analysis_out_dir=analysis_out_dir
+                        analysis_out_dir=analysis_out_dir,
+                        cf=cf
                         )
 
     analysis.register_and_perform_studies()

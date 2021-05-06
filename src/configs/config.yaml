@@ -1,7 +1,7 @@
 defaults:
   - hydra/job_logging: disabled
   - data: cifar10_data.yaml #svhn_data.yaml
-  - study: cifar_tcp_confid_sweep.yaml # svhn_confid_study.yaml
+  - study: cifar_devries_study.yaml # svhn_confid_study.yaml
 
 
 
@@ -13,7 +13,7 @@ hydra:
 
 exp:
   group_name: checks
-  name: check_confidnet_noms # cifar10_run_0_sebastian
+  name: check_goback_seb # cifar10_run_0_sebastian
   version: None
   mode: train_test   # train or test
   work_dir: ${hydra:runtime.cwd}

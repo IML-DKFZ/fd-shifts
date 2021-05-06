@@ -38,15 +38,18 @@ class Encoder(nn.Module):
     def _make_layers(self, cfg):
         layers = []
         in_channels = 3
-        for x in cfg:
+        for ix, x in enumerate(cfg):
             if x == 'M':
                 layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
             else:
-                layers += [nn.Conv2d(in_channels, x, kernel_size=3, padding=1),
-                           nn.BatchNorm2d(x)]
-                layers += [nn.ReLU(inplace=True)]
-                if self.dropout_rate > 0:
-                    layers += [nn.Dropout(self.dropout_rate * 0.4)]
+                layers += [nn.Conv2d(in_channels, x, kernel_size=3, padding=1, padding_mode="reflect"),
+                           nn.ReLU(inplace=True),
+                           nn.BatchNorm2d(x),
+                           ]
+
+                if self.dropout_rate > 0 and cfg[ix+1] != "M":
+                    rate = 0.3 if ix == 0 else 0.4
+                    layers += [nn.Dropout(self.dropout_rate * rate)]
                 in_channels = x
         if self.avg_pool:
             layers += [nn.AvgPool2d(kernel_size=1, stride=1), Flatten()]
