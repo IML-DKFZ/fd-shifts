@@ -26,7 +26,7 @@ def get_network(network_name):
         "vgg13": vgg.VGG, # todo make explciit arguments!!
         "vgg16": vgg.VGG, # todo make explciit arguments!!
         "vgg_old": vgg16.VGG16, # todo make explciit arguments!!
-        "vgg_devries": vgg_devries.VGG, # todo make explciit arguments!!
+        "vgg_devries": vgg_devries.VGG13, # todo make explciit arguments!!
         "zhang_and_enc": zhang_network.ZhangAndEncoder, # todo make explciit arguments!!
         "resnet50": resnet50_imagenet.resnet50, # todo make explciit arguments!!
     }

@@ -33,3 +33,5 @@ class DeVriesNet(nn.Module):
         confid = self.uncertainty1(x)
 
         return confid
+
+

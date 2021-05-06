@@ -14,14 +14,14 @@ mode = "train" # "test" / "train"
 backbones = ["vgg_devries"]
 dropouts = [0] # only true for vgg16
 models = ["devries_model"]
-runs = [0, 1]
+runs = [0]
 
 for ix, (bb, do, model, run) in enumerate(product(backbones, dropouts, models, runs)):
 
     if not (do==True and model=="devries_model"):
 
         exp_group_name = "goback_devries_sweep"
-        exp_name = "{}_bb{}_do{}_run{}".format(model, bb, do, run)
+        exp_name = "{}_bb{}_do{}_run{}_OLDMODEL".format(model, bb, do, run)
         command_line_args = ""
 
         if mode == "test":
@@ -35,11 +35,11 @@ for ix, (bb, do, model, run) in enumerate(product(backbones, dropouts, models, r
             command_line_args += "exp.mode={} ".format("train_test")
             command_line_args += "trainer.num_epochs={} ".format(200)
 
-            command_line_args += "model.dropout_rate={} ".format(do)
+            # command_line_args += "model.dropout_rate={} ".format(do)
             command_line_args += "model.name={} ".format(model) # todo careful, name vs backbone!
             if bb == "vgg_devries":
-                command_line_args += "model.network.name={} ".format(bb) # todo careful, name vs backbone!
-                # command_line_args += "model.network.backbone={} ".format(bb) # todo careful, name vs backbone!
+                command_line_args += "model.network.name={} ".format("devries_and_enc") # todo careful, name vs backbone!
+                command_line_args += "model.network.backbone={} ".format(bb) # todo careful, name vs backbone!
             else:
                 command_line_args += "model.network.name={} ".format(
                     "devries_and_enc")  # todo careful, name vs backbone!
