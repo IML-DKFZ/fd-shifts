@@ -98,6 +98,7 @@ class net(pl.LightningModule):
         else:
             raise NotImplementedError
 
+        print(x.mean(), pred_original.std())
         return {"loss":loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)}
 
 

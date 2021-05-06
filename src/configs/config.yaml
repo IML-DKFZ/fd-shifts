@@ -38,7 +38,7 @@ exp:
       external_confids: ${test.dir}/external_confids.npy
       external_confids_dist: ${test.dir}/external_confids_dist.npy
   log_path: ${exp.dir}/log.txt
-  global_seed: False # set to False to disable deterministic training.
+  global_seed: 1 # set to False to disable deterministic training.
 
 
 
