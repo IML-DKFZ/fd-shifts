@@ -23,7 +23,8 @@ class net(pl.LightningModule):
         self.optimizer_cfgs = cf.trainer.optimizer
         self.lr_scheduler_cfgs = cf.trainer.lr_scheduler
 
-        if not cf.trainer.no_val_mode:
+        if cf.trainer.callbacks.model_checkpoint is not None:
+            print("Initializing custom Model Selector.", cf.trainer.callbacks.model_checkpoint)
             self.selection_metrics = cf.trainer.callbacks.model_checkpoint.selection_metric
             self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
 

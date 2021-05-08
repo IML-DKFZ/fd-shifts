@@ -2,9 +2,9 @@
 
 
 trainer:
-  num_epochs: 200 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs: 200 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
   val_every_n_epoch: 1 #has to be 1 because of schedulers
-  val_split:   # leave empty for no val
+  val_split: "devries"  # leave empty for no val
   batch_size: 128
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
@@ -12,7 +12,7 @@ trainer:
   lr_scheduler:
     name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
     milestones: [60, 120, 160] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
-    max_epochs: 200
+    max_epochs: ${trainer.num_epochs}
   optimizer:
     name: SGD
     learning_rate: 1e-1
@@ -20,7 +20,12 @@ trainer:
     nesterov: True
     weight_decay: 0.0005
   callbacks:
-    model_checkpoint: # without specs saves last epoch
+    model_checkpoint:
+      n: 1
+      selection_metric: ["val/accuracy"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
+      mode: ["max"]
+      filename: ["best_valacc"]# min:lower is better, max: higher is better
+      save_top_k: [1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
     learning_rate_monitor:
 
@@ -45,7 +50,7 @@ model:
   budget: 0.3
   network:
     name: devries_and_enc      # confidnet_small_conv_and_enc / small_conv
-    backbone: vgg_devries
+    backbone: vgg13
     imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 
@@ -53,7 +58,7 @@ test:
   name: test_results
   dir: ${exp.dir}/${test.name}
   cf_path: ${exp.dir}/hydra/config.yaml
-  selection_criterion: "latest" #best_valacc # model selection criterion or "latest"
+  selection_criterion: "latest" #"best_valacc" #best_valacc # model selection criterion or "latest"
 #  selection_mode: "l#max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
@@ -94,4 +99,6 @@ eval:
     new_class_study:
       - tinyimagenet
       - tinyimagenet_resize
+      - cifar100
+      - svhn
 

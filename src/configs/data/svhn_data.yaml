@@ -8,10 +8,13 @@
   reproduce_confidnet_splits: True
   augmentations:
     train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
+      to_tensor:
       normalize: [ [0.4376821, 0.4437697, 0.47280442], [0.19803012, 0.20101562, 0.19703614] ]
     val:
+      to_tensor:
       normalize: [ [0.4376821, 0.4437697, 0.47280442], [0.19803012, 0.20101562, 0.19703614] ]
     test:
+      to_tensor:
       normalize: [ [0.4376821, 0.4437697, 0.47280442], [0.19803012, 0.20101562, 0.19703614] ]
   kwargs:
   # corbeire: 0.5 is not precise enough for OoD!

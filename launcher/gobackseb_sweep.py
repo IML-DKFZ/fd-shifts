@@ -12,23 +12,23 @@ exec_path = os.path.join(exec_dir,"exec.py")
 
 
 
-mode = "analysis" # "test" / "train" / "analysis"
+mode = "train" # "test" / "train" / "analysis"
 backbones = ["vgg13", "vgg16"] #
 dropouts = [1] # #
 models = ["confidnet_model"]
 # nesterov = [True, False] #
 # avg_pools = [True]
-cutouts = [True]
+cutouts = [False]
 # mss = [False, True] #
-expnames = ["gobackseb_bbvgg13_fixeddo" ,    "gobackseb_bbvgg16" ,         "gobackseb_bbvgg16_totalrepro" ,
-"gobackseb_bbvgg13",    "gobackseb_bbvgg13_totalrepro",  "gobackseb_bbvgg16_fixeddo" ]
+# expnames = ["gobackseb_bbvgg13_fixeddo" ,    "gobackseb_bbvgg16" ,         "gobackseb_bbvgg16_totalrepro" ,
+# "gobackseb_bbvgg13",    "gobackseb_bbvgg13_totalrepro",  "gobackseb_bbvgg16_fixeddo" ]
 
 
 
-# for ix, bb in enumerate(backbones):
-for exp_name in expnames:
+for ix, bb in enumerate(backbones):
+# for exp_name in expnames:
 
-        exp_group_name = "gobackseb_sweep"
+        exp_group_name = "gobackseb_fix_sweep"
         # exp_name = "{}_bb{}_do{}_avgpoolTrue_ms{}".format(model, bb, do, ms)
         # exp_name = "gobackseb_bb{}_totalrepro".format(bb)
         command_line_args = ""

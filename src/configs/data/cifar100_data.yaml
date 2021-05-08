@@ -11,10 +11,15 @@
       hflip: True
       rotate: 15
       random_crop: [32, 4]
+      to_tensor:
       normalize: [ [ 0.4914, 0.4822, 0.4465 ], [ 0.2023, 0.1994, 0.2010 ] ]
     val:
+      to_tensor:
       normalize: [ [ 0.4914, 0.4822, 0.4465 ], [ 0.2023, 0.1994, 0.2010 ] ]
     test:
+      to_tensor:
       normalize: [ [ 0.4914, 0.4822, 0.4465 ], [ 0.2023, 0.1994, 0.2010 ] ]
+
+
 
 

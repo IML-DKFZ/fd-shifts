@@ -11,49 +11,49 @@ exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir,"exec.py")
 
 mode = "train" # "test" / "train"
-backbones = ["vgg_devries"]
-dropouts = [0] # only true for vgg16
+backbones = ["vgg13", "vgg16"]
+dropouts = [1] # only true for vgg16
 models = ["devries_model"]
-runs = [0]
+runs = [0, 1, 2]
+avg_pool = [True, False]
+num_epochs = [200, 250]
 
-for ix, (bb, do, model, run) in enumerate(product(backbones, dropouts, models, runs)):
+for ix, (bb, do, model, run, ne, ap) in enumerate(product(backbones, dropouts, models, runs, num_epochs, avg_pool)):
 
-    if not (do==True and model=="devries_model"):
 
-        exp_group_name = "goback_devries_sweep"
-        exp_name = "{}_bb{}_do{}_run{}_OLDMODEL".format(model, bb, do, run)
+        exp_group_name = "devries_200fixed_sweep"
+        exp_name = "{}_bb{}_do{}_run{}_ne{}_ap{}".format(model, bb, do, run, ne, ap)
         command_line_args = ""
 
         if mode == "test":
             command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(os.path.join(exp_group_name, exp_name, "hydra"))
             command_line_args += "exp.mode=test "
+            # command_line_args += "eval.query_studies.new_class_study=\"{}\" ".format(
+            #     ['tinyimagenet', 'tinyimagenet_resize', "cifar100", "svhn"])
         else:
             command_line_args += "study={} ".format("cifar_devries_study")
             command_line_args += "data={} ".format("cifar10_data")
             command_line_args += "exp.group_name={} ".format(exp_group_name)
             command_line_args += "exp.name={} ".format(exp_name)
             command_line_args += "exp.mode={} ".format("train_test")
-            command_line_args += "trainer.num_epochs={} ".format(200)
+            command_line_args += "trainer.num_epochs={} ".format(ne)
 
-            # command_line_args += "model.dropout_rate={} ".format(do)
+            command_line_args += "model.dropout_rate={} ".format(do)
             command_line_args += "model.name={} ".format(model) # todo careful, name vs backbone!
-            if bb == "vgg_devries":
-                command_line_args += "model.network.name={} ".format("devries_and_enc") # todo careful, name vs backbone!
-                command_line_args += "model.network.backbone={} ".format(bb) # todo careful, name vs backbone!
-            else:
-                command_line_args += "model.network.name={} ".format(
-                    "devries_and_enc")  # todo careful, name vs backbone!
-                command_line_args += "model.network.backbone={} ".format(bb)  # todo careful, name vs backbone!
+            command_line_args += "model.network.name={} ".format(
+                "devries_and_enc")  # todo careful, name vs backbone!
+            command_line_args += "model.network.backbone={} ".format(bb)  # todo careful, name vs backbone!
             command_line_args += "eval.confidence_measures.test=\"{}\" ".format(["det_mcp" , "det_pe", "ext"])
 
-            if do == 1:
-                command_line_args += "model.avg_pool={} ".format(False)
+            # if do == 1:
+            command_line_args += "model.avg_pool={} ".format(ap)
             # else:
             #     command_line_args += "model.network.name={} ".format(bb)
 
-            # if do:
-            #     command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
-            #         ["det_mcp" , "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"])
+            if do == 1:
+                command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
+                    ["det_mcp", "det_pe", "ext", "ext_mcd", "ext_waic", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi",
+                     "mcd_sv", "mcd_waic"])
             # else:
             #     command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
             #         ["det_mcp", "det_pe"])

@@ -1,18 +1,18 @@
 # @package _global_
 
 trainer:
-  num_epochs: 40 # has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs: 200 # has to be >1 because of incompatibility of lighting eval with psuedo test
   val_every_n_epoch: 1
   learning_rate:
     classifier: 1e-2
-    flow: 0.0005
+    flow: 0.0001
   lr_scheduler:
-    max_epochs: 40
+    max_epochs: ${trainer.num_epochs}
   momentum: 0.9
   weight_decay:
     classifier: 1e-4
     flow: 1e-3
-  batch_size: 512
+  batch_size: 64
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
@@ -30,11 +30,11 @@ trainer:
 model:
   name: zhang_model #det_mcd_model
   fc_dim: 512
-  epsilon_noise: 1e-3
-  dropout_rate: 0.3
+  epsilon_noise: 0
+  dropout_rate: 0.2
   network:
     name: zhang_and_enc      # confidnet_small_conv_and_enc / small_conv
-    backbone: svhn_small_conv
+    backbone:
     imagenet_weights_path:
 
 test:
@@ -43,7 +43,7 @@ test:
   cf_path: ${exp.dir}/hydra/config.yaml
   raw_output_path: ${test.dir}/raw_output.npy
   external_confids_output_path: ${test.dir}/external_confids.npy
-  selection_criterion: best_valacc # model selection criterion or "latest"
+  selection_criterion: latest # model selection criterion or "latest"
   selection_mode: max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
@@ -59,11 +59,11 @@ eval:
     test: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
   confidence_measures: # ["det_mcp" , "det_pe", "tcp" , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
     train:
-      ["det_mcp", "bpd"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
+      ["det_mcp", "ext"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
-      ["bpd", "det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
+      ["det_mcp", "ext"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:
-      ["det_mcp" , "det_pe", "bpd"]
+      ["det_mcp" , "det_pe", "ext"]
 
   monitor_plots: [ #"calibration",
                    #"overconfidence",
@@ -71,6 +71,7 @@ eval:
                     ]
 
   tb_hparams: ['fold']
+  ext_confid_name: bpd
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
     iid_study: svhn

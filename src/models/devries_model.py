@@ -98,13 +98,39 @@ class net(pl.LightningModule):
         else:
             raise NotImplementedError
 
-        print(x.mean(), pred_original.std())
+        # print(x.mean(), pred_original.std())
         return {"loss":loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)}
 
 
     def validation_step(self, batch, batch_idx):
 
-        pass
+        x, y = batch
+
+        logits, confidence = self.model(x)
+        confidence = torch.sigmoid(confidence)
+        pred_original = F.softmax(logits, dim=1)
+        labels_onehot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
+
+        # Make sure we don't have any numerical instability
+        eps = 1e-12
+        pred_original = torch.clamp(pred_original, 0. + eps, 1. - eps)
+        confidence = torch.clamp(confidence, 0. + eps, 1. - eps)
+
+        # Randomly set half of the confidences to 1 (i.e. no hints)
+        b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).cuda()
+        conf = confidence * b + (1 - b)
+        pred_new = pred_original * conf.expand_as(pred_original) + labels_onehot * (
+                1 - conf.expand_as(labels_onehot))
+        pred_new = torch.log(pred_new)
+
+        xentropy_loss = self.loss_criterion(pred_new, y)
+        confidence_loss = torch.mean(-torch.log(confidence))
+
+        loss = xentropy_loss + (self.lmbda * confidence_loss)
+        # print(self.lmbda, confidence_loss.item())
+
+        # print(x.mean(), pred_original.std())
+        return {"loss": loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)}
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
@@ -115,9 +141,9 @@ class net(pl.LightningModule):
         softmax_dist = None
         confid_dist = None
         if any("mcd" in cfd for cfd in self.query_confids["test"]):
-            softmax_dist, confid_dist = self.mcd_eval_forward(x=x,
-                                                 n_samples=self.test_mcd_samples,
-                                                 )
+            softmax_dist, confid_dist = self.mcd_eval_forward(x=x, n_samples=self.test_mcd_samples)
+            # print(softmax_dist.std(1).mean(), confid_dist.std(1).mean(), confid_dist[0])
+
         self.test_results = {"softmax": softmax, "labels": y, "confid": confidence, "softmax_dist": softmax_dist, "confid_dist": confid_dist}
 
 

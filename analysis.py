@@ -32,7 +32,7 @@ class Analysis():
                 method_dict["raw_external_confids"] = np.load(os.path.join(path, "external_confids.npy"))
             if os.path.isfile(os.path.join(path, "external_confids_dist.npy")):
                 method_dict["raw_external_confids_dist"] = np.load(os.path.join(path, "external_confids_dist.npy"))
-                print("CHECK IN EXT DIST SHAPE", method_dict["raw_external_confids_dist"].shape)
+                print("CHECK IN EXT DIST SHAPE", method_dict["raw_external_confids_dist"].shape, method_dict["raw_external_confids_dist"].std(1).mean())
 
             if method_dict["cfg"].data.num_classes is None:
                 method_dict["cfg"].data.num_classes = method_dict["cfg"].trainer.num_classes
@@ -111,6 +111,8 @@ class Analysis():
                         method_dict["study_external_confids"] = deepcopy(method_dict["raw_external_confids"][select_ix])
                     if method_dict.get("raw_external_confids_dist") is not None:
                         method_dict["study_external_confids_dist"] = deepcopy(method_dict["raw_external_confids_dist"][select_ix])
+                        std = method_dict["study_external_confids_dist"].std(1)
+                        print("CHECK EXT DIST", method_dict["study_external_confids_dist"].shape, std.mean(), std.min(), std.max(), method_dict["study_external_confids_dist"][0])
 
                     if method_dict.get("raw_mcd_softmax_dist") is not None:
                         method_dict["study_mcd_softmax_mean"] = deepcopy(method_dict["raw_mcd_softmax_mean"][select_ix])

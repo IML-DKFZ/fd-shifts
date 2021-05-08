@@ -42,9 +42,9 @@ class Encoder(nn.Module):
             if x == 'M':
                 layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
             else:
-                layers += [nn.Conv2d(in_channels, x, kernel_size=3, padding=1, padding_mode="reflect"),
-                           nn.ReLU(inplace=True),
+                layers += [nn.Conv2d(in_channels, x, kernel_size=3, padding=1), # , padding_mode="reflect"
                            nn.BatchNorm2d(x),
+                           nn.ReLU(inplace=True),
                            ]
 
                 if self.dropout_rate > 0 and cfg[ix+1] != "M":

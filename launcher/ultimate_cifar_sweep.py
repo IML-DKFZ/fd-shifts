@@ -14,26 +14,26 @@ exec_path = os.path.join(exec_dir,"exec.py")
 
 mode = "train" # "test" / "train" / "analysis"
 backbones = ["vgg13","vgg16"] #
-dropouts = [0, 1] # #
-models = ["devries_model"]
-# nesterov = [True, False] #
-# avg_pools = [True]
-cutouts = [True]
-scheduler_max = [200, 250]
-# mss = [False, True] #
+dropouts = [1, 0] # #
+models = ["confidnet_model"]
+num_epochs = [200, 250]
+runs = [0, 1 , 2]
+avg_pool = [True]
+my_ix = 0
 
-for ix, (bb, do, model, cutout, sm) in enumerate(product(backbones, dropouts, models, cutouts, scheduler_max)):
+for ix, (bb, do, model, ne, run) in enumerate(product(backbones, dropouts, models, num_epochs, runs)):
 
-
-        exp_group_name = "ultimate_cifar_sweep"
+    # if not (model == "det_mcd_model" and do == 0) and not (model!="confidnet_model" and ms==False) and not (model=="devries_model" and do==1) and model == "confidnet_model":
+        my_ix += 1
+        exp_group_name = "tcp_decision_sweep"
         # exp_name = "{}_bb{}_do{}_avgpoolTrue_ms{}".format(model, bb, do, ms)
-        exp_name = "{}_bb{}_do{}_sm{}_dnorm".format(model, bb, do, sm)
+        exp_name = "{}_bb{}_do{}_ne{}_run{}_apTrue".format(model, bb, do, ne, run)
+        print(exp_name)
         command_line_args = ""
 
         if mode == "test":
             command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(os.path.join(exp_group_name, exp_name, "hydra"))
             command_line_args += "exp.mode=test "
-            command_line_args += "test.iid_set_split=all "
 
             # command_line_args += "test.selection_criterion=latest " # todo if not ms!!
 
@@ -52,14 +52,29 @@ for ix, (bb, do, model, cutout, sm) in enumerate(product(backbones, dropouts, mo
             command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(
                 os.path.join(exp_group_name, exp_name, "hydra"))
             command_line_args += "exp.mode=analysis "
+            command_line_args += "+eval.query_studies.new_class_study=\"{}\" ".format(['tinyimagenet', 'tinyimagenet_resize'])
+
         else:
 
             if "devries" in model:
                 command_line_args += "study={} ".format("cifar_devries_study")
                 command_line_args += "eval.ext_confid_name={} ".format("devries")
-            else:
+                command_line_args += "model.network.name={} ".format("devries_and_enc")
+                command_line_args += "trainer.num_epochs={} ".format(ne)
+            elif "confid" in model:
                 command_line_args += "study={} ".format("cifar_tcp_confid_sweep")
                 command_line_args += "eval.ext_confid_name={} ".format("tcp")
+                command_line_args += "model.network.name={} ".format("confidnet_and_enc")
+                command_line_args += "trainer.num_epochs_backbone={} ".format(ne)
+                num_epochs = ne + 220
+                milestones = [ne, ne + 200]
+                command_line_args += "trainer.num_epochs={} ".format(num_epochs)
+                command_line_args += "trainer.callbacks.training_stages.milestones=\"{}\" ".format(milestones)
+
+            else:
+                command_line_args += "study={} ".format("cifar_devries_study")
+                command_line_args += "model.network.name={} ".format(bb)
+                command_line_args += "model.trainer.num_epochs={} ".format(ne)
 
             command_line_args += "data={} ".format("cifar10_data")
             command_line_args += "exp.group_name={} ".format(exp_group_name)
@@ -68,9 +83,7 @@ for ix, (bb, do, model, cutout, sm) in enumerate(product(backbones, dropouts, mo
             command_line_args += "model.dropout_rate={} ".format(do)
             command_line_args += "model.name={} ".format(model)
             command_line_args += "model.network.backbone={} ".format(bb)
-            # if cutout == False:
-            #     command_line_args += "~data.augmentations.train.cutout "
-            command_line_args += "trainer.lr_scheduler.max_epochs={} ".format(sm)
+
 
             # command_line_args += "model.avg_pool={} ".format(avg_pool)
 
@@ -78,10 +91,13 @@ for ix, (bb, do, model, cutout, sm) in enumerate(product(backbones, dropouts, mo
             #     command_line_args += "trainer.callbacks.model_checkpoint={} ".format("null")
             #     command_line_args += "test.selection_criterion=latest "
 
-            if do:
+            if do and model != "det_mcd_model":
                 command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
                     ["det_mcp" , "det_pe", "ext", "ext_mcd", "ext_waic", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv", "mcd_waic"])
-
+            elif do and model == "det_mcd_model":
+                command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
+                    ["det_mcp", "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi",
+                     "mcd_sv", "mcd_waic"])
             else:
                 command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
                     ["det_mcp", "det_pe", "ext"])
@@ -94,7 +110,7 @@ for ix, (bb, do, model, cutout, sm) in enumerate(product(backbones, dropouts, mo
             launch_command += "j_exclusive=yes:"
             launch_command += "mode=exclusive_process:"
             launch_command += "gmem=10.7G "
-            launch_command += "-L /bin/bash -q gpu "
+            launch_command += "-L /bin/bash -q gpu-lowprio "
             launch_command += "-u 'p.jaeger@dkfz-heidelberg.de' -B -N "
             launch_command += "'source ~/.bashrc && "
             launch_command += "source ~/.virtualenvs/confid/bin/activate && "
@@ -113,4 +129,5 @@ for ix, (bb, do, model, cutout, sm) in enumerate(product(backbones, dropouts, mo
         subprocess.call(launch_command, shell=True)
         time.sleep(1)
 
+print(my_ix)
 #subprocess.call("python {}/utils/job_surveillance.py --in_name {} --out_name {} --n_jobs {} &".format(exec_dir, log_folder, sur_out_name, job_ix), shell=True)
