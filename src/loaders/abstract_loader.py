@@ -27,14 +27,14 @@ class AbstractDataLoader(pl.LightningDataModule):
         self.pin_memory = cf.data.pin_memory
         self.num_workers = cf.data.num_workers
         self.reproduce_confidnet_splits = cf.data.reproduce_confidnet_splits
-        self.dataset_kwargs = cf.data.get("kwargs")
+        self.dataset_kwargs = dict(cf.data).get("kwargs")
         self.devries_repro_ood_split = cf.test.devries_repro_ood_split
         self.val_split = cf.trainer.val_split
         self.test_iid_split = cf.test.iid_set_split
         self.assim_ood_norm_flag = cf.test.get("assim_ood_norm_flag")
 
-        self.add_val_tuning = cf.eval.get("val_tuning")
-        self.query_studies = cf.eval.get("query_studies")
+        self.add_val_tuning = dict(cf.eval).get("val_tuning")
+        self.query_studies = dict(cf.eval).get("query_studies")
         if self.query_studies is not None:
             self.external_test_sets = []
             for k in self.query_studies.keys():
@@ -174,7 +174,7 @@ class AbstractDataLoader(pl.LightningDataModule):
     def setup(self, stage=None):
 
         # val_split: None, repro_confidnet, devries, cv
-        if self.val_split is None or self.val_split == "devries":
+        if self.val_split is None or self.val_split == "devries" or self.val_split == "zhang":
             num_train = len(self.train_dataset)
             train_idx = list(range(num_train))
             val_idx = []
@@ -230,13 +230,24 @@ class AbstractDataLoader(pl.LightningDataModule):
 
     def val_dataloader(self):
 
-        val_loader = torch.utils.data.DataLoader(
-            dataset=self.val_dataset, #same dataset as train but potentially differing augs.
-            batch_size=self.batch_size,
-            sampler=self.val_sampler,
-            pin_memory=self.pin_memory,
-            num_workers=self.num_workers,
-            )
+        if self.val_split == "zhang":
+            val_loader = []
+            for ix, test_dataset in enumerate(self.test_datasets[:2]): # only iid test set and first ood set.
+                val_loader.append(torch.utils.data.DataLoader(
+                    test_dataset,
+                    batch_size=self.batch_size,
+                    shuffle=False,
+                    pin_memory=self.pin_memory,
+                    num_workers=self.num_workers,
+                ))
+        else:
+            val_loader = torch.utils.data.DataLoader(
+                dataset=self.val_dataset, #same dataset as train but potentially differing augs.
+                batch_size=self.batch_size,
+                sampler=self.val_sampler,
+                pin_memory=self.pin_memory,
+                num_workers=self.num_workers,
+                )
 
         return val_loader
 

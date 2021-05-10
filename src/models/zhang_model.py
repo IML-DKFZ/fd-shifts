@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import pytorch_lightning as pl
+from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 from src.models.networks import get_network
 
 
@@ -19,13 +20,16 @@ class net(pl.LightningModule):
         self.weight_decay = cf.trainer.weight_decay
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
-        self.selection_metrics = cf.trainer.callbacks.model_checkpoint.selection_metric
-        self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
-        self.iamgenet_weights_path = cf.model.network.get("imagenet_weights_path")
+
+        if cf.trainer.callbacks.model_checkpoint is not None:
+            print("Initializing custom Model Selector.", cf.trainer.callbacks.model_checkpoint)
+            self.selection_metrics = cf.trainer.callbacks.model_checkpoint.selection_metric
+            self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
+
+        self.iamgenet_weights_path = dict(cf.model.network).get("imagenet_weights_path")
 
         self.loss_ce = nn.CrossEntropyLoss()
-        self.loss_mse = nn.MSELoss(reduction="sum")
-        self.ext_confid_name = cf.eval.get("ext_confid_name")
+        self.ext_confid_name = dict(cf.eval).get("ext_confid_name")
 
         self.network = get_network(cf.model.network.name)(cf) # todo make explciit arguemnts in factory!!
 
@@ -56,7 +60,13 @@ class net(pl.LightningModule):
             loss = bpd.mean()
             softmax = F.softmax(logits, dim=1)
             return {"loss": loss, "softmax": softmax, "labels": y, "confid": bpd.squeeze(1)}
-
+        #
+        # if self.trainer.global_step < 1000:
+        #     lr_scale = min(1, float(self.trainer.global_step + 1) / 1000.)
+        #     for pg in self.trainer.optimizer[0].param_groups:
+        #         pg['lr'] = 0* lr_scale * self.learning_rate.classifier
+        #     for pg in self.trainer.optimizer[1].param_groups:
+        #         pg['lr'] = 0* lr_scale * self.hparams.learning_rate.flow
 
     # def on_after_backward(self):
     #     # before optimizer step
@@ -91,9 +101,11 @@ class net(pl.LightningModule):
     #                 print("TRAIN", x[0])
 
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx, *args):
 
         x, y = batch
+        if args is not None and args[0] > 0:
+            y = y.fill_(0)
         logits, bpd = self.network(x)
         loss = self.loss_ce(logits, y)
         softmax = F.softmax(logits, dim=1)
@@ -122,17 +134,33 @@ class net(pl.LightningModule):
                                        lr=self.learning_rate.flow,
                                        weight_decay=self.weight_decay.flow)
 
-         optimizers = ( {"optimizer": optim_class,
-                        "lr_scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optim_class,
-                                                           T_max=self.lr_scheduler.max_epochs,
-                                                           verbose=True),
-                        "frequency": 1},
-                       {"optimizer": optim_flow,
-                        "lr_scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optim_flow,
-                                                                                T_max=self.lr_scheduler.max_epochs,
-                                                                                verbose=True),
-                        "frequency": 1}
-                       )
+         if self.lr_scheduler.apply == True:
+             optimizers = ( {"optimizer": optim_class,
+                             "lr_scheduler": {"scheduler": LinearWarmupCosineAnnealingLR(optimizer=optim_class,
+                                                                           warmup_epochs=0,
+                                                                           warmup_start_lr=1e-6,
+                                                                           max_epochs=self.lr_scheduler.max_epochs),
+                                              "interval": "step"},
+                            "frequency": 1},
+                           {"optimizer": optim_flow,
+                            "lr_scheduler": {"scheduler": LinearWarmupCosineAnnealingLR(optimizer=optim_class,
+                                                                                        warmup_epochs=0,
+                                                                                        warmup_start_lr=1e-6,
+                                                                                        max_epochs=self.lr_scheduler.max_epochs),
+                                             "interval": "step"},
+                            "frequency": 1}
+                           )
+         else:
+             optimizers = ( {"optimizer": optim_class,
+                             "lr_scheduler": {"scheduler": LinearWarmupCosineAnnealingLR(optimizer=optim_class,
+                                                                           warmup_epochs=0,
+                                                                           warmup_start_lr=1e-6,
+                                                                           max_epochs=self.lr_scheduler.max_epochs),
+                                              "interval": "step"},
+                             "frequency": 1},
+                           {"optimizer": optim_flow,
+                            "frequency": 1}
+                           )
 
          # if self.lr_scheduler is not None:
          #     if self.lr_scheduler.name == "MultiStep":

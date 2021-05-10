@@ -37,6 +37,7 @@ class Analysis():
             if method_dict["cfg"].data.num_classes is None:
                 method_dict["cfg"].data.num_classes = method_dict["cfg"].trainer.num_classes
             method_dict["query_confids"] = method_dict["cfg"].eval.confidence_measures["test"]
+            print("CHECK QUERY CONFIDS", method_dict["query_confids"])
             self.input_list.append(method_dict)
 
 
@@ -239,9 +240,9 @@ class Analysis():
                 mcd_softmax_mean = method_dict["study_mcd_softmax_mean"]
                 mcd_softmax_dist = method_dict["study_mcd_softmax_dist"]
                 mcd_correct = method_dict["study_mcd_correct"]
-                mcd_performance_metrics = self.compute_performance_metrics(mcd_softmax_mean, labels, mcd_correct)
+                mcd_performance_metrics = self.compute_performance_metrics(mcd_softmax_mean, labels, mcd_correct, method_dict)
 
-            performance_metrics = self.compute_performance_metrics(softmax, labels, correct)
+            performance_metrics = self.compute_performance_metrics(softmax, labels, correct, method_dict)
             # here is where threshold considerations would come int
             # also with BDL methods here first the merging method needs to be decided.
 
@@ -304,7 +305,7 @@ class Analysis():
                 method_dict["mcd_waic"]["correct"] = deepcopy(mcd_correct)
                 method_dict["mcd_waic"]["metrics"] = deepcopy(mcd_performance_metrics)
 
-            if any(cfd in method_dict["query_confids"] for cfd  in ["ext_waic", "bpd_waic", "tcp_waic", "devries_waic"]):
+            if any(cfd in method_dict["query_confids"] for cfd  in ["ext_waic", "bpd_waic", "tcp_waic", "dg_waic", "devries_waic"]):
                 ext_confid_name = method_dict["cfg"].eval.ext_confid_name
                 out_name = ext_confid_name + "_waic"
                 method_dict[out_name] = {}
@@ -314,7 +315,7 @@ class Analysis():
                 method_dict[out_name]["metrics"] = deepcopy(mcd_performance_metrics)
                 method_dict["query_confids"] = [out_name  if v=="ext_waic" else v for v in method_dict["query_confids"]]
 
-            if any(cfd in method_dict["query_confids"] for cfd  in ["ext_mcd", "bpd_mcd", "tcp_mcd", "devries_mcd"]):
+            if any(cfd in method_dict["query_confids"] for cfd  in ["ext_mcd", "bpd_mcd", "tcp_mcd", "dg_mcd", "devries_mcd"]):
                 ext_confid_name = method_dict["cfg"].eval.ext_confid_name
                 out_name = ext_confid_name + "_mcd"
                 method_dict[out_name] = {}
@@ -324,7 +325,7 @@ class Analysis():
                 method_dict[out_name]["metrics"] = deepcopy(mcd_performance_metrics)
                 method_dict["query_confids"] = [out_name if v=="ext_mcd" else v for v in method_dict["query_confids"]]
 
-            if any(cfd in method_dict["query_confids"] for cfd  in ["ext", "bpd", "tcp", "devries"]):
+            if any(cfd in method_dict["query_confids"] for cfd  in ["ext", "bpd", "tcp", "dg", "devries"]):
                 ext_confid_name = method_dict["cfg"].eval.ext_confid_name
                 method_dict[ext_confid_name] = {}
                 method_dict[ext_confid_name]["confids"] = method_dict["study_external_confids"]
@@ -333,13 +334,16 @@ class Analysis():
                 method_dict["query_confids"] = [ext_confid_name  if v=="ext" else v for v in method_dict["query_confids"]]
 
 
-    def compute_performance_metrics(self, softmax, labels, correct):
+    def compute_performance_metrics(self, softmax, labels, correct, method_dict):
         performance_metrics = {}
+        num_classes = self.num_classes
+        if dict(method_dict["cfg"].eval).get("ext_confid_name") == "dg":
+            num_classes -=1
         if "nll" in self.query_performance_metrics:
             if "new_class" in self.study_name:
                 performance_metrics["nll"] = None
             else:
-                y_one_hot = np.eye(self.num_classes)[labels.astype("int")]
+                y_one_hot = np.eye(num_classes)[labels.astype("int")]
                 performance_metrics["nll"] = np.mean(- np.log(softmax + 1e-7) * y_one_hot)
         if "accuracy" in self.query_performance_metrics:
             performance_metrics["accuracy"] = np.sum(correct) / correct.size
@@ -347,7 +351,7 @@ class Analysis():
             if "new_class" in self.study_name:
                 performance_metrics["brier_score"] = None
             else:
-                y_one_hot = np.eye(self.num_classes)[labels.astype("int")] # [b, classes]
+                y_one_hot = np.eye(num_classes)[labels.astype("int")] # [b, classes]
                 mse = (softmax - y_one_hot) ** 2
                 performance_metrics["brier_score"] = np.mean(np.sum(mse, axis=1))
 
@@ -431,7 +435,7 @@ def main(in_path=None, out_path=None, query_studies=None, cf=None):
     if in_path is None: # NO SLASH AT THE END OF PATH !
         path_to_test_dir_list = [
             # "/mnt/hdd2/checkpoints/checks/check_mnist/test_results",
-            "/mnt/hdd2/checkpoints/analysis/devries_model_bbvgg13_do0.4/test_results",
+            "/mnt/hdd2/checkpoints/checks/check_DG/test_results",
         ]
         # path_to_test_dir_list = [
         #     "/gpu/checkpoints/OE0612/jaegerp/checks/check_mcd/fold_0/version_0",
@@ -453,7 +457,7 @@ def main(in_path=None, out_path=None, query_studies=None, cf=None):
 
     if query_studies is None:
         print("Analysis input query studies was None, setting to hardcoded studies.")
-        query_studies = {"iid_study": "cifar10", "new_class_study": ["tinyimagenet", "tinyimagenet_resize"]}
+        query_studies = {"iid_study": "cifar10"}
 
     query_performance_metrics = ['accuracy', 'nll', 'brier_score']
     query_confid_metrics = ['failauc',

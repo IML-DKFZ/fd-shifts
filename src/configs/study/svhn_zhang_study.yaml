@@ -3,26 +3,28 @@
 trainer:
   num_epochs: 200 # has to be >1 because of incompatibility of lighting eval with psuedo test
   val_every_n_epoch: 1
+  val_split: zhang
   learning_rate:
-    classifier: 1e-2
+    classifier: 0.1 # toodo: smaller for more complex data!
     flow: 0.0001
   lr_scheduler:
+    apply: True
     max_epochs: ${trainer.num_epochs}
   momentum: 0.9
   weight_decay:
-    classifier: 1e-4
-    flow: 1e-3
+    classifier: 0.0005 #1e-4
+    flow: 0.0005 #0.0005
   batch_size: 64
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
   callbacks:
     model_checkpoint:
-      n: 2
-      selection_metric: ["val/accuracy", "val/tcp_failap_err"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
-      mode: ["max", "max"]
-      filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
-      save_top_k: [1, 1]
+#      n: 2
+#      selection_metric: ["val/accuracy", "val/tcp_failap_err"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
+#      mode: ["max", "max"]
+#      filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
+#      save_top_k: [1, 1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
     learning_rate_monitor:
 
@@ -30,11 +32,12 @@ trainer:
 model:
   name: zhang_model #det_mcd_model
   fc_dim: 512
+  avg_pool: True
   epsilon_noise: 0
-  dropout_rate: 0.2
+  dropout_rate: 0
   network:
     name: zhang_and_enc      # confidnet_small_conv_and_enc / small_conv
-    backbone:
+    backbone: vgg13
     imagenet_weights_path:
 
 test:
@@ -47,6 +50,9 @@ test:
   selection_mode: max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
+  devries_repro_ood_split: False
+  assim_ood_norm_flag: False
+  iid_set_split: "all"  # all, devries
 
 eval:
   performance_metrics:
@@ -61,7 +67,7 @@ eval:
     train:
       ["det_mcp", "ext"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
-      ["det_mcp", "ext"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
+      ["det_mcp", "ext", "ood_ext"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:
       ["det_mcp" , "det_pe", "ext"]
 
@@ -72,9 +78,12 @@ eval:
 
   tb_hparams: ['fold']
   ext_confid_name: bpd
+  val_tuning: False
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
-    iid_study: svhn
+    iid_study: cifar10
     new_class_study:
-    - cifar10
     - cifar100
+    - svhn
+    - tinyimagenet
+    - tinyimagenet_resize

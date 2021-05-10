@@ -10,6 +10,7 @@ from src.models.networks import resnet50_imagenet
 from src.models.networks import vgg_devries
 
 
+
 def get_network(network_name):
     """
         Return a new instance of a backbone
@@ -28,6 +29,7 @@ def get_network(network_name):
         "vgg_old": vgg16.VGG16, # todo make explciit arguments!!
         "vgg_devries": vgg_devries.VGG13, # todo make explciit arguments!!
         "zhang_and_enc": zhang_network.ZhangAndEncoder, # todo make explciit arguments!!
+        "zhang_backbone": zhang_network.ZhangBackbone, # todo make explciit arguments!!
         "resnet50": resnet50_imagenet.resnet50, # todo make explciit arguments!!
     }
 

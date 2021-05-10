@@ -95,7 +95,7 @@ class net(pl.LightningModule):
         if self.training_stage == 2:
             x, y = batch
             softmax = F.softmax(self.backbone(x), dim=1)
-            _, pred_confid = self.network(x)
+            softmax2, pred_confid = self.network(x)
             pred_confid = torch.sigmoid(pred_confid)
             tcp = softmax.gather(1, y.unsqueeze(1))
             # print("CHECK PRED CONFID", pred_confid.mean(), pred_confid.min(), pred_confid.max())

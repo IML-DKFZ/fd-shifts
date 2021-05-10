@@ -2,7 +2,8 @@
 
 
 trainer:
-  num_epochs: 200 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs: 300 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
+  dg_pretrain_epochs: 100 # 100 and 300 total epochs
   val_every_n_epoch: 1 #has to be 1 because of schedulers
   val_split: "devries"  # leave empty for no val
   batch_size: 128
@@ -43,14 +44,15 @@ model:
   name: devries_model #det_mcd_model
   fc_dim: 512
   confidnet_fc_dim: 400
+  dg_reward: 2.2
   avg_pool: True
   dropout_rate: 0 # 0 sets dropout to false
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   budget: 0.3
   network:
-    name: devries_and_enc      # confidnet_small_conv_and_enc / small_conv
-    backbone: vgg13
+    name: vgg13 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
+    backbone: #vgg13
     imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 
@@ -80,7 +82,7 @@ eval:
     train:
       ["det_mcp"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
-      ["det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
+      ["det_mcp", "ext"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:
       ["det_mcp" , "det_pe", "ext"]
 
@@ -90,7 +92,7 @@ eval:
                     ]
 
   tb_hparams: ['fold']
-  ext_confid_name: "devries"
+  ext_confid_name: "dg"
   test_conf_scaling: False
   val_tuning: False
 

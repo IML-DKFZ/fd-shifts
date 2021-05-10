@@ -14,8 +14,9 @@ class ZhangAndEncoder(nn.Module):
     def __init__(self, cf):
         super().__init__()
 
-        self.encoder = encoder32
-        self.classifier = classifier32
+        network = networks.get_network(cf.model.network.backbone)(cf)  # todo make arguments explcit!
+        self.encoder = network.encoder
+        self.classifier = network.classifier
         self.zhang_net = ZhangNet(cf) # todo make arguments explcit!
 
     def forward(self, x):
@@ -26,6 +27,20 @@ class ZhangAndEncoder(nn.Module):
 
         return pred_class, pred_confid
 
+
+class ZhangBackbone(nn.Module):
+    def __init__(self, cf):
+        super(ZhangBackbone, self).__init__()
+
+        self.encoder = encoder32(cf)
+        self.classifier = classifier32(cf.data.num_classes)
+
+    def forward(self, x):
+
+        x = self.encoder(x)
+        x = self.classifier(x)
+
+        return x
 
 class ZhangNet(nn.Module):
     def __init__(self, cf):
@@ -62,7 +77,7 @@ class ZhangNet(nn.Module):
         n_exact_terms=2, # default prio 1
         preact=True,
         neumann_grad=True, # prio1
-        grad_in_forward=False, # default true prio 1 # Do backprop-in-forward to save memory. Could be dangerous! connected to mem_efficent flag!
+        grad_in_forward=True, # default true prio 1 # Do backprop-in-forward to save memory. Could be dangerous! connected to mem_efficent flag!
         first_resblock=False, # # immediate invertible downsampling (Dinh et al., 2017) at the image pixel-level. Removing this substantially increases the
                             # amount of memory required (shown in Figure 3) as there are more spatial dimensions at every layer,
                             # but increases the overall performance. Should not be a problem here.
@@ -83,10 +98,10 @@ class ZhangNet(nn.Module):
         if self.squeeze_first:
             raise NotImplementedError
 
-        # x = x.view(x.size(0), -1)
-        # x -= x.min(1, keepdim=True)[0]
-        # x /= x.max(1, keepdim=True)[0]
-        # x = x.view(batch_size, channels, height, width)
+        x = clamp_to_unit_sphere(x)
+        x -= x.min(1, keepdim=True)[0]
+        x /= x.max(1, keepdim=True)[0]
+
         # x = clamp_to_unit_sphere(x)
         # noise = x.new().resize_as_(x).normal_()
         # x += noise * self.epsilon_noise

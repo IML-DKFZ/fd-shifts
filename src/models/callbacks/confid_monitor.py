@@ -11,6 +11,8 @@ class ConfidMonitor(Callback):
 
         self.num_epochs = cf.trainer.num_epochs
         self.num_classes = cf.data.num_classes
+        if cf.eval.ext_confid_name == "dg":
+            self.num_classes -= 1
         self.fast_dev_run = cf.trainer.fast_dev_run
 
 
@@ -133,73 +135,77 @@ class ConfidMonitor(Callback):
         softmax = outputs["softmax"]
         y = outputs["labels"]
         softmax_dist = outputs.get("softmax_dist")
-
-
-        if len(self.running_perf_stats["val"].keys()) > 0:
-            stat_keys = self.running_perf_stats["val"].keys()
-            y_one_hot = None
-            if "loss" in stat_keys:
-                self.running_perf_stats["val"]["loss"].append(loss)
-            if "nll" in stat_keys:
-                y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
-                self.running_perf_stats["val"]["nll"].append(torch.sum(-torch.log(softmax + 1e-7) * y_one_hot, dim=1).mean())
-            if "accuracy" in stat_keys:
-                tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
-                # print(tmp_correct.sum())
-                self.running_perf_stats["val"]["accuracy"].append(tmp_correct.sum() / tmp_correct.numel())
-            if "brier_score" in stat_keys:
-                if y_one_hot is None:
+        perf_keys = self.running_perf_stats["val"].keys()
+        confid_keys = self.running_confid_stats["val"].keys()
+        if dataloader_idx is None or dataloader_idx == 0:
+            if len(perf_keys) > 0:
+                y_one_hot = None
+                if "loss" in perf_keys:
+                    self.running_perf_stats["val"]["loss"].append(loss)
+                if "nll" in perf_keys:
                     y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
-                self.running_perf_stats["val"]["brier_score"].append(((softmax - y_one_hot) ** 2).sum(1).mean())
+                    self.running_perf_stats["val"]["nll"].append(torch.sum(-torch.log(softmax + 1e-7) * y_one_hot, dim=1).mean())
+                if "accuracy" in perf_keys:
+                    tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
+                    # print(tmp_correct.sum())
+                    self.running_perf_stats["val"]["accuracy"].append(tmp_correct.sum() / tmp_correct.numel())
+                if "brier_score" in perf_keys:
+                    if y_one_hot is None:
+                        y_one_hot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
+                    self.running_perf_stats["val"]["brier_score"].append(((softmax - y_one_hot) ** 2).sum(1).mean())
 
-        if len(self.running_confid_stats["val"].keys()) > 0 or softmax_dist is not None:
+            if len(confid_keys) > 0 or softmax_dist is not None:
 
-            stat_keys = self.running_confid_stats["val"].keys()
-            if tmp_correct is None:
-                tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
-            self.running_val_correct_sum_sanity += tmp_correct.sum()
-            if "det_mcp" in stat_keys:
-                tmp_confids = torch.max(softmax, dim=1)[0]
-                self.running_confid_stats["val"]["det_mcp"]["confids"].extend(tmp_confids)
-                self.running_confid_stats["val"]["det_mcp"]["correct"].extend(tmp_correct)
-            if "det_pe" in stat_keys:
-                tmp_confids = torch.sum(softmax * (- torch.log(softmax + 1e-7)), dim=1)
-                self.running_confid_stats["val"]["det_pe"]["confids"].extend(tmp_confids)
-                self.running_confid_stats["val"]["det_pe"]["correct"].extend(tmp_correct)
+                if tmp_correct is None:
+                    tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.cuda.ByteTensor)
+                self.running_val_correct_sum_sanity += tmp_correct.sum()
+                if "det_mcp" in confid_keys:
+                    tmp_confids = torch.max(softmax, dim=1)[0]
+                    self.running_confid_stats["val"]["det_mcp"]["confids"].extend(tmp_confids)
+                    self.running_confid_stats["val"]["det_mcp"]["correct"].extend(tmp_correct)
+                if "det_pe" in confid_keys:
+                    tmp_confids = torch.sum(softmax * (- torch.log(softmax + 1e-7)), dim=1)
+                    self.running_confid_stats["val"]["det_pe"]["confids"].extend(tmp_confids)
+                    self.running_confid_stats["val"]["det_pe"]["correct"].extend(tmp_correct)
 
-            if "ext" in stat_keys:
-                tmp_confids = outputs["confid"]
-                if tmp_confids is not None:
-                    self.running_confid_stats["val"]["ext"]["confids"].extend(tmp_confids)
-                    self.running_confid_stats["val"]["ext"]["correct"].extend(tmp_correct)
-
-
+                if "ext" in confid_keys:
+                    tmp_confids = outputs["confid"]
+                    if tmp_confids is not None:
+                        self.running_confid_stats["val"]["ext"]["confids"].extend(tmp_confids)
+                        self.running_confid_stats["val"]["ext"]["correct"].extend(tmp_correct)
 
             if softmax_dist is not None:
 
                 mean_softmax = torch.mean(softmax_dist, dim=2)
                 tmp_mcd_correct = (torch.argmax(mean_softmax, dim=1) == y).type(torch.cuda.ByteTensor)
 
-                if "mcd_mcp" in stat_keys:
+                if "mcd_mcp" in confid_keys:
                     tmp_confids = torch.max(mean_softmax, dim=1)[0]
                     self.running_confid_stats["val"]["mcd_mcp"]["confids"].extend(tmp_confids)
                     self.running_confid_stats["val"]["mcd_mcp"]["correct"].extend(tmp_mcd_correct)
-                if "mcd_pe" in stat_keys:
+                if "mcd_pe" in confid_keys:
                     pe_confids = torch.sum(mean_softmax * (- torch.log(mean_softmax + 1e-7)), dim=1)
                     self.running_confid_stats["val"]["mcd_pe"]["confids"].extend(pe_confids)
                     self.running_confid_stats["val"]["mcd_pe"]["correct"].extend(tmp_mcd_correct)
-                if "mcd_ee" in stat_keys:
+                if "mcd_ee" in confid_keys:
                     ee_confids = torch.sum(softmax_dist * (- torch.log(softmax_dist + 1e-7)), dim=1).mean(1)
                     self.running_confid_stats["val"]["mcd_ee"]["confids"].extend(ee_confids)
                     self.running_confid_stats["val"]["mcd_ee"]["correct"].extend(tmp_mcd_correct)
-                if "mcd_mi" in stat_keys:
+                if "mcd_mi" in confid_keys:
                     tmp_confids = pe_confids - ee_confids
                     self.running_confid_stats["val"]["mcd_mi"]["confids"].extend(tmp_confids)
                     self.running_confid_stats["val"]["mcd_mi"]["correct"].extend(tmp_mcd_correct)
-                if "mcd_sv" in stat_keys:
+                if "mcd_sv" in confid_keys:
                     tmp_confids = ((softmax_dist - mean_softmax.unsqueeze(2)) ** 2).mean((1, 2))
                     self.running_confid_stats["val"]["mcd_sv"]["confids"].extend(tmp_confids)
                     self.running_confid_stats["val"]["mcd_sv"]["correct"].extend(tmp_mcd_correct)
+
+        if "ood_ext" in confid_keys:
+            tmp_confids = outputs["confid"]
+            tmp_correct = torch.zeros_like(tmp_confids) if dataloader_idx > 0 else torch.ones_like(tmp_confids)
+            if tmp_confids is not None:
+                self.running_confid_stats["val"]["ood_ext"]["confids"].extend(- tmp_confids)
+                self.running_confid_stats["val"]["ood_ext"]["correct"].extend(tmp_correct)
 
         if pl_module.current_epoch == self.num_epochs - 1:
             self.running_test_softmax.extend(softmax_dist if softmax_dist is not None else softmax)
@@ -214,6 +220,7 @@ class ConfidMonitor(Callback):
         if (len(self.running_confid_stats["val"].keys()) > 0 or len(self.running_perf_stats["val"].keys()) > 0) \
                 and (self.running_val_correct_sum_sanity > 0):
             do_plot = True if len(self.query_confids["val"]) > 0 and len(self.query_monitor_plots) > 0 else False
+            print(self.running_confid_stats["val"].keys(), [len(ix["confids"]) for ix in self.running_confid_stats["val"].values()])
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confid_stats["val"],
                                                                      self.running_perf_stats["val"],
                                                                      self.query_confid_metrics["val"],

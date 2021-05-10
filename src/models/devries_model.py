@@ -28,10 +28,17 @@ class net(pl.LightningModule):
         self.budget = cf.model.budget
         self.test_conf_scaling = cf.eval.test_conf_scaling
         self.ext_confid_name = cf.eval.ext_confid_name
+
+        if self.ext_confid_name == "dg":
+            self.reward = cf.model.dg_reward
+            self.pretrain_epochs = cf.trainer.dg_pretrain_epochs
+            cf.data.num_classes += 1
+
         self.model = get_network(cf.model.network.name)(cf) # todo make explciit arguments in factory!!
 
         self.test_mcd_samples = cf.model.test_mcd_samples
         self.monitor_mcd_samples = cf.model.monitor_mcd_samples
+
 
     def forward(self, x):
         return self.model(x)
@@ -87,13 +94,17 @@ class net(pl.LightningModule):
             elif self.budget <= confidence_loss:
                 self.lmbda = self.lmbda / 0.99
 
-        elif self.ext_confid_name == "tcp":
-            logits, confidence = self.model(x)
-            confidence = torch.sigmoid(confidence)
-            pred_original = F.softmax(logits, dim=1)
-            tcp = pred_original.gather(1, y.unsqueeze(1))
-            loss =self.loss_criterion(logits, y) + 1e-3 * F.mse_loss(confidence, tcp)
-            print("CHECK TCP", confidence.min(), confidence.max(), tcp.min(), tcp.max())
+        elif self.ext_confid_name == "dg":
+            outputs = self.model(x)
+            outputs = F.softmax(outputs, dim=1)
+            pred_original, reservation = outputs[:, :-1], outputs[:, -1]
+            confidence = 1 - reservation.unsqueeze(1)
+            if self.current_epoch >= self.pretrain_epochs:
+                gain = torch.gather(pred_original, dim=1, index=y.unsqueeze(1)).squeeze()
+                doubling_rate = (gain.add(reservation.div(self.reward))).log()
+                loss = -doubling_rate.mean().unsqueeze(0)
+            else:
+                loss = self.loss_criterion(outputs[:, :-1], y)
 
         else:
             raise NotImplementedError
@@ -106,37 +117,57 @@ class net(pl.LightningModule):
 
         x, y = batch
 
-        logits, confidence = self.model(x)
-        confidence = torch.sigmoid(confidence)
-        pred_original = F.softmax(logits, dim=1)
-        labels_onehot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
+        if self.ext_confid_name == "devries":
+            logits, confidence = self.model(x)
+            confidence = torch.sigmoid(confidence)
+            pred_original = F.softmax(logits, dim=1)
+            labels_onehot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
 
-        # Make sure we don't have any numerical instability
-        eps = 1e-12
-        pred_original = torch.clamp(pred_original, 0. + eps, 1. - eps)
-        confidence = torch.clamp(confidence, 0. + eps, 1. - eps)
+            # Make sure we don't have any numerical instability
+            eps = 1e-12
+            pred_original = torch.clamp(pred_original, 0. + eps, 1. - eps)
+            confidence = torch.clamp(confidence, 0. + eps, 1. - eps)
 
-        # Randomly set half of the confidences to 1 (i.e. no hints)
-        b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).cuda()
-        conf = confidence * b + (1 - b)
-        pred_new = pred_original * conf.expand_as(pred_original) + labels_onehot * (
-                1 - conf.expand_as(labels_onehot))
-        pred_new = torch.log(pred_new)
+            # Randomly set half of the confidences to 1 (i.e. no hints)
+            b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).cuda()
+            conf = confidence * b + (1 - b)
+            pred_new = pred_original * conf.expand_as(pred_original) + labels_onehot * (
+                    1 - conf.expand_as(labels_onehot))
+            pred_new = torch.log(pred_new)
 
-        xentropy_loss = self.loss_criterion(pred_new, y)
-        confidence_loss = torch.mean(-torch.log(confidence))
+            xentropy_loss = self.loss_criterion(pred_new, y)
+            confidence_loss = torch.mean(-torch.log(confidence))
 
-        loss = xentropy_loss + (self.lmbda * confidence_loss)
+            loss = xentropy_loss + (self.lmbda * confidence_loss)
+
+        elif self.ext_confid_name == "dg":
+            outputs = self.model(x)
+            outputs = F.softmax(outputs, dim=1)
+            pred_original, reservation = outputs[:, :-1], outputs[:, -1]
+            confidence = 1 - reservation.unsqueeze(1)
+            if self.current_epoch >= self.pretrain_epochs:
+                gain = torch.gather(pred_original, dim=1, index=y.unsqueeze(1)).squeeze()
+                doubling_rate = (gain.add(reservation.div(self.reward))).log()
+                loss = -doubling_rate.mean()
+            else:
+                loss = self.loss_criterion(outputs[:, :-1], y)
+
         # print(self.lmbda, confidence_loss.item())
-
         # print(x.mean(), pred_original.std())
         return {"loss": loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)}
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
-        logits, confidence = self.model(x)
-        softmax = F.softmax(logits, dim=1)
-        confidence = torch.sigmoid(confidence).squeeze(1)
+
+        if self.ext_confid_name == "devries":
+            logits, confidence = self.model(x)
+            softmax = F.softmax(logits, dim=1)
+            confidence = torch.sigmoid(confidence).squeeze(1)
+        elif self.ext_confid_name == "dg":
+            outputs = self.model(x)
+            outputs = F.softmax(outputs, dim=1)
+            softmax, reservation = outputs[:, :-1], outputs[:, -1]
+            confidence = 1 - reservation
 
         softmax_dist = None
         confid_dist = None

@@ -30,17 +30,20 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
 
     for confid_key, confid_dict in running_confid_stats.items():
         if len(confid_dict["confids"]) > 0:
-            print("CONFID KEY", confid_key)
             confids_cpu = torch.stack(confid_dict["confids"], dim=0).cpu().data.numpy()
             correct_cpu = torch.stack(confid_dict["correct"], dim=0).cpu().data.numpy()
 
-            if confid_key == "bpd":
+            if (confid_key == "ext" and ext_confid_name=="bpd"):
                 out_metrics["bpd_mean"] = np.mean(confids_cpu)
 
             if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv"]) or (confid_key == "ext" and ext_confid_name=="bpd"):
                 min_confid = np.min(confids_cpu)
                 max_confid = np.max(confids_cpu)
                 confids_cpu = 1 - ((confids_cpu - min_confid) / (max_confid - min_confid + 1e-9))
+
+            if confid_key == "ood_ext":
+                query_confid_metrics = ["failauc"]
+                query_monitor_plots = ["hist_per_confid"]
 
             eval = ConfidEvaluator(confids=confids_cpu,
                              correct=correct_cpu,
@@ -215,7 +218,7 @@ class ConfidPlotter():
         self.bins = bins
         self.ax = None
 
-        self.method_names_list = []
+        self.confid_keys_list = []
         self.confids_list = []
         self.correct_list = []
         self.metrics_list = []
@@ -224,20 +227,20 @@ class ConfidPlotter():
         self.fig_scale = fig_scale
 
         for confid_key, confid_dict in self.input_dict.items():
-            self.method_names_list.append(confid_key)
+            self.confid_keys_list.append(confid_key)
             self.confids_list.append(confid_dict["confids"])
             self.metrics_list.append(confid_dict["metrics"])
             self.correct_list.append(confid_dict["correct"])
 
         if "hist_per_confid" in self.query_plots:
             self.query_plots = [x for x in self.query_plots if x!="hist_per_confid"]
-            self.query_plots += ["{}_hist".format(x) for x in self.method_names_list]
+            self.query_plots += ["{}_hist".format(x) for x in self.confid_keys_list]
 
         self.num_plots = len(self.query_plots)
 
     def compose_plot(self):
         seaborn.set(font_scale=self.fig_scale, style="whitegrid")
-        self.colors_list = seaborn.hls_palette(len(self.method_names_list)).as_hex()
+        self.colors_list = seaborn.hls_palette(len(self.confid_keys_list)).as_hex()
         n_columns = 2
         n_rows = int(np.ceil(self.num_plots / n_columns))
         n_columns += 1
@@ -262,8 +265,8 @@ class ConfidPlotter():
             if name == "rc_curve":
                 self.plot_rc()
             if "_hist" in name:
-                method_name = ("_").join(name.split("_")[:-1])
-                self.plot_hist_per_confid(method_name)
+                confid_key = ("_").join(name.split("_")[:-1])
+                self.plot_hist_per_confid(confid_key)
 
             plot_ix += 1
 
@@ -277,36 +280,54 @@ class ConfidPlotter():
         return f
 
 
-    def plot_hist_per_confid(self, method_name):
+    def plot_hist_per_confid(self, confid_key):
         min_plot_x = 0
-        confids = self.confids_list[self.method_names_list.index(method_name)]
-        correct = self.correct_list[self.method_names_list.index(method_name)]
-        (n_correct, binsc, patchesc) = self.ax.hist(confids[np.argwhere(correct == 1)],
-                      color="g",
-                      bins=self.bins,
-                      range=(min_plot_x, 1),
-                      width=0.9 * (1- min_plot_x) / (self.bins),
-                      alpha=0.3,
-                      label="correct")
+        confids = self.confids_list[self.confid_keys_list.index(confid_key)]
+        correct = self.correct_list[self.confid_keys_list.index(confid_key)]
 
-        (n_incorrect, bins, patches) = self.ax.hist(confids[np.argwhere(correct == 0)],
-                      color="r",
-                      bins=self.bins,
-                      range=(min_plot_x, 1),
-                      width=0.9 * (1- min_plot_x) / (self.bins),
-                      alpha=0.3,
-                      label="incorrect")
+        if confid_key == "ood_ext":
+            custom_range = (np.min(confids), np.max(confids))
+            (n_correct, binsc, patchesc) = self.ax.hist(confids[np.argwhere(correct == 1)],
+                                                      color="g",
+                                                      bins=self.bins,
+                                                      range=custom_range,
+                                                      alpha=0.3,
+                                                      label="correct")
 
-        max_data = np.max([np.max(n_correct), np.max(n_incorrect)])
-        self.ax.vlines(np.mean(confids[np.argwhere(correct == 0)]), ymin=0, ymax=max_data, color="r", linestyles="-", label="incorrect mean")
-        self.ax.vlines(np.median(confids[np.argwhere(correct == 0)]), ymin=0, ymax=max_data, color="r", linestyles="--", label="incorrect median")
-        self.ax.vlines(np.mean(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_data, color="g", linestyles="-", label="correct mean")
-        self.ax.vlines(np.median(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_data, color="g", linestyles="--", label="correct median")
-        self.ax.set_xlim(min_plot_x-0.1, 1.1)
-        self.ax.set_ylim(0.1, max_data)
+            (n_incorrect, bins, patches) = self.ax.hist(confids[np.argwhere(correct == 0)],
+                                                      color="r",
+                                                      bins=self.bins,
+                                                      range=custom_range,
+                                                      alpha=0.3,
+                                                      label="incorrect")
+        else:
+            (n_correct, binsc, patchesc) = self.ax.hist(confids[np.argwhere(correct == 1)],
+                                                        color="g",
+                                                        bins=self.bins,
+                                                        range=(min_plot_x, 1),
+                                                        width=0.9 * (1 - min_plot_x) / (self.bins),
+                                                        alpha=0.3,
+                                                        label="correct")
+
+            (n_incorrect, bins, patches) = self.ax.hist(confids[np.argwhere(correct == 0)],
+                                                        color="r",
+                                                        bins=self.bins,
+                                                        range=(min_plot_x, 1),
+                                                        width=0.9 * (1 - min_plot_x) / (self.bins),
+                                                        alpha=0.3,
+                                                        label="incorrect")
+
+        max_y_data = np.max([np.max(n_correct), np.max(n_incorrect)])
+        if not confid_key == "ood_ext":
+            self.ax.set_xlim(min_plot_x - 0.1, 1.1)
+            self.ax.set_ylim(0.1, max_y_data)
+        self.ax.vlines(np.mean(confids[np.argwhere(correct == 0)]), ymin=0, ymax=max_y_data, color="r", linestyles="-", label="incorrect mean")
+        self.ax.vlines(np.median(confids[np.argwhere(correct == 0)]), ymin=0, ymax=max_y_data, color="r", linestyles="--", label="incorrect median")
+        self.ax.vlines(np.mean(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_y_data, color="g", linestyles="-", label="correct mean")
+        self.ax.vlines(np.median(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_y_data, color="g", linestyles="--", label="correct median")
         self.ax.set_yscale('log')
         self.ax.set_xlabel("Confid")
-        title_string = method_name
+        title_string = confid_key
         title_string += " (incorr.:{}, tot:{})".format(correct.size-correct.sum(), correct.size)
         self.ax.set_title("{}".format(title_string))
 
@@ -319,7 +340,7 @@ class ConfidPlotter():
             bin_confids_list.append(confid_dict["plot_stats"]["bin_confids"])
             bin_accs_list.append(confid_dict["plot_stats"]["bin_accs"])
 
-        for name, bin_confid, bin_acc, color, metrics in zip(self.method_names_list,
+        for name, bin_confid, bin_acc, color, metrics in zip(self.confid_keys_list,
                                                              bin_confids_list,
                                                              bin_accs_list,
                                                              self.colors_list,
@@ -341,7 +362,7 @@ class ConfidPlotter():
             bin_confids_list.append(confid_dict["plot_stats"]["bin_confids"])
             bin_accs_list.append(confid_dict["plot_stats"]["bin_accs"])
 
-        for name, bin_confid, bin_acc, color, metrics in zip(self.method_names_list,
+        for name, bin_confid, bin_acc, color, metrics in zip(self.confid_keys_list,
                                                     bin_confids_list,
                                                     bin_accs_list,
                                                     self.colors_list,
@@ -365,7 +386,7 @@ class ConfidPlotter():
             fpr_list.append(confid_dict["plot_stats"]["fpr_list"])
             tpr_list.append(confid_dict["plot_stats"]["tpr_list"])
 
-        for name, fpr, tpr, color, metrics in zip(self.method_names_list,
+        for name, fpr, tpr, color, metrics in zip(self.confid_keys_list,
                                                     fpr_list,
                                                     tpr_list,
                                                     self.colors_list,
@@ -388,7 +409,7 @@ class ConfidPlotter():
             precision_list.append(confid_dict["plot_stats"]["err_precision_list"])
             recall_list.append(confid_dict["plot_stats"]["err_recall_list"])
 
-        for name, precision, recall, color, metrics in zip(self.method_names_list,
+        for name, precision, recall, color, metrics in zip(self.confid_keys_list,
                                                     precision_list,
                                                     recall_list,
                                                     self.colors_list,
@@ -412,7 +433,7 @@ class ConfidPlotter():
             coverage_list.append(confid_dict["plot_stats"]["coverage_list"])
             selective_risk_list.append(confid_dict["plot_stats"]["selective_risk_list"])
 
-        for name, coverage, selective_risk, color, metrics in zip(self.method_names_list,
+        for name, coverage, selective_risk, color, metrics in zip(self.confid_keys_list,
                                                     coverage_list,
                                                     selective_risk_list,
                                                     self.colors_list,

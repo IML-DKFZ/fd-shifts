@@ -44,7 +44,8 @@ class TrainingStages(Callback):
             pl_module.network.classifier = deepcopy(pl_module.backbone.classifier)
 
             print("freezing backbone and enabling confidnet")
-            self.freeze_layers(pl_module.backbone)
+            self.freeze_layers(pl_module.backbone.encoder)
+            self.freeze_layers(pl_module.backbone.classifier)
             self.freeze_layers(pl_module.network.encoder)
             self.freeze_layers(pl_module.network.classifier)
 
@@ -77,7 +78,8 @@ class TrainingStages(Callback):
             # self.check_weight_consistency(pl_module)
 
         if pl_module.current_epoch >= self.milestones[0]:
-            self.disable_bn(pl_module)
+            self.disable_bn(pl_module.backbone.encoder)
+            self.disable_bn(pl_module.network.encoder)
             for param_group in trainer.optimizers[0].param_groups:
                 print("CHECK ConfidNet RATE", param_group["lr"])
 
@@ -110,8 +112,15 @@ class TrainingStages(Callback):
 
         if self.disable_dropout_at_finetuning:
             if pl_module.current_epoch >= self.milestones[1]:
-                self.disable_dropout(pl_module)
+                self.disable_dropout(pl_module.backbone.encoder)
+                self.disable_dropout(pl_module.network.encoder)
 
+        # print("FINAL CHECK BACKBONE ENC")
+        # for layer in pl_module.backbone.encoder.named_modules():
+        #        print(layer[1], layer[1].training)
+        # print("FINLA CHECK NETWORK ENC")
+        # for layer in pl_module.network.encoder.named_modules():
+        #        print(layer[1], layer[1].training)
 
     def freeze_layers(self, model, freeze_string=None, keep_string=None):
         for param in model.named_parameters():
@@ -130,15 +139,18 @@ class TrainingStages(Callback):
     def disable_bn(self, model):
         # Freeze also BN running average parameters
         for layer in model.named_modules():
-            if "bn" in layer[0] or "cbr_unit.1" in layer[0]:
+            # print("BN CHECK", layer)
+            if "bn" in layer[0] or "cbr_unit.1" in layer[0] or isinstance(layer[1], torch.nn.BatchNorm2d):
                 layer[1].momentum = 0
                 layer[1].eval()
+                # print("disabling bn", layer[1])
 
     def disable_dropout(self, model):
 
         for layer in model.named_modules():
-            if "dropout" in layer[0]:
+            if "dropout" in layer[0] or isinstance(layer[1], torch.nn.Dropout):
                 layer[1].eval()
+                # print("disabling dropout", layer[1], layer[0])
 
 
     def check_weight_consistency(self, pl_module):
