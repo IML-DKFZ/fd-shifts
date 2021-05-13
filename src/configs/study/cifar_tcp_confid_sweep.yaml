@@ -2,8 +2,8 @@
 
 
 trainer:
-  num_epochs: 20 #470 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
-  num_epochs_backbone: 10 #200
+  num_epochs: 3 #470 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs_backbone: 1 #200
   val_every_n_epoch: 1
   val_split: "devries" # empty (no val), "devries", "cv", "repro_confidnet",
   learning_rate: 1e-1
@@ -20,14 +20,14 @@ trainer:
   fast_dev_run: False # True/Fals
   callbacks:
     model_checkpoint:
-#      n: 2
-#      selection_metric: ["val/accuracy", "val/ext_failap_err"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
-#      mode: ["max", "max"]
-#      filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
-#      save_top_k: [1, 1]
+      n: 2
+      selection_metric: ["val/accuracy", "val/ext_failap_err"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
+      mode: ["max", "max"]
+      filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
+      save_top_k: [1, 1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
     training_stages:
-      milestones: [10, 15] # 250, 450  todo  Make sure milestones match num backbone epochs!!
+      milestones: [1, 2] # 250, 450  todo  Make sure milestones match num backbone epochs!!
       pretrained_backbone_path:  #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
       disable_dropout_at_finetuning: True
@@ -52,7 +52,7 @@ test:
   name: test_results
   dir: ${exp.dir}/${test.name}
   cf_path: ${exp.dir}/hydra/config.yaml
-  selection_criterion: latest # model selection criterion or "latest"
+  selection_criterion: latest # latest / best_failap_err
   selection_mode: max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.

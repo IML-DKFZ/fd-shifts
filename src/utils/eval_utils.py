@@ -131,6 +131,16 @@ class ConfidEvaluator():
             if "e-aurc" in self.query_metrics:
                 out_metrics["e-aurc"] = self.eaurc * 1000
 
+            if "risk@95cov" in self.query_metrics:
+                coverages = np.array(self.rc_curve[0])
+                risks = np.array(self.rc_curve[1])
+                out_metrics["risk@100cov"] = np.min(risks[np.argwhere(coverages >= 1)]) * 100
+                out_metrics["risk@95cov"] = np.min(risks[np.argwhere(coverages >= 0.95)]) * 100
+                out_metrics["risk@90cov"] = np.min(risks[np.argwhere(coverages >= 0.90)]) * 100
+                out_metrics["risk@85cov"] = np.min(risks[np.argwhere(coverages >= 0.85)]) * 100
+                out_metrics["risk@80cov"] = np.min(risks[np.argwhere(coverages >= 0.80)]) * 100
+                out_metrics["risk@75cov"] = np.min(risks[np.argwhere(coverages >= 0.75)]) * 100
+
         hist_confids = np.histogram(self.confids, bins=self.bins, range=(0, 1))[0]
         if self.bin_accs is None:
             self.get_calibration_stats()
@@ -530,3 +540,17 @@ def clean_logging(log_dir):
         df.to_csv(os.path.join(log_dir, "metrics.csv"))
     except:
         print("no metrics.csv found in clean logging!")
+
+
+def plot_input_imgs(x, y, out_path):
+
+    print(x.mean().item(), x.std().item(), x.min().item(), x.max().item())
+    f, axs = plt.subplots(nrows=4, ncols=4, figsize=(10, 10))
+    for ix in range(len(f.axes)):
+       ax = f.axes[ix]
+       ax.imshow(x[ix].cpu().permute(1, 2, 0))
+       ax.title.set_text(str(y[ix].item()))
+
+    plt.savefig(out_path)
+    assert 1==2
+

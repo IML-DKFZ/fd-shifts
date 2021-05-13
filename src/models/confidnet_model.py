@@ -27,6 +27,7 @@ class net(pl.LightningModule):
             print("Initializing custom Model Selector.", cf.trainer.callbacks.model_checkpoint)
             self.selection_metrics = cf.trainer.callbacks.model_checkpoint.selection_metric
             self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
+            self.test_selection_criterion = cf.test.selection_criterion
         self.pretrained_backbone_path = cf.trainer.callbacks.training_stages.pretrained_backbone_path
         self.pretrained_confidnet_path = cf.trainer.callbacks.training_stages.pretrained_confidnet_path
         self.confidnet_lr_scheduler = cf.trainer.callbacks.training_stages.confidnet_lr_scheduler

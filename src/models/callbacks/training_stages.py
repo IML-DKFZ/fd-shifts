@@ -19,7 +19,8 @@ class TrainingStages(Callback):
             print("Starting Training ConfidNet")
             pl_module.training_stage = 1
             if pl_module.pretrained_backbone_path is None: # trained from scratch, reload best epoch
-                best_ckpt_path = trainer.checkpoint_callbacks[0].best_model_path
+                best_ckpt_path = trainer.checkpoint_callbacks[0].last_model_path # No backbone model selection!!
+                print("Check last backbone path", best_ckpt_path)
             else:
                 best_ckpt_path = pl_module.pretrained_backbone_path
 
@@ -89,10 +90,13 @@ class TrainingStages(Callback):
             pl_module.training_stage = 2
             if pl_module.pretrained_confidnet_path is not None:
                 best_ckpt_path = pl_module.pretrained_confidnet_path
-            elif hasattr(pl_module, "selection_metrics"):
+            elif hasattr(pl_module, "test_selection_criterion") and "latest" not in pl_module.test_selection_criterion:
                 best_ckpt_path = trainer.checkpoint_callbacks[1].best_model_path
+                print("Test selection criterion", pl_module.test_selection_criterion)
+                print("Check BEST confidnet path", best_ckpt_path)
             else:
                 best_ckpt_path = None
+                print("going with latest confidnet")
             if best_ckpt_path is not None:
                 loaded_ckpt = torch.load(best_ckpt_path)
                 loaded_state_dict = loaded_ckpt["state_dict"]

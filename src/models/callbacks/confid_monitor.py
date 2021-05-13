@@ -11,8 +11,6 @@ class ConfidMonitor(Callback):
 
         self.num_epochs = cf.trainer.num_epochs
         self.num_classes = cf.data.num_classes
-        if cf.eval.ext_confid_name == "dg":
-            self.num_classes -= 1
         self.fast_dev_run = cf.trainer.fast_dev_run
 
 
@@ -94,6 +92,9 @@ class ConfidMonitor(Callback):
                 if tmp_confids is not None:
                     self.running_confid_stats["train"]["ext"]["confids"].extend(tmp_confids)
                     self.running_confid_stats["train"]["ext"]["correct"].extend(tmp_correct)
+
+            if "imgs" in outputs[0][0]["extra"].keys():
+                eval_utils.plot_input_imgs(outputs[0][0]["extra"]["imgs"], y, self.output_paths.fit.input_imgs_plot)
 
 
     def on_train_epoch_end(self, trainer, pl_module, outputs):

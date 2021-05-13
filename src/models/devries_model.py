@@ -32,7 +32,8 @@ class net(pl.LightningModule):
         if self.ext_confid_name == "dg":
             self.reward = cf.model.dg_reward
             self.pretrain_epochs = cf.trainer.dg_pretrain_epochs
-            cf.data.num_classes += 1
+            self.load_dg_backbone_path = dict(cf.model.network).get("load_dg_backbone_path")
+            self.save_dg_backbone_path = dict(cf.model.network).get("save_dg_backbone_path")
 
         self.model = get_network(cf.model.network.name)(cf) # todo make explciit arguments in factory!!
 
@@ -60,6 +61,32 @@ class net(pl.LightningModule):
         self.model.encoder.disable_dropout()
 
         return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
+
+    # def on_train_epoch_start(self):
+
+        # if self.current_epoch == self.pretrain_epochs and self.ext_confid_name == "dg" and self.load_dg_backbone_path is not None:
+        #
+        #     loaded_ckpt = torch.load(self.load_dg_backbone_path)
+        #     loaded_state_dict = loaded_ckpt["state_dict"]
+        #     # self.load_state_dict(loaded_state_dict, strict=True)
+        #     self.load_from_checkpoint(self.load_dg_backbone_path)
+        #     print("loaded pretrained dg backbone from {}".format(self.load_dg_backbone_path))
+
+    def on_epoch_end(self):
+
+        if self.current_epoch == self.pretrain_epochs -1 and self.ext_confid_name == "dg" and self.save_dg_backbone_path is not None:
+            self.trainer.save_checkpoint(self.save_dg_backbone_path)
+            print("saved pretrained dg backbone to {}".format(self.save_dg_backbone_path))
+
+    def on_train_start(self):
+        if self.current_epoch > 0: # check if resumed training
+            print("stepping scheduler after resume...")
+            self.trainer.lr_schedulers[0]["scheduler"].step()
+
+        for ix, x in enumerate(self.model.named_modules()):
+            print(ix, x[1])
+            if isinstance(x[1], nn.Conv2d) or isinstance(x[1], nn.Linear):
+                print(x[1].weight.mean().item())
 
 
     def training_step(self, batch, batch_idx):
@@ -95,22 +122,25 @@ class net(pl.LightningModule):
                 self.lmbda = self.lmbda / 0.99
 
         elif self.ext_confid_name == "dg":
-            outputs = self.model(x)
-            outputs = F.softmax(outputs, dim=1)
-            pred_original, reservation = outputs[:, :-1], outputs[:, -1]
+            logits = self.model(x)
+            softmax = F.softmax(logits, dim=1)
+            pred_original, reservation = softmax[:, :-1], softmax[:, -1]
             confidence = 1 - reservation.unsqueeze(1)
-            if self.current_epoch >= self.pretrain_epochs:
+            # print("CHECK CONF", confidence.mean().item(), confidence.std().item(), confidence.min().item(), confidence.max().item())
+            if self.current_epoch >= self.pretrain_epochs and self.reward > -1:
                 gain = torch.gather(pred_original, dim=1, index=y.unsqueeze(1)).squeeze()
                 doubling_rate = (gain.add(reservation.div(self.reward))).log()
                 loss = -doubling_rate.mean().unsqueeze(0)
             else:
-                loss = self.loss_criterion(outputs[:, :-1], y)
+                loss = self.loss_criterion(logits[:, :-1], y)
+
+
 
         else:
             raise NotImplementedError
 
-        # print(x.mean(), pred_original.std())
-        return {"loss":loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)}
+
+        return {"loss":loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)} # ,"imgs":x
 
 
     def validation_step(self, batch, batch_idx):
@@ -145,7 +175,7 @@ class net(pl.LightningModule):
             outputs = F.softmax(outputs, dim=1)
             pred_original, reservation = outputs[:, :-1], outputs[:, -1]
             confidence = 1 - reservation.unsqueeze(1)
-            if self.current_epoch >= self.pretrain_epochs:
+            if self.current_epoch >= self.pretrain_epochs and self.reward > -1:
                 gain = torch.gather(pred_original, dim=1, index=y.unsqueeze(1)).squeeze()
                 doubling_rate = (gain.add(reservation.div(self.reward))).log()
                 loss = -doubling_rate.mean()
@@ -179,7 +209,7 @@ class net(pl.LightningModule):
 
 
     def configure_optimizers(self):
-        optimizers = [torch.optim.SGD(self.parameters(),
+        optimizers = [torch.optim.SGD(self.model.parameters(),
                                lr=self.optimizer_cfgs.learning_rate,
                                momentum=self.optimizer_cfgs.momentum,
                                nesterov = self.optimizer_cfgs.nesterov,
@@ -189,12 +219,13 @@ class net(pl.LightningModule):
         if self.lr_scheduler_cfgs.name == "MultiStep":
             schedulers = [torch.optim.lr_scheduler.MultiStepLR(optimizers[0],
                                                                milestones=self.lr_scheduler_cfgs.milestones,
-                                                               gamma=0.2,
+                                                               gamma=self.lr_scheduler_cfgs.gamma,
                                                                verbose=True)]
         elif self.lr_scheduler_cfgs.name == "CosineAnnealing":
             schedulers = [torch.optim.lr_scheduler.CosineAnnealingLR(optimizers[0],
                                                                      T_max=self.lr_scheduler_cfgs.max_epochs,
                                                                      verbose=True)]
+
 
         return optimizers, schedulers
 

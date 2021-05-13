@@ -34,13 +34,17 @@ def get_most_recent_version(exp_dir):
     max_ver = max(ver_list)
     return max_ver
 
-def get_ckpt_path_from_previous_version(exp_dir,version, selection_criterion):
-    if selection_criterion == "latest":
-        selection_criterion = "last"
-    resume_ckpt = os.path.join(exp_dir, "version_{}".format(version), "{}.ckpt".format(selection_criterion))
-    if not os.path.isfile(resume_ckpt):
-        RuntimeError("requested resume ckpt does not exist.")
-    return resume_ckpt
+def get_resume_ckpt_path(cf):
+    if dict(cf.model.network).get("load_dg_backbone_path") is not None:
+        return cf.model.network.load_dg_backbone_path
+    else:
+        selection_criterion = cf.test.selection_criterion
+        if cf.test.selection_criterion == "latest":
+            selection_criterion = "last"
+        resume_ckpt = os.path.join(cf.exp.dir, "version_{}".format(cf.exp.version), "{}.ckpt".format(selection_criterion))
+        if not os.path.isfile(resume_ckpt):
+            RuntimeError("requested resume ckpt does not exist.")
+        return resume_ckpt
 
 
 def get_path_to_best_ckpt(exp_dir, selection_criterion, selection_mode):

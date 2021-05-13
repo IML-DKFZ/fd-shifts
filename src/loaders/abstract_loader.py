@@ -222,8 +222,9 @@ class AbstractDataLoader(pl.LightningDataModule):
             dataset=self.train_dataset,
             batch_size=self.batch_size,
             sampler=self.train_sampler,
+            # shuffle=True,
             pin_memory=self.pin_memory,
-            num_workers=self.num_workers,
+            num_workers=4,
             persistent_workers=True,
             )
 

@@ -11,22 +11,23 @@ trainer:
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
   lr_scheduler:
-    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
-    milestones: [60, 120, 160] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
+    name: "MultiStep" # "MultiStep" "CosineAnnealing"
+    milestones: [25,50,75,100,125,150,175,200,225,250,275] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
     max_epochs: ${trainer.num_epochs}
+    gamma: 0.5
   optimizer:
     name: SGD
     learning_rate: 1e-1
     momentum: 0.9
-    nesterov: True
+    nesterov: False
     weight_decay: 0.0005
   callbacks:
     model_checkpoint:
-      n: 1
-      selection_metric: ["val/accuracy"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
-      mode: ["max"]
-      filename: ["best_valacc"]# min:lower is better, max: higher is better
-      save_top_k: [1]
+#      n: 1
+#      selection_metric: ["val/accuracy"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
+#      mode: ["max"]
+#      filename: ["best_valacc"]# min:lower is better, max: higher is better
+#      save_top_k: [1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
     learning_rate_monitor:
 
@@ -44,16 +45,18 @@ model:
   name: devries_model #det_mcd_model
   fc_dim: 512
   confidnet_fc_dim: 400
-  dg_reward: 2.2
-  avg_pool: True
-  dropout_rate: 0 # 0 sets dropout to false
+  dg_reward: -1 # 2.2
+  avg_pool: False
+  dropout_rate: 1 # 0 sets dropout to false
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   budget: 0.3
   network:
-    name: vgg13 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
+    name: dgvgg #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
     backbone: #vgg13
     imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
+    load_dg_backbone_path: #${exp.dir}/dg_backbone_2.ckpt  # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
+    save_dg_backbone_path:   ${exp.dir}/dg_backbone.ckpt # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 
 test:
@@ -75,7 +78,7 @@ eval:
     val: ['loss', 'nll', 'accuracy', 'brier_score']
     test: ['nll', 'accuracy', 'brier_score']
   confid_metrics:
-    train: ['failauc', 'failap_suc', 'failap_err', "fpr@95tpr"]
+    train: ['failauc', 'failap_suc', 'failap_err', "fpr@95tpr",  "e-aurc", "aurc"]
     val: ['failauc', 'failap_suc', 'failap_err', "fpr@95tpr",  "e-aurc", "aurc"]
     test: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
   confidence_measures: # ["det_mcp" , "det_pe", "tcp" , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]

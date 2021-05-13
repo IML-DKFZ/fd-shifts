@@ -1,7 +1,7 @@
 defaults:
   - hydra/job_logging: disabled
   - data: cifar10_data.yaml #svhn_data.yaml
-  - study: cifar_tcp_confid_sweep.yaml # svhn_confid_study.yaml
+  - study: cifar_devries_study.yaml # svhn_confid_study.yaml
 
 
 
@@ -13,9 +13,9 @@ hydra:
 
 exp:
   group_name: checks
-  name: check_dropoutconfid # cifar10_run_0_sebastian
+  name: check_dgwth # cifar10_run_0_sebastian
   version: None
-  mode: train   # train or test
+  mode: train_test   # train or test
   work_dir: ${hydra:runtime.cwd}
   fold_dir: exp/${exp.fold}
   root_dir: ${env:EXPERIMENT_ROOT_DIR}
@@ -28,6 +28,7 @@ exp:
   crossval_ids_path: ${exp.dir}/crossval_ids.pickle
   output_paths:
     fit:
+      input_imgs_plot: ${exp.dir}/input_imgs.png
       raw_output: ${exp.version_dir}/raw_output.npy
       raw_output_dist: ${exp.version_dir}/raw_output_dist.npy
       external_confids: ${exp.version_dir}/external_confids.npy

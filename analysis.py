@@ -337,8 +337,6 @@ class Analysis():
     def compute_performance_metrics(self, softmax, labels, correct, method_dict):
         performance_metrics = {}
         num_classes = self.num_classes
-        if dict(method_dict["cfg"].eval).get("ext_confid_name") == "dg":
-            num_classes -=1
         if "nll" in self.query_performance_metrics:
             if "new_class" in self.study_name:
                 performance_metrics["nll"] = None
@@ -468,6 +466,12 @@ def main(in_path=None, out_path=None, query_studies=None, cf=None):
                             "e-aurc",
                             "aurc",
                             "fpr@95tpr",
+                            "risk@100cov",
+                            "risk@95cov",
+                            "risk@90cov",
+                            "risk@85cov",
+                            "risk@80cov",
+                            "risk@75cov",
                             ]
 
     query_plots = ["calibration",

@@ -16,8 +16,11 @@ cfg = {
 class VGG(nn.Module):
     def __init__(self, cf):
         super(VGG, self).__init__()
+        num_classes = cf.data.num_classes
+        if cf.eval.ext_confid_name == "dg":
+            num_classes +=1
         self.encoder = Encoder(cf)
-        self.classifier = Classifier(cf)
+        self.classifier = Classifier(cf.model.fc_dim, num_classes)
 
     def forward(self, x):
         out = self.encoder(x)
@@ -80,12 +83,10 @@ class Encoder(nn.Module):
         return x
 
 class Classifier(nn.Module):
-    def __init__(self, cf):
+    def __init__(self, fc_dim, num_classes):
         super(Classifier, self).__init__()
 
-        self.num_classes = cf.data.num_classes
-        self.fc_dim = cf.model.fc_dim
-        self.fc2 = nn.Linear(self.fc_dim, self.num_classes)
+        self.fc2 = nn.Linear(fc_dim, num_classes)
 
     def forward(self, x):
         return self.fc2(x)

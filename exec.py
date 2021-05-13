@@ -35,9 +35,7 @@ def train(cf, subsequent_testing=False):
     cf.exp.version = exp_utils.get_next_version(cf.exp.dir)
     if cf.trainer.resume_from_ckpt:
         cf.exp.version -= 1
-        resume_ckpt_path = exp_utils.get_ckpt_path_from_previous_version(cf.exp.dir,
-                                                                         cf.exp.version,
-                                                                         "last")
+        resume_ckpt_path = exp_utils.get_resume_ckpt_path(cf)
         print("resuming previous training:", resume_ckpt_path)
 
     datamodule = AbstractDataLoader(cf)
@@ -60,6 +58,7 @@ def train(cf, subsequent_testing=False):
                          check_val_every_n_epoch = cf.trainer.val_every_n_epoch,
                          fast_dev_run=cf.trainer.fast_dev_run,
                          num_sanity_val_steps=5,
+                         # amp_level="O0",
                          deterministic= train_deterministic_flag,
                          # limit_train_batches=1,
                          limit_val_batches=0 if cf.trainer.val_split is None else 1.0,
