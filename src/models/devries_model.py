@@ -23,7 +23,8 @@ class net(pl.LightningModule):
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
         self.num_classes = cf.data.num_classes
-        self.loss_criterion = nn.CrossEntropyLoss()
+        self.nll_loss = nn.NLLLoss()
+        self.cross_entropy_loss = nn.CrossEntropyLoss()
         self.lmbda = 0.1
         self.budget = cf.model.budget
         self.test_conf_scaling = cf.eval.test_conf_scaling
@@ -74,7 +75,7 @@ class net(pl.LightningModule):
 
     def on_epoch_end(self):
 
-        if self.current_epoch == self.pretrain_epochs -1 and self.ext_confid_name == "dg" and self.save_dg_backbone_path is not None:
+        if self.ext_confid_name == "dg" and self.current_epoch == self.pretrain_epochs -1 and self.save_dg_backbone_path is not None:
             self.trainer.save_checkpoint(self.save_dg_backbone_path)
             print("saved pretrained dg backbone to {}".format(self.save_dg_backbone_path))
 
@@ -98,7 +99,7 @@ class net(pl.LightningModule):
             confidence = torch.sigmoid(confidence)
             pred_original = F.softmax(logits, dim=1)
             labels_onehot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
-
+            print(x.mean().item(), logits.mean().item())
             # Make sure we don't have any numerical instability
             eps = 1e-12
             pred_original = torch.clamp(pred_original, 0. + eps, 1. - eps)
@@ -111,7 +112,7 @@ class net(pl.LightningModule):
                         1 - conf.expand_as(labels_onehot))
             pred_new = torch.log(pred_new)
 
-            xentropy_loss = self.loss_criterion(pred_new, y)
+            xentropy_loss = self.nll_loss(pred_new, y)
             confidence_loss = torch.mean(-torch.log(confidence))
 
             loss = xentropy_loss + (self.lmbda * confidence_loss)
@@ -132,12 +133,7 @@ class net(pl.LightningModule):
                 doubling_rate = (gain.add(reservation.div(self.reward))).log()
                 loss = -doubling_rate.mean().unsqueeze(0)
             else:
-                loss = self.loss_criterion(logits[:, :-1], y)
-
-
-
-        else:
-            raise NotImplementedError
+                loss = self.cross_entropy_loss(logits[:, :-1], y)
 
 
         return {"loss":loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)} # ,"imgs":x
@@ -165,7 +161,7 @@ class net(pl.LightningModule):
                     1 - conf.expand_as(labels_onehot))
             pred_new = torch.log(pred_new)
 
-            xentropy_loss = self.loss_criterion(pred_new, y)
+            xentropy_loss = self.nll_loss(pred_new, y)
             confidence_loss = torch.mean(-torch.log(confidence))
 
             loss = xentropy_loss + (self.lmbda * confidence_loss)
@@ -180,7 +176,7 @@ class net(pl.LightningModule):
                 doubling_rate = (gain.add(reservation.div(self.reward))).log()
                 loss = -doubling_rate.mean()
             else:
-                loss = self.loss_criterion(outputs[:, :-1], y)
+                loss = self.cross_entropy_loss(outputs[:, :-1], y)
 
         # print(self.lmbda, confidence_loss.item())
         # print(x.mean(), pred_original.std())

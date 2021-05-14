@@ -211,9 +211,9 @@ class AbstractDataLoader(pl.LightningDataModule):
 
 
         # Make samplers
-        self.train_sampler = SubsetRandomSampler(train_idx)
-
-        print("len train sampler", len(self.train_sampler))
+        # self.train_sampler = SubsetRandomSampler(train_idx)
+        #
+        # print("len train sampler", len(self.train_sampler))
         print("len val sampler", len(val_idx))
 
 
@@ -221,11 +221,11 @@ class AbstractDataLoader(pl.LightningDataModule):
         return torch.utils.data.DataLoader(
             dataset=self.train_dataset,
             batch_size=self.batch_size,
-            sampler=self.train_sampler,
-            # shuffle=True,
+            # sampler=self.train_sampler,
+            shuffle=True,
             pin_memory=self.pin_memory,
-            num_workers=4,
-            persistent_workers=True,
+            num_workers=self.num_workers,
+            # persistent_workers=True,
             )
 
 
@@ -245,7 +245,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             val_loader = torch.utils.data.DataLoader(
                 dataset=self.val_dataset, #same dataset as train but potentially differing augs.
                 batch_size=self.batch_size,
-                sampler=self.val_sampler,
+                # sampler=self.val_sampler,
                 pin_memory=self.pin_memory,
                 num_workers=self.num_workers,
                 )

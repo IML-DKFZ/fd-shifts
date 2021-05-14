@@ -14,9 +14,9 @@ mode = "train" # "test" / "train"
 backbones = ["dgvgg"]
 dropouts = [1, 0]
 cutout = [False, True]# only true for vgg16
-models = ["devries_model"]
+models = ["det_mcd_model"]
 scheduler = ["MultiStep", "CosineAnnealing"]
-reward = [-1, 2.2, 6]
+reward = [0] #[-1, 2.2, 6]
 runs = [0, 1]
 
 
@@ -33,7 +33,7 @@ for ix, (bb, do, model, run, rew, sched, co) in enumerate(product(backbones, dro
             # command_line_args += "eval.query_studies.new_class_study=\"{}\" ".format(
             #     ['tinyimagenet', 'tinyimagenet_resize', "cifar100", "svhn"])
         else:
-            command_line_args += "study={} ".format("cifar_devries_study")
+            command_line_args += "study={} ".format("dg_cifar_study")
             command_line_args += "data={} ".format("cifar10_data")
             command_line_args += "exp.group_name={} ".format(exp_group_name)
             command_line_args += "exp.name={} ".format(exp_name)
@@ -46,8 +46,9 @@ for ix, (bb, do, model, run, rew, sched, co) in enumerate(product(backbones, dro
             command_line_args += "model.name={} ".format(model) # todo careful, name vs backbone!
             command_line_args += "model.network.name={} ".format(bb)  # todo careful, name vs backbone!
             command_line_args += "model.network.backbone={} ".format("null")  # todo careful, name vs backbone!
-            command_line_args += "eval.confidence_measures.test=\"{}\" ".format(["det_mcp" , "det_pe", "ext"])
-            command_line_args += "eval.ext_confid_name=\"{}\" ".format("dg")
+            if model != "det_mcd_model":
+                command_line_args += "eval.confidence_measures.test=\"{}\" ".format(["det_mcp" , "det_pe", "ext"])
+                command_line_args += "eval.ext_confid_name=\"{}\" ".format("dg")
 
             if do == 1:
               command_line_args += "model.avg_pool={} ".format(False)

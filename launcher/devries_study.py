@@ -12,17 +12,18 @@ exec_path = os.path.join(exec_dir,"exec.py")
 
 mode = "train" # "test" / "train"
 backbones = ["vgg13", "vgg16"]
-dropouts = [1] # only true for vgg16
+dropouts = [0] # only true for vgg16
 models = ["devries_model"]
-runs = [0, 1, 2]
-avg_pool = [True, False]
+runs = [0]
+scheduler = ["MultiStep", "CosineAnnealing"]
+avg_pool = [True]
 num_epochs = [200, 250]
 
-for ix, (bb, do, model, run, ne, ap) in enumerate(product(backbones, dropouts, models, runs, num_epochs, avg_pool)):
+for ix, (bb, do, model, run, ne, ap, sched) in enumerate(product(backbones, dropouts, models, runs, num_epochs, avg_pool, scheduler)):
 
 
-        exp_group_name = "devries_200fixed_sweep"
-        exp_name = "{}_bb{}_do{}_run{}_ne{}_ap{}".format(model, bb, do, run, ne, ap)
+        exp_group_name = "devries_exact_repro_sweep"
+        exp_name = "{}_bb{}_do{}_run{}_ne{}_ap{}_{}".format(model, bb, do, run, ne, ap, sched)
         command_line_args = ""
 
         if mode == "test":
@@ -37,6 +38,7 @@ for ix, (bb, do, model, run, ne, ap) in enumerate(product(backbones, dropouts, m
             command_line_args += "exp.name={} ".format(exp_name)
             command_line_args += "exp.mode={} ".format("train_test")
             command_line_args += "trainer.num_epochs={} ".format(ne)
+            command_line_args += "trainer.lr_scheduler.name={} ".format(sched)
 
             command_line_args += "model.dropout_rate={} ".format(do)
             command_line_args += "model.name={} ".format(model) # todo careful, name vs backbone!
@@ -46,7 +48,7 @@ for ix, (bb, do, model, run, ne, ap) in enumerate(product(backbones, dropouts, m
             command_line_args += "eval.confidence_measures.test=\"{}\" ".format(["det_mcp" , "det_pe", "ext"])
 
             # if do == 1:
-            command_line_args += "model.avg_pool={} ".format(ap)
+            # command_line_args += "model.avg_pool={} ".format(ap)
             # else:
             #     command_line_args += "model.network.name={} ".format(bb)
 
