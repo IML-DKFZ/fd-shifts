@@ -61,7 +61,7 @@ def train(cf, subsequent_testing=False):
                          # amp_level="O0",
                          deterministic= train_deterministic_flag,
                          # limit_train_batches=1,
-                         limit_val_batches=0 if cf.trainer.val_split is None else 1.0,
+                         limit_val_batches=0 if cf.trainer.do_val is False else 1.0,
                          # replace_sampler_ddp=False,
                          # accelerator="ddp"
                          )
@@ -88,6 +88,7 @@ def train(cf, subsequent_testing=False):
         analysis.main(in_path=cf.test.dir,
                       out_path=cf.test.dir,
                       query_studies=cf.eval.query_studies,
+                      add_val_tuning=cf.eval.val_tuning,
                       cf=cf)
 
 
@@ -101,25 +102,28 @@ def test(cf):
     else:
         print("CHECK cf.exp.dir", cf.exp.dir)
         cf.exp.version = exp_utils.get_most_recent_version(cf.exp.dir)
-        ckpt_path = exp_utils.get_ckpt_path_from_previous_version(cf.exp.dir,
-                                                                       cf.exp.version,
-                                                                       cf.test.selection_criterion)
+        ckpt_path = exp_utils.get_resume_ckpt_path(cf)
+
+
 
     print("testing model from checkpoint: {} from model selection tpye {}".format(
         ckpt_path, cf.test.selection_criterion))
     print("logging testing to: {}".format(cf.test.dir))
-    # via kwargs I can overwrite test configs at least manually in theconfig file for now.
-    model = get_model(cf.model.name).load_from_checkpoint(ckpt_path, hparams_file=os.path.join(cf.exp.version_dir, "hparams.yaml"))
+
+    module = get_model(cf.model.name)(cf)
+    module.load_only_state_dict(ckpt_path)
     datamodule = AbstractDataLoader(cf)
 
     if not os.path.exists(cf.test.dir):
         os.makedirs(cf.test.dir)
 
     trainer = pl.Trainer(gpus=1, logger=False, callbacks=get_callbacks(cf))
-    trainer.test(model, datamodule=datamodule)
+    trainer.test(model=module, datamodule=datamodule)
     analysis.main(in_path=cf.test.dir,
                   out_path=cf.test.dir,
-                  query_studies=cf.eval.query_studies)
+                  query_studies=cf.eval.query_studies,
+                  add_val_tuning=cf.eval.val_tuning,
+                  cf = cf)
 
     # fix str bug
     # test resuming by testing a second time in the same dir
@@ -145,6 +149,7 @@ def main(cf: DictConfig):
         analysis.main(in_path=cf.test.dir,
                       out_path=cf.test.dir,
                       query_studies=cf.eval.query_studies,
+                      add_val_tuning=cf.eval.val_tuning,
                       cf=cf)
 
 

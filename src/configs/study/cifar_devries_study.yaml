@@ -2,15 +2,16 @@
 
 
 trainer:
-  num_epochs: 200 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs: 250 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
   val_every_n_epoch: 1 #has to be 1 because of schedulers
-  val_split: #"devries"  # leave empty for no val
+  val_split: "devries" #"devries"  # leave empty for no val
+  do_val: False #"devries"  # leave empty for no val
   batch_size: 128
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
   lr_scheduler:
-    name: "MultiStep" # "MultiStep" "CosineAnnealing"
+    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
     milestones: [60, 120, 160] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
     max_epochs: ${trainer.num_epochs}
     gamma: 0.2
@@ -29,16 +30,6 @@ trainer:
 #      save_top_k: [1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
     learning_rate_monitor:
-
-#model:
-#  name: devries_model #det_mcd_model
-#  fc_dim: 512
-#  budget: 0.3
-#  dropout_flag: True
-#  network:
-#    name: devries_and_enc      # confidnet_small_conv_and_enc / small_conv
-#    backbone: vgg16
-#    imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 model:
   name: devries_model # devries_model #
@@ -63,11 +54,11 @@ test:
   dir: ${exp.dir}/${test.name}
   cf_path: ${exp.dir}/hydra/config.yaml
   selection_criterion: "latest" #"best_valacc" #best_valacc # model selection criterion or "latest"
-#  selection_mode: "l#max # model selection criterion or "latest"
+  selection_mode: #"l#max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
-  devries_repro_ood_split: True
-  assim_ood_norm_flag: True
+  devries_repro_ood_split: False
+  assim_ood_norm_flag: False
   iid_set_split: "devries"  # all, devries
 
 
@@ -96,10 +87,14 @@ eval:
   tb_hparams: ['fold']
   ext_confid_name: "devries"
   test_conf_scaling: False
-  val_tuning: False
+  val_tuning: True
+  r_star: 0.25
+  r_delta: 0.05
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
     iid_study: cifar10
+    noise_study:
+    - corrupt_cifar10
     new_class_study:
       - tinyimagenet
       - tinyimagenet_resize

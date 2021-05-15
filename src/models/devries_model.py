@@ -53,15 +53,28 @@ class net(pl.LightningModule):
         softmax_list = []
         conf_list =  []
         for _ in range(n_samples - len(softmax_list)):
-            logits, confidence = self.model(x)
-            softmax = F.softmax(logits, dim=1)
-            confidence = torch.sigmoid(confidence).squeeze(1)
-            softmax_list.append(softmax.unsqueeze(2))
-            conf_list.append(confidence.unsqueeze(1))
+            if self.ext_confid_name == "devries":
+                logits, confidence = self.model(x)
+                softmax = F.softmax(logits, dim=1)
+                confidence = torch.sigmoid(confidence).squeeze(1)
+                softmax_list.append(softmax.unsqueeze(2))
+                conf_list.append(confidence.unsqueeze(1))
+            if self.ext_confid_name == "dg":
+                outputs = self.model(x)
+                outputs = F.softmax(outputs, dim=1)
+                softmax, reservation = outputs[:, :-1], outputs[:, -1]
+                confidence = 1 - reservation
+                softmax_list.append(softmax.unsqueeze(2))
+                conf_list.append(confidence.unsqueeze(1))
 
         self.model.encoder.disable_dropout()
 
         return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
+
+
+
+
+
 
     # def on_train_epoch_start(self):
 
@@ -99,7 +112,7 @@ class net(pl.LightningModule):
             confidence = torch.sigmoid(confidence)
             pred_original = F.softmax(logits, dim=1)
             labels_onehot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
-            print(x.mean().item(), logits.mean().item())
+            # print(x.mean().item(), logits.mean().item())
             # Make sure we don't have any numerical instability
             eps = 1e-12
             pred_original = torch.clamp(pred_original, 0. + eps, 1. - eps)
@@ -132,9 +145,12 @@ class net(pl.LightningModule):
                 gain = torch.gather(pred_original, dim=1, index=y.unsqueeze(1)).squeeze()
                 doubling_rate = (gain.add(reservation.div(self.reward))).log()
                 loss = -doubling_rate.mean().unsqueeze(0)
+                # print(x.mean().item(), logits.mean().item(), logits.min().item(), logits.max().item(),
+                #       loss.mean().item(), "CHECK")
             else:
                 loss = self.cross_entropy_loss(logits[:, :-1], y)
-
+                # print(x.mean().item(), logits.mean().item(), logits.min().item(), logits.max().item(),
+                #       loss.mean().item(), "CHECK")
 
         return {"loss":loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)} # ,"imgs":x
 
@@ -228,7 +244,12 @@ class net(pl.LightningModule):
 
     def on_load_checkpoint(self, checkpoint):
         self.loaded_epoch = checkpoint["epoch"]
-        print("loading checkpoint at epoch {}".format(self.loaded_epoch))
+        print("loading checkpoint from epoch {}".format(self.loaded_epoch))
+
+    def load_only_state_dict(self, path):
+        ckpt = torch.load(path)
+        print("loading checkpoint from epoch {}".format(ckpt["epoch"]))
+        self.load_state_dict(ckpt["state_dict"], strict=True)
 
 
 

@@ -7,6 +7,8 @@ from sklearn import metrics as skm
 import seaborn
 from torchmetrics import Metric
 import pandas as pd
+import math
+import scipy
 
 def get_tb_hparams(cf):
 
@@ -141,6 +143,7 @@ class ConfidEvaluator():
                 out_metrics["risk@80cov"] = np.min(risks[np.argwhere(coverages >= 0.80)]) * 100
                 out_metrics["risk@75cov"] = np.min(risks[np.argwhere(coverages >= 0.75)]) * 100
 
+
         hist_confids = np.histogram(self.confids, bins=self.bins, range=(0, 1))[0]
         if self.bin_accs is None:
             self.get_calibration_stats()
@@ -210,6 +213,69 @@ class ConfidEvaluator():
     def get_calibration_stats(self):
         calib_confids = np.clip(self.confids, 0 , 1) # necessary for waic
         self.bin_accs, self.bin_confids = calibration_curve(self.correct, calib_confids, n_bins=self.bins)
+
+    def calculate_bound(self, delta, m, erm):
+        # This function is a solver for the inverse of binomial CDF based on binary search.
+        precision = 1e-7
+
+        def func(b):
+            return (-1 * delta) + scipy.stats.binom.cdf(int(m * erm), m, b)
+
+        a = erm  # start binary search from the empirical risk
+        c = 1  # the upper bound is 1
+        b = (a + c) / 2  # mid point
+        funcval = func(b)
+        while abs(funcval) > precision:
+            if a == 1.0 and c == 1.0:
+                b = 1.0
+                break
+            elif funcval > 0:
+                a = b
+            else:
+                c = b
+            b = (a + c) / 2
+            funcval = func(b)
+        return b
+
+    def get_val_risk_scores(self, rstar, delta):
+        # A function to calculate the risk bound proposed in the paper, the algorithm is based on algorithm 1 from the paper.
+        # Input: rstar - the requested risk bound
+        #       delta - the desired delta
+        #       kappa - rating function over the points (higher values is more confident prediction)
+        #       residuals - a vector of the residuals of the samples 0 is correct prediction and 1 corresponding to an error
+        #       split - is a boolean controls whether to split train and test
+        # Output - [theta, bound] (also prints latex text for the tables in the paper)
+
+        val_risk_scores = {}
+        probs = self.confids
+        FY = 1 - self.correct
+
+        m = len(FY)
+
+        probs_idx_sorted = np.argsort(probs)
+
+        a = 0
+        b = m - 1
+        deltahat = delta / math.ceil(math.log2(m))
+
+        for q in range(math.ceil(math.log2(m)) + 1):
+            # the for runs log(m)+1 iterations but actually the bound calculated on only log(m) different candidate thetas
+            mid = math.ceil((a + b) / 2)
+
+            mi = len(FY[probs_idx_sorted[mid:]])
+            theta = probs[probs_idx_sorted[mid]]
+            risk = sum(FY[probs_idx_sorted[mid:]]) / mi
+            bound = self.calculate_bound(deltahat, mi, risk)
+            coverage = mi / m
+            if bound > rstar:
+                a = mid
+            else:
+                b = mid
+
+        val_risk_scores ["val_risk"] = risk
+        val_risk_scores ["val_cov"] = coverage
+        val_risk_scores ["theta"] = theta
+        return val_risk_scores
 
 
 class ConfidPlotter():

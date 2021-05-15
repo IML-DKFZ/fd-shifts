@@ -5,13 +5,14 @@ trainer:
   num_epochs: 300 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
   dg_pretrain_epochs: 100 # 100 and 300 total epochs
   val_every_n_epoch: 1 #has to be 1 because of schedulers
-  val_split: "devries"  # leave empty for no val
+  val_split: "devries" #"devries"  # leave empty for no val
+  do_val: False #"devries"  # leave empty for no val
   batch_size: 128
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
   lr_scheduler:
-    name: "MultiStep" # "MultiStep" "CosineAnnealing"
+    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
     milestones: [25,50,75,100,125,150,175,200,225,250,275] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
     max_epochs: ${trainer.num_epochs}
     gamma: 0.5
@@ -42,17 +43,17 @@ trainer:
 #    imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 model:
-  name: det_mcd_model # devries_model #
+  name: devries_model # det_mcd_model #
   fc_dim: 512
   confidnet_fc_dim: 400
-  dg_reward: -1 # 2.2
-  avg_pool: False
-  dropout_rate: 1 # 0 sets dropout to false
+  dg_reward:  2.2
+  avg_pool: True
+  dropout_rate: 0 # 0 sets dropout to false
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   budget: 0.3
   network:
-    name: dgvgg #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
+    name: resnet50 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
     backbone: #vgg13
     imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
     load_dg_backbone_path: #${exp.dir}/dg_backbone_2.ckpt  # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
@@ -67,7 +68,7 @@ test:
 #  selection_mode: "l#max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
-  devries_repro_ood_split: True
+  devries_repro_ood_split: False
   assim_ood_norm_flag: False
   iid_set_split: "devries"  # all, devries
 
@@ -85,9 +86,9 @@ eval:
     train:
       ["det_mcp"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
-      ["det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
+      ["det_mcp", "ext"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:
-      ["det_mcp" , "det_pe"]
+      ["det_mcp" , "det_pe", "ext"]
 
   monitor_plots: [ #"calibration",
                    #"overconfidence",
@@ -95,12 +96,16 @@ eval:
                     ]
 
   tb_hparams: ['fold']
-  ext_confid_name:
+  ext_confid_name: "dg"
   test_conf_scaling: False
-  val_tuning: False
+  val_tuning: True
+  r_star: 0.25
+  r_delta: 0.05
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
     iid_study: cifar10
+    noise_study:
+      - corrupt_cifar10
     new_class_study:
       - tinyimagenet
       - tinyimagenet_resize

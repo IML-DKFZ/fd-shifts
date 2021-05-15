@@ -11,14 +11,17 @@
       randomresized_crop: 224
       hflip: True
       color_jitter: [0.1, 0.1, 0.1]
+      to_tensor:
       normalize: [ [0.485, 0.456, 0.406], [0.229, 0.224, 0.225] ]
     val:
       resize: 256
       center_crop: 224
+      to_tensor:
       normalize: [ [0.485, 0.456, 0.406], [0.229, 0.224, 0.225] ]
     test:
       resize: 256
       center_crop: 224
+      to_tensor:
       normalize: [ [0.485, 0.456, 0.406], [0.229, 0.224, 0.225] ]  # keep standard norm. corruptions deviate result a bit from training data but ok.
 
   kwargs:

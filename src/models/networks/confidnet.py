@@ -34,8 +34,6 @@ class ConfidNet(nn.Module):
         self.uncertainty5 = nn.Linear(confid_net_fc_dim, 1)
 
     def forward(self, x):
-
-        x = x.detach()
         x = F.relu(self.uncertainty1(x))
         x = F.relu(self.uncertainty2(x))
         x = F.relu(self.uncertainty3(x))

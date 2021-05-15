@@ -18,12 +18,13 @@ runs = [0]
 scheduler = ["MultiStep", "CosineAnnealing"]
 avg_pool = [True]
 num_epochs = [200, 250]
+norms = ["orig"] #
 
-for ix, (bb, do, model, run, ne, ap, sched) in enumerate(product(backbones, dropouts, models, runs, num_epochs, avg_pool, scheduler)):
+for ix, (bb, do, model, run, ne, ap, sched, norm) in enumerate(product(backbones, dropouts, models, runs, num_epochs, avg_pool, scheduler, norms)):
 
 
         exp_group_name = "devries_exact_repro_sweep"
-        exp_name = "{}_bb{}_do{}_run{}_ne{}_ap{}_{}".format(model, bb, do, run, ne, ap, sched)
+        exp_name = "{}_bb{}_do{}_run{}_ne{}_ap{}_{}_norm{}".format(model, bb, do, run, ne, ap, sched, norm)
         command_line_args = ""
 
         if mode == "test":
@@ -51,6 +52,11 @@ for ix, (bb, do, model, run, ne, ap, sched) in enumerate(product(backbones, drop
             # command_line_args += "model.avg_pool={} ".format(ap)
             # else:
             #     command_line_args += "model.network.name={} ".format(bb)
+            if norm == "devries":
+                command_line_args += "data.augmentations.train.normalize=\"{}\" ".format([[0.4913725490196078, 0.4823529411764706, 0.4466666666666667], [0.24705882352941178, 0.24352941176470588, 0.2615686274509804]])
+                command_line_args += "data.augmentations.val.normalize=\"{}\" ".format([[0.4913725490196078, 0.4823529411764706, 0.4466666666666667], [0.24705882352941178, 0.24352941176470588, 0.2615686274509804]])
+                command_line_args += "data.augmentations.test.normalize=\"{}\" ".format([[0.4913725490196078, 0.4823529411764706, 0.4466666666666667], [0.24705882352941178, 0.24352941176470588, 0.2615686274509804]])
+                command_line_args += "test.assim_ood_norm_flag=True "
 
             if do == 1:
                 command_line_args += "eval.confidence_measures.test=\"{}\" ".format(

@@ -11,27 +11,33 @@ exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir,"exec.py")
 
 mode = "train" # "test" / "train"
-backbones = ["dgvgg"]
+backbones = ["vgg13", "vgg16"]
 dropouts = [1, 0]
-cutout = [False, True]# only true for vgg16
-models = ["det_mcd_model"]
-scheduler = ["MultiStep", "CosineAnnealing"]
-reward = [0] #[-1, 2.2, 6]
-runs = [0, 1]
+cutout = [True]# only true for vgg16
+models = ["devries_model"]
+scheduler = ["CosineAnnealing"]
+reward = [2.2, 3, 4.5, 6, 10]
+runs = [1, 2]
 
 
 for ix, (bb, do, model, run, rew, sched, co) in enumerate(product(backbones, dropouts, models, runs, reward, scheduler, cutout)):
 
-
-        exp_group_name = "dg_sweep_final"
+    if not (do == 0 and co == False) and (do==1):
+        exp_group_name = "dg_sweep_ultimate"
         exp_name = "{}_bb{}_do{}_run{}_rew{}_sched{}_co{}".format(model, bb, do, run, rew, sched,co)
         command_line_args = ""
 
         if mode == "test":
             command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(os.path.join(exp_group_name, exp_name, "hydra"))
             command_line_args += "exp.mode=test "
-            # command_line_args += "eval.query_studies.new_class_study=\"{}\" ".format(
-            #     ['tinyimagenet', 'tinyimagenet_resize', "cifar100", "svhn"])
+            command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
+                ["det_mcp", "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv", "ext","mcd_waic", "ext_waic", "ext_mcd"])
+        elif mode == "analysis":
+            command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(
+                os.path.join(exp_group_name, exp_name, "hydra"))
+            command_line_args += "exp.mode=analysis "
+            command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
+                ["det_mcp", "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv", "ext", "mcd_waic", "ext_waic", "ext_mcd"])
         else:
             command_line_args += "study={} ".format("dg_cifar_study")
             command_line_args += "data={} ".format("cifar10_data")
@@ -41,6 +47,7 @@ for ix, (bb, do, model, run, rew, sched, co) in enumerate(product(backbones, dro
             command_line_args += "trainer.num_epochs={} ".format(300)
             command_line_args += "trainer.dg_pretrain_epochs={} ".format(100)
             command_line_args += "trainer.lr_scheduler.name={} ".format(sched)
+            command_line_args += "model.dg_reward={} ".format(rew)
 
             command_line_args += "model.dropout_rate={} ".format(do)
             command_line_args += "model.name={} ".format(model) # todo careful, name vs backbone!

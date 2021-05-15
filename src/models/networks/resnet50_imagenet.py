@@ -319,6 +319,18 @@ class ResNetEncoder(nn.Module):
         print("loading pretrained imagenet weights into encoder from ", pretrained_path)
         self.load_state_dict(torch.load(pretrained_path), strict=False)
 
+    def disable_dropout(self):
+
+        for layer in self.named_modules():
+            if isinstance(layer[1],torch.nn.modules.dropout.Dropout):
+                layer[1].eval()
+
+    def enable_dropout(self):
+
+        for layer in self.named_modules():
+            if isinstance(layer[1],torch.nn.modules.dropout.Dropout):
+                layer[1].train()
+
 def _resnet(
     block: Type[Union[BasicBlock, Bottleneck]],
     layers: List[int],
@@ -342,7 +354,9 @@ def resnet50(cf, pretrained: bool = False, progress: bool = True, **kwargs: Any)
     """
     # todo add cf pretrained here from cf
     num_classes = cf.data.num_classes
-    dropout_rate = cf.model.dropout_rate
+    if cf.eval.ext_confid_name == "dg":
+        num_classes += 1
+    dropout_rate = cf.model.dropout_rate * 0.1
     return _resnet(Bottleneck, [3, 4, 6, 3], num_classes, progress, dropout_rate, **kwargs)
 
 

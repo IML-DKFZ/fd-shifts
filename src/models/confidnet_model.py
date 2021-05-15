@@ -216,5 +216,8 @@ class net(pl.LightningModule):
         print("loading checkpoint at epoch {}".format(self.loaded_epoch))
 
 
-
+    def load_only_state_dict(self, path):
+        ckpt = torch.load(path)
+        print("loading checkpoint from epoch {}".format(ckpt["epoch"]))
+        self.load_state_dict(ckpt["state_dict"], strict=True)
 

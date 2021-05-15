@@ -139,7 +139,7 @@ class AbstractDataLoader(pl.LightningDataModule):
         self.test_datasets = []
 
         if self.add_val_tuning:
-            self.test_datasets.append(self.val_dataset)  # sampler defined later
+            self.test_datasets.append(self.val_dataset)
             print("Adding tuning data. (preliminary) len: ", len(self.test_datasets[-1]))
 
         if not (self.query_studies is not None and "iid_study" not in self.query_studies):
@@ -175,10 +175,10 @@ class AbstractDataLoader(pl.LightningDataModule):
 
         # val_split: None, repro_confidnet, devries, cv
         if self.val_split is None or self.val_split == "devries" or self.val_split == "zhang":
-            num_train = len(self.train_dataset)
-            train_idx = list(range(num_train))
             val_idx = []
+            train_idx = []
             self.val_sampler = None
+            self.train_sampler = None
 
 
         elif self.val_split == "repro_confidnet":
@@ -190,6 +190,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             train_idx, val_idx = indices[split:], indices[:split]
             print("reproduced train_val_splits from confidnet with val_idxs:", val_idx[:10])
             self.val_sampler = val_idx
+            self.train_sampler = SubsetRandomSampler(train_idx)
 
         elif self.val_split == "cv":
             if os.path.isfile(self.crossval_ids_path):
@@ -205,15 +206,14 @@ class AbstractDataLoader(pl.LightningDataModule):
 
                 with open(self.crossval_ids_path, "wb") as f:
                     pickle.dump(splits, f)
+            self.train_sampler = SubsetRandomSampler(train_idx)
+
 
         else:
             raise NotImplementedError
 
 
-        # Make samplers
-        # self.train_sampler = SubsetRandomSampler(train_idx)
-        #
-        # print("len train sampler", len(self.train_sampler))
+        print("len train sampler", len(train_idx))
         print("len val sampler", len(val_idx))
 
 
@@ -221,11 +221,11 @@ class AbstractDataLoader(pl.LightningDataModule):
         return torch.utils.data.DataLoader(
             dataset=self.train_dataset,
             batch_size=self.batch_size,
-            # sampler=self.train_sampler,
-            shuffle=True,
+            sampler=self.train_sampler,
+            shuffle=True if self.train_sampler is None else False,
             pin_memory=self.pin_memory,
             num_workers=self.num_workers,
-            # persistent_workers=True,
+            persistent_workers=True,
             )
 
 
@@ -245,14 +245,14 @@ class AbstractDataLoader(pl.LightningDataModule):
             val_loader = torch.utils.data.DataLoader(
                 dataset=self.val_dataset, #same dataset as train but potentially differing augs.
                 batch_size=self.batch_size,
-                # sampler=self.val_sampler,
+                sampler=self.val_sampler,
                 pin_memory=self.pin_memory,
                 num_workers=self.num_workers,
                 )
 
         return val_loader
 
-    def test_dataloader(self):
+    def test_dataloader(self): # todo missing val sampler for val_tuning in cv mode!
         test_loaders = []
         for ix, test_dataset in enumerate(self.test_datasets):
             test_loaders.append(torch.utils.data.DataLoader(

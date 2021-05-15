@@ -1,7 +1,7 @@
 defaults:
   - hydra/job_logging: disabled
   - data: cifar10_data.yaml #svhn_data.yaml
-  - study: cifar_devries_study.yaml # svhn_confid_study.yaml
+  - study: dg_cifar_study.yaml # svhn_confid_study.yaml
 
 
 
@@ -13,7 +13,7 @@ hydra:
 
 exp:
   group_name: checks
-  name: check_devries_exact # cifar10_run_0_sebastian
+  name: check_risk_thresh # cifar10_run_0_sebastian
   version: None
   mode: train_test   # train or test
   work_dir: ${hydra:runtime.cwd}
@@ -39,7 +39,7 @@ exp:
       external_confids: ${test.dir}/external_confids.npy
       external_confids_dist: ${test.dir}/external_confids_dist.npy
   log_path: ${exp.dir}/log.txt
-  global_seed: 1 # set to False to disable deterministic training.
+  global_seed: False # set to False to disable deterministic training.
 
 
 

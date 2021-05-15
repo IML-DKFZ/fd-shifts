@@ -9,12 +9,15 @@
   augmentations:
     train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
       resize: [448, 448]
+      to_tensor:
       normalize: [ [0.485, 0.456, 0.406], [0.229, 0.224, 0.225] ]
     val:
       resize: [448, 448]
+      to_tensor:
       normalize: [ [0.485, 0.456, 0.406], [0.229, 0.224, 0.225] ]
     test:
       resize: [448, 448]
+      to_tensor:
       normalize: [ [0.485, 0.456, 0.406], [0.229, 0.224, 0.225] ]
   kwargs:
 

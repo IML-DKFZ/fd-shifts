@@ -2,13 +2,14 @@
 
 
 trainer:
-  num_epochs: 3 #470 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
-  num_epochs_backbone: 1 #200
+  num_epochs: 470 #470 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs_backbone: 250
   val_every_n_epoch: 1
-  val_split: "devries" # empty (no val), "devries", "cv", "repro_confidnet",
+  val_split: "devries" #"devries"  # leave empty for no val
+  do_val: False #"devries"  # leave empty for no val
   learning_rate: 1e-1
   learning_rate_confidnet: 1e-4 # only so high with annealing! if not: 1e-4
-  learning_rate_confidnet_finetune: 1e-7
+  learning_rate_confidnet_finetune: 1e-6
   lr_scheduler:
     name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
     max_epochs: ${trainer.num_epochs_backbone}
@@ -20,14 +21,14 @@ trainer:
   fast_dev_run: False # True/Fals
   callbacks:
     model_checkpoint:
-      n: 2
-      selection_metric: ["val/accuracy", "val/ext_failap_err"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
-      mode: ["max", "max"]
-      filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
-      save_top_k: [1, 1]
+#      n: 2
+#      selection_metric: ["val/accuracy", "val/ext_failap_err"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
+#      mode: ["max", "max"]
+#      filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
+#      save_top_k: [1, 1]
     confid_monitor:   # not nice: model_checkpoint callback depends on confid_mointor callback
     training_stages:
-      milestones: [1, 2] # 250, 450  todo  Make sure milestones match num backbone epochs!!
+      milestones: [250, 450] # 250, 450
       pretrained_backbone_path:  #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
       disable_dropout_at_finetuning: True
@@ -40,7 +41,7 @@ model:
   fc_dim: 512
   avg_pool: True
   confidnet_fc_dim: 400
-  dropout_rate: 1
+  dropout_rate: 0
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   network:
@@ -53,10 +54,10 @@ test:
   dir: ${exp.dir}/${test.name}
   cf_path: ${exp.dir}/hydra/config.yaml
   selection_criterion: latest # latest / best_failap_err
-  selection_mode: max # model selection criterion or "latest"
+  selection_mode: #"latest" # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
-  devries_repro_ood_split: True
+  devries_repro_ood_split: False
   assim_ood_norm_flag: False
   iid_set_split: "devries"  # all, devries
 
@@ -83,11 +84,15 @@ eval:
                     ]
 
   tb_hparams: ['fold']
-  val_tuning: False
+  val_tuning: True
   ext_confid_name: "tcp"
+  r_star: 0.25
+  r_delta: 0.05
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
     iid_study: cifar10
+    noise_study:
+      - corrupt_cifar10
     new_class_study:
       - tinyimagenet
       - tinyimagenet_resize

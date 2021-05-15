@@ -15,6 +15,7 @@ class Analysis():
                  query_plots,
                  query_studies,
                  analysis_out_dir,
+                 add_val_tuning,
                  cf):
 
         self.input_list = []
@@ -47,7 +48,9 @@ class Analysis():
         self.query_studies = query_studies
         self.analysis_out_dir = analysis_out_dir
         self.calibration_bins = 20
+        self.val_risk_scores = {}
         self.num_classes = self.input_list[0]["cfg"].data.num_classes
+        self.add_val_tuning = add_val_tuning
 
 
 
@@ -57,6 +60,7 @@ class Analysis():
 
             raw_outputs = method_dict["raw_output"]
             method_dict["raw_dataset_ix"] = raw_outputs[:, -1]
+            print("CHECK IN DATASETS", np.unique(method_dict["raw_dataset_ix"], return_counts=True))
             method_dict["raw_labels"] = raw_outputs[:, -2]
             method_dict["raw_softmax"] = raw_outputs[:, :-2]
             method_dict["raw_correct"] = (np.argmax(method_dict["raw_softmax"], axis=1) == method_dict["raw_labels"]) * 1
@@ -86,21 +90,47 @@ class Analysis():
                 flat_test_set_list.extend([dataset for dataset in v])
             else:
                 flat_test_set_list.append(v)
+
         print("CHECK flat list of all test datasets", flat_test_set_list)
 
+        val_ix_shift = 1 if self.add_val_tuning else 0
+
+
+        if self.add_val_tuning:
+
+        # todo val tuning threhold study here.
+        # get code from devries. outputs an optimal threshold which will later be used to compute extra metrics in all other studies.
+            iid_set_ix = 0
+            for method_dict in self.input_list:
+
+                select_ix = np.argwhere(method_dict["raw_dataset_ix"] == iid_set_ix)[:, 0]
+
+                method_dict["study_softmax"] = deepcopy(method_dict["raw_softmax"][select_ix])
+                method_dict["study_labels"] = deepcopy(method_dict["raw_labels"][select_ix])
+                method_dict["study_correct"] = deepcopy(method_dict["raw_correct"][select_ix])
+
+                if method_dict.get("raw_external_confids") is not None:
+                    method_dict["study_external_confids"] = deepcopy(method_dict["raw_external_confids"][select_ix])
+                if method_dict.get("raw_external_confids_dist") is not None:
+                    method_dict["study_external_confids_dist"] = deepcopy(method_dict["raw_external_confids_dist"][select_ix])
+                    std = method_dict["study_external_confids_dist"].std(1)
+                    print("CHECK EXT DIST", method_dict["study_external_confids_dist"].shape, std.mean(), std.min(), std.max(), method_dict["study_external_confids_dist"][0])
+
+                if method_dict.get("raw_mcd_softmax_dist") is not None:
+                    method_dict["study_mcd_softmax_mean"] = deepcopy(method_dict["raw_mcd_softmax_mean"][select_ix])
+                    method_dict["study_mcd_softmax_dist"] = deepcopy(method_dict["raw_mcd_softmax_dist"][select_ix])
+                    method_dict["study_mcd_correct"] = deepcopy(method_dict["raw_mcd_correct"][select_ix])
+
+                self.rstar = method_dict["cfg"].eval.r_star
+                self.rdelta = method_dict["cfg"].eval.r_delta
+        self.perform_study("val_tuning")
+
         for study_name in self.query_studies.keys():
-
-            if study_name == "val_tuning":
-                pass
-
-            # todo val tuning threhold study here.
-            # get code from devries. outputs an optimal threshold which will later be used to compute extra metrics in all other studies.
 
             if study_name == "iid_study":
 
                 iid_set_ix = flat_test_set_list.index(self.query_studies[study_name])
                 for method_dict in self.input_list:
-                    val_ix_shift = 1 if method_dict["cfg"].eval.val_tuning else 0
 
                     select_ix = np.argwhere(method_dict["raw_dataset_ix"] == iid_set_ix + val_ix_shift)[:, 0]
 
@@ -122,12 +152,36 @@ class Analysis():
 
                 self.perform_study(study_name)
 
+            if study_name == "in_class_shift":
+
+                iid_set_ix = flat_test_set_list.index(self.query_studies[study_name])
+                for method_dict in self.input_list:
+                    for in_class_set in self.query_studies[study_name]:
+                        select_ix = np.argwhere(method_dict["raw_dataset_ix"] == iid_set_ix + val_ix_shift)[:, 0]
+
+                        method_dict["study_softmax"] = deepcopy(method_dict["raw_softmax"][select_ix])
+                        method_dict["study_labels"] = deepcopy(method_dict["raw_labels"][select_ix])
+                        method_dict["study_correct"] = deepcopy(method_dict["raw_correct"][select_ix])
+
+                        if method_dict.get("raw_external_confids") is not None:
+                            method_dict["study_external_confids"] = deepcopy(method_dict["raw_external_confids"][select_ix])
+                        if method_dict.get("raw_external_confids_dist") is not None:
+                            method_dict["study_external_confids_dist"] = deepcopy(method_dict["raw_external_confids_dist"][select_ix])
+                            std = method_dict["study_external_confids_dist"].std(1)
+                            print("CHECK EXT DIST", method_dict["study_external_confids_dist"].shape, std.mean(), std.min(), std.max(), method_dict["study_external_confids_dist"][0])
+
+                        if method_dict.get("raw_mcd_softmax_dist") is not None:
+                            method_dict["study_mcd_softmax_mean"] = deepcopy(method_dict["raw_mcd_softmax_mean"][select_ix])
+                            method_dict["study_mcd_softmax_dist"] = deepcopy(method_dict["raw_mcd_softmax_dist"][select_ix])
+                            method_dict["study_mcd_correct"] = deepcopy(method_dict["raw_mcd_correct"][select_ix])
+
+                        self.perform_study("in_class_study_{}".format(in_class_set))
+
 
             if study_name == "new_class_study":
 
 
                 for method_dict in self.input_list:
-                    val_ix_shift = 1 if method_dict["cfg"].eval.val_tuning else 0
 
                     for new_class_set in self.query_studies[study_name]:
                         for mode in ["original_mode", "proposed_mode"]:
@@ -177,7 +231,7 @@ class Analysis():
                     for intensity_level in range(5):
 
                         for method_dict in self.input_list:
-                            val_ix_shift = 1 if method_dict["cfg"].eval.val_tuning else 0
+
                             noise_set_ix = flat_test_set_list.index(noise_set) + val_ix_shift
 
                             select_ix = np.argwhere(method_dict["raw_dataset_ix"] == noise_set_ix)[:, 0]
@@ -292,7 +346,9 @@ class Analysis():
             if "mcd_sv" in method_dict["query_confids"]:
                 method_dict["mcd_sv"] = {}
                 # [b, cl, mcd] - [b, cl]
-                tmp_confids = np.mean((mcd_softmax_dist - np.expand_dims(mcd_softmax_mean, axis=2))**2, axis=(1,2))
+                print("CHECK FINAL DIST SHAPE", mcd_softmax_dist.shape)
+                tmp_confids = np.mean(np.std(mcd_softmax_dist, axis=2), axis=(1))
+                # tmp_confids = np.mean((mcd_softmax_dist - np.expand_dims(mcd_softmax_mean, axis=2))**2, axis=(1,2))
                 method_dict["mcd_sv"]["confids"] = tmp_confids
                 method_dict["mcd_sv"]["correct"] = deepcopy(mcd_correct)
                 method_dict["mcd_sv"]["metrics"] = deepcopy(mcd_performance_metrics)
@@ -385,6 +441,21 @@ class Analysis():
                 confid_dict["metrics"].update(eval.get_metrics_per_confid())
                 confid_dict["plot_stats"] = eval.get_plot_stats_per_confid()
 
+                if self. study_name == "val_tuning":
+                    self.val_risk_scores[confid_key] = eval.get_val_risk_scores(self.rstar, self.rdelta) # this is a dict with the val_risk_scores per confid_key
+                if self.val_risk_scores.get(confid_key) is not None:
+                    val_risk_scores = self.val_risk_scores[confid_key]
+                    test_risk_scores = {}
+                    selected_residuals = 1 - confid_dict["correct"][np.argwhere(confid_dict["confids"] > val_risk_scores["theta"])]
+                    test_risk_scores["test_risk"] = (np.sum(selected_residuals) / (len(selected_residuals) + 1e-9))
+                    test_risk_scores["test_cov"] = len(selected_residuals) / len(confid_dict["correct"])
+                    test_risk_scores["diff_risk"] = test_risk_scores["test_risk"] - val_risk_scores["val_risk"]
+                    test_risk_scores["diff_cov"] = test_risk_scores["test_cov"] - val_risk_scores["val_cov"]
+                    test_risk_scores["rstar"] = self.rstar
+                    test_risk_scores["val_theta"] = val_risk_scores["theta"]
+                    confid_dict["metrics"].update(test_risk_scores)
+                    if "test_risk" not in self.query_confid_metrics:
+                        self.query_confid_metrics.extend(["test_risk", "test_cov", "diff_risk", "diff_cov", "rstar", "val_theta"])
 
     def create_results_csv(self):
 
@@ -399,11 +470,13 @@ class Analysis():
                                method_dict["cfg"].model.network.backbone,
                                method_dict["cfg"].exp.fold,
                                confid_key,
-                               method_dict["study_mcd_softmax_mean"].shape[0] if "mcd" in confid_key else method_dict["study_softmax"].shape[0]]
-                submit_list+= [method_dict[confid_key]["metrics"][x] for x in all_metrics]
+                               method_dict["study_mcd_softmax_mean"].shape[0] if "mcd" in confid_key else
+                               method_dict["study_softmax"].shape[0]]
+                submit_list += [method_dict[confid_key]["metrics"][x] for x in all_metrics]
                 df.loc[len(df)] = submit_list
         print("CHECK SHIFT", self.study_name, all_metrics, self.input_list[0]["det_mcp"].keys())
-        df.to_csv(os.path.join(self.analysis_out_dir, "analysis_metrics_{}.csv").format(self.study_name), float_format='%.5f', decimal='.')
+        df.to_csv(os.path.join(self.analysis_out_dir, "analysis_metrics_{}.csv").format(self.study_name),
+                  float_format='%.5f', decimal='.')
         print("saved csv to ", os.path.join(self.analysis_out_dir, "analysis_metrics_{}.csv".format(self.study_name)))
 
         group_file_path = os.path.join(self.input_list[0]["cfg"].exp.group_dir, "group_analysis_metrics.csv")
@@ -415,19 +488,18 @@ class Analysis():
                 df.to_csv(f, float_format='%.5f', decimal='.')
 
 
-
     def create_master_plot(self):
-        # get overall with one dict per compared_method (i.e confid)
-        input_dict = {"{}_{}".format(method_dict["name"], k):method_dict[k] for method_dict in self.input_list for k in method_dict["query_confids"] }
-        plotter = ConfidPlotter(input_dict, self.query_plots, self.calibration_bins, fig_scale=1) # fig_scale big: 5
-        f = plotter.compose_plot()
-        f.savefig(os.path.join(self.analysis_out_dir, "master_plot_{}.png".format(self.study_name)))
-        print("saved masterplot to ", os.path.join(self.analysis_out_dir, "master_plot_{}.png".format(self.study_name)))
+            # get overall with one dict per compared_method (i.e confid)
+            input_dict = {"{}_{}".format(method_dict["name"], k):method_dict[k] for method_dict in self.input_list for k in method_dict["query_confids"] }
+            plotter = ConfidPlotter(input_dict, self.query_plots, self.calibration_bins, fig_scale=1) # fig_scale big: 5
+            f = plotter.compose_plot()
+            f.savefig(os.path.join(self.analysis_out_dir, "master_plot_{}.png".format(self.study_name)))
+            print("saved masterplot to ", os.path.join(self.analysis_out_dir, "master_plot_{}.png".format(self.study_name)))
 
 
 
-
-def main(in_path=None, out_path=None, query_studies=None, cf=None):
+# TODO MUTLIPLE METHOD DICTS IS BROKEN! THIS SCRIPT SHOULD ONLY PROCESS 1 METHOD DICT ANYWAY!
+def main(in_path=None, out_path=None, query_studies=None, add_val_tuning=False, cf=None):
 
     # path to the dir where the raw otuputs lie. NO SLASH AT THE END!
     if in_path is None: # NO SLASH AT THE END OF PATH !
@@ -496,6 +568,7 @@ def main(in_path=None, out_path=None, query_studies=None, cf=None):
                         query_plots=query_plots,
                         query_studies=query_studies,
                         analysis_out_dir=analysis_out_dir,
+                        add_val_tuning=add_val_tuning,
                         cf=cf
                         )
 
