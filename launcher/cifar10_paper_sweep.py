@@ -25,7 +25,7 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
     if  not (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2):
 
         my_ix += 1
-        exp_group_name = "cifar10_paper_sweep"
+        exp_group_name = "cifar100_paper_sweep"
         exp_name = "{}_bb{}_do{}_run{}_rew{}".format(mode, bb, do, run, rew)
         print(exp_name)
         command_line_args = ""
@@ -60,7 +60,7 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
                 command_line_args += "model.network.backbone={} ".format(bb)
 
 
-            command_line_args += "data={} ".format("cifar10_data")
+            command_line_args += "data={} ".format("cifar100_data")
             command_line_args += "exp.group_name={} ".format(exp_group_name)
             command_line_args += "exp.name={} ".format(exp_name)
             command_line_args += "exp.mode={} ".format("train_test")
@@ -79,6 +79,10 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
             else:
                 command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
                     ["det_mcp", "det_pe", "ext"])
+
+            command_line_args += "eval.query_studies.iid_study=cifar100 "
+            command_line_args += "eval.query_studies.noise_study=\"{}\" ".format(['corrupt_cifar100'])
+            command_line_args += "eval.query_studies.new_class_study=\"{}\" ".format(['tinyimagenet', 'tinyimagenet_resize', 'cifar10', 'svhn'])
 
 
         if system_name == "cluster":
