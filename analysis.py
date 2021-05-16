@@ -20,19 +20,20 @@ class Analysis():
 
         self.input_list = []
         self.names_list = []
+        self.np_postfix = "npy"
         for path in path_list:
             method_dict = {
                 "cfg": OmegaConf.load(os.path.join(os.path.dirname(path), "hydra", "config.yaml")) if cf is None else cf,
-                "raw_output": np.load(os.path.join(path, "raw_output.npy")),
+                "raw_output": np.load(os.path.join(path, "raw_output.{}".format(self.np_postfix))),
                 "name": path.split("/")[-2] # last level is version or test dir
             }
 
-            if os.path.isfile(os.path.join(path, "raw_output_dist.npy")):
-                method_dict["raw_output_dist"] = np.load(os.path.join(path, "raw_output_dist.npy"))
-            if os.path.isfile(os.path.join(path, "external_confids.npy")):
-                method_dict["raw_external_confids"] = np.load(os.path.join(path, "external_confids.npy"))
-            if os.path.isfile(os.path.join(path, "external_confids_dist.npy")):
-                method_dict["raw_external_confids_dist"] = np.load(os.path.join(path, "external_confids_dist.npy"))
+            if os.path.isfile(os.path.join(path, "raw_output_dist.{}".format(self.np_postfix))):
+                method_dict["raw_output_dist"] = np.load(os.path.join(path, "raw_output_dist.{}".format(self.np_postfix)))
+            if os.path.isfile(os.path.join(path, "external_confids.{}".format(self.np_postfix))):
+                method_dict["raw_external_confids"] = np.load(os.path.join(path, "external_confids.{}".format(self.np_postfix)))
+            if os.path.isfile(os.path.join(path, "external_confids_dist.{}".format(self.np_postfix))):
+                method_dict["raw_external_confids_dist"] = np.load(os.path.join(path, "external_confids_dist.{}".format(self.np_postfix)))
                 print("CHECK IN EXT DIST SHAPE", method_dict["raw_external_confids_dist"].shape, method_dict["raw_external_confids_dist"].std(1).mean())
 
             if method_dict["cfg"].data.num_classes is None:
@@ -59,6 +60,8 @@ class Analysis():
         for method_dict in self.input_list:
 
             raw_outputs = method_dict["raw_output"]
+            if self.np_postfix == "npz":
+                raw_outputs = raw_outputs.f.arr_0
             method_dict["raw_dataset_ix"] = raw_outputs[:, -1]
             print("CHECK IN DATASETS", np.unique(method_dict["raw_dataset_ix"], return_counts=True))
             method_dict["raw_labels"] = raw_outputs[:, -2]
@@ -68,14 +71,25 @@ class Analysis():
 
             mcd_softmax_dist = method_dict.get("raw_output_dist")
             if mcd_softmax_dist is not None:
+                if self.np_postfix == "npz":
+                    mcd_softmax_dist = mcd_softmax_dist.f.arr_0
                 mcd_softmax_mean = np.mean(mcd_softmax_dist, axis=2)
                 mcd_correct = (np.argmax(mcd_softmax_mean, axis=1) == method_dict["raw_labels"]) * 1
                 method_dict["raw_mcd_correct"] = mcd_correct
                 method_dict["raw_mcd_softmax_mean"] = mcd_softmax_mean
                 method_dict["raw_mcd_softmax_dist"] = mcd_softmax_dist
 
-            method_dict["raw_external_confids"] = method_dict.get("raw_external_confids")
-            method_dict["raw_external_confids_dist"] = method_dict.get("raw_external_confids_dist")
+            raw_external_confids = method_dict.get("raw_external_confids")
+            if raw_external_confids is not None:
+                if self.np_postfix == "npz":
+                    raw_external_confids = raw_external_confids.f.arr_0
+                method_dict["raw_external_confids"] = raw_external_confids
+            raw_external_confids_dist = method_dict.get("raw_external_confids_dist")
+            if raw_external_confids_dist is not None:
+                if self.np_postfix == "npz":
+                    raw_external_confids_dist = raw_external_confids_dist.f.arr_0
+                method_dict["raw_external_confids_dist"] = raw_external_confids_dist
+
 
 
     def register_and_perform_studies(self):
@@ -248,8 +262,13 @@ class Analysis():
                                 method_dict["study_external_confids"] = deepcopy(
                                     method_dict["raw_external_confids"][select_ix]).reshape(15, 5, -1)[:, intensity_level].reshape(-1)
                             if method_dict.get("raw_external_confids_dist") is not None:
+                                # method_dict["study_external_confids_dist"] = deepcopy(
+                                #     method_dict["raw_external_confids_dist"][select_ix]).reshape(15, 5, -1)[:, intensity_level].reshape(-1)
+
                                 method_dict["study_external_confids_dist"] = deepcopy(
-                                    method_dict["raw_external_confids_dist"][select_ix]).reshape(15, 5, -1)[:, intensity_level].reshape(-1)
+                                    method_dict["raw_external_confids_dist"][select_ix]).reshape(
+                                    15, 5, -1, method_dict["raw_external_confids_dist"].shape[-1])[:, intensity_level].reshape(
+                                    -1, method_dict["raw_external_confids_dist"].shape[-1])
 
                             if any("mcd" in cfd for cfd in method_dict["query_confids"]):
                                 method_dict["study_mcd_softmax_mean"] = deepcopy(

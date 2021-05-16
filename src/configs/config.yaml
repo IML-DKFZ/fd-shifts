@@ -29,15 +29,15 @@ exp:
   output_paths:
     fit:
       input_imgs_plot: ${exp.dir}/input_imgs.png
-      raw_output: ${exp.version_dir}/raw_output.npy
-      raw_output_dist: ${exp.version_dir}/raw_output_dist.npy
-      external_confids: ${exp.version_dir}/external_confids.npy
-      external_confids_dist: ${exp.version_dir}/external_confids_dist.npy
+      raw_output: ${exp.version_dir}/raw_output.npz
+      raw_output_dist: ${exp.version_dir}/raw_output_dist.npz
+      external_confids: ${exp.version_dir}/external_confids.npz
+      external_confids_dist: ${exp.version_dir}/external_confids_dist.npz
     test:
-      raw_output: ${test.dir}/raw_output.npy
-      raw_output_dist: ${test.dir}/raw_output_dist.npy
-      external_confids: ${test.dir}/external_confids.npy
-      external_confids_dist: ${test.dir}/external_confids_dist.npy
+      raw_output: ${test.dir}/raw_output.npz
+      raw_output_dist: ${test.dir}/raw_output_dist.npz
+      external_confids: ${test.dir}/external_confids.npz
+      external_confids_dist: ${test.dir}/external_confids_dist.npz
   log_path: ${exp.dir}/log.txt
   global_seed: False # set to False to disable deterministic training.
 
