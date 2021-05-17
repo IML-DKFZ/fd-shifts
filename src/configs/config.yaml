@@ -1,6 +1,6 @@
 defaults:
   - hydra/job_logging: disabled
-  - data: cifar10_data.yaml #svhn_data.yaml
+  - data: breeds_data.yaml #svhn_data.yaml
   - study: dg_cifar_study.yaml # svhn_confid_study.yaml
 
 

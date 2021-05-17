@@ -3,34 +3,24 @@ import subprocess
 from itertools import product
 import time
 
-# system_name = os.environ['SYSTEM_NAME']
+system_name = os.environ['SYSTEM_NAME']
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir,"exec.py")
 
+# todo:
+# currently 18 jobs!! reduce?
 
 
 train_mode = "train" # "test" / "train" / "analysis"
-backbones = ["vgg13","vgg16"] #
-dropouts = [0, 1] # #
+backbones = ["resnet50"] #
+dropouts = [1, 0] # #
 modes = ["dg", "confidnet", "devries"]
-runs = [1, 2, 3, 4, 5]
+runs = [1 , 2]
 rewards = [2.2, 3, 6]
 my_ix = 0
-# fail_names = [
-#     # "dg_bbresnet50_do1_run1_rew2.2",
-#     # "dg_bbresnet50_do1_run1_rew3",
-#     # "dg_bbresnet50_do1_run1_rew6",
-#     # "dg_bbresnet50_do1_run2_rew2.2",
-#     "dg_bbresnet50_do1_run2_rew3", ## problem? dg_bbresnet50_do1_run2_rew3
-#     # "confidnet_bbvgg16_do1_run1_rew2.2",
-#     # "confidnet_bbvgg16_do1_run2_rew2.2",
-#     # "confidnet_bbvgg16_do1_run3_rew2.2",
-#     # "confidnet_bbresnet50_do1_run1_rew2.2",
-#     # "confidnet_bbresnet50_do1_run2_rew2.2",
-#     # "confidnet_bbresnet50_do1_run3_rew2.2",
-# ]
+
 exp_name_list = []
 
 for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts, runs ,rewards)):
@@ -38,7 +28,7 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
     if  not (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2):
 
 
-        exp_group_name = "cifar10_paper_sweep"
+        exp_group_name = "breeds_paper_sweep"
         exp_name = "{}_bb{}_do{}_run{}_rew{}".format(mode, bb, do, run, rew)
         exp_name_list.append(exp_name)
         if 1==1:
@@ -61,29 +51,38 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
                     command_line_args += "study={} ".format("cifar_devries_study")
                     command_line_args += "model.network.name={} ".format("devries_and_enc")
                     command_line_args += "model.network.backbone={} ".format(bb)
+                    command_line_args += "trainer.num_epochs={} ".format(300)
+                    command_line_args += "trainer.optimizer.weight_decay={} ".format(0.0001)
 
 
                 elif mode == "dg":
                     command_line_args += "study={} ".format("dg_cifar_study")
                     command_line_args += "model.network.name={} ".format(bb)
                     command_line_args += "model.dg_reward={} ".format(rew)
+                    command_line_args += "trainer.num_epochs={} ".format(350)
+                    command_line_args += "trainer.dg_pretrain_epochs={} ".format(50)
+                    command_line_args += "trainer.optimizer.weight_decay={} ".format(0.0001)
 
 
                 elif mode == "confidnet":
                     command_line_args += "study={} ".format("cifar_tcp_confid_sweep")
                     command_line_args += "model.network.name={} ".format("confidnet_and_enc")
                     command_line_args += "model.network.backbone={} ".format(bb)
+                    command_line_args += "trainer.num_epochs={} ".format(520)
+                    command_line_args += "trainer.num_epochs_backbone={} ".format(300)
+                    command_line_args += "trainer.callbacks.training_stages.milestones=\"{}\" ".format([300, 500])
+                    command_line_args += "trainer.weight_decay={} ".format(0.0001)
 
 
-                command_line_args += "data={} ".format("cifar10_data")
+                command_line_args += "data={} ".format("breeds_data")
                 command_line_args += "exp.group_name={} ".format(exp_group_name)
                 command_line_args += "exp.name={} ".format(exp_name)
                 command_line_args += "exp.mode={} ".format("train_test")
                 command_line_args += "model.dropout_rate={} ".format(do)
                 command_line_args += "exp.global_seed={} ".format(run)
-
-                avg_pool = True if do == 0 else False
-                command_line_args += "model.avg_pool={} ".format(avg_pool)
+                command_line_args += "trainer.batch_size={} ".format(128) # 128 takes around 16 gb
+                command_line_args += "model.network.imagenet_weights_path={} ".format("$EXPERIMENT_ROOT_DIR/pretrained_weights/resnet50-19c8e357.pth")
+                command_line_args += "trainer.do_val=True "
 
                 if bb == "resnet50":
                     command_line_args += "model.fc_dim={} ".format(2048)
@@ -95,38 +94,39 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
                     command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
                         ["det_mcp", "det_pe", "ext"])
 
-                command_line_args += "eval.query_studies.iid_study=cifar10 "
-                command_line_args += "eval.query_studies.noise_study=\"{}\" ".format(['corrupt_cifar10'])
-                command_line_args += "eval.query_studies.new_class_study=\"{}\" ".format(['tinyimagenet', 'tinyimagenet_resize', 'cifar100', 'svhn'])
+                command_line_args += "eval.query_studies.iid_study=breeds "
+                command_line_args += "~eval.query_studies.noise_study "
+                command_line_args += "~eval.query_studies.new_class_study "
+                command_line_args += "+eval.query_studies.in_class_study=\"{}\" ".format(['breeds_ood_test'])
 
 
-            # if system_name == "cluster":
-            #
-            #     launch_command = ""
-            #     launch_command += "bsub "
-            #     launch_command += "-gpu num=1:"
-            #     launch_command += "j_exclusive=yes:"
-            #     launch_command += "mode=exclusive_process:"
-            #     # launch_command += "gmodel=TITANXp:"
-            #     launch_command += "gmem=10.7G "
-            #     launch_command += "-L /bin/bash -q gpu-lowprio "
-            #     launch_command += "-u 'p.jaeger@dkfz-heidelberg.de' -B -N "
-            #     launch_command += "'source ~/.bashrc && "
-            #     launch_command += "source ~/.virtualenvs/confid/bin/activate && "
-            #     launch_command += "python -u {} ".format(exec_path)
-            #     launch_command += command_line_args
-            #     launch_command += "'"
-            #
-            # elif system_name == "mbi":
-            #     launch_command = "python -u {} ".format(exec_path)
-            #     launch_command += command_line_args
-            #
-            # else:
-            #     RuntimeError("system_name environment variable not known.")
-            #
-            # print("Launch command: ", launch_command)
-            # subprocess.call(launch_command, shell=True)
-            # time.sleep(1)
+            if system_name == "cluster":
+
+                launch_command = ""
+                launch_command += "bsub "
+                launch_command += "-gpu num=1:"
+                launch_command += "j_exclusive=yes:"
+                launch_command += "mode=exclusive_process:"
+                # launch_command += "gmodel=TITANXp:"
+                launch_command += "gmem=20G "
+                launch_command += "-L /bin/bash -q gpu-lowprio "
+                launch_command += "-u 'p.jaeger@dkfz-heidelberg.de' -B -N "
+                launch_command += "'source ~/.bashrc && "
+                launch_command += "source ~/.virtualenvs/confid/bin/activate && "
+                launch_command += "python -u {} ".format(exec_path)
+                launch_command += command_line_args
+                launch_command += "'"
+
+            elif system_name == "mbi":
+                launch_command = "python -u {} ".format(exec_path)
+                launch_command += command_line_args
+
+            else:
+                RuntimeError("system_name environment variable not known.")
+
+            print("Launch command: ", launch_command)
+            subprocess.call(launch_command, shell=True)
+            time.sleep(2)
 
 print(my_ix)
 print(exp_name_list)

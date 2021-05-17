@@ -29,6 +29,7 @@ class net(pl.LightningModule):
         self.budget = cf.model.budget
         self.test_conf_scaling = cf.eval.test_conf_scaling
         self.ext_confid_name = cf.eval.ext_confid_name
+        self.imagenet_weights_path = dict(cf.model.network).get("imagenet_weights_path")
 
         if self.ext_confid_name == "dg":
             self.reward = cf.model.dg_reward
@@ -93,6 +94,10 @@ class net(pl.LightningModule):
             print("saved pretrained dg backbone to {}".format(self.save_dg_backbone_path))
 
     def on_train_start(self):
+
+        if self.imagenet_weights_path:
+            self.model.encoder.load_pretrained_imagenet_params(self.imagenet_weights_path)
+
         if self.current_epoch > 0: # check if resumed training
             print("stepping scheduler after resume...")
             self.trainer.lr_schedulers[0]["scheduler"].step()
@@ -101,6 +106,8 @@ class net(pl.LightningModule):
             print(ix, x[1])
             if isinstance(x[1], nn.Conv2d) or isinstance(x[1], nn.Linear):
                 print(x[1].weight.mean().item())
+
+
 
 
     def training_step(self, batch, batch_idx):
@@ -200,7 +207,6 @@ class net(pl.LightningModule):
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
-
         if self.ext_confid_name == "devries":
             logits, confidence = self.model(x)
             softmax = F.softmax(logits, dim=1)

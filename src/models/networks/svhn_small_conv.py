@@ -1,7 +1,7 @@
 
 from torch import nn
 from torch.nn import functional as F
-from copy import deepcopy
+import torch
 
 class Conv2dSame(nn.Module):
     def __init__(
@@ -22,9 +22,12 @@ class Conv2dSame(nn.Module):
 class SmallConv(nn.Module):
     def __init__(self, cf):
         super(SmallConv, self).__init__()
+        num_classes = cf.data.num_classes
+        if cf.eval.ext_confid_name == "dg":
+            num_classes +=1
 
         self.encoder = Encoder(cf)
-        self.classifier = Classifier(cf)
+        self.classifier = Classifier(cf.model.fc_dim, num_classes)
 
     def forward(self, x):
 
@@ -39,7 +42,7 @@ class Encoder(nn.Module):
 
         self.img_size = cf.data.img_size
         self.fc_dim = cf.model.fc_dim
-        self.dropout_rate = cf.model.dropout_rate
+        self.dropout_rate = cf.model.dropout_rate * 0.3
         self.eval_mcdropout = False
 
         self.conv1 = Conv2dSame(self.img_size[-1], 32, 3)
@@ -72,9 +75,7 @@ class Encoder(nn.Module):
         x = F.relu(self.conv2(x))
         x = self.conv2_bn(x)
         x = self.maxpool1(x)
-        if self.eval_mcdropout:
-            x = F.dropout(x, self.dropout_rate, training=True)
-        else:
+        if self.dropout_rate > 0:
             x = self.dropout1(x)
 
         x = F.relu(self.conv3(x))
@@ -82,9 +83,7 @@ class Encoder(nn.Module):
         x = F.relu(self.conv4(x))
         x = self.conv4_bn(x)
         x = self.maxpool2(x)
-        if self.eval_mcdropout:
-            x = F.dropout(x, self.dropout_rate, training=True)
-        else:
+        if self.dropout_rate > 0:
             x = self.dropout2(x)
 
         x = F.relu(self.conv5(x))
@@ -92,28 +91,34 @@ class Encoder(nn.Module):
         x = F.relu(self.conv6(x))
         x = self.conv6_bn(x)
         x = self.maxpool3(x)
-        if self.eval_mcdropout:
-            x = F.dropout(x, self.dropout_rate, training=True)
-        else:
+        if self.dropout_rate > 0:
             x = self.dropout3(x)
 
         x = x.view(x.size(0), -1)
         x = F.relu(self.fc1(x))
-        if self.eval_mcdropout:
-            x = F.dropout(x, self.dropout_rate, training=True)
-        else:
+        if self.dropout_rate > 0:
             x = self.dropout4(x)
 
         return x
 
+    def disable_dropout(self):
+
+        for layer in self.named_modules():
+            if isinstance(layer[1],torch.nn.modules.dropout.Dropout):
+                layer[1].eval()
+
+    def enable_dropout(self):
+
+        for layer in self.named_modules():
+            if isinstance(layer[1],torch.nn.modules.dropout.Dropout):
+                layer[1].train()
+
 
 class Classifier(nn.Module):
-    def __init__(self, cf):
+    def __init__(self, fc_dim, num_classes):
         super(Classifier, self).__init__()
 
-        self.num_classes = cf.data.num_classes
-        self.fc_dim = cf.model.fc_dim
-        self.fc2 = nn.Linear(self.fc_dim, self.num_classes)
+        self.fc2 = nn.Linear(fc_dim, num_classes)
 
     def forward(self, x):
         return self.fc2(x)

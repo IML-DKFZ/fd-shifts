@@ -316,7 +316,9 @@ class ResNetEncoder(nn.Module):
         return self._forward_impl(x)
 
     def load_pretrained_imagenet_params(self, pretrained_path):
+        print()
         print("loading pretrained imagenet weights into encoder from ", pretrained_path)
+        print()
         self.load_state_dict(torch.load(pretrained_path), strict=False)
 
     def disable_dropout(self):

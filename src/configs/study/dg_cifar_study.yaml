@@ -86,7 +86,7 @@ eval:
     train:
       ["det_mcp"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val:
-      ["det_mcp", "ext"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
+      ["det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:
       ["det_mcp" , "det_pe", "ext"]
 

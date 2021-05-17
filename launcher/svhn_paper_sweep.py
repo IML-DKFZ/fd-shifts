@@ -12,25 +12,13 @@ exec_path = os.path.join(exec_dir,"exec.py")
 
 
 train_mode = "train" # "test" / "train" / "analysis"
-backbones = ["vgg13","vgg16"] #
-dropouts = [0, 1] # #
-modes = ["dg", "confidnet", "devries"]
-runs = [1, 2, 3, 4, 5]
-rewards = [2.2, 3, 6]
+backbones = ["svhn_small_conv"] #
+dropouts = [1, 0] # #
+modes = ["confidnet", "dg", "devries"]
+runs = [1 , 2 , 3, 4, 5]
+rewards = [2.2, 3, 6, 10]
 my_ix = 0
-# fail_names = [
-#     # "dg_bbresnet50_do1_run1_rew2.2",
-#     # "dg_bbresnet50_do1_run1_rew3",
-#     # "dg_bbresnet50_do1_run1_rew6",
-#     # "dg_bbresnet50_do1_run2_rew2.2",
-#     "dg_bbresnet50_do1_run2_rew3", ## problem? dg_bbresnet50_do1_run2_rew3
-#     # "confidnet_bbvgg16_do1_run1_rew2.2",
-#     # "confidnet_bbvgg16_do1_run2_rew2.2",
-#     # "confidnet_bbvgg16_do1_run3_rew2.2",
-#     # "confidnet_bbresnet50_do1_run1_rew2.2",
-#     # "confidnet_bbresnet50_do1_run2_rew2.2",
-#     # "confidnet_bbresnet50_do1_run3_rew2.2",
-# ]
+
 exp_name_list = []
 
 for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts, runs ,rewards)):
@@ -38,7 +26,7 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
     if  not (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2):
 
 
-        exp_group_name = "cifar10_paper_sweep"
+        exp_group_name = "svhn_paper_sweep"
         exp_name = "{}_bb{}_do{}_run{}_rew{}".format(mode, bb, do, run, rew)
         exp_name_list.append(exp_name)
         if 1==1:
@@ -61,32 +49,37 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
                     command_line_args += "study={} ".format("cifar_devries_study")
                     command_line_args += "model.network.name={} ".format("devries_and_enc")
                     command_line_args += "model.network.backbone={} ".format(bb)
+                    command_line_args += "trainer.num_epochs={} ".format(100)
+                    command_line_args += "trainer.optimizer.learning_rate={} ".format(0.01)
 
 
                 elif mode == "dg":
                     command_line_args += "study={} ".format("dg_cifar_study")
                     command_line_args += "model.network.name={} ".format(bb)
                     command_line_args += "model.dg_reward={} ".format(rew)
+                    command_line_args += "trainer.num_epochs={} ".format(150)
+                    command_line_args += "trainer.dg_pretrain_epochs={} ".format(50)
+                    command_line_args += "trainer.optimizer.learning_rate={} ".format(0.01)
 
 
                 elif mode == "confidnet":
                     command_line_args += "study={} ".format("cifar_tcp_confid_sweep")
                     command_line_args += "model.network.name={} ".format("confidnet_and_enc")
                     command_line_args += "model.network.backbone={} ".format(bb)
+                    command_line_args += "trainer.num_epochs={} ".format(320)
+                    command_line_args += "trainer.num_epochs_backbone={} ".format(100)
+                    command_line_args += "trainer.callbacks.training_stages.milestones=\"{}\" ".format([100, 300])
+                    command_line_args += "trainer.learning_rate={} ".format(0.01)
 
 
-                command_line_args += "data={} ".format("cifar10_data")
+                command_line_args += "data={} ".format("svhn_data")
                 command_line_args += "exp.group_name={} ".format(exp_group_name)
                 command_line_args += "exp.name={} ".format(exp_name)
                 command_line_args += "exp.mode={} ".format("train_test")
                 command_line_args += "model.dropout_rate={} ".format(do)
                 command_line_args += "exp.global_seed={} ".format(run)
 
-                avg_pool = True if do == 0 else False
-                command_line_args += "model.avg_pool={} ".format(avg_pool)
 
-                if bb == "resnet50":
-                    command_line_args += "model.fc_dim={} ".format(2048)
 
                 if do == 1:
                     command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
@@ -95,9 +88,9 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
                     command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
                         ["det_mcp", "det_pe", "ext"])
 
-                command_line_args += "eval.query_studies.iid_study=cifar10 "
-                command_line_args += "eval.query_studies.noise_study=\"{}\" ".format(['corrupt_cifar10'])
-                command_line_args += "eval.query_studies.new_class_study=\"{}\" ".format(['tinyimagenet', 'tinyimagenet_resize', 'cifar100', 'svhn'])
+                command_line_args += "eval.query_studies.iid_study=svhn "
+                command_line_args += "~eval.query_studies.noise_study "
+                command_line_args += "eval.query_studies.new_class_study=\"{}\" ".format(['tinyimagenet', 'tinyimagenet_resize', 'cifar10', 'cifar100'])
 
 
             # if system_name == "cluster":

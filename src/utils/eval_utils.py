@@ -114,10 +114,16 @@ class ConfidEvaluator():
                 self.get_roc_curve_stats()
 
             if "failauc" in self.query_metrics:
-                out_metrics["failauc"] = skm.auc(self.fpr_list, self.tpr_list)
+                try:
+                    out_metrics["failauc"] = skm.auc(self.fpr_list, self.tpr_list)
+                except:
+                    out_metrics["failauc"] = -1
             if "fpr@95tpr" in self.query_metrics:
                 # soft threshold from corbiere et al. (confidnet)
-                out_metrics["fpr@95tpr"] = np.min(self.fpr_list[np.argwhere(self.tpr_list >= 0.9495)])
+                try:
+                    out_metrics["fpr@95tpr"] = np.min(self.fpr_list[np.argwhere(self.tpr_list >= 0.9495)])
+                except:
+                    out_metrics["fpr@95tpr"] = -1
 
         if "failap_suc" in self.query_metrics:
             out_metrics["failap_suc"] = skm.average_precision_score(self.correct, self.confids, pos_label=1)

@@ -32,9 +32,12 @@ def get_dataset(name, root, train, download, transform, kwargs):
         "super_cifar100": SuperCIFAR100,
         "corrupt_cifar100": CorruptCIFAR,
         "corrupt_cifar10": CorruptCIFAR,
-        "imagenet": BREEDImageNet,
+        "breeds": BREEDImageNet,
+        "breeds_ood_test": BREEDImageNet,
         "wilds_animals": WILDSAnimals,
+        "wilds_animals_ood_test": WILDSAnimals,
         "wilds_camelyon": WILDSCamelyon,
+        "wilds_camelyon_ood_test": WILDSCamelyon,
     }
 
     pass_kwargs = {"root": root, "train": train, "download": download, "transform": transform}
@@ -45,14 +48,28 @@ def get_dataset(name, root, train, download, transform, kwargs):
     if name == "tinyimagenet_resize":
         pass_kwargs = {"root": root, "transform": transform}
 
+    elif "breeds" in name:
+        if name == "breeds":
+            split = "train" if train else "id_test"
+        elif name == "breeds_ood_test":
+            split = "ood_test"
+        print("CHECK SPLIT", name, split)
+        pass_kwargs = {"root": root, "split": split, "download": download, "transform": transform, "kwargs": kwargs}
 
-    if name == "imagenet":
-        pass_kwargs["kwargs"] = kwargs
+    if "wilds" in name:
+        # because i only have a binary train flag atm, but 3 possible splits, I needan extra dataset name for the ood_test.
+        if name == "wilds_animals":
+            split = "train" if train else "id_test"
+        elif name == "wilds_animals_ood_test":
+            split = "test"
+        elif name == "wilds_camelyon":
+            split = "train" if train else "id_val" # currently for chamelyon
+        elif name == "wilds_camelyon_ood_test":
+            split = "test"
+        return dataset_factory[name](**pass_kwargs).get_subset(split, frac=1.0, transform=transform)
 
-    if not "wilds" in name:
-        return dataset_factory[name](**pass_kwargs)
     else:
-        return dataset_factory[name](**pass_kwargs).get_subset("train" if train else "test", frac=1.0, transform=transform)
+        return dataset_factory[name](**pass_kwargs)
 
 class SuperCIFAR100(datasets.VisionDataset):
     """`CIFAR10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset.
@@ -116,7 +133,7 @@ class SuperCIFAR100(datasets.VisionDataset):
             downloaded_list = self.test_list
 
         self.data: Any = []
-        self.targets = []
+        self.coarse_targets = []
         self.fine_targets = []
 
         # now load the picked numpy arrays
@@ -128,11 +145,9 @@ class SuperCIFAR100(datasets.VisionDataset):
                 if 'labels' in entry:
                     self.targets.extend(entry['labels'])
                 else:
-                    self.targets.extend(entry['coarse_labels'])
+                    self.coarse_targets.extend(entry['coarse_labels'])
                     self.fine_targets.extend(entry['fine_labels'])
 
-        num_classes = len(np.unique(self.targets))
-        print("SuperCIFAR check num_classes in data {}. Training {}".format(num_classes, self.train))
         self.data = np.vstack(self.data).reshape(-1, 3, 32, 32)
         self.data = self.data.transpose((0, 2, 3, 1))  # convert to HWC
 
@@ -143,16 +158,18 @@ class SuperCIFAR100(datasets.VisionDataset):
                                 'girl', 'lizard', 'hamster', 'oak_tree', 'motorcycle', 'tractor']
 
         holdout_fine_idx = [self.class_to_idx[cl] for cl in holdout_fine_classes]
-        train_data_ix = [ix for ix,fine_label in enumerate(self.fine_targets) if fine_label not in holdout_fine_idx]
-        holdout_data_ix = [ix for ix, fine_label in enumerate(self.fine_targets) if fine_label in holdout_fine_idx]
+        train_data_ix = [ix for ix, (fine_label, coarse_label) in enumerate(zip(self.fine_targets, self.coarse_targets)) if (fine_label not in holdout_fine_idx and coarse_label!=19)]
+        holdout_data_ix = [ix for ix, (fine_label, coarse_label) in enumerate(zip(self.fine_targets, self.coarse_targets)) if (fine_label in holdout_fine_idx and coarse_label!=19)]
 
         if self.train:
-            self.targets = list(np.array(self.targets)[train_data_ix]) # massive speedup compared to list comprehension
+            self.targets = list(np.array(self.coarse_targets)[train_data_ix]) # massive speedup compared to list comprehension
             self.data= self.data[train_data_ix]
         else:
-            self.targets = list(np.array(self.targets)[holdout_data_ix])
+            self.targets = list(np.array(self.coarse_targets)[holdout_data_ix])
             self.data = self.data[holdout_data_ix]
 
+        num_classes = len(np.unique(self.targets))
+        print("SuperCIFAR check num_classes in data {}. Training {}".format(num_classes, self.train))
 
     def _load_meta(self) -> None:
         path = os.path.join(self.root, self.base_folder, self.meta['filename'])
@@ -174,9 +191,12 @@ class SuperCIFAR100(datasets.VisionDataset):
         """
         img, target = self.data[index], self.targets[index]
 
+        # doing this so that it is consistent with all other datasets
+        # to return a PIL Image
+        img = Image.fromarray(img)
+
         if self.transform is not None:
-            transformed = self.transform(image=img)
-            img = transformed["image"]
+            img = self.transform(img)
 
         if self.target_transform is not None:
             target = self.target_transform(target)
@@ -324,18 +344,18 @@ class ImageNet(datasets.ImageNet):
 
 
 class BREEDImageNet(ImageFolder):
-    def __init__(self, root, train, download, transform, kwargs):
+    def __init__(self, root, split, download, transform, kwargs):
         target_transform = None
         infor_dir_path = os.path.abspath(os.path.dirname(breeds_hierarchies.__file__))
         ret = make_entity13(infor_dir_path, split="rand")
         superclasses, subclass_split, label_map = ret
         train_subclasses, test_subclasses = subclass_split
         base_path = "ILSVRC/Data/CLS-LOC"
-        if train:
-            root = os.path.join(root, base_path, "train")
+        root = os.path.join(root, base_path, "train")
+
+        if split == "train" or split=="id_test":
             custom_grouping = train_subclasses
         else:
-            root = os.path.join(root, base_path, "train")
             custom_grouping = test_subclasses
 
 
@@ -353,7 +373,19 @@ class BREEDImageNet(ImageFolder):
                          target_transform=target_transform,
                          label_mapping=label_mapping)
 
+
+        # todo: split samples here in train and iid test and do the "else" above as ood test like in wilds.
+        # todo check if class still uniformly distributed without shuffling before splitting!
+        if split == "train" or split == "id_test":
+            rng = np.random.default_rng(12345)
+            self.sampels = rng.shuffle(self.samples)
+            if split == "train":
+                self.samples = self.samples[10000:]
+            elif split == "id_test":
+                self.samples = self.samples[:10000]
+
         self.imgs = self.samples
+
 
     def __getitem__(self, index):
         """
@@ -377,7 +409,9 @@ class BREEDImageNet(ImageFolder):
 #
 class WILDSAnimals(IWildCamDataset):
     def __init__(self, root, train, download, transform):
-        super().__init__(version=None, root_dir=root, download=download, split_scheme='official')
+        super().__init__(version=None, root_dir=root, download=False, split_scheme='official')
+
+        print("CHECK ROOT !!!", root)
 
     def get_subset(self, split, frac=1.0, transform=None):
         """
@@ -390,6 +424,7 @@ class WILDSAnimals(IWildCamDataset):
         Output:
             - subset (WILDSSubset): A (potentially subsampled) subset of the WILDSDataset.
         """
+
         if split not in self.split_dict:
             raise ValueError(f"Split {split} not found in dataset's split_dict.")
         split_mask = self.split_array == self.split_dict[split]
@@ -414,7 +449,7 @@ class myWILDSSubset(WILDSSubset):
 
 class WILDSCamelyon(Camelyon17Dataset):
     def __init__(self, root, train, download, transform):
-        super().__init__(version=None, root_dir=root, download=download, split_scheme='official')
+        super().__init__(version=None, root_dir=root, download=False, split_scheme='official')
 
     def get_subset(self, split, frac=1.0, transform=None):
         """
@@ -427,10 +462,15 @@ class WILDSCamelyon(Camelyon17Dataset):
         Output:
             - subset (WILDSSubset): A (potentially subsampled) subset of the WILDSDataset.
         """
+        # np.random.seed(42)
+        # np.random.shuffle(indices)
         if split not in self.split_dict:
             raise ValueError(f"Split {split} not found in dataset's split_dict.")
         split_mask = self.split_array == self.split_dict[split]
         split_idx = np.where(split_mask)[0]
+        if split == "id_val":  # shuffle iid set for chamelyon to be able to split into val and test set.
+            rng = np.random.default_rng(12345)
+            split_idx = rng.permutation(split_idx)
         if frac < 1.0:
             num_to_retain = int(np.round(float(len(split_idx)) * frac))
             split_idx = np.sort(np.random.permutation(split_idx)[:num_to_retain])

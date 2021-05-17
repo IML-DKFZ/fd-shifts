@@ -31,7 +31,7 @@ class net(pl.LightningModule):
         self.pretrained_backbone_path = cf.trainer.callbacks.training_stages.pretrained_backbone_path
         self.pretrained_confidnet_path = cf.trainer.callbacks.training_stages.pretrained_confidnet_path
         self.confidnet_lr_scheduler = cf.trainer.callbacks.training_stages.confidnet_lr_scheduler
-        self.iamgenet_weights_path = dict(cf.model.network).get("imagenet_weights_path")
+        self.imagenet_weights_path = dict(cf.model.network).get("imagenet_weights_path")
 
         self.loss_ce = nn.CrossEntropyLoss()
         self.loss_mse = nn.MSELoss(reduction="sum")
@@ -66,8 +66,8 @@ class net(pl.LightningModule):
 
     def on_train_start(self):
         # what if resume? is this called before checkpoint?
-        if self.iamgenet_weights_path:
-            self.backbone.encoder.load_pretrained_imagenet_params(self.iamgenet_weights_path)
+        if self.imagenet_weights_path:
+            self.backbone.encoder.load_pretrained_imagenet_params(self.imagenet_weights_path)
 
         for ix, x in enumerate(self.backbone.named_modules()):
             print(ix, x[1])
