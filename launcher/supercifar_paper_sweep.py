@@ -16,13 +16,10 @@ backbones = ["vgg13","vgg16"] #
 dropouts = [0, 1] # #
 modes = ["dg", "confidnet", "devries"]
 runs = [1 , 2 , 3 , 4 ,5]
-rewards = [2.2, 3, 6, 10]
+rewards = [12, 15] #[2.2, 3, 6, 10]
 my_ix = 0
 fail_list = [
-"dg_bbvgg16_do1_run3_rew3",
-"dg_bbvgg16_do1_run3_rew6",
-"dg_bbvgg16_do1_run4_rew10",
-"dg_bbvgg16_do1_run5_rew3",
+
 ]
 
 exp_name_list = []
@@ -35,7 +32,7 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
         exp_group_name = "supercifar_paper_sweep"
         exp_name = "{}_bb{}_do{}_run{}_rew{}".format(mode, bb, do, run, rew)
         exp_name_list.append(exp_name)
-        if exp_name in fail_list:
+        if 1==1:
             my_ix += 1
             command_line_args = ""
 

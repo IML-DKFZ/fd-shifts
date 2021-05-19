@@ -266,7 +266,7 @@ class AbstractDataLoader(pl.LightningDataModule):
 
         return val_loader
 
-    def test_dataloader(self): # todo missing val sampler for val_tuning in cv mode!
+    def test_dataloader(self): # todo missing val sampler for val_tuning in cv mode! only devries mode implemented for val tuning!
         test_loaders = []
         for ix, test_dataset in enumerate(self.test_datasets):
             test_loaders.append(torch.utils.data.DataLoader(

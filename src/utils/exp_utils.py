@@ -4,6 +4,7 @@ import random
 import numpy as np
 import sys
 import pytorch_lightning as pl
+import subprocess
 
 def set_seed(seed):
     print("SETTING GLOBAL SEED")
@@ -62,6 +63,34 @@ def get_path_to_best_ckpt(exp_dir, selection_criterion, selection_mode):
             return path_list[scores_list.index(max(scores_list))]
 
 
+
+def get_allowed_n_proc_DA(default_value):
+    hostname = subprocess.getoutput(['hostname'])
+    if hostname in ['hdf19-gpu16', 'hdf19-gpu17', 'e230-AMDworkstation']:
+        print("SETTING N WORKERS TO 16")
+        return 16
+    if hostname in ['mbi112',]:
+        print("SETTING N WORKERS TO 12")
+        return 12
+    if hostname.startswith('hdf19-gpu') or hostname.startswith('e071-gpu'):
+        print("SETTING N WORKERS TO 12")
+        return 12
+    elif hostname.startswith('e230-dgx1'):
+        print("SETTING N WORKERS TO 10")
+        return 10
+    elif hostname.startswith('hdf18-gpu') or hostname.startswith('e132-comp'):
+        print("SETTING N WORKERS TO 16")
+        return 16
+    elif hostname.startswith('e230-dgx2'):
+        print("SETTING N WORKERS TO 6")
+        return 6
+    elif hostname.startswith('e230-dgxa100-'):
+        print("SETTING N WORKERS TO 32")
+        return 32
+
+    else:
+        print ("HOSTNAME COULD NOT BE IDENTIFIED. LEAVING N_WORKERS AT DEFAULT VALUE")
+        return default_value
 
 
 class Logger(object):
