@@ -4,7 +4,6 @@ from torch.nn import functional as F
 import pytorch_lightning as pl
 from src.models.networks import get_network
 
-
 class net(pl.LightningModule):
 
     def __init__(self, cf):
@@ -113,7 +112,6 @@ class net(pl.LightningModule):
     def training_step(self, batch, batch_idx):
 
         x, y = batch
-
         if self.ext_confid_name == "devries":
             logits, confidence = self.model(x)
             confidence = torch.sigmoid(confidence)

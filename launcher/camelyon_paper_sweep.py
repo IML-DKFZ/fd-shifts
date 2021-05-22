@@ -15,7 +15,7 @@ train_mode = "train" # "test" / "train" / "analysis"
 backbones = ["resnet50"] #
 dropouts = [1, 0] # #
 modes = ["confidnet", "dg", "devries"]
-runs = [6, 7, 8, 9, 10]
+runs = [1, 2, 3, 4, 5] # todo actually range 10
 rewards = [2.2, 3, 6, 10]
 my_ix = 0
 fail_list = ["devries_bbresnet50_do0_run10_rew2.2"]
@@ -24,14 +24,14 @@ exp_name_list = []
 
 for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts, runs ,rewards)):
 
-    if  not (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2):
+    if  (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2): # todo changed
 
 
         exp_group_name = "camelyon_paper_sweep"
         exp_name = "{}_bb{}_do{}_run{}_rew{}".format(mode, bb, do, run, rew)
         exp_name_list.append(exp_name)
         # print(exp_name, ix)
-        if exp_name in fail_list:
+        if 1==1:
             my_ix += 1
             command_line_args = ""
 

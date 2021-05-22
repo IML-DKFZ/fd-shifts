@@ -623,6 +623,7 @@ def plot_input_imgs(x, y, out_path):
        ax.imshow(x[ix].cpu().permute(1, 2, 0))
        ax.title.set_text(str(y[ix].item()))
 
+    plt.tight_layout()
     plt.savefig(out_path)
     assert 1==2
 

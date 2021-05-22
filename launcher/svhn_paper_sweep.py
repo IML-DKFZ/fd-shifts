@@ -11,7 +11,7 @@ exec_path = os.path.join(exec_dir,"exec.py")
 
 
 
-train_mode = "analysis" # "test" / "train" / "analysis"
+train_mode = "train" # "test" / "train" / "analysis"
 backbones = ["svhn_small_conv"] #
 dropouts = [1, 0] # #
 modes = ["confidnet", "dg", "devries"]
@@ -25,13 +25,13 @@ exp_name_list = []
 
 for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts, runs ,rewards)):
 
-    if  not (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2):
+    if  (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2): # todo changed
 
 
         exp_group_name = "svhn_paper_sweep"
         exp_name = "{}_bb{}_do{}_run{}_rew{}".format(mode, bb, do, run, rew)
         exp_name_list.append(exp_name)
-        if exp_name in fail_list:
+        if 1==1:
             my_ix += 1
             command_line_args = ""
 

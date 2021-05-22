@@ -16,7 +16,7 @@ backbones = ["vgg13","vgg16"] #
 dropouts = [0, 1] # #
 modes = ["dg", "confidnet", "devries"]
 runs = [1, 2, 3, 4, 5]
-rewards = [12, 15] #[2.2, 3, 6, 10]
+rewards = [2.2] #[2.2, 3, 6, 10]
 my_ix = 0
 
 # fail_list = ['dg_bbvgg13_do1_run1_rew2.2', 'dg_bbvgg13_do1_run1_rew3', 'dg_bbvgg13_do1_run1_rew6', 'dg_bbvgg13_do1_run1_rew10', 'dg_bbvgg13_do1_run2_rew2.2', 'dg_bbvgg13_do1_run2_rew3', 'dg_bbvgg13_do1_run2_rew6', 'dg_bbvgg13_do1_run2_rew10', 'dg_bbvgg13_do1_run3_rew2.2', 'dg_bbvgg13_do1_run3_rew3', 'dg_bbvgg13_do1_run3_rew6', 'dg_bbvgg13_do1_run3_rew10', 'dg_bbvgg16_do1_run1_rew2.2', 'dg_bbvgg16_do1_run1_rew3', 'dg_bbvgg16_do1_run1_rew6', 'dg_bbvgg16_do1_run1_rew10', 'dg_bbvgg16_do1_run2_rew2.2', 'dg_bbvgg16_do1_run2_rew3', 'dg_bbvgg16_do1_run2_rew6', 'dg_bbvgg16_do1_run2_rew10', 'dg_bbvgg16_do1_run3_rew2.2', 'dg_bbvgg16_do1_run3_rew3', 'dg_bbvgg16_do1_run3_rew6', 'dg_bbvgg16_do1_run3_rew10', 'confidnet_bbvgg13_do1_run1_rew2.2', 'confidnet_bbvgg13_do1_run2_rew2.2', 'confidnet_bbvgg13_do1_run3_rew2.2', 'confidnet_bbvgg16_do1_run1_rew2.2', 'confidnet_bbvgg16_do1_run2_rew2.2', 'confidnet_bbvgg16_do1_run3_rew2.2']
@@ -26,10 +26,10 @@ exp_name_list = []
 
 for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts, runs ,rewards)):
 
-    if  not (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2):
+    if  (mode=="devries") and not (mode!="dg" and rew > 2.2): # todo changed
 
 
-        exp_group_name = "cifar100_paper_sweep"
+        exp_group_name = "multistep_cifar100_paper_sweep"
         exp_name = "{}_bb{}_do{}_run{}_rew{}".format(mode, bb, do, run, rew)
         exp_name_list.append(exp_name)
         if 1==1:
@@ -52,6 +52,7 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
                     command_line_args += "study={} ".format("cifar_devries_study")
                     command_line_args += "model.network.name={} ".format("devries_and_enc")
                     command_line_args += "model.network.backbone={} ".format(bb)
+                    command_line_args += "trainer.lr_scheduler.name=MultiStep "
 
 
                 elif mode == "dg":

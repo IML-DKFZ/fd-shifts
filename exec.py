@@ -135,7 +135,7 @@ def main(cf: DictConfig):
     sys.stdout = exp_utils.Logger(cf.exp.log_path)
     sys.stderr = exp_utils.Logger(cf.exp.log_path)
     print(OmegaConf.to_yaml(cf))
-    cf.data.n_workers = exp_utils.get_allowed_n_proc_DA(cf.data.n_workers)
+    cf.data.num_workers = exp_utils.get_allowed_n_proc_DA(cf.data.num_workers)
 
     if cf.exp.mode == 'train':
         train(cf)

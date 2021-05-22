@@ -13,9 +13,9 @@ exec_path = os.path.join(exec_dir,"exec.py")
 
 train_mode = "train" # "test" / "train" / "analysis"
 backbones = ["resnet50"] #
-dropouts = [0] #[1, 0] # #
+dropouts = [1] #[1, 0] # #
 modes = ["dg", "confidnet", "devries"]
-runs = [1]#[1 , 2 , 3, 4, 5]
+runs = [1 , 2 , 3, 4, 5]
 rewards = [2.2]#[2.2, 3, 6]
 my_ix = 0
 
@@ -23,10 +23,10 @@ exp_name_list = []
 
 for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts, runs ,rewards)):
 
-    if  not (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2):
+    if  (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2): # todo changed
 
 
-        exp_group_name = "animals_check_sweep" # TODO CAREFUL CHANGED SWEEP NAME FOR CHECK
+        exp_group_name = "animals_paper_sweep"
         exp_name = "{}_bb{}_do{}_run{}_rew{}".format(mode, bb, do, run, rew)
         exp_name_list.append(exp_name)
         if 1==1:

@@ -16,7 +16,7 @@ backbones = ["vgg13","vgg16"] #
 dropouts = [0, 1] # #
 modes = ["dg", "confidnet", "devries"]
 runs = [1 , 2 , 3 , 4 ,5]
-rewards = [12, 15] #[2.2, 3, 6, 10]
+rewards = [2.2] #[2.2, 3, 6, 10]
 my_ix = 0
 fail_list = [
 
@@ -26,7 +26,7 @@ exp_name_list = []
 
 for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts, runs ,rewards)):
 
-    if  not (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2):
+    if  (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2): # todo changed
 
 
         exp_group_name = "supercifar_paper_sweep"
