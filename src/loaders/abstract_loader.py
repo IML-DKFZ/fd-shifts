@@ -14,7 +14,7 @@ from copy import deepcopy
 
 class AbstractDataLoader(pl.LightningDataModule):
 
-    def __init__(self, cf):
+    def __init__(self, cf, no_norm_flag=False):
 
         super().__init__()
         self.crossval_ids_path = cf.exp.crossval_ids_path
@@ -50,11 +50,11 @@ class AbstractDataLoader(pl.LightningDataModule):
         # Set up augmentations
         self.augmentations = {}
         if cf.data.augmentations:
-            self.add_augmentations(OmegaConf.to_container(cf.data.augmentations, resolve=True))
+            self.add_augmentations(OmegaConf.to_container(cf.data.augmentations, resolve=True), no_norm_flag)
 
         self.train_dataset, self.val_dataset, self.test_datasets = None, None, None
 
-    def add_augmentations(self, query_augs):
+    def add_augmentations(self, query_augs, no_norm_flag):
 
         if self.query_studies is not None and self.external_test_sets is not None:
             for ext_set in self.external_test_sets:
@@ -65,10 +65,13 @@ class AbstractDataLoader(pl.LightningDataModule):
                 for aug_key, aug_param in datasplit_v.items():
                         if aug_key == "to_tensor":
                             augmentations.append(transforms_collection[aug_key])
+                        elif aug_key == "normalize" and no_norm_flag is True:
+                            pass
                         elif "external" in datasplit_k and aug_key == "normalize" and self.assim_ood_norm_flag:
                             print("assimilating norm of ood dataset to iid test set...")
                             aug_param = query_augs["test"]["normalize"]
                             augmentations.append(transforms_collection[aug_key](aug_param))
+
                         else:
                             augmentations.append(transforms_collection[aug_key](aug_param))
             self.augmentations[datasplit_k] = transforms_collection["compose"](augmentations)

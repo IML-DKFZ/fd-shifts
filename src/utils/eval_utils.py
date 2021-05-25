@@ -222,7 +222,7 @@ class ConfidEvaluator():
 
     def calculate_bound(self, delta, m, erm):
         # This function is a solver for the inverse of binomial CDF based on binary search.
-        precision = 1e-7
+        precision = 1e-9
 
         def func(b):
             return (-1 * delta) + scipy.stats.binom.cdf(int(m * erm), m, b)
@@ -243,7 +243,7 @@ class ConfidEvaluator():
             funcval = func(b)
         return b
 
-    def get_val_risk_scores(self, rstar, delta):
+    def get_val_risk_scores(self, rstar, delta, no_bound_mode=False):
         # A function to calculate the risk bound proposed in the paper, the algorithm is based on algorithm 1 from the paper.
         # Input: rstar - the requested risk bound
         #       delta - the desired delta
@@ -273,6 +273,8 @@ class ConfidEvaluator():
             risk = sum(FY[probs_idx_sorted[mid:]]) / mi
             bound = self.calculate_bound(deltahat, mi, risk)
             coverage = mi / m
+            if no_bound_mode:
+                bound = risk
             if bound > rstar:
                 a = mid
             else:
@@ -281,6 +283,7 @@ class ConfidEvaluator():
         val_risk_scores ["val_risk"] = risk
         val_risk_scores ["val_cov"] = coverage
         val_risk_scores ["theta"] = theta
+        print("STRAIGHT FROM THRESH CALCULATION", risk, coverage, theta, rstar, delta, bound)
         return val_risk_scores
 
 
@@ -319,6 +322,7 @@ class ConfidPlotter():
             self.query_plots += ["{}_hist".format(x) for x in self.confid_keys_list]
 
         self.num_plots = len(self.query_plots)
+        self.threshold = None
 
     def compose_plot(self):
         seaborn.set(font_scale=self.fig_scale, style="whitegrid")
@@ -367,7 +371,7 @@ class ConfidPlotter():
         confids = self.confids_list[self.confid_keys_list.index(confid_key)]
         correct = self.correct_list[self.confid_keys_list.index(confid_key)]
 
-        if confid_key == "ood_ext":
+        if confid_key == "ood_ext" or self.threshold is not None:
             custom_range = (np.min(confids), np.max(confids))
             (n_correct, binsc, patchesc) = self.ax.hist(confids[np.argwhere(correct == 1)],
                                                       color="g",
@@ -407,6 +411,10 @@ class ConfidPlotter():
         self.ax.vlines(np.median(confids[np.argwhere(correct == 0)]), ymin=0, ymax=max_y_data, color="r", linestyles="--", label="incorrect median")
         self.ax.vlines(np.mean(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_y_data, color="g", linestyles="-", label="correct mean")
         self.ax.vlines(np.median(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_y_data, color="g", linestyles="--", label="correct median")
+        if self.threshold is not None:
+            self.ax.vlines(self.threshold, ymin=0, ymax=max_y_data, color="b",
+                           linestyles="--", label="risk threshold", linewidth=4)
+
         self.ax.set_yscale('log')
         self.ax.set_xlabel("Confid")
         title_string = confid_key
@@ -626,4 +634,198 @@ def plot_input_imgs(x, y, out_path):
     plt.tight_layout()
     plt.savefig(out_path)
     assert 1==2
+
+
+
+def qual_plot(fp_dict, fn_dict, out_path):
+
+    n_rows = len(fp_dict["images"])
+    f, axs = plt.subplots(nrows=n_rows, ncols=2, figsize=(6, 13))
+    title_pad = 0.85
+    fontsize = 22
+
+    col = 0 # FP
+    for d in [fp_dict, fn_dict]:
+        if len(d["images"]) > 0:
+            for row in range(n_rows):
+               label = d["labels"][row]
+               if isinstance(label, str) and len(label)> 9:
+                   label = label[:10] + "."
+               predict = d["predicts"][row]
+               if isinstance(predict, str) and len(predict)> 9:
+                   predict = predict[:10] + "."
+               ax = axs[row, col]
+               ax.imshow(d["images"][row].permute(1, 2, 0))
+               titel_string = ""
+               titel_string += "true: {} \n".format(label)
+               titel_string += "pred.: {} \n".format(predict)
+               titel_string += "confid.: {:.3f} \n".format(d["confids"][row])
+               ax.set_title(titel_string, loc='left', fontsize=fontsize, y=title_pad)
+               ax.axis("off")
+
+        col += 1
+
+    # plt.tight_layout()
+    plt.subplots_adjust(wspace=0.23, hspace= 0.4)
+    f.savefig(out_path)
+    plt.close()
+    print("saved qual_plot to ", out_path)
+
+
+def ThresholdPlot(plot_dict):
+
+    scale = 10
+    n_cols = len(plot_dict)
+    n_rows = 1
+    colors = ["b", "k", "purple"]
+    f, axs = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=(n_cols * scale * 0.6, n_rows * scale * 0.4))
+
+    print("plot in", len(plot_dict))
+    for ix, (study, study_dict) in enumerate(plot_dict.items()):
+
+        print("threshold plot", study, len(study_dict["confids"]))
+        confids = study_dict["confids"]
+        correct = study_dict["correct"]
+        delta_threshs = study_dict["delta_threshs"]
+        plot_string = study_dict["plot_string"]
+        deltas = study_dict["deltas"]
+        true_thresh = study_dict["true_thresh"]
+
+        custom_range = (np.min(confids), np.max(confids))
+        (n_correct, binsc, patchesc) = axs[ix].hist(confids[np.argwhere(correct == 1)],
+                                                  color="g",
+                                                  bins=20,
+                                                  range=custom_range,
+                                                  alpha=0.3,
+                                                  label="correct")
+
+        (n_incorrect, bins, patches) = axs[ix].hist(confids[np.argwhere(correct == 0)],
+                                                  color="r",
+                                                  bins=20,
+                                                  range=custom_range,
+                                                  alpha=0.3,
+                                                  label="incorrect")
+
+
+        # max_y_data = np.max([np.max(n_correct), np.max(n_incorrect)])
+        # self.ax.vlines(np.mean(confids[np.argwhere(correct == 0)]), ymin=0, ymax=max_y_data, color="r", linestyles="-", label="incorrect mean")
+        # self.ax.vlines(np.median(confids[np.argwhere(correct == 0)]), ymin=0, ymax=max_y_data, color="r", linestyles="--", label="incorrect median")
+        # self.ax.vlines(np.mean(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_y_data, color="g", linestyles="-", label="correct mean")
+        # self.ax.vlines(np.median(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_y_data, color="g", linestyles="--", label="correct median")
+        for idx, dt in enumerate(delta_threshs):
+            print("drawing line", idx, dt, delta_threshs, deltas)
+            axs[ix].vlines(dt, ymin=0, ymax=axs[ix].get_ylim()[1], label="thresh_delta_{}".format(deltas[idx]), linestyles="-", linewidth=1.5, color = colors[idx])
+        axs[ix].vlines(true_thresh, ymin=0, ymax=axs[ix].get_ylim()[1], label="thresh_r*",  linestyles="-", linewidth=2, color="greenyellow")
+
+        axs[ix].set_yscale('log')
+        axs[ix].set_xlabel(study)
+        axs[ix].set_title(plot_string)
+
+    plt.legend()
+    plt.tight_layout()
+    return f
+
+
+
+
+cifar100_classes = ['apple',
+ 'aquarium_fish',
+ 'baby',
+ 'bear',
+ 'beaver',
+ 'bed',
+ 'bee',
+ 'beetle',
+ 'bicycle',
+ 'bottle',
+ 'bowl',
+ 'boy',
+ 'bridge',
+ 'bus',
+ 'butterfly',
+ 'camel',
+ 'can',
+ 'castle',
+ 'caterpillar',
+ 'cattle',
+ 'chair',
+ 'chimpanzee',
+ 'clock',
+ 'cloud',
+ 'cockroach',
+ 'couch',
+ 'crab',
+ 'crocodile',
+ 'cup',
+ 'dinosaur',
+ 'dolphin',
+ 'elephant',
+ 'flatfish',
+ 'forest',
+ 'fox',
+ 'girl',
+ 'hamster',
+ 'house',
+ 'kangaroo',
+ 'keyboard',
+ 'lamp',
+ 'lawn_mower',
+ 'leopard',
+ 'lion',
+ 'lizard',
+ 'lobster',
+ 'man',
+ 'maple_tree',
+ 'motorcycle',
+ 'mountain',
+ 'mouse',
+ 'mushroom',
+ 'oak_tree',
+ 'orange',
+ 'orchid',
+ 'otter',
+ 'palm_tree',
+ 'pear',
+ 'pickup_truck',
+ 'pine_tree',
+ 'plain',
+ 'plate',
+ 'poppy',
+ 'porcupine',
+ 'possum',
+ 'rabbit',
+ 'raccoon',
+ 'ray',
+ 'road',
+ 'rocket',
+ 'rose',
+ 'sea',
+ 'seal',
+ 'shark',
+ 'shrew',
+ 'skunk',
+ 'skyscraper',
+ 'snail',
+ 'snake',
+ 'spider',
+ 'squirrel',
+ 'streetcar',
+ 'sunflower',
+ 'sweet_pepper',
+ 'table',
+ 'tank',
+ 'telephone',
+ 'television',
+ 'tiger',
+ 'tractor',
+ 'train',
+ 'trout',
+ 'tulip',
+ 'turtle',
+ 'wardrobe',
+ 'whale',
+ 'willow_tree',
+ 'wolf',
+ 'woman',
+ 'worm']
 

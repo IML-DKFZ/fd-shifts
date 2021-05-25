@@ -11,6 +11,7 @@ from wilds.datasets.iwildcam_dataset import IWildCamDataset
 from wilds.datasets.camelyon17_dataset import Camelyon17Dataset
 from wilds.datasets.wilds_dataset import WILDSSubset
 from src.loaders import breeds_hierarchies
+from src.utils import eval_utils
 import numpy as np
 from PIL import Image
 import io
@@ -170,6 +171,7 @@ class SuperCIFAR100(datasets.VisionDataset):
 
         num_classes = len(np.unique(self.targets))
         print("SuperCIFAR check num_classes in data {}. Training {}".format(num_classes, self.train))
+        self.classes = self.coarse_classes
 
     def _load_meta(self) -> None:
         path = os.path.join(self.root, self.base_folder, self.meta['filename'])
@@ -179,6 +181,7 @@ class SuperCIFAR100(datasets.VisionDataset):
         with open(path, 'rb') as infile:
             data = pickle.load(infile, encoding='latin1')
             self.classes = data[self.meta['key']]
+            self.coarse_classes = data["coarse_label_names"]
         self.class_to_idx = {_class: i for i, _class in enumerate(self.classes)}
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
@@ -293,6 +296,7 @@ class CorruptCIFAR(datasets.VisionDataset):
             self.targets.extend(labels)
 
         self.data = np.vstack(self.data)
+        self.classes = eval_utils.cifar100_classes
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         """
@@ -385,6 +389,19 @@ class BREEDImageNet(ImageFolder):
                 self.samples = self.samples[:10000]
 
         self.imgs = self.samples
+        self.classes = ["garment",
+                        "bird",
+                        "reptile",
+                        "arthropod",
+                        "mammal",
+                        "accessory",
+                        "craft",
+                        "equipment",
+                        "furniture",
+                        "instrument",
+                        "man-made structure",
+                        "wheeled vehicle",
+                        "produce"]
 
 
     def __getitem__(self, index):
