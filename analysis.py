@@ -522,13 +522,15 @@ class Analysis():
                                                bins=self.calibration_bins)
                         self.threshold_plot_dict = {}
                         self.plot_threshs = []
+                        self.true_covs = []
                         print("creating threshold_plot_dict....")
                         for delta in self.rdelta:
                             plot_val_risk_scores = eval.get_val_risk_scores(self.rstar, delta)
                             self.plot_threshs.append(plot_val_risk_scores["theta"])
+                            self.true_covs.append(plot_val_risk_scores["val_cov"])
                             print(self.rstar, delta, plot_val_risk_scores["theta"], plot_val_risk_scores["val_risk"])
 
-                    plot_string = "r*: {:.2f} \n".format(self.rstar)
+                    plot_string = "r*: {:.2f}  \n".format(self.rstar)
                     for ix, thresh in enumerate(self.plot_threshs):
                         selected_residuals = 1 - confid_dict["correct"][
                             np.argwhere(confid_dict["confids"] > thresh)]
@@ -536,10 +538,10 @@ class Analysis():
                         emp_coverage = len(selected_residuals) / len(confid_dict["correct"])
                         diff_risk = emp_risk - self.rstar
                         plot_string += "delta: {:.3f}: ".format(self.rdelta[ix])
-                        plot_string += "thresh: {:.3f}: ".format(thresh)
-                        plot_string += "emp.risk: {:.3f} ".format(emp_risk)
+                        plot_string += "erisk: {:.3f} ".format(emp_risk)
                         plot_string += "diff risk: {:.3f} ".format(diff_risk)
-                        plot_string += "emp.cov.: {:.3f} \n".format(emp_coverage)
+                        plot_string += "ecov.: {:.3f} \n".format(emp_coverage)
+                        plot_string += "diff cov.: {:.3f} \n".format(emp_coverage - self.true_covs[ix])
 
                     eval = ConfidEvaluator(confids=confid_dict["confids"],
                                            correct=confid_dict["correct"],
@@ -702,7 +704,7 @@ class Analysis():
 
 
 # TODO MUTLIPLE METHOD DICTS IS BROKEN! THIS SCRIPT SHOULD ONLY PROCESS 1 METHOD DICT ANYWAY!
-def main(in_path=None, out_path=None, query_studies=None, add_val_tuning=True, cf=None, threshold_plot_confid="mcd_mcp", qual_plot_confid=None): #qual plot to false
+def main(in_path=None, out_path=None, query_studies=None, add_val_tuning=True, cf=None, threshold_plot_confid="tcp_mcd", qual_plot_confid=None): #qual plot to false
 
     # path to the dir where the raw otuputs lie. NO SLASH AT THE END!
     if in_path is None: # NO SLASH AT THE END OF PATH !

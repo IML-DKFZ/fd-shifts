@@ -538,52 +538,92 @@ class ConfidPlotter():
 
 
 def RC_curve(residuals, confidence):
-    # from https://github.com/geifmany/uncertainty_ICLR/blob/495f82d9d9a24e1dd62e62dd1f86d78e4f53a471/utils/uncertainty_tools.py#L13
-    # residuals = inverted "correct_list"
-    # implemented for risk = 0/1 error.
-    # could be changed to other error (e.g NLL?, that would weirdly mix up kappa confidence with predictive uncertainty!)
     coverages = []
     risks = []
     n = len(residuals)
     idx_sorted = np.argsort(confidence)
-    temp1 = residuals[idx_sorted]
     cov = n
-    selective_risk = sum(temp1)
+    error_sum = sum(residuals[idx_sorted])
     coverages.append(cov/ n),
-    risks.append(selective_risk / n)
-    writeout_risk = selective_risk / n
+    risks.append(error_sum / n)
     weights = []
     tmp_weight = 0
     for i in range(0, len(idx_sorted) - 1):
         cov = cov-1
-        selective_risk = selective_risk-residuals[idx_sorted[i]]
-        normed_risk = selective_risk /(n-i - 1)
-        tmp_weight +=1
-        if confidence[idx_sorted[i]] != confidence[idx_sorted[np.max(i - 1, 0)]]:
+        error_sum = error_sum - residuals[idx_sorted[i]]
+        selective_risk = error_sum /(n - 1 - i)
+        tmp_weight += 1
+        if i == 0 or confidence[idx_sorted[i]] != confidence[idx_sorted[i - 1]]:
             coverages.append(cov / n)
-            risks.append(normed_risk)
+            risks.append(selective_risk)
             weights.append(tmp_weight / n)
-            tmp_weight =0# Todo: I Correceted this. report!!
+            tmp_weight = 0
+
+    # add a well-defined final point to the RC-curve.
+    if tmp_weight > 0:
+        coverages.append(0)
+        risks.append(risks[-1])
+        weights.append(tmp_weight / n)
+
+    # aurc is computed as a weighted average over risk scores analogously to the average precision score.
+    aurc = sum([a*w for a, w in zip(risks,weights)])
+
+    # compute e-aurc
+    err = np.mean(residuals)
+    kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
+    e_aurc = aurc-kappa_star_aurc
+
+    curve = (coverages, risks)
+    return curve, aurc, e_aurc
+
+
+    curve = []
+    m = len(residuals)
+    idx_sorted = np.argsort(confidence)
+    temp1 = residuals[idx_sorted]
+    cov = len(temp1)
+    acc = sum(temp1)
+    curve.append((cov/ m, acc / len(temp1)))
+    for i in range(0, len(idx_sorted)-1):
+        cov = cov-1
+        acc = acc-residuals[idx_sorted[i]]
+        curve.append((cov / m, acc /(m-i)))
+    AUC = sum([a[1] for a in curve])/len(curve)
+    err = np.mean(residuals)
+    kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
+    EAURC = AUC-kappa_star_aurc
+    return curve, AUC, EAURC
+
+def AURC(residuals, confidence):
+    coverages = []
+    risks = []
+    n = len(residuals)
+    idx_sorted = np.argsort(confidence)
+    cov = n
+    error_sum = sum(residuals[idx_sorted])
+    coverages.append(cov/ n),
+    risks.append(error_sum / n)
+    weights = []
+    tmp_weight = 0
+    for i in range(0, len(idx_sorted) - 1):
+        cov = cov-1
+        error_sum = error_sum - residuals[idx_sorted[i]]
+        selective_risk = error_sum /(n - 1 - i)
+        tmp_weight += 1
+        if i == 0 or confidence[idx_sorted[i]] != confidence[idx_sorted[i - 1]]:
+            coverages.append(cov / n)
+            risks.append(selective_risk)
+            weights.append(tmp_weight / n)
+            tmp_weight = 0
 
     if tmp_weight > 0:
         coverages.append(0)
         risks.append(risks[-1])
         weights.append(tmp_weight / n)
 
-    # AUC = sum([a for a in risks])/len(risks)
-    # print("LAST WEIGHT", tmp_weight, n-i - 1)
-    # print("COVS", coverages[-3:])
-    # print("RISKS", risks[-3:])
-    # print("WEIGHTS", weights[-3:])
-    AUC = sum([a*w for a, w in zip(risks,weights)])
-    err = np.mean(residuals)
-    kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
-    EAURC = AUC-kappa_star_aurc
+    aurc = sum([a*w for a, w in zip(risks,weights)])
     curve = (coverages, risks)
-    # print("MY RC", AUC, EAURC, curve[-10:])
-    # print("MY AURC WITH SKM", skm.auc([c[0] for c in curve], [c[1] for c in curve]))
-    # print("MY EAURC WITH SKM", skm.auc([c[0] for c in curve], [c[1] for c in curve]))
-    return curve, AUC, EAURC
+    return curve, aurc
 
 
 class BrierScore(Metric):
@@ -714,8 +754,8 @@ def ThresholdPlot(plot_dict):
         # self.ax.vlines(np.median(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_y_data, color="g", linestyles="--", label="correct median")
         for idx, dt in enumerate(delta_threshs):
             print("drawing line", idx, dt, delta_threshs, deltas)
-            axs[ix].vlines(dt, ymin=0, ymax=axs[ix].get_ylim()[1], label="thresh_delta_{}".format(deltas[idx]), linestyles="-", linewidth=1.5, color = colors[idx])
-        axs[ix].vlines(true_thresh, ymin=0, ymax=axs[ix].get_ylim()[1], label="thresh_r*",  linestyles="-", linewidth=2, color="greenyellow")
+            axs[ix].vlines(dt, ymin=0, ymax=axs[ix].get_ylim()[1], label="thresh_delta_{}".format(deltas[idx]), linestyles="-", linewidth=2.5, color = colors[idx])
+        axs[ix].vlines(true_thresh, ymin=0, ymax=axs[ix].get_ylim()[1], label="thresh_r*",  linestyles="-", linewidth=3, color="greenyellow")
 
         axs[ix].set_yscale('log')
         axs[ix].set_xlabel(study)
