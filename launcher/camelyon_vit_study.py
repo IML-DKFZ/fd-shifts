@@ -11,8 +11,7 @@ base_command = '''bsub \\
 -gpu num=1:j_exclusive=yes:mode=exclusive_process:gmem=32G \\
 -L /bin/bash -q gpu-lowprio \\
 -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
-"source ~/.bashrc && conda activate $CONDA_ENV/openhybrid && python -W ignore
-{} {}"'''
+"source ~/.bashrc && conda activate $CONDA_ENV/openhybrid && python -W ignore {} {}"'''
 
 datasets = ["wilds_camelyon"]
 runs = range(1)

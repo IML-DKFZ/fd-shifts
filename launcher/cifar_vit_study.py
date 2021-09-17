@@ -7,15 +7,12 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir, "exec.py")
 
-# base_command = '''bsub \\
-# -gpu num=1:j_exclusive=yes:mode=exclusive_process:gmem=32G \\
-# -L /bin/bash -q gpu-lowprio \\
-# -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
-# "source ~/.bashrc && conda activate $CONDA_ENV/openhybrid && python -W ignore
-# {} {}"'''
-base_command = '''
-EXPERIMENT_ROOT_DIR=~/jaegerp/master/imlone/experiments DATASET_ROOT_DIR=~/Data python -W ignore {} {}
-'''
+base_command = '''bsub \\
+-gpu num=1:j_exclusive=yes:mode=exclusive_process:gmem=32G \\
+-L /bin/bash -q gpu-lowprio \\
+-u 'till.bungert@dkfz-heidelberg.de' -B -N \\
+"source ~/.bashrc && conda activate $CONDA_ENV/openhybrid && python -W ignore {} {}"'''
+
 datasets = ["cifar10", "cifar100", "svhn"]
 runs = range(1)
 lrs = [0.01, 0.03, 0.001, 0.003]
