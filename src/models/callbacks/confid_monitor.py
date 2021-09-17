@@ -10,6 +10,8 @@ class ConfidMonitor(Callback):
     def __init__(self, cf):
 
         self.num_epochs = cf.trainer.num_epochs
+        if self.num_epochs is None:
+            self.num_epochs = cf.trainer.num_steps
         self.num_classes = cf.data.num_classes
         self.fast_dev_run = cf.trainer.fast_dev_run
 

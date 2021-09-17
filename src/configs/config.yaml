@@ -12,8 +12,8 @@ hydra:
 
 
 exp:
-  group_name: checks
-  name: check_risk_thresh # cifar10_run_0_sebastian
+  # group_name: checks
+  # name: check_risk_thresh # cifar10_run_0_sebastian
   version: None
   mode: train_test   # train or test
   work_dir: ${hydra:runtime.cwd}
