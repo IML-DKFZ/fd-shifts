@@ -3,11 +3,9 @@ import subprocess
 import time
 from itertools import product
 
-system_name = os.environ['SYSTEM_NAME']
-
 current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
-exec_path = os.path.join(exec_dir,"exec.py")
+exec_path = os.path.join(exec_dir, "exec.py")
 
 base_command = '''bsub \\
 -gpu num=1:j_exclusive=yes:mode=exclusive_process:gmem=10.7G \\

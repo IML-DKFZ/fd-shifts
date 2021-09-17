@@ -3,8 +3,6 @@ import subprocess
 import time
 from itertools import product
 
-system_name = os.environ['SYSTEM_NAME']
-
 current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir,"exec.py")
