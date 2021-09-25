@@ -1,6 +1,6 @@
 # @package _global_
 defaults:
-  - override /data: cifar100_224_data
+  - override /data: cifar100_384_data
 
 exp:
   group_name: vit
@@ -73,10 +73,10 @@ eval:
   ext_confid_name: "maha"
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
-    iid_study: cifar100_224
+    iid_study: cifar100_384
     noise_study:
-      - corrupt_cifar100_224
+      - corrupt_cifar100_384
     new_class_study:
-    - cifar10_224
-    - svhn_224
-    - tinyimagenet_224
+    - cifar10_384
+    - svhn_384
+    - tinyimagenet_384
