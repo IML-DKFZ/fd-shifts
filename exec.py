@@ -63,6 +63,7 @@ def train(cf, subsequent_testing=False):
                          limit_val_batches=0 if cf.trainer.do_val is False else 1.0,
                          # replace_sampler_ddp=False,
                          # accelerator="ddp"
+                         precision=16,
                          )
 
     print("logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version))
