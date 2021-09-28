@@ -268,6 +268,8 @@ class Analysis():
                             self.current_dataloader_ix = noise_set_ix
 
                             select_ix = np.argwhere(method_dict["raw_dataset_ix"] == noise_set_ix)[:, 0]
+                            print(method_dict["raw_softmax"].shape)
+                            print(method_dict["raw_softmax"][select_ix].shape)
 
                             # new shape: n_corruptions, n_intensity_levels, n_test_cases, n_classes
                             method_dict["study_softmax"] = deepcopy(method_dict["raw_softmax"][select_ix]).reshape(
@@ -474,7 +476,7 @@ class Analysis():
             for confid_key in method_dict["query_confids"]:
                 print(self.study_name, confid_key)
                 confid_dict = method_dict[confid_key]
-                if confid_key == "bpd":
+                if confid_key == "bpd" or confid_key == "maha":
                     print("CHECK BEFORE NORM VALUES CORRECT", np.median(confid_dict["confids"][confid_dict["correct"] == 1]))
                     print("CHECK BEFORE NORM VALUES INCORRECT", np.median(confid_dict["confids"][confid_dict["correct"] == 0]))
                 if any(cfd in confid_key for cfd  in ["_pe", "_ee", "_mi", "_sv", "bpd"]):
@@ -482,8 +484,13 @@ class Analysis():
                     min_confid = np.min(unnomred_confids)
                     max_confid = np.max(unnomred_confids)
                     confid_dict["confids"] = 1 - ((unnomred_confids - min_confid) / (max_confid - min_confid + 1e-9))
+                if "maha" in confid_key:
+                    unnomred_confids = confid_dict["confids"].astype(np.float64)
+                    min_confid = np.min(unnomred_confids)
+                    max_confid = np.max(unnomred_confids)
+                    confid_dict["confids"] = ((unnomred_confids - min_confid) / np.abs(max_confid - min_confid + 1e-9))
 
-                if confid_key == "bpd":
+                if confid_key == "bpd" or confid_key == "maha":
                     print("CHECK AFTER NORM VALUES CORRECT", np.median(confid_dict["confids"][confid_dict["correct"] == 1]))
                     print("CHECK AFTER NORM VALUES INCORRECT", np.median(confid_dict["confids"][confid_dict["correct"] == 0]))
 
@@ -651,11 +658,16 @@ class Analysis():
         columns = ["name", "study", "model", "network", "fold", "confid", "n_test"] + all_metrics
         df = pd.DataFrame(columns=columns)
         for method_dict in self.input_list:
+            network = method_dict["cfg"].model.network
+            if network is not None:
+                backbone = dict(network).get("backbone")
+            else:
+                backbone = None
             for confid_key in method_dict["query_confids"]:
                 submit_list = [method_dict["name"],
                                self.study_name,
                                method_dict["cfg"].model.name,
-                               method_dict["cfg"].model.network.backbone,
+                               backbone,
                                method_dict["cfg"].exp.fold,
                                confid_key,
                                method_dict["study_mcd_softmax_mean"].shape[0] if "mcd" in confid_key else

@@ -30,14 +30,16 @@ def get_most_recent_version(exp_dir):
     # get best.ckpt of experiment. if split over multiple runs (e.g. due to resuming), still find the best.ckpt.
     # if there are multiple overall runs in the folder select the latest.
     ver_list = [int(x.split("_")[1]) for x in os.listdir(exp_dir) if "version_" in x]
+    print(ver_list)
     if len(ver_list) == 0:
         RuntimeError("No checkpoints exist in this experiment dir!")
     max_ver = max(ver_list)
     return max_ver
 
 def get_resume_ckpt_path(cf):
-    if dict(cf.model.network).get("load_dg_backbone_path") is not None:
-        return cf.model.network.load_dg_backbone_path
+    if dict(cf.model).get("network") is not None:
+        if dict(cf.model.network).get("load_dg_backbone_path") is not None:
+            return cf.model.network.load_dg_backbone_path
     else:
         selection_criterion = cf.test.selection_criterion
         if cf.test.selection_criterion == "latest":

@@ -31,6 +31,7 @@ trainer:
 
 model:
   name: vit_model
+  network: null
 
 test:
   name: test_results

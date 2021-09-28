@@ -117,12 +117,19 @@ def test(cf):
     if not os.path.exists(cf.test.dir):
         os.makedirs(cf.test.dir)
 
-    trainer = pl.Trainer(gpus=1, logger=False, callbacks=get_callbacks(cf))
+    trainer = pl.Trainer(
+        gpus=1,
+        logger=False,
+        callbacks=get_callbacks(cf),
+        precision=16,
+        # limit_test_batches=50
+    )
     trainer.test(model=module, datamodule=datamodule)
     analysis.main(in_path=cf.test.dir,
                   out_path=cf.test.dir,
                   query_studies=cf.eval.query_studies,
                   add_val_tuning=cf.eval.val_tuning,
+                  threshold_plot_confid=None,
                   cf = cf)
 
     # fix str bug
@@ -151,6 +158,7 @@ def main(cf: DictConfig):
                       out_path=cf.test.dir,
                       query_studies=cf.eval.query_studies,
                       add_val_tuning=cf.eval.val_tuning,
+                      threshold_plot_confid=None,
                       cf=cf)
 
 
