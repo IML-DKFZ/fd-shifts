@@ -8,6 +8,7 @@ exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir,"exec.py")
 
 base_command = '''bsub \\
+-R "select[hname!='e230-dgx2-1']" \\
 -gpu num=1:j_exclusive=yes:mode=exclusive_process:gmem=23.6G \\
 -L /bin/bash -q gpu-lowprio \\
 -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
