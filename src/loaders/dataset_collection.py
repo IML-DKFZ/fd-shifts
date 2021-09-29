@@ -66,6 +66,10 @@ def get_dataset(name, root, train, download, transform, kwargs):
             split = "train" if train else "id_test"
         elif name == "breeds_ood_test":
             split = "ood_test"
+        elif name == "breeds_224":
+            split = "train" if train else "id_test"
+        elif name == "breeds_ood_test_224":
+            split = "ood_test"
         print("CHECK SPLIT", name, split)
         pass_kwargs = {"root": root, "split": split, "download": download, "transform": transform, "kwargs": kwargs}
 
@@ -74,6 +78,10 @@ def get_dataset(name, root, train, download, transform, kwargs):
         if name == "wilds_animals":
             split = "train" if train else "id_test"
         elif name == "wilds_animals_ood_test":
+            split = "test"
+        elif name == "wilds_animals_224":
+            split = "train" if train else "id_test"
+        elif name == "wilds_animals_ood_test_224":
             split = "test"
         elif name == "wilds_camelyon":
             split = "train" if train else "id_val" # currently for chamelyon
