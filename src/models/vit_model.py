@@ -85,6 +85,8 @@ class net(pl.LightningModule):
         mean = torch.stack(mean, dim=0)
         self.mean = mean
         self.icov = torch.inverse(torch.tensor(np.cov(all_z.numpy().T)).to(all_z))
+        print(self.mean)
+        print(self.icov)
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
