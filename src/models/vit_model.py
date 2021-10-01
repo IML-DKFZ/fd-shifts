@@ -65,7 +65,8 @@ class net(pl.LightningModule):
 
         return {"loss": loss, "softmax": torch.softmax(probs, dim=1), "labels": y, "confid": maha}
 
-    def test_epoch_start(self, *args):
+    def on_test_start(self, *args):
+        print("Calculating trainset mean and cov")
         all_z = []
         all_y = []
         for x, y in self.trainer.datamodule.train_dataloader():
