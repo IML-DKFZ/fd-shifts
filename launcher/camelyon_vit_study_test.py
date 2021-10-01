@@ -14,7 +14,7 @@ base_command = '''bsub \\
 "source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}"'''
 # base_command = "EXPERIMENT_ROOT_DIR=~/Projects/openhybrid/cluster/experiments DATASET_ROOT_DIR=~/Data python -W ignore {} {}"
 
-datasets = ["wilds_camelyon"]
+datasets = ["wilds_camelyon", "wilds_animals", "breeds"]
 runs = range(1)
 lrs = [0.01, 0.03, 0.001, 0.003]
 for run, dataset, lr in product(runs, datasets, lrs):

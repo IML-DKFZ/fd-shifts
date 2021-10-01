@@ -65,6 +65,27 @@ class net(pl.LightningModule):
 
         return {"loss": loss, "softmax": torch.softmax(probs, dim=1), "labels": y, "confid": maha}
 
+    def test_epoch_start(self, *args):
+        all_z = []
+        all_y = []
+        for x, y in self.trainer.datamodule.train_dataloader():
+            x = x.type_as(self.model.head.weight)
+            y = y.type_as(self.model.head.weight)
+            z = self.model.forward_features(x)
+            all_z.append(z.cpu())
+            all_y.append(y.cpu())
+
+        all_z = torch.cat(all_z, dim=0)
+        all_y = torch.cat(all_y, dim=0)
+
+        mean = []
+        for c in range(self.hparams.data.num_classes):
+            mean.append(all_z[all_y == c].mean(dim=0))
+
+        mean = torch.stack(mean, dim=0)
+        self.mean = mean
+        self.icov = torch.inverse(torch.tensor(np.cov(all_z.numpy().T)).to(all_z))
+
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
         z = self.model.forward_features(x)
