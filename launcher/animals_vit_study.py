@@ -15,12 +15,12 @@ base_command = '''bsub \\
 "source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}"'''
 
 datasets = ["wilds_animals", "breeds"]
-runs = range(1)
+runs = range(4)
 lrs = [0.01, 0.03, 0.001, 0.003]
 for run, dataset, lr in product(runs, datasets, lrs):
     command_line_args = ""
     command_line_args += "study={}_vit_study ".format(dataset)
-    command_line_args += "exp.name={}_lr{} ".format(dataset, lr)
+    command_line_args += "exp.name={}_lr{}_run{} ".format(dataset, lr, run)
     command_line_args += "exp.mode={} ".format("train_test")
     command_line_args += "trainer.learning_rate={} ".format(lr)
     command_line_args += "+trainer.do_val=true "
