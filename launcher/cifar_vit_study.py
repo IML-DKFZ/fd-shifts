@@ -16,7 +16,8 @@ base_command = '''bsub \\
 
 datasets = ["cifar10", "cifar100", "svhn"]
 runs = range(4)
-lrs = [0.01, 0.03, 0.001, 0.003]
+# lrs = [0.01, 0.03, 0.001, 0.003]
+lrs = [0.001]
 for run, dataset, lr in product(runs, datasets, lrs):
     command_line_args = ""
     command_line_args += "study={}_vit_study ".format(dataset)
