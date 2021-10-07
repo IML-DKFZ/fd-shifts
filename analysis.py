@@ -305,7 +305,6 @@ class Analysis():
                                 method_dict["study_mcd_correct"] = deepcopy(method_dict["raw_mcd_correct"][select_ix]).reshape(
                                     15, 5, -1)[:, intensity_level].reshape(-1)
 
-
                         print("starting noise study with intensitiy level ", intensity_level + 1)
                         self.perform_study(study_name="{}_{}".format(study_name, intensity_level + 1))
 
@@ -416,7 +415,7 @@ class Analysis():
                 method_dict["mcd_waic"]["metrics"] = deepcopy(mcd_performance_metrics)
                 method_dict["mcd_waic"]["predict"] = deepcopy(mcd_predict)
 
-            if any(cfd in method_dict["query_confids"] for cfd  in ["ext_waic", "bpd_waic", "tcp_waic", "dg_waic", "devries_waic"]):
+            if any(cfd in method_dict["query_confids"] for cfd  in ["ext_waic", "bpd_waic", "maha_waic", "tcp_waic", "dg_waic", "devries_waic"]):
                 ext_confid_name = method_dict["cfg"].eval.ext_confid_name
                 out_name = ext_confid_name + "_waic"
                 method_dict[out_name] = {}
@@ -427,7 +426,7 @@ class Analysis():
                 method_dict[out_name]["predict"] = deepcopy(mcd_predict)
                 method_dict["query_confids"] = [out_name  if v=="ext_waic" else v for v in method_dict["query_confids"]]
 
-            if any(cfd in method_dict["query_confids"] for cfd  in ["ext_mcd", "bpd_mcd", "tcp_mcd", "dg_mcd", "devries_mcd"]):
+            if any(cfd in method_dict["query_confids"] for cfd  in ["ext_mcd", "bpd_mcd", "maha_mcd", "tcp_mcd", "dg_mcd", "devries_mcd"]):
                 ext_confid_name = method_dict["cfg"].eval.ext_confid_name
                 out_name = ext_confid_name + "_mcd"
                 method_dict[out_name] = {}
@@ -438,7 +437,7 @@ class Analysis():
                 method_dict[out_name]["predict"] = deepcopy(mcd_predict)
                 method_dict["query_confids"] = [out_name if v=="ext_mcd" else v for v in method_dict["query_confids"]]
 
-            if any(cfd in method_dict["query_confids"] for cfd  in ["ext", "bpd", "tcp", "dg", "devries"]):
+            if any(cfd in method_dict["query_confids"] for cfd  in ["ext", "bpd", "maha", "tcp", "dg", "devries"]):
                 ext_confid_name = method_dict["cfg"].eval.ext_confid_name
                 method_dict[ext_confid_name] = {}
                 method_dict[ext_confid_name]["confids"] = method_dict["study_external_confids"]
