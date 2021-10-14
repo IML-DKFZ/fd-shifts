@@ -1,6 +1,6 @@
 # @package _global_
 defaults:
-  - override /data: wilds_camelyon_224_data
+  - override /data: wilds_camelyon_384_data
 
 exp:
   group_name: vit
@@ -75,4 +75,4 @@ eval:
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
     iid_study: ${data.dataset}
-    in_class_study: [wilds_camelyon_ood_test_224]
+    in_class_study: [wilds_camelyon_ood_test_384]
