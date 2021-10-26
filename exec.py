@@ -47,7 +47,7 @@ def train(cf, subsequent_testing=False):
                           name=cf.exp.name,
                           version=cf.exp.version)
 
-    trainer = pl.Trainer(gpus=1,
+    trainer = pl.Trainer(gpus=-1,
                          logger=[tb_logger, csv_logger],
                          max_epochs=cf.trainer.num_epochs,
                          max_steps=cf.trainer.num_steps,
@@ -61,9 +61,9 @@ def train(cf, subsequent_testing=False):
                          deterministic= train_deterministic_flag,
                          # limit_train_batches=50,
                          limit_val_batches=0 if cf.trainer.do_val is False else 1.0,
-                         # replace_sampler_ddp=False,
-                         # accelerator="ddp"
-                         precision=16,
+                         replace_sampler_ddp=False,
+                         accelerator="dp",
+                         gradient_clip_val=1,
                          )
 
     print("logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version))

@@ -12,15 +12,15 @@ base_command = '''bsub \\
 -L /bin/bash -q gpu-lowprio \\
 -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
 "source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}"'''
-# base_command = "EXPERIMENT_ROOT_DIR=~/Projects/openhybrid/cluster/experiments DATASET_ROOT_DIR=~/Data python -W ignore {} {}"
+# base_command = "EXPERIMENT_ROOT_DIR=~/cluster/experiments DATASET_ROOT_DIR=~/Data python -W ignore {} {}"
 
-datasets = ["cifar10", "cifar100", "svhn"]
+datasets = ["cifar10", "svhn", "cifar100"]
 runs = range(1)
-lrs = [0.01, 0.03, 0.001, 0.003]
+lrs = [0.0003, 0.0001, 0.001, 0.003]
 for run, dataset, lr in product(runs, datasets, lrs):
     command_line_args = ""
     command_line_args += "study={}_vit_study ".format(dataset)
-    command_line_args += "exp.name={}_lr{} ".format(dataset, lr)
+    command_line_args += "exp.name={}_lr{}_run{} ".format(dataset, lr, run)
     command_line_args += "exp.mode={} ".format("test")
     # command_line_args += "exp.mode={} ".format("analysis")
     command_line_args += "trainer.learning_rate={} ".format(lr)

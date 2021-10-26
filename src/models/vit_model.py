@@ -30,6 +30,8 @@ class net(pl.LightningModule):
         self.icov = torch.eye(self.model.num_features)
 
         self.ext_confid_name = self.hparams.eval.ext_confid_name
+        self.latent = []
+        self.labels = []
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -37,12 +39,19 @@ class net(pl.LightningModule):
         probs = self.model.head(z)
         loss = torch.nn.functional.cross_entropy(probs, y)
 
-        return {"loss": loss, "softmax": torch.softmax(probs, dim=1), "labels": y, "latent": z.cpu()}
+        self.latent.append(z.cpu())
+        self.labels.append(y.cpu())
+
+        return {"loss": loss, "softmax": torch.softmax(probs, dim=1), "labels": y}
+
+    def training_step_end(self, batch_parts):
+        batch_parts["loss"] = batch_parts["loss"].mean()
+        return batch_parts
 
     def training_epoch_end(self, outputs):
         with torch.no_grad():
-            z = torch.cat([z["latent"] for z in outputs], dim=0)
-            y = torch.cat([y["labels"] for y in outputs], dim=0)
+            z = torch.cat(self.latent, dim=0)
+            y = torch.cat(self.labels, dim=0)
 
             mean = []
             for c in range(self.hparams.data.num_classes):
@@ -50,7 +59,10 @@ class net(pl.LightningModule):
 
             mean = torch.stack(mean, dim=0)
             self.mean = mean
-            self.icov = torch.inverse(torch.tensor(np.cov(z.numpy().T)).to(z))
+            self.icov = torch.inverse(torch.tensor(np.cov(z.numpy(), rowvar=False)).type_as(self.model.head.weight)).cpu()
+
+        self.latent = []
+        self.labels = []
 
     def validation_step(self, batch, batch_idx, *args):
         x, y = batch
@@ -67,7 +79,10 @@ class net(pl.LightningModule):
         probs = self.model.head(z)
         loss = torch.nn.functional.cross_entropy(probs, y)
 
-        return {"loss": loss, "softmax": torch.softmax(probs, dim=1), "labels": y, "confid": maha}
+        return {"loss": loss, "softmax": torch.softmax(probs, dim=1), "labels": y, "confid": maha.type_as(x)}
+
+    def validation_step_end(self, batch_parts):
+        return batch_parts
 
     def on_test_start(self, *args):
         tqdm.write("Calculating trainset mean and cov")
@@ -101,7 +116,7 @@ class net(pl.LightningModule):
 
         probs = self.model.head(z)
 
-        self.test_results = {"softmax": torch.softmax(probs, dim=1), "labels": y, "confid": maha}
+        self.test_results = {"softmax": torch.softmax(probs, dim=1), "labels": y, "confid": maha.type_as(x)}
 
     def configure_optimizers(self):
         optim = torch.optim.SGD(

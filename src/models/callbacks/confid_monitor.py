@@ -114,9 +114,9 @@ class ConfidMonitor(Callback):
                                                                      )
             print("CHECK TRAIN METRICS", monitor_metrics)
             tensorboard = pl_module.logger[0].experiment
-            pl_module.log("step", pl_module.current_epoch)
+            pl_module.log("step", pl_module.current_epoch, sync_dist=True)
             for k, v in monitor_metrics.items():
-                pl_module.log("train/{}".format(k), v)
+                pl_module.log("train/{}".format(k), v, sync_dist=True)
                 tensorboard.add_scalar("hp/train_{}".format(k), v, global_step=pl_module.current_epoch)
 
             if do_plot:
@@ -232,9 +232,9 @@ class ConfidMonitor(Callback):
                                                                      ext_confid_name=pl_module.ext_confid_name
                                                                      )
             tensorboard = pl_module.logger[0].experiment
-            pl_module.log("step", pl_module.current_epoch)
+            pl_module.log("step", pl_module.current_epoch, sync_dist=True)
             for k, v in monitor_metrics.items():
-                pl_module.log("val/{}".format(k), v)
+                pl_module.log("val/{}".format(k), v, sync_dist=True)
                 tensorboard.add_scalar("hp/val_{}".format(k), v, global_step=pl_module.current_epoch)
 
             if do_plot:
@@ -247,7 +247,7 @@ class ConfidMonitor(Callback):
                 if monitor_metrics is None or metric.split("/")[-1] not in monitor_metrics.keys():
                     dummy = 0 if mode == "max" else 1
                     print("selection metric {} not computed, replacing with {}.".format(metric, dummy))
-                    pl_module.log("{}".format(metric), dummy)
+                    pl_module.log("{}".format(metric), dummy, sync_dist=True)
 
         self.running_confid_stats["val"] = {k: {"confids": [], "correct": []} for k in
                                             self.query_confids["val"]}
