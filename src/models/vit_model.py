@@ -4,11 +4,15 @@ import timm
 import torch
 import hydra
 import numpy as np
+from pytorch_lightning.utilities.parsing import AttributeDict
+from tqdm import tqdm
 
 
 class net(pl.LightningModule):
     def __init__(self, *args, **kwargs):
         super().__init__()
+
+        self.hparams: AttributeDict = AttributeDict()
 
         self.save_hyperparameters()
 
@@ -66,10 +70,10 @@ class net(pl.LightningModule):
         return {"loss": loss, "softmax": torch.softmax(probs, dim=1), "labels": y, "confid": maha}
 
     def on_test_start(self, *args):
-        print("Calculating trainset mean and cov")
+        tqdm.write("Calculating trainset mean and cov")
         all_z = []
         all_y = []
-        for x, y in self.trainer.datamodule.train_dataloader():
+        for x, y in tqdm(self.trainer.datamodule.train_dataloader()):
             x = x.type_as(self.model.head.weight)
             y = y.type_as(self.model.head.weight)
             z = self.model.forward_features(x)
@@ -85,9 +89,7 @@ class net(pl.LightningModule):
 
         mean = torch.stack(mean, dim=0)
         self.mean = mean
-        self.icov = torch.inverse(torch.tensor(np.cov(all_z.numpy().T)).to(all_z))
-        print(self.mean)
-        print(self.icov)
+        self.icov = torch.inverse(torch.tensor(np.cov(all_z.numpy(), rowvar=False)).type_as(self.model.head.weight)).cpu()
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
