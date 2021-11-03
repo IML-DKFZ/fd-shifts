@@ -8,7 +8,7 @@ exp:
 
 trainer:
   num_epochs:
-  num_steps: 40000
+  num_steps: 10000
   val_every_n_epoch: 10
   val_split: zhang
   learning_rate: 0.003
@@ -17,10 +17,10 @@ trainer:
     warmup_epochs: 500
     warmup_start_lr: 0
     eta_min: 0
-    max_epochs: 40000
+    max_epochs: 10000
   momentum: 0.9
   weight_decay: 0.0
-  batch_size: 128
+  batch_size: 512
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
