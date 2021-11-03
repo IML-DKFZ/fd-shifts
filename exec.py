@@ -37,7 +37,7 @@ def train(cf, subsequent_testing=False):
         print("resuming previous training:", resume_ckpt_path)
 
     datamodule = AbstractDataLoader(cf)
-    model = get_model(cf.model.name)(**cf)
+    model = get_model(cf.model.name)(cf)
     tb_logger= TensorBoardLogger(save_dir=cf.exp.group_dir,
                                  name=cf.exp.name,
                                  default_hp_metric=False,
@@ -47,10 +47,13 @@ def train(cf, subsequent_testing=False):
                           name=cf.exp.name,
                           version=cf.exp.version)
 
+    max_steps = cf.trainer.num_steps if hasattr(cf.trainer, "num_steps") else None
+    accelerator = cf.trainer.accelerator if hasattr(cf.trainer, "accelerator") else None
+
     trainer = pl.Trainer(gpus=-1,
                          logger=[tb_logger, csv_logger],
                          max_epochs=cf.trainer.num_epochs,
-                         max_steps=cf.trainer.num_steps,
+                         max_steps=max_steps,
                          callbacks=get_callbacks(cf),
                          resume_from_checkpoint = resume_ckpt_path,
                          benchmark=cf.trainer.benchmark,
@@ -61,8 +64,8 @@ def train(cf, subsequent_testing=False):
                          deterministic= train_deterministic_flag,
                          # limit_train_batches=50,
                          limit_val_batches=0 if cf.trainer.do_val is False else 1.0,
-                         replace_sampler_ddp=False,
-                         accelerator="dp",
+                         # replace_sampler_ddp=False,
+                         accelerator=accelerator,
                          gradient_clip_val=1,
                          )
 
@@ -110,7 +113,7 @@ def test(cf):
         ckpt_path, cf.test.selection_criterion))
     print("logging testing to: {}".format(cf.test.dir))
 
-    module = get_model(cf.model.name)(**cf)
+    module = get_model(cf.model.name)(cf)
     module.load_only_state_dict(ckpt_path)
     datamodule = AbstractDataLoader(cf)
 

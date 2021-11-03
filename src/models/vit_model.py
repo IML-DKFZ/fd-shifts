@@ -9,12 +9,13 @@ from tqdm import tqdm
 
 
 class net(pl.LightningModule):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, cf):
         super().__init__()
 
         self.hparams: AttributeDict = AttributeDict()
 
         self.save_hyperparameters()
+        self.hparams.update(dict(cf))
 
         self.model = timm.create_model(
             "vit_base_patch16_224_in21k",
