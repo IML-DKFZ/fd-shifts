@@ -3,6 +3,7 @@ from pytorch_lightning.trainer.connectors.logger_connector.logger_connector impo
 import torch
 import numpy as np
 from src.utils import eval_utils
+from tqdm import tqdm
 
 
 class ConfidMonitor(Callback):
@@ -113,7 +114,7 @@ class ConfidMonitor(Callback):
                                                                      do_plot = do_plot,
                                                                      ext_confid_name=pl_module.ext_confid_name
                                                                      )
-            print("CHECK TRAIN METRICS", monitor_metrics)
+            tqdm.write("CHECK TRAIN METRICS", monitor_metrics)
             tensorboard = pl_module.logger[0].experiment
             pl_module.log("step", pl_module.current_epoch, sync_dist=self.sync_dist)
             for k, v in monitor_metrics.items():
@@ -224,7 +225,7 @@ class ConfidMonitor(Callback):
         if (len(self.running_confid_stats["val"].keys()) > 0 or len(self.running_perf_stats["val"].keys()) > 0) \
                 and (self.running_val_correct_sum_sanity > 0):
             do_plot = True if len(self.query_confids["val"]) > 0 and len(self.query_monitor_plots) > 0 else False
-            print(self.running_confid_stats["val"].keys(), [len(ix["confids"]) for ix in self.running_confid_stats["val"].values()])
+            tqdm.write(self.running_confid_stats["val"].keys(), [len(ix["confids"]) for ix in self.running_confid_stats["val"].values()])
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confid_stats["val"],
                                                                      self.running_perf_stats["val"],
                                                                      self.query_confid_metrics["val"],
@@ -242,12 +243,12 @@ class ConfidMonitor(Callback):
                 for k, v in monitor_plots.items():
                     tensorboard.add_figure("val/{}".format(k), v, pl_module.current_epoch)
 
-        print("CHECK VAL METRICS", monitor_metrics)
+        tqdm.write("CHECK VAL METRICS", monitor_metrics)
         if hasattr(pl_module, "selection_metrics"):
             for metric, mode in zip(pl_module.selection_metrics, pl_module.selection_modes):
                 if monitor_metrics is None or metric.split("/")[-1] not in monitor_metrics.keys():
                     dummy = 0 if mode == "max" else 1
-                    print("selection metric {} not computed, replacing with {}.".format(metric, dummy))
+                    tqdm.write("selection metric {} not computed, replacing with {}.".format(metric, dummy))
                     pl_module.log("{}".format(metric), dummy, sync_dist=self.sync_dist)
 
         self.running_confid_stats["val"] = {k: {"confids": [], "correct": []} for k in
@@ -265,12 +266,12 @@ class ConfidMonitor(Callback):
                                     stacked_labels, stacked_dataset_idx],
                                    dim=1)
             np.save(self.output_paths.fit.raw_output, raw_output.cpu().data.numpy())
-            print("saved raw validation outputs to {}".format(self.output_paths.fit.raw_output))
+            tqdm.write("saved raw validation outputs to {}".format(self.output_paths.fit.raw_output))
 
             if len(self.running_test_external_confids) > 0:
                 stacked_external_confids = torch.stack(self.running_test_external_confids, dim=0)
                 np.save(self.output_paths.fit.external_confids, stacked_external_confids.cpu().data.numpy())
-                print("saved external confids validation outputs to {}".format(self.output_paths.fit.external_confids))
+                tqdm.write("saved external confids validation outputs to {}".format(self.output_paths.fit.external_confids))
 
             self.running_test_softmax = []
             self.running_test_labels = []
@@ -304,22 +305,22 @@ class ConfidMonitor(Callback):
                                dim=1)
 
         np.savez_compressed(self.output_paths.test.raw_output, raw_output.cpu().data.numpy())
-        print("saved raw test outputs to {}".format(self.output_paths.test.raw_output))
+        tqdm.write("saved raw test outputs to {}".format(self.output_paths.test.raw_output))
 
         if len(self.running_test_softmax_dist) > 0:
             stacked_softmax = torch.stack(self.running_test_softmax_dist, dim=0)
             np.savez_compressed(self.output_paths.test.raw_output_dist, stacked_softmax.cpu().data.numpy())
-            print("saved softmax dist raw test outputs to {}".format(self.output_paths.test.raw_output_dist))
+            tqdm.write("saved softmax dist raw test outputs to {}".format(self.output_paths.test.raw_output_dist))
 
         if len(self.running_test_external_confids) > 0:
             stacked_external_confids = torch.stack(self.running_test_external_confids, dim=0)
             np.savez_compressed(self.output_paths.test.external_confids, stacked_external_confids.cpu().data.numpy())
-            print("saved ext confid raw test outputs to {}".format(self.output_paths.test.external_confids))
+            tqdm.write("saved ext confid raw test outputs to {}".format(self.output_paths.test.external_confids))
 
         if len(self.running_test_external_confids_dist) > 0:
             stacked_external_confids_dist = torch.stack(self.running_test_external_confids_dist, dim=0)
             np.savez_compressed(self.output_paths.test.external_confids_dist, stacked_external_confids_dist.cpu().data.numpy())
-            print("saved ext confid dist raw test outputs to {}".format(self.output_paths.test.external_confids_dist))
+            tqdm.write("saved ext confid dist raw test outputs to {}".format(self.output_paths.test.external_confids_dist))
 
 
 

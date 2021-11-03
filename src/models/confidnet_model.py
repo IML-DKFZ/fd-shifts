@@ -3,6 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 import pytorch_lightning as pl
 from src.models.networks import get_network
+from tqdm import tqdm
 
 
 
@@ -70,7 +71,7 @@ class net(pl.LightningModule):
             self.backbone.encoder.load_pretrained_imagenet_params(self.imagenet_weights_path)
 
         for ix, x in enumerate(self.backbone.named_modules()):
-            print(ix, x[1])
+            tqdm.write(ix, x[1])
 
 
     def training_step(self, batch, batch_idx):
