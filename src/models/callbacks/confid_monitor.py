@@ -114,7 +114,7 @@ class ConfidMonitor(Callback):
                                                                      do_plot = do_plot,
                                                                      ext_confid_name=pl_module.ext_confid_name
                                                                      )
-            tqdm.write("CHECK TRAIN METRICS", monitor_metrics)
+            tqdm.write(f"CHECK TRAIN METRICS {str(monitor_metrics)}")
             tensorboard = pl_module.logger[0].experiment
             pl_module.log("step", pl_module.current_epoch, sync_dist=self.sync_dist)
             for k, v in monitor_metrics.items():
@@ -225,7 +225,7 @@ class ConfidMonitor(Callback):
         if (len(self.running_confid_stats["val"].keys()) > 0 or len(self.running_perf_stats["val"].keys()) > 0) \
                 and (self.running_val_correct_sum_sanity > 0):
             do_plot = True if len(self.query_confids["val"]) > 0 and len(self.query_monitor_plots) > 0 else False
-            tqdm.write(self.running_confid_stats["val"].keys(), [len(ix["confids"]) for ix in self.running_confid_stats["val"].values()])
+            tqdm.write(f'{self.running_confid_stats["val"].keys()} {[len(ix["confids"]) for ix in self.running_confid_stats["val"].values()]}')
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(self.running_confid_stats["val"],
                                                                      self.running_perf_stats["val"],
                                                                      self.query_confid_metrics["val"],
@@ -243,7 +243,7 @@ class ConfidMonitor(Callback):
                 for k, v in monitor_plots.items():
                     tensorboard.add_figure("val/{}".format(k), v, pl_module.current_epoch)
 
-        tqdm.write("CHECK VAL METRICS", monitor_metrics)
+        tqdm.write(f"CHECK VAL METRICS {str(monitor_metrics)}")
         if hasattr(pl_module, "selection_metrics"):
             for metric, mode in zip(pl_module.selection_metrics, pl_module.selection_modes):
                 if monitor_metrics is None or metric.split("/")[-1] not in monitor_metrics.keys():

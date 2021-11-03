@@ -103,9 +103,10 @@ class net(pl.LightningModule):
             self.trainer.lr_schedulers[0]["scheduler"].step()
 
         for ix, x in enumerate(self.model.named_modules()):
-            tqdm.write(ix, x[1])
+            tqdm.write(str(ix))
+            tqdm.write(str(x[1]))
             if isinstance(x[1], nn.Conv2d) or isinstance(x[1], nn.Linear):
-                tqdm.write(x[1].weight.mean().item())
+                tqdm.write(str(x[1].weight.mean().item()))
 
 
 

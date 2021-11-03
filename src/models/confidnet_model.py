@@ -71,7 +71,8 @@ class net(pl.LightningModule):
             self.backbone.encoder.load_pretrained_imagenet_params(self.imagenet_weights_path)
 
         for ix, x in enumerate(self.backbone.named_modules()):
-            tqdm.write(ix, x[1])
+            tqdm.write(str(ix))
+            tqdm.write(str(x[1]))
 
 
     def training_step(self, batch, batch_idx):
