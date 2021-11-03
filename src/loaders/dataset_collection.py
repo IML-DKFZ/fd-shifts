@@ -25,26 +25,38 @@ def get_dataset(name, root, train, download, transform, kwargs):
     """
     dataset_factory = {
         "svhn": datasets.SVHN,
+        "svhn_384": datasets.SVHN,
         "tinyimagenet": datasets.ImageFolder,
+        "tinyimagenet_384": datasets.ImageFolder,
         "tinyimagenet_resize": datasets.ImageFolder,
         "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
+        "cifar10_384": datasets.CIFAR10,
+        "cifar100_384": datasets.CIFAR100,
         "super_cifar100": SuperCIFAR100,
         "corrupt_cifar100": CorruptCIFAR,
+        "corrupt_cifar100_384": CorruptCIFAR,
         "corrupt_cifar10": CorruptCIFAR,
+        "corrupt_cifar10_384": CorruptCIFAR,
         "breeds": BREEDImageNet,
         "breeds_ood_test": BREEDImageNet,
+        "breeds_384": BREEDImageNet,
+        "breeds_ood_test_384": BREEDImageNet,
         "wilds_animals": WILDSAnimals,
         "wilds_animals_ood_test": WILDSAnimals,
+        "wilds_animals_384": WILDSAnimals,
+        "wilds_animals_ood_test_384": WILDSAnimals,
         "wilds_camelyon": WILDSCamelyon,
+        "wilds_camelyon_384": WILDSCamelyon,
         "wilds_camelyon_ood_test": WILDSCamelyon,
+        "wilds_camelyon_ood_test_384": WILDSCamelyon,
     }
 
     pass_kwargs = {"root": root, "train": train, "download": download, "transform": transform}
-    if name == "svhn":
+    if name.startswith("svhn"):
         pass_kwargs = {"root": root, "split": "train" if train else "test", "download": download, "transform": transform}
-    if name == "tinyimagenet":
+    if name == "tinyimagenet" or name == "tinyimagenet_384":
         pass_kwargs = {"root": os.path.join(root, "test"), "transform": transform}
     if name == "tinyimagenet_resize":
         pass_kwargs = {"root": root, "transform": transform}
@@ -53,6 +65,10 @@ def get_dataset(name, root, train, download, transform, kwargs):
         if name == "breeds":
             split = "train" if train else "id_test"
         elif name == "breeds_ood_test":
+            split = "ood_test"
+        elif name == "breeds_384":
+            split = "train" if train else "id_test"
+        elif name == "breeds_ood_test_384":
             split = "ood_test"
         print("CHECK SPLIT", name, split)
         pass_kwargs = {"root": root, "split": split, "download": download, "transform": transform, "kwargs": kwargs}
@@ -63,9 +79,17 @@ def get_dataset(name, root, train, download, transform, kwargs):
             split = "train" if train else "id_test"
         elif name == "wilds_animals_ood_test":
             split = "test"
+        elif name == "wilds_animals_384":
+            split = "train" if train else "id_test"
+        elif name == "wilds_animals_ood_test_384":
+            split = "test"
         elif name == "wilds_camelyon":
             split = "train" if train else "id_val" # currently for chamelyon
         elif name == "wilds_camelyon_ood_test":
+            split = "test"
+        elif name == "wilds_camelyon_384":
+            split = "train" if train else "id_val" # currently for chamelyon
+        elif name == "wilds_camelyon_ood_test_384":
             split = "test"
         return dataset_factory[name](**pass_kwargs).get_subset(split, frac=1.0, transform=transform)
 

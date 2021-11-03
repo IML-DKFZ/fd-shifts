@@ -43,6 +43,9 @@ def monitor_eval(running_confid_stats, running_perf_stats, query_confid_metrics,
                 max_confid = np.max(confids_cpu)
                 confids_cpu = 1 - ((confids_cpu - min_confid) / (max_confid - min_confid + 1e-9))
 
+            if (confid_key == "ext" and ext_confid_name == "maha"):
+                confids_cpu = (confids_cpu - confids_cpu.min()) / np.abs(confids_cpu.min() - confids_cpu.max())
+
             if confid_key == "ood_ext":
                 query_confid_metrics = ["failauc"]
                 query_monitor_plots = ["hist_per_confid"]

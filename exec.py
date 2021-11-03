@@ -1,5 +1,3 @@
-
-
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -49,9 +47,13 @@ def train(cf, subsequent_testing=False):
                           name=cf.exp.name,
                           version=cf.exp.version)
 
-    trainer = pl.Trainer(gpus=1,
+    max_steps = cf.trainer.num_steps if hasattr(cf.trainer, "num_steps") else None
+    accelerator = cf.trainer.accelerator if hasattr(cf.trainer, "accelerator") else None
+
+    trainer = pl.Trainer(gpus=-1,
                          logger=[tb_logger, csv_logger],
                          max_epochs=cf.trainer.num_epochs,
+                         max_steps=max_steps,
                          callbacks=get_callbacks(cf),
                          resume_from_checkpoint = resume_ckpt_path,
                          benchmark=cf.trainer.benchmark,
@@ -63,7 +65,8 @@ def train(cf, subsequent_testing=False):
                          # limit_train_batches=50,
                          limit_val_batches=0 if cf.trainer.do_val is False else 1.0,
                          # replace_sampler_ddp=False,
-                         # accelerator="ddp"
+                         accelerator=accelerator,
+                         gradient_clip_val=1,
                          )
 
     print("logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version))
@@ -117,12 +120,19 @@ def test(cf):
     if not os.path.exists(cf.test.dir):
         os.makedirs(cf.test.dir)
 
-    trainer = pl.Trainer(gpus=1, logger=False, callbacks=get_callbacks(cf))
+    trainer = pl.Trainer(
+        gpus=1,
+        logger=False,
+        callbacks=get_callbacks(cf),
+        precision=16,
+        # limit_test_batches=50
+    )
     trainer.test(model=module, datamodule=datamodule)
     analysis.main(in_path=cf.test.dir,
                   out_path=cf.test.dir,
                   query_studies=cf.eval.query_studies,
                   add_val_tuning=cf.eval.val_tuning,
+                  threshold_plot_confid=None,
                   cf = cf)
 
     # fix str bug
@@ -151,6 +161,7 @@ def main(cf: DictConfig):
                       out_path=cf.test.dir,
                       query_studies=cf.eval.query_studies,
                       add_val_tuning=cf.eval.val_tuning,
+                      threshold_plot_confid=None,
                       cf=cf)
 
 

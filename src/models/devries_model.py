@@ -3,6 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 import pytorch_lightning as pl
 from src.models.networks import get_network
+from tqdm import tqdm
 
 class net(pl.LightningModule):
 
@@ -90,7 +91,7 @@ class net(pl.LightningModule):
 
         if self.ext_confid_name == "dg" and self.current_epoch == self.pretrain_epochs -1 and self.save_dg_backbone_path is not None:
             self.trainer.save_checkpoint(self.save_dg_backbone_path)
-            print("saved pretrained dg backbone to {}".format(self.save_dg_backbone_path))
+            tqdm.write("saved pretrained dg backbone to {}".format(self.save_dg_backbone_path))
 
     def on_train_start(self):
 
@@ -98,13 +99,13 @@ class net(pl.LightningModule):
             self.model.encoder.load_pretrained_imagenet_params(self.imagenet_weights_path)
 
         if self.current_epoch > 0: # check if resumed training
-            print("stepping scheduler after resume...")
+            tqdm.write("stepping scheduler after resume...")
             self.trainer.lr_schedulers[0]["scheduler"].step()
 
         for ix, x in enumerate(self.model.named_modules()):
-            print(ix, x[1])
+            tqdm.write(ix, x[1])
             if isinstance(x[1], nn.Conv2d) or isinstance(x[1], nn.Linear):
-                print(x[1].weight.mean().item())
+                tqdm.write(x[1].weight.mean().item())
 
 
 
