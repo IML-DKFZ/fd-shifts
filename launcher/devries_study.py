@@ -49,6 +49,7 @@ for ix, (bb, do, model, run, ne, ap, sched, norm) in enumerate(product(backbones
         command_line_args += "trainer.lr_scheduler.name={} ".format(sched)
         command_line_args += "trainer.batch_size=128 "
         command_line_args += "+trainer.accelerator=dp "
+        command_line_args += "trainer.optimizer.learning_rate=1e-4 "
 
         command_line_args += "model.dropout_rate={} ".format(do)
         command_line_args += "model.name={} ".format(model) # todo careful, name vs backbone!
