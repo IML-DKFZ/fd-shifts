@@ -503,7 +503,7 @@ class Analysis():
                 confid_dict["plot_stats"] = eval.get_plot_stats_per_confid()
 
                 if self.study_name == "val_tuning":
-                    self.val_risk_scores[confid_key] = eval.get_val_risk_scores(self.rstar, self.rdelta[0]) # dummy, because now doing the plot and delta is a list!
+                    self.val_risk_scores[confid_key] = eval.get_val_risk_scores(self.rstar, self.rdelta) # dummy, because now doing the plot and delta is a list!
                 if self.val_risk_scores.get(confid_key) is not None:
                     val_risk_scores = self.val_risk_scores[confid_key]
                     test_risk_scores = {}
