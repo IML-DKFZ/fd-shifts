@@ -30,6 +30,7 @@ class Encoder(nn.Module):
             pretrained=True,
             img_size=cf.data.img_size[0],
             num_classes=num_classes,
+            drop_rate=cf.model.dropout_rate,
         )
         self.model.reset_classifier(num_classes)
         self.model.head.weight.tensor = torch.zeros_like(self.model.head.weight)
@@ -37,10 +38,14 @@ class Encoder(nn.Module):
         self.dropout_rate = cf.model.dropout_rate
 
     def disable_dropout(self):
-        pass
+        for layer in self.named_modules():
+            if isinstance(layer[1], nn.modules.dropout.Dropout):
+                layer[1].eval()
 
     def enable_dropout(self):
-        pass
+        for layer in self.named_modules():
+            if isinstance(layer[1], nn.modules.dropout.Dropout):
+                layer[1].train()
 
     def forward(self, x):
         x = self.model.forward_features(x)
