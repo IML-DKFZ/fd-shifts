@@ -1,5 +1,8 @@
 # @package _global_
 
+exp:
+  group_name: dg_vit
+  name: cifar10
 
 trainer:
   num_epochs: 300 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
@@ -44,7 +47,8 @@ trainer:
 
 model:
   name: devries_model # det_mcd_model #
-  fc_dim: 512
+  # fc_dim: 512
+  fc_dim: 768
   confidnet_fc_dim: 400
   dg_reward:  2.2
   avg_pool: True
