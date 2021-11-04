@@ -161,6 +161,9 @@ class net(pl.LightningModule):
 
         return {"loss":loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)} # ,"imgs":x
 
+    def training_step_end(self, batch_parts):
+        batch_parts["loss"] = batch_parts["loss"].mean()
+        return batch_parts
 
     def validation_step(self, batch, batch_idx):
 
@@ -204,6 +207,9 @@ class net(pl.LightningModule):
         # print(self.lmbda, confidence_loss.item())
         # print(x.mean(), pred_original.std())
         return {"loss": loss, "softmax": pred_original, "labels": y, "confid": confidence.squeeze(1)}
+
+    def validation_step_end(self, batch_parts):
+        return batch_parts
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
