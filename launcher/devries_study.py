@@ -13,7 +13,7 @@ base_command = '''bsub \\
 -gpu num=4:j_exclusive=yes:mode=exclusive_process:gmem=31.7G \\
 -L /bin/bash -q gpu-lowprio \\
 -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
-"source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}"'''
+'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}\''''
 # base_command = "EXPERIMENT_ROOT_DIR=~/cluster/experiments DATASET_ROOT_DIR=~/Data python -W ignore {} {}"
 
 mode = "train" # "test" / "train"
