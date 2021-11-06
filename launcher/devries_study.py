@@ -16,7 +16,8 @@ base_command = '''bsub \\
 'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}\''''
 # base_command = "EXPERIMENT_ROOT_DIR=~/cluster/experiments DATASET_ROOT_DIR=~/Data python -W ignore {} {}"
 
-mode = "train" # "test" / "train"
+# mode = "train" # "test" / "train"
+mode = "test" # "test" / "train"
 # backbones = ["vgg13", "vgg16"]
 backbones = ["vit"]
 dropouts = [0] # only true for vgg16

@@ -9,13 +9,13 @@ exec_path = os.path.join(exec_dir, "exec.py")
 
 base_command = '''bsub \\
 -R "select[hname!='e230-dgx2-1']" \\
--gpu num=4:j_exclusive=yes:mode=exclusive_process:gmem=31.7G \\
+-gpu num=16:j_exclusive=yes:mode=exclusive_process:gmem=31.7G \\
 -L /bin/bash -q gpu-lowprio \\
 -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
 "source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}"'''
 
-datasets = ["cifar10"]
-lrs = [0.0003]
+datasets = ["cifar100"]
+lrs = [0.01]
 runs = range(1, 5)
 for run, (dataset, lr) in product(runs, zip(datasets, lrs)):
     command_line_args = ""
