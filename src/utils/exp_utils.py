@@ -37,9 +37,8 @@ def get_most_recent_version(exp_dir):
     return max_ver
 
 def get_resume_ckpt_path(cf):
-    if dict(cf.model).get("network") is not None:
-        if dict(cf.model.network).get("load_dg_backbone_path") is not None:
-            return cf.model.network.load_dg_backbone_path
+    if (dict(cf.model).get("network") is not None) and (dict(cf.model.network).get("load_dg_backbone_path") is not None):
+        return cf.model.network.load_dg_backbone_path
     else:
         selection_criterion = cf.test.selection_criterion
         if cf.test.selection_criterion == "latest":
