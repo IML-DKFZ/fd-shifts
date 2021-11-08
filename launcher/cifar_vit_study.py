@@ -14,8 +14,8 @@ base_command = '''bsub \\
 -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
 "source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}"'''
 
-datasets = ["cifar10"]
-lrs = [0.0003]
+datasets = ["svhn", "breeds", "wilds_camelyon"]
+lrs = [0.003, 0.003, 0.003]
 runs = range(1, 5)
 for run, (dataset, lr) in product(runs, zip(datasets, lrs)):
     command_line_args = ""

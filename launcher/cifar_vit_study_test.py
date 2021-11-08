@@ -14,9 +14,10 @@ base_command = '''bsub \\
 "source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}"'''
 # base_command = "EXPERIMENT_ROOT_DIR=~/cluster/experiments DATASET_ROOT_DIR=~/Data python -W ignore {} {}"
 
-datasets = ["cifar10", "cifar100"]
+# datasets = ["cifar10", "cifar100"]
 runs = range(1, 5)
-lrs = [0.0003, 0.01]
+datasets = ["svhn", "breeds", "wilds_camelyon"]
+lrs = [0.003, 0.003, 0.003]
 for run, (dataset, lr) in product(runs, zip(datasets, lrs)):
     command_line_args = ""
     command_line_args += "study={}_vit_study ".format(dataset)
