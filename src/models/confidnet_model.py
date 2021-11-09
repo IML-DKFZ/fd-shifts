@@ -107,6 +107,9 @@ class net(pl.LightningModule):
             loss = F.mse_loss(pred_confid, tcp) # self.loss_mse(pred_confid, tcp) #
             return {"loss":loss, "softmax": softmax, "labels": y, "confid": pred_confid.squeeze(1)}
 
+    def training_step_end(self, batch_parts):
+        batch_parts["loss"] = batch_parts["loss"].mean()
+        return batch_parts
 
     # def on_after_backward(self):
     #
@@ -168,6 +171,8 @@ class net(pl.LightningModule):
             #
             return {"loss": loss, "softmax": softmax, "softmax_dist": softmax_dist, "labels": y, "confid": pred_confid.squeeze(1)}
 
+    def validation_step_end(self, batch_parts):
+        return batch_parts
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
