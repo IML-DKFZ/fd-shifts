@@ -22,10 +22,10 @@ backbones = ["vit"]
 dropouts = [1, 0]
 cutout = [True]# only true for vgg16
 models = ["devries_model"]
-scheduler = ["CosineAnnealing"]
+scheduler = ["LinearWarmupCosineAnnealing"]
 reward = [2.2, 3, 4.5, 6, 10]
 runs = [1]
-lrs = [1e-1, 1e-3]
+lrs = [3e-4]
 
 
 for ix, (bb, do, model, run, rew, sched, co, lr) in enumerate(product(backbones, dropouts, models, runs, reward, scheduler, cutout, lrs)):

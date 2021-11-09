@@ -9,11 +9,14 @@ class TrainingStages(Callback):
         self.milestones = milestones
         self.disable_dropout_at_finetuning = disable_dropout_at_finetuning
 
+    def on_train_start(self, trainer, pl_module):
+        if pl_module.pretrained_backbone_path is not None:
+            self.milestones[1] = self.milestones[1] - self.milestones[0]
+            self.milestones[0] = 0
 
     def on_train_epoch_start(self, trainer, pl_module):
 
         # self.check_weight_consistency(pl_module)
-
 
         if pl_module.current_epoch == self.milestones[0]: # this is the end before the queried epoch
             print("Starting Training ConfidNet")
@@ -30,6 +33,8 @@ class TrainingStages(Callback):
             backbone_encoder_state_dict = OrderedDict(
                 (k.replace("backbone.encoder.", ""), v) for k, v in loaded_state_dict.items() if
                 "backbone.encoder." in k)
+            if len(backbone_encoder_state_dict) == 0:
+                backbone_encoder_state_dict = loaded_state_dict
             backbone_classifier_state_dict = OrderedDict(
                 (k.replace("backbone.classifier.", ""), v) for k, v in loaded_state_dict.items() if
                 "backbone.classifier." in k)

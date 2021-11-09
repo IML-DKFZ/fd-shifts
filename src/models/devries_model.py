@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import pytorch_lightning as pl
+import pl_bolts
 from src.models.networks import get_network
 from tqdm import tqdm
 
@@ -249,6 +250,16 @@ class net(pl.LightningModule):
             schedulers = [torch.optim.lr_scheduler.CosineAnnealingLR(optimizers[0],
                                                                      T_max=self.lr_scheduler_cfgs.max_epochs,
                                                                      verbose=True)]
+        elif self.lr_scheduler_cfgs.name == "LinearWarmupCosineAnnealing":
+            num_batches = len(self.train_dataloader()) / self.trainer.accumulate_grad_batches
+            schedulers = [{
+                "scheduler": pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR(
+                    optimizer=optimizers[0],
+                    max_epochs=self.lr_scheduler_cfgs.max_epochs * num_batches,
+                    warmup_epochs=self.lr_scheduler_cfgs.warmup_epochs,
+                ),
+                "interval": "step",
+            }]
 
 
         return optimizers, schedulers

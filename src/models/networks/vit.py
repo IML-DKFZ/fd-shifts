@@ -8,7 +8,7 @@ class ViT(nn.Module):
         super(ViT, self).__init__()
 
         self.encoder = Encoder(cf)
-        self.classifier = self.encoder.model.head
+        self.classifier = Classifier(self.encoder.model.head)
 
     def forward(self, x):
         out = self.encoder(x)
@@ -50,3 +50,19 @@ class Encoder(nn.Module):
     def forward(self, x):
         x = self.model.forward_features(x)
         return x
+    
+    # def load_state_dict(self, state_dict, strict=True):
+    #     print(state_dict)
+    #     self.model.load_state_dict(state_dict, strict)
+
+
+class Classifier(nn.Module):
+    def __init__(self, module):
+        super(Classifier, self).__init__()
+        self.module = module
+
+    def forward(self, x):
+        return self.module(x)
+
+    def load_state_dict(self, state_dict, strict=True):
+        pass

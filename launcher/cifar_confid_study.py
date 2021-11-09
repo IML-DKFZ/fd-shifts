@@ -17,7 +17,8 @@ base_command = '''bsub \\
 
 datasets = ["cifar10"]
 pt_paths = [
-    "/home/t974t/cluster/experiments/vit/cifar10_lr0.0003_run0/version_0/last.ckpt",
+    # "/home/t974t/cluster/experiments/vit/cifar10_lr0.0003_run0/version_0/last.ckpt",
+    "/gpu/checkpoints/OE0612/t974t/experiments/vit/cifar10_lr0.0003_run0/version_0/last.ckpt",
 ]
 runs = range(1)
 repro_mode = [True]
