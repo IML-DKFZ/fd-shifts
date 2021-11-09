@@ -30,7 +30,7 @@ class Encoder(nn.Module):
             pretrained=True,
             img_size=cf.data.img_size[0],
             num_classes=num_classes,
-            drop_rate=cf.model.dropout_rate * 0.5,
+            drop_rate=cf.model.dropout_rate * 0.1,
         )
         self.model.reset_classifier(num_classes)
         self.model.head.weight.tensor = torch.zeros_like(self.model.head.weight)

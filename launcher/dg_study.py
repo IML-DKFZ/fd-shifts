@@ -25,7 +25,7 @@ models = ["devries_model"]
 scheduler = ["LinearWarmupCosineAnnealing"]
 reward = [2.2, 3, 4.5, 6, 10]
 runs = [1]
-lrs = [3e-4]
+lrs = [1e-1, 1e-3]
 
 
 for ix, (bb, do, model, run, rew, sched, co, lr) in enumerate(product(backbones, dropouts, models, runs, reward, scheduler, cutout, lrs)):
