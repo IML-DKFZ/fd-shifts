@@ -75,4 +75,4 @@ eval:
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
     iid_study: ${data.dataset}
-    in_class_study: [wilds_camelyon_ood_test_384]
+    # in_class_study: [wilds_camelyon_ood_test_384]
