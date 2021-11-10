@@ -14,15 +14,18 @@ base_command = '''bsub \\
 -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
 "source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}"'''
 
-datasets = ["svhn", "breeds", "wilds_camelyon"]
-lrs = [0.003, 0.003, 0.003]
-runs = range(1, 5)
-for run, (dataset, lr) in product(runs, zip(datasets, lrs)):
+datasets = ["cifar10", "svhn", "breeds", "wilds_camelyon"]
+lrs = [1e-2, 1e-3, 3e-2, 3e-3]
+dos = [1]
+runs = range(1)
+for run, dataset, lr, do in product(runs, datasets, lrs, dos):
     command_line_args = ""
     command_line_args += "study={}_vit_study ".format(dataset)
-    command_line_args += "exp.name={}_lr{}_run{} ".format(dataset, lr, run)
+    command_line_args += "exp.name={}_lr{}_run{}_do{} ".format(dataset, lr, run, do)
     command_line_args += "exp.mode={} ".format("train")
     command_line_args += "trainer.learning_rate={} ".format(lr)
+    command_line_args += "+model.dropout_rate={} ".format(do)
+    command_line_args += "+eval.val_tuning=true "
     command_line_args += "+trainer.do_val=true "
     command_line_args += "+trainer.accelerator=dp "
 
