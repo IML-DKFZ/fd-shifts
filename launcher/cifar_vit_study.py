@@ -12,9 +12,9 @@ exec_path = os.path.join(exec_dir, "exec.py")
 # dos = [0]
 # runs = range(1, 5)
 # for run, (dataset, lr), do in product(runs, zip(datasets, lrs), dos):
-datasets = ["super_cifar100"]
+datasets = ["cifar100", "wilds_animals"]
 lrs = [0.01, 0.03, 0.001, 0.003]
-dos = [0, 1]
+dos = [1]
 runs = range(1)
 for run, dataset, lr, do in product(runs, datasets, lrs, dos):
     if dataset in ["cifar100", "wilds_animals"]:
