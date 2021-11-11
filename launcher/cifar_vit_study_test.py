@@ -14,7 +14,7 @@ dos = [1]
 runs = range(1)
 for run, dataset, lr, do in product(runs, datasets, lrs, dos):
     base_command = '''bsub \\
-    -gpu num=4:j_exclusive=yes:mode=exclusive_process:gmem=31.6G \\
+    -gpu num=4:j_exclusive=yes:gmem=10.7G \\
     -R "select[hname!='e230-dgx2-1']" \\
     -L /bin/bash -q gpu-lowprio \\
     -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
@@ -32,7 +32,7 @@ for run, dataset, lr, do in product(runs, datasets, lrs, dos):
     command_line_args += "+model.dropout_rate=1 "
     command_line_args += "+eval.r_star=0.25 "
     command_line_args += "+eval.r_delta=0.05 "
-    command_line_args += "trainer.batch_size=512 "
+    command_line_args += "trainer.batch_size=128 "
     command_line_args += "+trainer.accelerator=ddp "
 
     if do == 1:
