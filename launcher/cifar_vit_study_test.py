@@ -8,9 +8,9 @@ exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir, "exec.py")
 
 
-datasets = ["cifar10", "svhn", "breeds", "wilds_camelyon"]
+datasets = ["super_cifar100"]
 lrs = [0.01, 0.03, 0.001, 0.003]
-dos = [1]
+dos = [0, 1]
 runs = range(1)
 for run, dataset, lr, do in product(runs, datasets, lrs, dos):
     base_command = '''bsub \\
