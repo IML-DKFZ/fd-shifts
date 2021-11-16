@@ -8,9 +8,9 @@ exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir, "exec.py")
 
 
-datasets = ["super_cifar100"]
+datasets = ["cifar100", "wilds_animals"]
 lrs = [0.01, 0.03, 0.001, 0.003]
-dos = [0, 1]
+dos = [1]
 runs = range(1)
 for run, dataset, lr, do in product(runs, datasets, lrs, dos):
     base_command = '''bsub \\
@@ -29,7 +29,7 @@ for run, dataset, lr, do in product(runs, datasets, lrs, dos):
     command_line_args += "trainer.val_split=devries "
     command_line_args += "+trainer.do_val=true "
     command_line_args += "+eval.val_tuning=true "
-    command_line_args += "+model.dropout_rate=1 "
+    command_line_args += "+model.dropout_rate={} ".format(do)
     command_line_args += "+eval.r_star=0.25 "
     command_line_args += "+eval.r_delta=0.05 "
     command_line_args += "trainer.batch_size=128 "
