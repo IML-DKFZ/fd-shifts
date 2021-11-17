@@ -35,6 +35,7 @@ def get_dataset(name, root, train, download, transform, kwargs):
         "cifar10_384": datasets.CIFAR10,
         "cifar100_384": datasets.CIFAR100,
         "super_cifar100": SuperCIFAR100,
+        "super_cifar100_384": SuperCIFAR100,
         "corrupt_cifar100": CorruptCIFAR,
         "corrupt_cifar100_384": CorruptCIFAR,
         "corrupt_cifar10": CorruptCIFAR,
