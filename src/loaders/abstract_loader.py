@@ -78,7 +78,7 @@ class AbstractDataLoader(pl.LightningDataModule):
         print("CHECK AUGMETNATIONS", self.assim_ood_norm_flag, self.augmentations)
 
 
-    def prepare_data(self):
+    def setup(self, stage=None):
 
         self.train_dataset = get_dataset(name=self.dataset_name,
                                          root=self.data_dir,
@@ -186,10 +186,6 @@ class AbstractDataLoader(pl.LightningDataModule):
                 self.test_datasets.append(tmp_external_set)
                 print("Len external Test data: ", len(self.test_datasets[-1]))
 
-
-
-    def setup(self, stage=None):
-
         # val_split: None, repro_confidnet, devries, cv
         if self.val_split is None or self.val_split == "devries" or self.val_split == "zhang":
             val_idx = []
@@ -272,10 +268,12 @@ class AbstractDataLoader(pl.LightningDataModule):
     def test_dataloader(self): # todo missing val sampler for val_tuning in cv mode! only devries mode implemented for val tuning!
         test_loaders = []
         for ix, test_dataset in enumerate(self.test_datasets):
+            sampler = torch.utils.data.distributed.DistributedSampler(test_dataset, shuffle=False)
             test_loaders.append(torch.utils.data.DataLoader(
                 test_dataset,
                 batch_size=self.batch_size,
                 shuffle=False,
+                sampler=sampler,
                 pin_memory=self.pin_memory,
                 num_workers=self.num_workers,
             ))

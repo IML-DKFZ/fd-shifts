@@ -120,12 +120,15 @@ def test(cf):
     if not os.path.exists(cf.test.dir):
         os.makedirs(cf.test.dir)
 
+    accelerator = cf.trainer.accelerator if hasattr(cf.trainer, "accelerator") else None
     trainer = pl.Trainer(
-        gpus=1,
+        gpus=-1,
         logger=False,
         callbacks=get_callbacks(cf),
-        precision=16,
+        # precision=16,
         # limit_test_batches=50
+        replace_sampler_ddp=False,
+        accelerator=accelerator,
     )
     trainer.test(model=module, datamodule=datamodule)
     analysis.main(in_path=cf.test.dir,
