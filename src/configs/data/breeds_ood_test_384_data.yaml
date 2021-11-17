@@ -3,7 +3,7 @@
   data_dir: /gpu/data/OE0612/jaegerp/${data.dataset}
   pin_memory: True
   img_size: [384, 384, 3]
-  num_workers: 12
+  num_workers: 24
   num_classes: 13 # entitiy-13
   reproduce_confidnet_splits: False
   augmentations:
