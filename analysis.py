@@ -745,6 +745,7 @@ def main(in_path=None, out_path=None, query_studies=None, add_val_tuning=True, c
     query_confid_metrics = ['failauc',
                             'failap_suc',
                             'failap_err',
+                            'fail-NLL',
                             "mce",
                             "ece",
                             "e-aurc",

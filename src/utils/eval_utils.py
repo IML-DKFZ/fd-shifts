@@ -169,6 +169,12 @@ class ConfidEvaluator():
                 print("sklearn calibration failed. passing -1 for ECE.")
                 out_metrics["ece"] = -1
 
+        if "fail-NLL" in self.query_metrics:
+            # flip confids for wrong predictions to get likelihood for "fail class"
+            # out_metrics["fail-NLL"] = np.mean(- np.log(np.abs((1-self.correct) - self.confids) + 1e-7 )) could this work? :D
+            out_metrics["fail-NLL"] = - np.mean(self.correct * np.log(self.confids + 1e-7) + (1 - self.correct) * np.log(1 - self.confids + 1e-7))
+            print("CHECK FAIL NLL:", self.confids.max(), self.confids.min())
+
         return out_metrics
 
     def get_plot_stats_per_confid(self):
