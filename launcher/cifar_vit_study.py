@@ -9,18 +9,15 @@ exec_path = os.path.join(exec_dir, "exec.py")
 
 rewards = [2.2, 3, 4.5, 6, 10]
 experiments: list[tuple[list, list, list, list, list, list, list, range]] = [
-    (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
-    (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
-    (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
-    (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], rewards, range(1)),
-    (["cifar10"], ["devries"], ["vit"], [0.0003], [128], [0], [2.2], range(1)),
-    (["cifar10"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
-    (["breeds"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
-    (["breeds"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
-    (["svhn"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(1)),
-    (["svhn"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
-    (["wilds_camelyon"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
-    (["wilds_camelyon"], ["devries"], ["vit"], [0.003], [128], [1], [2.2], range(1)),
+    (["cifar100"],       ["dg"],      ["vit"], [0.01],  [512], [1], rewards, range(1)),
+    (["wilds_animals"],  ["dg"],      ["vit"], [0.01],  [512], [1], rewards, range(1)),
+    (["cifar100"],       ["devries"], ["vit"], [0.03],  [512], [0], [2.2],   range(1)),
+    (["wilds_animals"],  ["devries"], ["vit"], [0.001], [512], [0], [2.2],   range(1)),
+    (["cifar100"],       ["devries"], ["vit"], [0.01],  [512], [1], [2.2],   range(1)),
+    (["wilds_animals"],  ["devries"], ["vit"], [0.01],  [512], [1], [2.2],   range(1)),
+    (["super_cifar100"], ["dg"],      ["vit"], [0.001],  [128], [1], rewards, range(1)),
+    (["super_cifar100"], ["devries"], ["vit"], [0.003],  [128], [0], [2.2],   range(1)),
+    (["super_cifar100"], ["devries"], ["vit"], [0.001],  [128], [1], [2.2],   range(1)),
 ]
 
 for experiment in experiments:
@@ -41,9 +38,9 @@ for experiment in experiments:
 -R "select[hname!='e230-dgx2-1']" \\
 -gpu num=16:j_exclusive=yes:mode=exclusive_process:gmem=31.7G \\
 -L /bin/bash -q gpu-lowprio \\
--g /t974t/train \\
+-g /t974t/train_big \\
 -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
--J "{}" \\"""
+-J "{}" \\\n"""
         else:
             base_command = """bsub \\
 -R "select[hname!='e230-dgx2-1']" \\
