@@ -7,17 +7,48 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir, "exec.py")
 
+cn_pretrained_bbs = {
+    "cifar10": [
+        "",
+        "",
+    ],
+    "cifar100": [
+        "",
+        "",
+    ],
+    "super_cifar100": [
+        "",
+        "",
+    ],
+    "svhn": [
+        "",
+        "",
+    ],
+    "breeds": [
+        "",
+        "",
+    ],
+    "wilds_animals": [
+        "",
+        "",
+    ],
+    "wilds_camelyon": [
+        "",
+        "",
+    ],
+}
+
 rewards = [2.2, 3, 4.5, 6, 10]
 experiments: list[tuple[list, list, list, list, list, list, list, range]] = [
-    (["cifar100"],       ["dg"],      ["vit"], [0.01],  [512], [1], rewards, range(1)),
-    (["wilds_animals"],  ["dg"],      ["vit"], [0.01],  [512], [1], rewards, range(1)),
-    (["cifar100"],       ["devries"], ["vit"], [0.03],  [512], [0], [2.2],   range(1)),
-    (["wilds_animals"],  ["devries"], ["vit"], [0.001], [512], [0], [2.2],   range(1)),
-    (["cifar100"],       ["devries"], ["vit"], [0.01],  [512], [1], [2.2],   range(1)),
-    (["wilds_animals"],  ["devries"], ["vit"], [0.01],  [512], [1], [2.2],   range(1)),
-    (["super_cifar100"], ["dg"],      ["vit"], [0.001],  [128], [1], rewards, range(1)),
-    (["super_cifar100"], ["devries"], ["vit"], [0.003],  [128], [0], [2.2],   range(1)),
-    (["super_cifar100"], ["devries"], ["vit"], [0.001],  [128], [1], [2.2],   range(1)),
+    (["cifar100"], ["dg"], ["vit"], [0.01], [512], [1], rewards, range(1)),
+    (["wilds_animals"], ["dg"], ["vit"], [0.01], [512], [1], rewards, range(1)),
+    (["cifar100"], ["devries"], ["vit"], [0.03], [512], [0], [2.2], range(1)),
+    (["wilds_animals"], ["devries"], ["vit"], [0.001], [512], [0], [2.2], range(1)),
+    (["cifar100"], ["devries"], ["vit"], [0.01], [512], [1], [2.2], range(1)),
+    (["wilds_animals"], ["devries"], ["vit"], [0.01], [512], [1], [2.2], range(1)),
+    (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], rewards, range(1)),
+    (["super_cifar100"], ["devries"], ["vit"], [0.003], [128], [0], [2.2], range(1)),
+    (["super_cifar100"], ["devries"], ["vit"], [0.001], [128], [1], [2.2], range(1)),
 ]
 
 for experiment in experiments:
@@ -132,6 +163,43 @@ for experiment in experiments:
             )
             if do == 1:
                 command_line_args.append("++model.avg_pool={}".format(False))
+
+        if model == "confid":
+            pretrained_path = cn_pretrained_bbs[dataset][do]
+            # TODO: Check epochs and milestones when loading pretrained backbone -> do this in training_stages.py?
+            command_line_args.extend(
+                [
+                    "++trainer.num_epochs=470",
+                    "~trainer.num_steps",
+                    "++trainer.lr_scheduler.name=LinearWarmupCosineAnnealing",
+                    "++trainer.lr_scheduler.warmup_epochs=0",
+                    "++trainer.lr_scheduler.max_epochs='\"'\"'${trainer.num_epochs_backbone}'\"'\"'",
+                    "++trainer.weight_decay=0.0005",
+                    "++model.name=confidnet_model",
+                    "++model.network=None",
+                    "++test.selection_mode=null",
+                    "++test.iid_set_split=devries",
+                    "++eval.ext_confid_name=tcp",
+                    "++trainer.num_epochs_backbone=250",
+                    "++trainer.learning_rate_confidnet=1e-4",
+                    "++trainer.learning_rate_confidnet_finetune=1e-6",
+                    '++trainer.callbacks.training_stages.milestones="[250, 450]"',
+                    "++trainer.callbacks.training_stages.pretrained_backbone_path={}".format(
+                        pretrained_path
+                    ),
+                    "++trainer.callbacks.training_stages.disable_dropout_at_finetuning=true",
+                    "++trainer.callbacks.training_stages.confidnet_lr_scheduler=false",
+                    "++model.fc_dim=768",
+                    "++model.avg_pool=True",
+                    "++model.confidnet_fc_dim=400",
+                    "++model.monitor_mcd_samples=50",
+                    "++model.test_mcd_samples=50",
+                    "++model.network.name=confidnet_and_enc",
+                    "++model.network.backbone=vit",
+                    "++model.network.imagenet_weights_path=null",
+                    "++data.reproduce_confidnet_splits={}".format("True"),
+                ]
+            )
 
         launch_command = base_command.format(
             exp_name, exec_path, " ".join(command_line_args)
