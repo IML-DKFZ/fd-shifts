@@ -40,12 +40,24 @@ cn_pretrained_bbs = {
 
 rewards = [2.2, 3, 4.5, 6, 10]
 experiments: list[tuple[list, list, list, list, list, list, list, range]] = [
-    (["cifar100"], ["dg"], ["vit"], [0.01], [512], [1], rewards, range(1)),
-    (["wilds_animals"], ["dg"], ["vit"], [0.01], [512], [1], rewards, range(1)),
-    (["cifar100"], ["devries"], ["vit"], [0.03], [512], [0], [2.2], range(1)),
-    (["wilds_animals"], ["devries"], ["vit"], [0.001], [512], [0], [2.2], range(1)),
-    (["cifar100"], ["devries"], ["vit"], [0.01], [512], [1], [2.2], range(1)),
-    (["wilds_animals"], ["devries"], ["vit"], [0.01], [512], [1], [2.2], range(1)),
+    (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
+    (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
+    (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
+    (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], rewards, range(1)),
+    (["cifar10"], ["devries"], ["vit"], [0.0003], [128], [0], [2.2], range(1)),
+    (["cifar10"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
+    (["breeds"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
+    (["breeds"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
+    (["svhn"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(1)),
+    (["svhn"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
+    (["wilds_camelyon"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
+    (["wilds_camelyon"], ["devries"], ["vit"], [0.003], [128], [1], [2.2], range(1)),
+    # (["cifar100"], ["dg"], ["vit"], [0.01], [512], [1], rewards, range(1)),
+    # (["wilds_animals"], ["dg"], ["vit"], [0.01], [512], [1], rewards, range(1)),
+    # (["cifar100"], ["devries"], ["vit"], [0.03], [512], [0], [2.2], range(1)),
+    # (["wilds_animals"], ["devries"], ["vit"], [0.001], [512], [0], [2.2], range(1)),
+    # (["cifar100"], ["devries"], ["vit"], [0.01], [512], [1], [2.2], range(1)),
+    # (["wilds_animals"], ["devries"], ["vit"], [0.01], [512], [1], [2.2], range(1)),
     (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], rewards, range(1)),
     (["super_cifar100"], ["devries"], ["vit"], [0.003], [128], [0], [2.2], range(1)),
     (["super_cifar100"], ["devries"], ["vit"], [0.001], [128], [1], [2.2], range(1)),
@@ -89,8 +101,8 @@ for experiment in experiments:
         command_line_args = [
             "exp.mode={}".format("train"),
             "trainer.batch_size={}".format(bs),
-            "+model.dropout_rate={}".format(do),
             "+trainer.accelerator=dp",
+            "+model.dropout_rate={}".format(do),
             "study={}_vit_study".format(dataset),
             "exp.name={}".format(exp_name),
             "trainer.learning_rate={}".format(lr),
@@ -205,9 +217,9 @@ for experiment in experiments:
             exp_name, exec_path, " ".join(command_line_args)
         )
 
-        print("Launch command: ", launch_command)
-        subprocess.call(launch_command, shell=True)
-        time.sleep(1)
+        # print("Launch command: ", launch_command)
+        # subprocess.call(launch_command, shell=True)
+        # time.sleep(1)
 
         # TESTING
 
