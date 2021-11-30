@@ -2,6 +2,7 @@ import os
 import subprocess
 import time
 from itertools import product
+from pathlib import Path
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
@@ -9,8 +10,8 @@ exec_path = os.path.join(exec_dir, "exec.py")
 
 cn_pretrained_bbs = {
     "cifar10": [
-        "",
-        "",
+        "/gpu/checkpoints/OE0612/t974t/experiments/vit/cifar10_lr0.0003_run0/version_0/last.ckpt",
+        "/gpu/checkpoints/OE0612/t974t/experiments/vit/cifar10_lr0.01_run0_do1/version_0/last.ckpt",
     ],
     "cifar100": [
         "",
@@ -40,27 +41,27 @@ cn_pretrained_bbs = {
 
 rewards = [2.2, 3, 4.5, 6, 10]
 experiments: list[tuple[list, list, list, list, list, list, list, range]] = [
-    (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
-    (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
-    (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
-    (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], rewards, range(1)),
-    (["cifar10"], ["devries"], ["vit"], [0.0003], [128], [0], [2.2], range(1)),
-    (["cifar10"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
-    (["breeds"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
-    (["breeds"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
-    (["svhn"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(1)),
-    (["svhn"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
-    (["wilds_camelyon"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
-    (["wilds_camelyon"], ["devries"], ["vit"], [0.003], [128], [1], [2.2], range(1)),
+    (["cifar10"], ["confidnet"], ["vit"], [0.01], [256 // 2], [1], [2.2], range(1)),
+    # (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
+    # (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
+    # (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], rewards, range(1)),
+    # (["cifar10"], ["devries"], ["vit"], [0.0003], [128], [0], [2.2], range(1)),
+    # (["cifar10"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
+    # (["breeds"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
+    # (["breeds"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
+    # (["svhn"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(1)),
+    # (["svhn"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
+    # (["wilds_camelyon"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
+    # (["wilds_camelyon"], ["devries"], ["vit"], [0.003], [128], [1], [2.2], range(1)),
     # (["cifar100"], ["dg"], ["vit"], [0.01], [512], [1], rewards, range(1)),
     # (["wilds_animals"], ["dg"], ["vit"], [0.01], [512], [1], rewards, range(1)),
     # (["cifar100"], ["devries"], ["vit"], [0.03], [512], [0], [2.2], range(1)),
     # (["wilds_animals"], ["devries"], ["vit"], [0.001], [512], [0], [2.2], range(1)),
     # (["cifar100"], ["devries"], ["vit"], [0.01], [512], [1], [2.2], range(1)),
     # (["wilds_animals"], ["devries"], ["vit"], [0.01], [512], [1], [2.2], range(1)),
-    (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], rewards, range(1)),
-    (["super_cifar100"], ["devries"], ["vit"], [0.003], [128], [0], [2.2], range(1)),
-    (["super_cifar100"], ["devries"], ["vit"], [0.001], [128], [1], [2.2], range(1)),
+    # (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], rewards, range(1)),
+    # (["super_cifar100"], ["devries"], ["vit"], [0.003], [128], [0], [2.2], range(1)),
+    # (["super_cifar100"], ["devries"], ["vit"], [0.001], [128], [1], [2.2], range(1)),
 ]
 
 for experiment in experiments:
@@ -84,6 +85,14 @@ for experiment in experiments:
 -g /t974t/train_big \\
 -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
 -J "{}" \\\n"""
+        elif model == "confidnet":
+            base_command = """bsub \\
+-R "select[hname!='e230-dgx2-1']" \\
+-gpu num=4:j_exclusive=yes:gmem=10.7G \\
+-L /bin/bash -q gpu-lowprio \\
+-g /t974t/train_small \\
+-u 'till.bungert@dkfz-heidelberg.de' -B -N \\
+-J "{}" \\\n"""
         else:
             base_command = """bsub \\
 -R "select[hname!='e230-dgx2-1']" \\
@@ -98,10 +107,12 @@ for experiment in experiments:
             + """'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}'"""
         )
 
+        # base_command = "echo {} && bash -li -c 'source ~/.bashrc && conda activate failure-detection && EXPERIMENT_ROOT_DIR=/home/t974t/cluster/experiments DATASET_ROOT_DIR=/home/t974t/Data python -W ignore {} {}'"
+
         command_line_args = [
             "exp.mode={}".format("train"),
             "trainer.batch_size={}".format(bs),
-            "+trainer.accelerator=dp",
+            "+trainer.accelerator=ddp",
             "+model.dropout_rate={}".format(do),
             "study={}_vit_study".format(dataset),
             "exp.name={}".format(exp_name),
@@ -176,12 +187,12 @@ for experiment in experiments:
             if do == 1:
                 command_line_args.append("++model.avg_pool={}".format(False))
 
-        if model == "confid":
-            pretrained_path = cn_pretrained_bbs[dataset][do]
+        if model == "confidnet":
+            pretrained_path = Path(cn_pretrained_bbs[dataset][do]).expanduser()
             # TODO: Check epochs and milestones when loading pretrained backbone -> do this in training_stages.py?
             command_line_args.extend(
                 [
-                    "++trainer.num_epochs=470",
+                    "++trainer.num_epochs=220",
                     "~trainer.num_steps",
                     "++trainer.lr_scheduler.name=LinearWarmupCosineAnnealing",
                     "++trainer.lr_scheduler.warmup_epochs=0",
@@ -192,13 +203,14 @@ for experiment in experiments:
                     "++test.selection_mode=null",
                     "++test.iid_set_split=devries",
                     "++eval.ext_confid_name=tcp",
-                    "++trainer.num_epochs_backbone=250",
+                    "++trainer.num_epochs_backbone=0",
                     "++trainer.learning_rate_confidnet=1e-4",
                     "++trainer.learning_rate_confidnet_finetune=1e-6",
-                    '++trainer.callbacks.training_stages.milestones="[250, 450]"',
+                    '++trainer.callbacks.training_stages.milestones="[0, 200]"',
                     "++trainer.callbacks.training_stages.pretrained_backbone_path={}".format(
                         pretrained_path
                     ),
+                    "++trainer.callbacks.training_stages.pretrained_confidnet_path=null",
                     "++trainer.callbacks.training_stages.disable_dropout_at_finetuning=true",
                     "++trainer.callbacks.training_stages.confidnet_lr_scheduler=false",
                     "++model.fc_dim=768",
@@ -217,9 +229,9 @@ for experiment in experiments:
             exp_name, exec_path, " ".join(command_line_args)
         )
 
-        # print("Launch command: ", launch_command)
-        # subprocess.call(launch_command, shell=True)
-        # time.sleep(1)
+        print("Launch command: ", launch_command)
+        subprocess.call(launch_command, shell=True)
+        time.sleep(1)
 
         # TESTING
 
@@ -231,6 +243,7 @@ for experiment in experiments:
         -g /t974t/test \\
         -J "{}_test" \\
         'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}\'"""
+        # base_command = "echo {} && bash -li -c 'source ~/.bashrc && conda activate failure-detection && EXPERIMENT_ROOT_DIR=/home/t974t/cluster/experiments DATASET_ROOT_DIR=/home/t974t/Data python -W ignore {} {}'"
 
         command_line_args[0] = "exp.mode={}".format("test")
         command_line_args[1] = "trainer.batch_size=128"
