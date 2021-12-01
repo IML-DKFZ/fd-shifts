@@ -41,7 +41,7 @@ cn_pretrained_bbs = {
 
 rewards = [2.2, 3, 4.5, 6, 10]
 experiments: list[tuple[list, list, list, list, list, list, list, range]] = [
-    (["cifar10"], ["confidnet"], ["vit"], [0.01], [256 // 2], [1], [2.2], range(1)),
+    (["cifar10"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
     # (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
     # (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
     # (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], rewards, range(1)),
@@ -88,7 +88,7 @@ for experiment in experiments:
         elif model == "confidnet":
             base_command = """bsub \\
 -R "select[hname!='e230-dgx2-1']" \\
--gpu num=4:j_exclusive=yes:gmem=10.7G \\
+-gpu num=4:j_exclusive=yes:gmem=31.7G \\
 -L /bin/bash -q gpu-lowprio \\
 -g /t974t/train_small \\
 -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
@@ -96,7 +96,7 @@ for experiment in experiments:
         else:
             base_command = """bsub \\
 -R "select[hname!='e230-dgx2-1']" \\
--gpu num=4:j_exclusive=yes:mode=exclusive_process:gmem=31.7G \\
+-gpu num=4:j_exclusive=yes:gmem=31.7G \\
 -L /bin/bash -q gpu-lowprio \\
 -g /t974t/train \\
 -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
