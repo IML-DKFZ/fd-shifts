@@ -4,7 +4,6 @@ from torch.nn import functional as F
 import pytorch_lightning as pl
 from src.models.networks import get_network
 from tqdm import tqdm
-from src.loaders.abstract_loader import AbstractDataLoader
 
 
 
@@ -14,8 +13,6 @@ class net(pl.LightningModule):
         super(net, self).__init__()
 
         self.save_hyperparameters()
-        self.cf = cf
-        self.batch_size = cf.trainer.batch_size
 
         self.test_mcd_samples = cf.model.test_mcd_samples
         self.monitor_mcd_samples = cf.model.monitor_mcd_samples
@@ -231,12 +228,3 @@ class net(pl.LightningModule):
         print("loading checkpoint from epoch {}".format(ckpt["epoch"]))
         self.load_state_dict(ckpt["state_dict"], strict=True)
 
-    def train_dataloader(self):
-        config = self.cf
-        if self.training_stage == 1:
-            config.trainer.batch_size = config.trainer.batch_size // 4
-
-        loader = AbstractDataLoader(config)
-        loader.prepare_data()
-        loader.setup()
-        return loader.train_dataloader()
