@@ -3,6 +3,7 @@ import subprocess
 import time
 from itertools import product
 from pathlib import Path
+from typing import Optional
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
@@ -40,8 +41,8 @@ cn_pretrained_bbs = {
 }
 
 rewards = [2.2, 3, 4.5, 6, 10]
-experiments: list[tuple[list, list, list, list, list, list, list, range]] = [
-    (["cifar10"], ["confidnet"], ["vit"], [0.01], [256 // 2], [1], [2.2], range(1)),
+experiments: list[tuple[list, list, list, list, list, list, list, range, Optional[list]]] = [
+    (["cifar10"], ["confidnet"], ["vit"], [0.01], [256 // 2], [1], [2.2], range(1), [2]),
     # (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
     # (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
     # (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], rewards, range(1)),
@@ -65,7 +66,7 @@ experiments: list[tuple[list, list, list, list, list, list, list, range]] = [
 ]
 
 for experiment in experiments:
-    for dataset, model, bb, lr, bs, do, rew, run in product(*experiment):
+    for dataset, model, bb, lr, bs, do, rew, run, stage in product(*experiment):
         exp_name = "{}_model{}_bb{}_lr{}_bs{}_run{}_do{}_rew{}".format(
             dataset,
             model,
@@ -107,7 +108,7 @@ for experiment in experiments:
             + """'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}'"""
         )
 
-        # base_command = "echo {} && bash -li -c 'source ~/.bashrc && conda activate failure-detection && EXPERIMENT_ROOT_DIR=/home/t974t/cluster/experiments DATASET_ROOT_DIR=/home/t974t/Data python -W ignore {} {}'"
+        base_command = "echo {} && bash -li -c 'source ~/.bashrc && conda activate failure-detection && EXPERIMENT_ROOT_DIR=/home/t974t/cluster/experiments DATASET_ROOT_DIR=/home/t974t/Data python -W ignore {} {}'"
 
         command_line_args = [
             "exp.mode={}".format("train"),
@@ -190,9 +191,28 @@ for experiment in experiments:
         if model == "confidnet":
             pretrained_path = Path(cn_pretrained_bbs[dataset][do]).expanduser()
             # TODO: Check epochs and milestones when loading pretrained backbone -> do this in training_stages.py?
+            if stage == 1:
+                command_line_args.append(
+                    "++trainer.num_epochs=220",
+                )
+                command_line_args.append(
+                    '++trainer.callbacks.training_stages.milestones="[0, 200]"',
+                )
+            elif stage == 2:
+                command_line_args.append(
+                    "++trainer.num_epochs=20",
+                )
+                command_line_args.append(
+                    '++trainer.callbacks.training_stages.milestones="[0, 0]"',
+                )
+                command_line_args.append(
+                    "++trainer.batch_size=16",
+                )
+                command_line_args.append(
+                    "++trainer.resume_from_ckpt_confidnet=true"
+                )
             command_line_args.extend(
                 [
-                    "++trainer.num_epochs=220",
                     "~trainer.num_steps",
                     "++trainer.lr_scheduler.name=LinearWarmupCosineAnnealing",
                     "++trainer.lr_scheduler.warmup_epochs=0",
@@ -206,7 +226,6 @@ for experiment in experiments:
                     "++trainer.num_epochs_backbone=0",
                     "++trainer.learning_rate_confidnet=1e-4",
                     "++trainer.learning_rate_confidnet_finetune=1e-6",
-                    '++trainer.callbacks.training_stages.milestones="[0, 200]"',
                     "++trainer.callbacks.training_stages.pretrained_backbone_path={}".format(
                         pretrained_path
                     ),
@@ -243,7 +262,7 @@ for experiment in experiments:
         -g /t974t/test \\
         -J "{}_test" \\
         'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}\'"""
-        # base_command = "echo {} && bash -li -c 'source ~/.bashrc && conda activate failure-detection && EXPERIMENT_ROOT_DIR=/home/t974t/cluster/experiments DATASET_ROOT_DIR=/home/t974t/Data python -W ignore {} {}'"
+        base_command = "echo {} && bash -li -c 'source ~/.bashrc && conda activate failure-detection && EXPERIMENT_ROOT_DIR=/home/t974t/cluster/experiments DATASET_ROOT_DIR=/home/t974t/Data python -W ignore {} {}'"
 
         command_line_args[0] = "exp.mode={}".format("test")
         command_line_args[1] = "trainer.batch_size=128"

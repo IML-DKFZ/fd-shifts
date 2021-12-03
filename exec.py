@@ -36,6 +36,11 @@ def train(cf, subsequent_testing=False):
         resume_ckpt_path = exp_utils.get_resume_ckpt_path(cf)
         print("resuming previous training:", resume_ckpt_path)
 
+    if cf.trainer.resume_from_ckpt_confidnet:
+        cf.exp.version -= 1
+        cf.trainer.callbacks.training_stages.pretrained_confidnet_path = exp_utils.get_resume_ckpt_path(cf)
+        print("resuming previous training:", resume_ckpt_path)
+
     datamodule = AbstractDataLoader(cf)
     model = get_model(cf.model.name)(cf)
     tb_logger= TensorBoardLogger(save_dir=cf.exp.group_dir,
