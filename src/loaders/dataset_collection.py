@@ -1,4 +1,3 @@
-
 from torchvision import datasets
 from torchvision.datasets.utils import check_integrity, download_and_extract_archive
 from typing import Any, Callable, Optional, Tuple
@@ -520,6 +519,30 @@ class WILDSCamelyon(Camelyon17Dataset):
         return subset
 
 
+class SVHNOpenSet(datasets.SVHN):
+    def __init__(
+        self,
+        root: str,
+        split: str = "train",
+        transform: Optional[Callable] = None,
+        target_transform: Optional[Callable] = None,
+        download: bool = False
+    ) -> None:
+        super().__init__(
+            root,
+            split=split,
+            transform=transform,
+            target_transform=target_transform,
+            download=download
+        )
+
+        classes = np.arange(0, 10)
+        np.random.shuffle(classes)
+        self.in_classes, self.out_classes = np.split(classes, [6])
+
+        if split == "train":
+            self.data = self.data[np.isin(self.labels, self.in_classes)]
+            self.labels = self.labels[np.isin(self.labels, self.in_classes)]
 
 
 # import matplotlib.pyplot as plt
@@ -529,4 +552,3 @@ class WILDSCamelyon(Camelyon17Dataset):
 #     image = transformed["image"]
 # plt.imshow(  image.permute(1, 2, 0)  )
 # plt.show()
-
