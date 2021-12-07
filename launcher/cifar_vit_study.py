@@ -5,44 +5,133 @@ from itertools import product
 from pathlib import Path
 from typing import Optional
 
+system_name = os.environ["SYSTEM_NAME"]
+
+if system_name == "cluster":
+    base_path = Path("/gpu/checkpoints/OE0612/t974t/experiments/")
+elif system_name == "local":
+    base_path = Path("~/cluster/experiments/").expanduser()
+else:
+    raise ValueError("Environment Variable SYSTEM_NAME must be either 'cluster' or 'local'")
+
+
+def get_base_command(mode, dataset, stage):
+    if system_name == "local":
+        return "echo {exp_name} && bash -li -c 'source ~/.bashrc && conda activate failure-detection && EXPERIMENT_ROOT_DIR=/home/t974t/cluster/experiments DATASET_ROOT_DIR=/home/t974t/Data python -W ignore {cmd} {args}'"
+
+    if mode == "test":
+        return " \\\n".join(
+            [
+                "bsub",
+                "-gpu num=4:j_exclusive=yes:gmem=10.7G",
+                "-L /bin/bash -q gpu-lowprio",
+                "-u 'till.bungert@dkfz-heidelberg.de' -B -N",
+                '-w "done({exp_name})"',
+                "-g /t974t/test",
+                '-J "{exp_name}_test"',
+                "'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {cmd} {args}'",
+            ]
+        )
+
+
+    base_command = [
+        "bsub",
+        "-R \"select[hname!='e230-dgx2-1']\"",
+    ]
+
+    # if dataset in ["cifar100", "wilds_animals"]:
+    #     base_command.extend(
+    #         [
+    #             "-gpu num=4:j_exclusive=yes:mode=exclusive_process:gmem=31.7G",
+    #             '-J "{exp_name}"',
+    #             "-g /t974t/train",
+    #         ]
+    #     )
+    if model == "confidnet" and stage == 1:
+        base_command.extend(
+            [
+                "-gpu num=4:j_exclusive=yes:gmem=10.7G",
+                "-g /t974t/train_small",
+                '-J "{exp_name}"',
+            ]
+        )
+    elif model == "confidnet" and stage == 2:
+        base_command.extend(
+            [
+                "-gpu num=4:j_exclusive=yes:mode=exclusive_process:gmem=31.7G",
+                "-g /t974t/train",
+                '-w "done({exp_name})"',
+                '-J "{exp_name}_stage2"',
+            ]
+        )
+    else:
+        base_command.extend(
+            [
+                "-gpu num=4:j_exclusive=yes:mode=exclusive_process:gmem=31.7G",
+                "-g /t974t/train",
+                '-J "{exp_name}"',
+            ]
+        )
+
+    base_command.extend(
+        [
+            "-L /bin/bash -q gpu-lowprio",
+            "-u 'till.bungert@dkfz-heidelberg.de' -B -N",
+            "'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {cmd} {args}'",
+        ]
+    )
+
+    return " \\\n".join(base_command)
+
+
+def check_done():
+    pass
+
+
 current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir, "exec.py")
 
 cn_pretrained_bbs = {
     "cifar10": [
-        "/gpu/checkpoints/OE0612/t974t/experiments/vit/cifar10_lr0.0003_run0/version_0/last.ckpt",
-        "/gpu/checkpoints/OE0612/t974t/experiments/vit/cifar10_lr0.01_run0_do1/version_0/last.ckpt",
+        "vit/cifar10_lr0.0003_run0/version_0/last.ckpt",
+        "vit/cifar10_lr0.0003_run0/version_0/last.ckpt",
     ],
     "cifar100": [
-        "",
-        "",
+        "vit/cifar100_lr0.03_run0/version_4/last.ckpt",
+        "vit/cifar100_lr0.01_run0_do1/version_0/last.ckpt",
     ],
     "super_cifar100": [
-        "",
-        "",
+        "vit/super_cifar100_lr0.003_run0_do0/version_0/last.ckpt",
+        "vit/super_cifar100_lr0.001_run1_do1/version_0/last.ckpt",
     ],
     "svhn": [
-        "",
-        "",
+        "vit/svhn_lr0.01_run0/version_0/last.ckpt",
+        "vit/svhn_lr0.01_run0_do1/version_0/last.ckpt",
     ],
     "breeds": [
-        "",
-        "",
+        "vit/breeds_lr0.001_run0/version_2/last.ckpt",
+        "vit/breeds_lr0.01_run0_do1/version_0/last.ckpt",
     ],
     "wilds_animals": [
-        "",
-        "",
+        "vit/wilds_animals_lr0.001_run0/version_2/last.ckpt",
+        "vit/wilds_animals_lr0.01_run0_do1/version_0/last.ckpt",
     ],
     "wilds_camelyon": [
-        "",
-        "",
+        "vit/wilds_camelyon_lr0.001_run0_do0/version_1/last.ckpt",
+        "vit/wilds_camelyon_lr0.003_run0_do1/version_0/last.ckpt",
     ],
 }
 
 rewards = [2.2, 3, 4.5, 6, 10]
-experiments: list[tuple[list, list, list, list, list, list, list, range, Optional[list]]] = [
-    (["cifar10"], ["confidnet"], ["vit"], [0.01], [256 // 2], [1], [2.2], range(1), [2]),
+experiments: list[
+    tuple[list, list, list, list, list, list, list, range, Optional[list]]
+] = [
+    # (["cifar10"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
+    # (["svhn"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
+    # (["breeds"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
+    # (["wilds_camelyon"], ["confidnet"], ["vit"], [0.003], [128], [1], [2.2], range(1), [2]),
+    # (["super_cifar100"], ["confidnet"], ["vit"], [0.001], [128], [1], [2.2], range(1), [2]),
     # (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
     # (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
     # (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], rewards, range(1)),
@@ -54,12 +143,14 @@ experiments: list[tuple[list, list, list, list, list, list, list, range, Optiona
     # (["svhn"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
     # (["wilds_camelyon"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
     # (["wilds_camelyon"], ["devries"], ["vit"], [0.003], [128], [1], [2.2], range(1)),
-    # (["cifar100"], ["dg"], ["vit"], [0.01], [512], [1], rewards, range(1)),
-    # (["wilds_animals"], ["dg"], ["vit"], [0.01], [512], [1], rewards, range(1)),
-    # (["cifar100"], ["devries"], ["vit"], [0.03], [512], [0], [2.2], range(1)),
-    # (["wilds_animals"], ["devries"], ["vit"], [0.001], [512], [0], [2.2], range(1)),
-    # (["cifar100"], ["devries"], ["vit"], [0.01], [512], [1], [2.2], range(1)),
-    # (["wilds_animals"], ["devries"], ["vit"], [0.01], [512], [1], [2.2], range(1)),
+    # (["cifar100"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1), [None]),
+    # (["wilds_animals"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1), [None]),
+    # (["cifar100"], ["devries"], ["vit"], [0.03], [128], [0], [2.2], range(1), [None]),
+    # (["wilds_animals"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1), [None]),
+    # (["cifar100"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
+    # (["wilds_animals"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
+    (["cifar100"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [1, 2]),
+    (["wilds_animals"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [1, 2]),
     # (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], rewards, range(1)),
     # (["super_cifar100"], ["devries"], ["vit"], [0.003], [128], [0], [2.2], range(1)),
     # (["super_cifar100"], ["devries"], ["vit"], [0.001], [128], [1], [2.2], range(1)),
@@ -78,42 +169,10 @@ for experiment in experiments:
             rew,
         )
 
-        if dataset in ["cifar100", "wilds_animals"]:
-            base_command = """bsub \\
--R "select[hname!='e230-dgx2-1']" \\
--gpu num=16:j_exclusive=yes:mode=exclusive_process:gmem=31.7G \\
--L /bin/bash -q gpu-lowprio \\
--g /t974t/train_big \\
--u 'till.bungert@dkfz-heidelberg.de' -B -N \\
--J "{}" \\\n"""
-        elif model == "confidnet":
-            base_command = """bsub \\
--R "select[hname!='e230-dgx2-1']" \\
--gpu num=4:j_exclusive=yes:gmem=10.7G \\
--L /bin/bash -q gpu-lowprio \\
--g /t974t/train_small \\
--u 'till.bungert@dkfz-heidelberg.de' -B -N \\
--J "{}" \\\n"""
-        else:
-            base_command = """bsub \\
--R "select[hname!='e230-dgx2-1']" \\
--gpu num=4:j_exclusive=yes:mode=exclusive_process:gmem=31.7G \\
--L /bin/bash -q gpu-lowprio \\
--g /t974t/train \\
--u 'till.bungert@dkfz-heidelberg.de' -B -N \\
--J "{}" \\\n"""
-
-        base_command = (
-            base_command
-            + """'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}'"""
-        )
-
-        base_command = "echo {} && bash -li -c 'source ~/.bashrc && conda activate failure-detection && EXPERIMENT_ROOT_DIR=/home/t974t/cluster/experiments DATASET_ROOT_DIR=/home/t974t/Data python -W ignore {} {}'"
-
         command_line_args = [
             "exp.mode={}".format("train"),
             "trainer.batch_size={}".format(bs),
-            "+trainer.accelerator=ddp",
+            "+trainer.accelerator=dp",
             "+model.dropout_rate={}".format(do),
             "study={}_vit_study".format(dataset),
             "exp.name={}".format(exp_name),
@@ -123,7 +182,11 @@ for experiment in experiments:
             "+eval.val_tuning=true",
             "+eval.r_star=0.25",
             "+eval.r_delta=0.05",
+            "++trainer.resume_from_ckpt_confidnet=false",
         ]
+
+        if dataset in ["cifar100", "wilds_animals"]:
+            command_line_args.append("++trainer.accumulate_grad_batches=4")
 
         if model == "devries":
             command_line_args.extend(
@@ -189,8 +252,7 @@ for experiment in experiments:
                 command_line_args.append("++model.avg_pool={}".format(False))
 
         if model == "confidnet":
-            pretrained_path = Path(cn_pretrained_bbs[dataset][do]).expanduser()
-            # TODO: Check epochs and milestones when loading pretrained backbone -> do this in training_stages.py?
+            pretrained_path = base_path / cn_pretrained_bbs[dataset][do]
             if stage == 1:
                 command_line_args.append(
                     "++trainer.num_epochs=220",
@@ -198,6 +260,9 @@ for experiment in experiments:
                 command_line_args.append(
                     '++trainer.callbacks.training_stages.milestones="[0, 200]"',
                 )
+                command_line_args.append("++trainer.accelerator=ddp")
+                command_line_args.append("++trainer.resume_from_ckpt_confidnet=false")
+                command_line_args.append("++trainer.accumulate_grad_batches=1")
             elif stage == 2:
                 command_line_args.append(
                     "++trainer.num_epochs=20",
@@ -206,11 +271,9 @@ for experiment in experiments:
                     '++trainer.callbacks.training_stages.milestones="[0, 0]"',
                 )
                 command_line_args.append(
-                    "++trainer.batch_size=16",
+                    "++trainer.batch_size=128",
                 )
-                command_line_args.append(
-                    "++trainer.resume_from_ckpt_confidnet=true"
-                )
+                command_line_args.append("++trainer.resume_from_ckpt_confidnet=true")
             command_line_args.extend(
                 [
                     "~trainer.num_steps",
@@ -244,29 +307,26 @@ for experiment in experiments:
                 ]
             )
 
+        base_command = get_base_command("train", dataset, stage)
+
         launch_command = base_command.format(
-            exp_name, exec_path, " ".join(command_line_args)
+            exp_name=exp_name,
+            cmd=exec_path,
+            args=" ".join(command_line_args),
         )
 
-        print("Launch command: ", launch_command)
+        print("Launch command: ", launch_command, end="\n\n")
         subprocess.call(launch_command, shell=True)
         time.sleep(1)
 
         # TESTING
 
-        base_command = """bsub \\
-        -gpu num=4:j_exclusive=yes:gmem=10.7G \\
-        -L /bin/bash -q gpu-lowprio \\
-        -u 'till.bungert@dkfz-heidelberg.de' -B -N \\
-        -w "done({})" \\
-        -g /t974t/test \\
-        -J "{}_test" \\
-        'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {} {}\'"""
-        base_command = "echo {} && bash -li -c 'source ~/.bashrc && conda activate failure-detection && EXPERIMENT_ROOT_DIR=/home/t974t/cluster/experiments DATASET_ROOT_DIR=/home/t974t/Data python -W ignore {} {}'"
+        if model == "confidnet" and stage == 1:
+            continue
 
         command_line_args[0] = "exp.mode={}".format("test")
-        command_line_args[1] = "trainer.batch_size=128"
-        command_line_args[2] = "+trainer.accelerator=ddp"
+        command_line_args.append("++trainer.batch_size=128")
+        command_line_args.append("++trainer.accelerator=ddp")
         if do == 1:
             command_line_args.append(
                 'eval.confidence_measures.test="{}"'.format(
@@ -286,13 +346,17 @@ for experiment in experiments:
                 )
             )
 
+        base_command = get_base_command("test", dataset, stage)
+
+        if stage == 2:
+            exp_name = exp_name + "_stage2"
+
         launch_command = base_command.format(
-            exp_name,
-            exp_name,
-            exec_path,
-            " ".join(command_line_args),
+            exp_name=exp_name,
+            cmd=exec_path,
+            args=" ".join(command_line_args),
         )
 
-        print("Launch command: ", launch_command)
+        print("Launch command: ", launch_command, end="\n\n")
         subprocess.call(launch_command, shell=True)
         time.sleep(1)

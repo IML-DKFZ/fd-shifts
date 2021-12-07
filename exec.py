@@ -54,6 +54,7 @@ def train(cf, subsequent_testing=False):
 
     max_steps = cf.trainer.num_steps if hasattr(cf.trainer, "num_steps") else None
     accelerator = cf.trainer.accelerator if hasattr(cf.trainer, "accelerator") else None
+    accumulate_grad_batches = cf.trainer.accumulate_grad_batches if hasattr(cf.trainer, "accumulate_grad_batches") else 1
 
     trainer = pl.Trainer(gpus=-1,
                          logger=[tb_logger, csv_logger],
@@ -72,6 +73,7 @@ def train(cf, subsequent_testing=False):
                          # replace_sampler_ddp=False,
                          accelerator=accelerator,
                          gradient_clip_val=1,
+                         accumulate_grad_batches=accumulate_grad_batches,
                          )
 
     print("logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version))
