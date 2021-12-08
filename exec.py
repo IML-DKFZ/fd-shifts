@@ -11,6 +11,7 @@ import analysis
 import os
 import torch
 import sys
+import random
 
 
 
@@ -40,6 +41,10 @@ def train(cf, subsequent_testing=False):
         cf.exp.version -= 1
         cf.trainer.callbacks.training_stages.pretrained_confidnet_path = exp_utils.get_resume_ckpt_path(cf)
         print("resuming previous training:", resume_ckpt_path)
+
+    # TODO: Don't hard-code number of total classes and number of holdout classes
+    if "openset" in cf.data.dataset:
+        cf.data.kwargs.out_classes = random.sample(range(10), 4)
 
     datamodule = AbstractDataLoader(cf)
     model = get_model(cf.model.name)(cf)

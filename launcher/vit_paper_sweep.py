@@ -149,11 +149,12 @@ experiments: list[
     # (["wilds_animals"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1), [None]),
     # (["cifar100"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
     # (["wilds_animals"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
-    (["cifar100"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [1, 2]),
-    (["wilds_animals"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [1, 2]),
+    # (["cifar100"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [1, 2]),
+    # (["wilds_animals"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [1, 2]),
     # (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], rewards, range(1)),
     # (["super_cifar100"], ["devries"], ["vit"], [0.003], [128], [0], [2.2], range(1)),
     # (["super_cifar100"], ["devries"], ["vit"], [0.001], [128], [1], [2.2], range(1)),
+    (["svhn_openset"], ["vit_model"], ["vit"], [0.01], [128], [0], [2.2], range(1), [None]),
 ]
 
 for experiment in experiments:

@@ -25,6 +25,8 @@ def get_dataset(name, root, train, download, transform, kwargs):
     dataset_factory = {
         "svhn": datasets.SVHN,
         "svhn_384": datasets.SVHN,
+        "svhn_openset": SVHNOpenSet,
+        "svhn_openset_384": SVHNOpenSet,
         "tinyimagenet": datasets.ImageFolder,
         "tinyimagenet_384": datasets.ImageFolder,
         "tinyimagenet_resize": datasets.ImageFolder,
@@ -56,6 +58,8 @@ def get_dataset(name, root, train, download, transform, kwargs):
     pass_kwargs = {"root": root, "train": train, "download": download, "transform": transform}
     if name.startswith("svhn"):
         pass_kwargs = {"root": root, "split": "train" if train else "test", "download": download, "transform": transform}
+    if "openset" in name:
+        pass_kwargs["out_classes"] = kwargs["out_classes"]
     if name == "tinyimagenet" or name == "tinyimagenet_384":
         pass_kwargs = {"root": os.path.join(root, "test"), "transform": transform}
     if name == "tinyimagenet_resize":
@@ -526,7 +530,8 @@ class SVHNOpenSet(datasets.SVHN):
         split: str = "train",
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
-        download: bool = False
+        download: bool = False,
+        out_classes: list[int] = [0, 1, 2, 3]
     ) -> None:
         super().__init__(
             root,
@@ -536,13 +541,12 @@ class SVHNOpenSet(datasets.SVHN):
             download=download
         )
 
-        classes = np.arange(0, 10)
-        np.random.shuffle(classes)
-        self.in_classes, self.out_classes = np.split(classes, [6])
+        self.out_classes = out_classes
+        print("SVHN holdout classes ", self.out_classes)
 
         if split == "train":
-            self.data = self.data[np.isin(self.labels, self.in_classes)]
-            self.labels = self.labels[np.isin(self.labels, self.in_classes)]
+            self.data = self.data[~np.isin(self.labels, self.out_classes)]
+            self.labels = self.labels[~np.isin(self.labels, self.out_classes)]
 
 
 # import matplotlib.pyplot as plt
