@@ -284,9 +284,9 @@ for experiment in experiments:
                     '++trainer.callbacks.training_stages.milestones="[0, 0]"',
                 )
                 command_line_args.append(
-                    "++trainer.batch_size=64",
+                    "++trainer.batch_size=128",
                 )
-                command_line_args.append("++trainer.accumulate_grad_batches=2")
+                # command_line_args.append("++trainer.accumulate_grad_batches=2")
                 command_line_args.append("++trainer.resume_from_ckpt_confidnet=true")
             command_line_args.extend(
                 [
