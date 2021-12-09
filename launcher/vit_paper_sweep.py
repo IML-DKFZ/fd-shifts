@@ -12,12 +12,19 @@ if system_name == "cluster":
 elif system_name == "local":
     base_path = Path("~/cluster/experiments/").expanduser()
 else:
-    raise ValueError("Environment Variable SYSTEM_NAME must be either 'cluster' or 'local'")
+    raise ValueError(
+        "Environment Variable SYSTEM_NAME must be either 'cluster' or 'local'"
+    )
 
 
-def get_base_command(mode, dataset, stage):
+def get_base_command(mode: str, model: str, dataset: str, stage: Optional[int]):
     if system_name == "local":
-        return "echo {exp_name} && bash -li -c 'source ~/.bashrc && conda activate failure-detection && EXPERIMENT_ROOT_DIR=/home/t974t/cluster/experiments DATASET_ROOT_DIR=/home/t974t/Data python -W ignore {cmd} {args}'"
+        return (
+            "echo {exp_name} && bash -li -c 'source ~/.bashrc && conda activate failure-detection "
+            "&& EXPERIMENT_ROOT_DIR=/home/t974t/cluster/experiments "
+            "DATASET_ROOT_DIR=/home/t974t/Data "
+            "python -W ignore {cmd} {args}'"
+        )
 
     if mode == "test":
         return " \\\n".join(
@@ -29,10 +36,12 @@ def get_base_command(mode, dataset, stage):
                 '-w "done({exp_name})"',
                 "-g /t974t/test",
                 '-J "{exp_name}_test"',
-                "'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && python -W ignore {cmd} {args}'",
+                (
+                    "'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && "
+                    "python -W ignore {cmd} {args}'"
+                ),
             ]
         )
-
 
     base_command = [
         "bsub",
@@ -60,7 +69,7 @@ def get_base_command(mode, dataset, stage):
             [
                 "-gpu num=4:j_exclusive=yes:mode=exclusive_process:gmem=31.7G",
                 "-g /t974t/train",
-                '-w "done({exp_name})"',
+                '-w "ended({exp_name})"',
                 '-J "{exp_name}_stage2"',
             ]
         )
@@ -127,11 +136,13 @@ rewards = [2.2, 3, 4.5, 6, 10]
 experiments: list[
     tuple[list, list, list, list, list, list, list, range, Optional[list]]
 ] = [
-    # (["cifar10"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
-    # (["svhn"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
-    # (["breeds"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
-    # (["wilds_camelyon"], ["confidnet"], ["vit"], [0.003], [128], [1], [2.2], range(1), [2]),
-    # (["super_cifar100"], ["confidnet"], ["vit"], [0.001], [128], [1], [2.2], range(1), [2]),
+    (["cifar10"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
+    (["svhn"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
+    (["breeds"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
+    (["wilds_camelyon"], ["confidnet"], ["vit"], [0.003], [128], [1], [2.2], range(1), [2]),
+    (["super_cifar100"], ["confidnet"], ["vit"], [0.001], [128], [1], [2.2], range(1), [2]),
+    (["cifar100"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
+    (["wilds_animals"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
     # (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
     # (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
     # (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], rewards, range(1)),
@@ -149,12 +160,10 @@ experiments: list[
     # (["wilds_animals"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1), [None]),
     # (["cifar100"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
     # (["wilds_animals"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
-    # (["cifar100"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [1, 2]),
-    # (["wilds_animals"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [1, 2]),
     # (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], rewards, range(1)),
     # (["super_cifar100"], ["devries"], ["vit"], [0.003], [128], [0], [2.2], range(1)),
     # (["super_cifar100"], ["devries"], ["vit"], [0.001], [128], [1], [2.2], range(1)),
-    (["svhn_openset"], ["vit_model"], ["vit"], [0.01], [128], [0], [2.2], range(1), [None]),
+    # (["svhn_openset"], ["vit_model"], ["vit"], [0.01], [128], [0], [2.2], range(1), [None]),
 ]
 
 for experiment in experiments:
@@ -243,7 +252,10 @@ for experiment in experiments:
                     "++model.budget=0.3",
                     "++model.network.name=vit",
                     "++model.network.backbone={}".format("null"),
-                    "++model.network.save_dg_backbone_path='\"'\"'${exp.dir}/dg_backbone.ckpt'\"'\"'",
+                    (
+                        "++model.network.save_dg_backbone_path="
+                        "'\"'\"'${exp.dir}/dg_backbone.ckpt'\"'\"'"
+                    ),
                     "++eval.ext_confid_name=dg",
                     "++eval.test_conf_scaling=false",
                     "++test.iid_set_split=devries",
@@ -272,15 +284,19 @@ for experiment in experiments:
                     '++trainer.callbacks.training_stages.milestones="[0, 0]"',
                 )
                 command_line_args.append(
-                    "++trainer.batch_size=128",
+                    "++trainer.batch_size=64",
                 )
+                command_line_args.append("++trainer.accumulate_grad_batches=2")
                 command_line_args.append("++trainer.resume_from_ckpt_confidnet=true")
             command_line_args.extend(
                 [
                     "~trainer.num_steps",
                     "++trainer.lr_scheduler.name=LinearWarmupCosineAnnealing",
                     "++trainer.lr_scheduler.warmup_epochs=0",
-                    "++trainer.lr_scheduler.max_epochs='\"'\"'${trainer.num_epochs_backbone}'\"'\"'",
+                    (
+                        "++trainer.lr_scheduler.max_epochs="
+                        "'\"'\"'${trainer.num_epochs_backbone}'\"'\"'"
+                    ),
                     "++trainer.weight_decay=0.0005",
                     "++model.name=confidnet_model",
                     "++model.network=None",
@@ -308,7 +324,7 @@ for experiment in experiments:
                 ]
             )
 
-        base_command = get_base_command("train", dataset, stage)
+        base_command = get_base_command("train", model, dataset, stage)
 
         launch_command = base_command.format(
             exp_name=exp_name,
@@ -347,7 +363,7 @@ for experiment in experiments:
                 )
             )
 
-        base_command = get_base_command("test", dataset, stage)
+        base_command = get_base_command("test", model, dataset, stage)
 
         if stage == 2:
             exp_name = exp_name + "_stage2"
