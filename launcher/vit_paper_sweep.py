@@ -132,37 +132,40 @@ cn_pretrained_bbs = {
     ],
 }
 
+MODE = "test_corruption"
+
 rewards = [2.2, 3, 4.5, 6, 10]
 experiments: list[
     tuple[list, list, list, list, list, list, list, range, Optional[list]]
 ] = [
     (["cifar10"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
-    (["svhn"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
-    (["breeds"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
-    (["wilds_camelyon"], ["confidnet"], ["vit"], [0.003], [128], [1], [2.2], range(1), [2]),
-    (["super_cifar100"], ["confidnet"], ["vit"], [0.001], [128], [1], [2.2], range(1), [2]),
+    (["cifar10"], ["devries"], ["vit"], [0.0003], [128], [0], [2.2], range(1), [None]),
+    (["cifar10"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
+    (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1), [None]),
+    # (["svhn"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
     (["cifar100"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
-    (["wilds_animals"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
+    (["cifar100"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1), [None]),
+    (["cifar100"], ["devries"], ["vit"], [0.03], [128], [0], [2.2], range(1), [None]),
+    (["cifar100"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
+    # (["breeds"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
+    # (["wilds_camelyon"], ["confidnet"], ["vit"], [0.003], [128], [1], [2.2], range(1), [2]),
+    # (["super_cifar100"], ["confidnet"], ["vit"], [0.001], [128], [1], [2.2], range(1), [2]),
+    # (["wilds_animals"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
     # (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
     # (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
     # (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], rewards, range(1)),
-    # (["cifar10"], ["devries"], ["vit"], [0.0003], [128], [0], [2.2], range(1)),
-    # (["cifar10"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
     # (["breeds"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
     # (["breeds"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
     # (["svhn"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(1)),
     # (["svhn"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
     # (["wilds_camelyon"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
     # (["wilds_camelyon"], ["devries"], ["vit"], [0.003], [128], [1], [2.2], range(1)),
-    # (["cifar100"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1), [None]),
     # (["wilds_animals"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1), [None]),
-    # (["cifar100"], ["devries"], ["vit"], [0.03], [128], [0], [2.2], range(1), [None]),
     # (["wilds_animals"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1), [None]),
-    # (["cifar100"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
     # (["wilds_animals"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
-    # (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], rewards, range(1)),
-    # (["super_cifar100"], ["devries"], ["vit"], [0.003], [128], [0], [2.2], range(1)),
-    # (["super_cifar100"], ["devries"], ["vit"], [0.001], [128], [1], [2.2], range(1)),
+    # (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], rewards, range(1), [None]),
+    # (["super_cifar100"], ["devries"], ["vit"], [0.003], [128], [0], [2.2], range(1), [None]),
+    # (["super_cifar100"], ["devries"], ["vit"], [0.001], [128], [1], [2.2], range(1), [None]),
     # (["svhn_openset"], ["vit_model"], ["vit"], [0.01], [128], [0], [2.2], range(1), [None]),
 ]
 
@@ -332,9 +335,10 @@ for experiment in experiments:
             args=" ".join(command_line_args),
         )
 
-        print("Launch command: ", launch_command, end="\n\n")
-        subprocess.call(launch_command, shell=True)
-        time.sleep(1)
+        if "train" in MODE:
+            print("Launch command: ", launch_command, end="\n\n")
+            subprocess.call(launch_command, shell=True)
+            time.sleep(1)
 
         # TESTING
 
@@ -363,6 +367,15 @@ for experiment in experiments:
                 )
             )
 
+        if "corruption" in MODE:
+            command_line_args.extend([
+                "++test.name=corruption",
+                "++test.dir='\"'\"'${exp.dir}/${test.name}'\"'\"'",
+                '++eval.query_studies.noise_study="[\'corrupt_{}_384\']"'.format(dataset),
+                "~eval.query_studies.iid_study",
+                "~eval.query_studies.new_class_study",
+            ])
+
         base_command = get_base_command("test", model, dataset, stage)
 
         if stage == 2:
@@ -374,6 +387,7 @@ for experiment in experiments:
             args=" ".join(command_line_args),
         )
 
-        print("Launch command: ", launch_command, end="\n\n")
-        subprocess.call(launch_command, shell=True)
-        time.sleep(1)
+        if "test" in MODE:
+            print("Launch command: ", launch_command, end="\n\n")
+            subprocess.call(launch_command, shell=True)
+            time.sleep(1)
