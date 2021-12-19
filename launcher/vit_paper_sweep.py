@@ -132,54 +132,263 @@ cn_pretrained_bbs = {
     ],
 }
 
-MODE = "test_corruption"
+MODE = "train_test"
 
 rewards = [2.2, 3, 4.5, 6, 10]
 experiments: list[
     tuple[list, list, list, list, list, list, list, range, Optional[list]]
 ] = [
-    (["cifar10"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
-    (["cifar10"], ["devries"], ["vit"], [0.0003], [128], [0], [2.2], range(1), [None]),
-    (["cifar10"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
-    (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1), [None]),
-    # (["svhn"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
-    (["cifar100"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
-    (["cifar100"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1), [None]),
-    (["cifar100"], ["devries"], ["vit"], [0.03], [128], [0], [2.2], range(1), [None]),
-    (["cifar100"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
-    # (["breeds"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
-    # (["wilds_camelyon"], ["confidnet"], ["vit"], [0.003], [128], [1], [2.2], range(1), [2]),
-    # (["super_cifar100"], ["confidnet"], ["vit"], [0.001], [128], [1], [2.2], range(1), [2]),
-    # (["wilds_animals"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1), [2]),
-    # (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
-    # (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1)),
-    # (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], rewards, range(1)),
-    # (["breeds"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
-    # (["breeds"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
-    # (["svhn"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(1)),
-    # (["svhn"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1)),
-    # (["wilds_camelyon"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1)),
-    # (["wilds_camelyon"], ["devries"], ["vit"], [0.003], [128], [1], [2.2], range(1)),
-    # (["wilds_animals"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1), [None]),
-    # (["wilds_animals"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1), [None]),
-    # (["wilds_animals"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
-    # (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], rewards, range(1), [None]),
-    # (["super_cifar100"], ["devries"], ["vit"], [0.003], [128], [0], [2.2], range(1), [None]),
-    # (["super_cifar100"], ["devries"], ["vit"], [0.001], [128], [1], [2.2], range(1), [None]),
-    # (["svhn_openset"], ["vit_model"], ["vit"], [0.01], [128], [0], [2.2], range(1), [None]),
+    (
+        ["cifar10"],
+        ["confidnet"],
+        ["vit"],
+        [0.01],
+        [128],
+        [1],
+        [2.2],
+        range(1, 5),
+        [1, 2],
+    ),
+    (
+        ["cifar10"],
+        ["devries"],
+        ["vit"],
+        [0.0003],
+        [128],
+        [0],
+        [2.2],
+        range(1, 5),
+        [None],
+    ),
+    (["cifar10"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1, 5), [None]),
+    (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(1, 5), [None]),
+    (
+        ["cifar100"],
+        ["confidnet"],
+        ["vit"],
+        [0.01],
+        [128],
+        [1],
+        [2.2],
+        range(1, 5),
+        [1, 2],
+    ),
+    (
+        ["cifar100"],
+        ["devries"],
+        ["vit"],
+        [0.01],
+        [128],
+        [1],
+        [2.2],
+        range(1, 5),
+        [None],
+    ),
+    (
+        ["cifar100"],
+        ["devries"],
+        ["vit"],
+        [0.03],
+        [128],
+        [0],
+        [2.2],
+        range(1, 5),
+        [None],
+    ),
+    (["cifar100"], ["dg"], ["vit"], [0.01], [128], [1], [3], range(1, 5), [None]),
+    (["cifar100"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(1, 5), [None]),
+    (
+        ["super_cifar100"],
+        ["devries"],
+        ["vit"],
+        [0.001],
+        [128],
+        [1],
+        [2.2],
+        range(1, 5),
+        [None],
+    ),
+    (
+        ["super_cifar100"],
+        ["devries"],
+        ["vit"],
+        [0.003],
+        [128],
+        [0],
+        [2.2],
+        range(1, 5),
+        [None],
+    ),
+    (
+        ["super_cifar100"],
+        ["dg"],
+        ["vit"],
+        [0.001],
+        [128],
+        [1],
+        [3],
+        range(1, 5),
+        [None],
+    ),
+    (
+        ["breeds"],
+        ["confidnet"],
+        ["vit"],
+        [0.01],
+        [128],
+        [1],
+        [2.2],
+        range(1, 5),
+        [1, 2],
+    ),
+    (["breeds"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(1, 5), [None]),
+    (["breeds"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1, 5), [None]),
+    (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(1, 5), [None]),
+    (["svhn"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(1, 5), [1, 2]),
+    (["svhn"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(1, 5), [None]),
+    (["svhn"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1, 5), [None]),
+    (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(1, 5), [None]),
+    (["svhn"], ["vit"], ["vit"], [0.03], [128], [1], [0], range(1, 5), [None]),
+    (
+        ["wilds_animals"],
+        ["confidnet"],
+        ["vit"],
+        [0.01],
+        [128],
+        [1],
+        [2.2],
+        range(1, 5),
+        [1, 2],
+    ),
+    (
+        ["wilds_animals"],
+        ["devries"],
+        ["vit"],
+        [0.001],
+        [128],
+        [0],
+        [2.2],
+        range(1, 5),
+        [None],
+    ),
+    (
+        ["wilds_animals"],
+        ["devries"],
+        ["vit"],
+        [0.01],
+        [128],
+        [1],
+        [2.2],
+        range(1, 5),
+        [None],
+    ),
+    (["wilds_animals"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(1, 5), [None]),
+    (
+        ["wilds_animals"],
+        ["vit"],
+        ["vit"],
+        [0.001],
+        [128],
+        [0],
+        [0],
+        range(4, 5),
+        [None],
+    ),
+    (
+        ["wilds_animals"],
+        ["vit"],
+        ["vit"],
+        [0.003],
+        [128],
+        [0],
+        [0],
+        range(1, 5),
+        [None],
+    ),
+    (
+        ["wilds_animals"],
+        ["vit"],
+        ["vit"],
+        [0.003],
+        [128],
+        [1],
+        [0],
+        range(1, 5),
+        [None],
+    ),
+    (["wilds_animals"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(1, 5), [None]),
+    (
+        ["wilds_camelyon"],
+        ["confidnet"],
+        ["vit"],
+        [0.003],
+        [128],
+        [1],
+        [2.2],
+        range(1, 5),
+        [1, 2],
+    ),
+    (
+        ["wilds_camelyon"],
+        ["devries"],
+        ["vit"],
+        [0.001],
+        [128],
+        [0],
+        [2.2],
+        range(1, 5),
+        [None],
+    ),
+    (
+        ["wilds_camelyon"],
+        ["devries"],
+        ["vit"],
+        [0.003],
+        [128],
+        [1],
+        [2.2],
+        range(1, 5),
+        [None],
+    ),
+    (
+        ["wilds_camelyon"],
+        ["dg"],
+        ["vit"],
+        [0.003],
+        [128],
+        [1],
+        [2.2],
+        range(1, 5),
+        [None],
+    ),
+    (
+        ["wilds_camelyon"],
+        ["vit"],
+        ["vit"],
+        [0.001],
+        [128],
+        [1],
+        [0],
+        range(1, 5),
+        [None],
+    ),
+    (
+        ["wilds_camelyon"],
+        ["vit"],
+        ["vit"],
+        [0.003],
+        [128],
+        [1],
+        [0],
+        range(3, 5),
+        [None],
+    ),
 ]
 
 for experiment in experiments:
     for dataset, model, bb, lr, bs, do, rew, run, stage in product(*experiment):
         exp_name = "{}_model{}_bb{}_lr{}_bs{}_run{}_do{}_rew{}".format(
-            dataset,
-            model,
-            bb,
-            lr,
-            bs,
-            run,
-            do,
-            rew,
+            dataset, model, bb, lr, bs, run, do, rew,
         )
 
         command_line_args = [
@@ -270,9 +479,7 @@ for experiment in experiments:
         if model == "confidnet":
             pretrained_path = base_path / cn_pretrained_bbs[dataset][do]
             if stage == 1:
-                command_line_args.append(
-                    "++trainer.num_epochs=220",
-                )
+                command_line_args.append("++trainer.num_epochs=220",)
                 command_line_args.append(
                     '++trainer.callbacks.training_stages.milestones="[0, 200]"',
                 )
@@ -280,15 +487,11 @@ for experiment in experiments:
                 command_line_args.append("++trainer.resume_from_ckpt_confidnet=false")
                 command_line_args.append("++trainer.accumulate_grad_batches=1")
             elif stage == 2:
-                command_line_args.append(
-                    "++trainer.num_epochs=20",
-                )
+                command_line_args.append("++trainer.num_epochs=20",)
                 command_line_args.append(
                     '++trainer.callbacks.training_stages.milestones="[0, 0]"',
                 )
-                command_line_args.append(
-                    "++trainer.batch_size=128",
-                )
+                command_line_args.append("++trainer.batch_size=128",)
                 # command_line_args.append("++trainer.accumulate_grad_batches=2")
                 command_line_args.append("++trainer.resume_from_ckpt_confidnet=true")
             command_line_args.extend(
@@ -330,9 +533,7 @@ for experiment in experiments:
         base_command = get_base_command("train", model, dataset, stage)
 
         launch_command = base_command.format(
-            exp_name=exp_name,
-            cmd=exec_path,
-            args=" ".join(command_line_args),
+            exp_name=exp_name, cmd=exec_path, args=" ".join(command_line_args),
         )
 
         if "train" in MODE:
@@ -367,24 +568,13 @@ for experiment in experiments:
                 )
             )
 
-        if "corruption" in MODE:
-            command_line_args.extend([
-                "++test.name=corruption",
-                "++test.dir='\"'\"'${exp.dir}/${test.name}'\"'\"'",
-                '++eval.query_studies.noise_study="[\'corrupt_{}_384\']"'.format(dataset),
-                "~eval.query_studies.iid_study",
-                "~eval.query_studies.new_class_study",
-            ])
-
         base_command = get_base_command("test", model, dataset, stage)
 
         if stage == 2:
             exp_name = exp_name + "_stage2"
 
         launch_command = base_command.format(
-            exp_name=exp_name,
-            cmd=exec_path,
-            args=" ".join(command_line_args),
+            exp_name=exp_name, cmd=exec_path, args=" ".join(command_line_args),
         )
 
         if "test" in MODE:

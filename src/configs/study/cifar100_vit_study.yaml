@@ -75,8 +75,8 @@ eval:
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
     iid_study: cifar100_384
-    # noise_study:
-    #   - corrupt_cifar100_384
+    noise_study:
+      - corrupt_cifar100_384
     new_class_study:
     - cifar10_384
     - svhn_384
