@@ -7,11 +7,16 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir, "exec.py")
 
-datasets = ["svhn", "breeds", "wilds_camelyon", "cifar100", "wilds_animals"]
-lrs = [0.01, 1e-3, 0.001, 0.003, 0.0001]
-dos = [0]
-runs = range(1, 5)
-for run, (dataset, lr), do in product(runs, zip(datasets, lrs), dos):
+# datasets = ["svhn", "breeds", "wilds_camelyon", "cifar100", "wilds_animals"]
+# lrs = [0.01, 1e-3, 0.001, 0.003, 0.0001]
+# dos = [0]
+# runs = range(1, 5)
+# for run, (dataset, lr), do in product(runs, zip(datasets, lrs), dos):
+datasets = ["super_cifar100"]
+lrs = [0.01, 0.03, 0.001, 0.003]
+dos = [0, 1]
+runs = range(1)
+for run, dataset, lr, do in product(runs, datasets, lrs, dos):
     if dataset in ["cifar100", "wilds_animals"]:
         base_command = '''bsub \\
         -R "select[hname!='e230-dgx2-1']" \\
@@ -70,6 +75,10 @@ for run, (dataset, lr), do in product(runs, zip(datasets, lrs), dos):
     command_line_args += "+eval.r_star=0.25 "
     command_line_args += "+eval.r_delta=0.05 "
     command_line_args += "trainer.batch_size=128 "
+
+    if do == 1:
+        command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
+            ["det_mcp" , "det_pe", "ext", "ext_mcd", "ext_waic", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv", "mcd_waic"])
 
     launch_command = base_command.format(dataset, lr, run, do, exec_path, command_line_args)
 
