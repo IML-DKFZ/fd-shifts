@@ -49,6 +49,8 @@ def get_dataset(name, root, train, download, transform, kwargs):
         "wilds_animals_ood_test": WILDSAnimals,
         "wilds_animals_384": WILDSAnimals,
         "wilds_animals_ood_test_384": WILDSAnimals,
+        "wilds_animals_openset": WILDSAnimalsOpenSet,
+        "wilds_animals_openset_384": WILDSAnimalsOpenSet,
         "wilds_camelyon": WILDSCamelyon,
         "wilds_camelyon_384": WILDSCamelyon,
         "wilds_camelyon_ood_test": WILDSCamelyon,
@@ -87,6 +89,10 @@ def get_dataset(name, root, train, download, transform, kwargs):
             split = "train" if train else "id_test"
         elif name == "wilds_animals_ood_test_384":
             split = "test"
+        elif name == "wilds_animals_openset":
+            split = "train" if train else "id_test"
+        elif name == "wilds_animals_openset_384":
+            split = "train" if train else "id_test"
         elif name == "wilds_camelyon":
             split = "train" if train else "id_val" # currently for chamelyon
         elif name == "wilds_camelyon_ood_test":
@@ -516,6 +522,40 @@ class WILDSCamelyon(Camelyon17Dataset):
         if split == "id_val":  # shuffle iid set for chamelyon to be able to split into val and test set.
             rng = np.random.default_rng(12345)
             split_idx = rng.permutation(split_idx)
+        if frac < 1.0:
+            num_to_retain = int(np.round(float(len(split_idx)) * frac))
+            split_idx = np.sort(np.random.permutation(split_idx)[:num_to_retain])
+        subset = myWILDSSubset(self, split_idx, transform)
+        return subset
+
+
+class WILDSAnimalsOpenSet(IWildCamDataset):
+    def __init__(self, root, train, download, transform, out_classes: list[int] = [0, 1, 2, 3]):
+        super().__init__(version=None, root_dir=root, download=False, split_scheme='official')
+        self.out_classes = out_classes
+
+        print("CHECK ROOT !!!", root)
+
+    def get_subset(self, split, frac=1.0, transform=None):
+        """
+        Args:
+            - split (str): Split identifier, e.g., 'train', 'val', 'test'.
+                           Must be in self.split_dict.
+            - frac (float): What fraction of the split to randomly sample.
+                            Used for fast development on a small dataset.
+            - transform (function): Any data transformations to be applied to the input x.
+        Output:
+            - subset (WILDSSubset): A (potentially subsampled) subset of the WILDSDataset.
+        """
+
+        if split not in self.split_dict:
+            raise ValueError(f"Split {split} not found in dataset's split_dict.")
+        split_mask = self.split_array == self.split_dict[split]
+        if split == "train":
+            class_mask = ~np.isin(self.y_array, self.out_classes)
+            split_idx = np.where(split_mask & class_mask)[0]
+        else:
+            split_idx = np.where(split_mask)[0]
         if frac < 1.0:
             num_to_retain = int(np.round(float(len(split_idx)) * frac))
             split_idx = np.sort(np.random.permutation(split_idx)[:num_to_retain])

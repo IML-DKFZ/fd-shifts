@@ -44,7 +44,7 @@ def train(cf, subsequent_testing=False):
 
     # TODO: Don't hard-code number of total classes and number of holdout classes
     if "openset" in cf.data.dataset:
-        cf.data.kwargs.out_classes = random.sample(range(10), 4)
+        cf.data.kwargs.out_classes = random.sample(range(cf.data.num_classes), int(0.4*cf.data.num_classes))
 
     datamodule = AbstractDataLoader(cf)
     model = get_model(cf.model.name)(cf)
