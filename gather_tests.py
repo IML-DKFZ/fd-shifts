@@ -297,8 +297,8 @@ def main():
 
             if "maha" in row.confid:
                 row_confid = row_confid + "maha"
-            elif "dg" in row.confid:
-                row_confid = row_confid + "dg"
+            elif "dg" in row.model:
+                row_confid = "dg"
             elif "devries" in row.confid:
                 row_confid = row_confid + "devries"
             elif "tcp" in row.confid:
@@ -352,9 +352,10 @@ def main():
 
         # Select best single run rew based on metric
         metric = "aurc"
-        selection_df = df[(df.study == "val_tuning")][
+        selection_df = df[(df.study == "val_tuning") & (df.select_lr == 1)][
             ["name", "confid", "rew", "do", "run", metric]
         ]
+        # selection_df = selection_df[df[(df.study == "val_tuning")]["select_lr"] == 1]
         selection_df = selection_df[
             (selection_df.confid == "dg")
             & (~(selection_df.confid.str.contains("waic")))
@@ -376,6 +377,7 @@ def main():
 
         # print(df)
         selected_df = df[(df.select_lr == 1) & (df.select_rew == 1)]
+        # selected_df = df[(df.select_lr == 1)]
         potential_runs = (
             selected_df[(selected_df.study == "iid_study")][
                 ["model", "lr", "run", "do", "rew",]
