@@ -54,9 +54,9 @@ eval:
     val: ['loss', 'nll', 'accuracy', 'brier_score']
     test: ['nll', 'accuracy', 'brier_score']
   confid_metrics:
-    train: ['failauc', 'failap_suc', 'failap_err', "fpr@95tpr"]
-    val: ['failauc', 'failap_suc', 'failap_err', "fpr@95tpr",  "e-aurc", "aurc"]
-    test: ['failauc', 'failap_suc', 'failap_err', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
+    train: ['failauc', "fpr@95tpr"]
+    val: ['failauc', "fpr@95tpr",  "e-aurc", "aurc"]
+    test: ['failauc', "mce", "ece", "e-aurc", "aurc", "fpr@95tpr"]
   confidence_measures: # ["det_mcp" , "det_pe", "tcp" , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
     train:
       ["det_mcp"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
