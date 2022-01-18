@@ -14,6 +14,8 @@ datasets = [
     "svhn",
     "wilds_animals",
     "wilds_camelyon",
+    "svhn_openset",  # TODO: rerun failed runs
+    "wilds_animals_openset",  # TODO: rerun these
 ]
 
 experiments = [
@@ -202,7 +204,7 @@ def check_missing_tests():
         ),
     ]
 
-    base_path = Path("~/cluster/experiments/vit").expanduser()
+    base_path = Path("~/results").expanduser()
 
     for experiment in exps:
         for dataset, model, bb, lr, bs, do, rew, run, stage in product(*experiment):
@@ -220,10 +222,14 @@ def check_missing_tests():
                 print(f"[bold red]{exp_name}/test_results not found")
 
 
-def rename(row):
+def rename(row: re.Match) -> str:
+    row = row[0]
+    if not row:
+        raise ValueError
+
     name = "vit"
 
-    lr = re.search(r"lr([0-9.]+)", row)[1]
+    lr = re.search("lr([0-9.]+)", row)[1]
     name = f"{name}_lr{lr}"
 
     do = re.search(r"do([0-9.]+)", row)
@@ -238,6 +244,14 @@ def rename(row):
         rew = 0
     else:
         rew = rew[1]
+
+    model = re.search(r"model([a-z]+)", row)
+    if model is None:
+        model = "vit"
+    else:
+        model = model[1]
+    if model == "confidnet":
+        rew = 2.2
     name = f"{name}_rew{rew}"
 
     name = f"{name}_bbvit"
@@ -249,40 +263,38 @@ def rename(row):
 
 
 def main():
-    pd.set_option("display.max_rows", 999)
+    pd.set_option("display.max_rows", None)
 
     for dataset in datasets:
         print(f"[bold]Experiment: [/][bold red]{dataset.replace('_', '')}[/]")
         print("[bold]Looking for test results...")
 
-        base_path = Path("~/cluster/experiments/vit").expanduser()
+        base_path = Path("~/results").expanduser()
         df = [
             pd.read_csv(p)
             for p in base_path.glob(f"{dataset}*_run*/test_results/*.csv")
         ]
 
+        print("[bold]Processing test results...")
+
         df = pd.concat(df)
         df = df[~df["study"].str.contains("224")]
 
         df["old_name"] = df["name"]
-        df["name"] = df.name.apply(rename)
+        df["name"] = df["name"].str.replace(".+", rename, regex=True)
 
         def name_to_metric(metric: str, value: str):
-            match = re.search(metric + r"([0-9.]+)", value)
-            if match is not None:
-                return match[1]
+            return value.str.replace(r".*" + metric + r"([0-9.]+).*", "\\1", regex=True)
 
-            return ""
-
-        df["lr"] = df.name.apply(lambda value: name_to_metric("lr", value))
-        df["do"] = df.name.apply(lambda value: name_to_metric("do", value))
-        df["run"] = df.name.apply(lambda value: name_to_metric("run", value))
-        df["rew"] = df.name.apply(lambda value: name_to_metric("rew", value))
-        df["model"] = df.old_name.apply(
-            lambda value: match[1]
-            if (match := re.search(r"model([^_]+)", value))
-            else "vit"
+        df = df.assign(
+            lr = lambda value: name_to_metric("lr", value.name),
+            do = lambda value: name_to_metric("do", value.name),
+            run = lambda value: name_to_metric("run", value.name),
+            rew = lambda value: name_to_metric("rew", value.name),
+            model = lambda value: value.old_name.str.replace("(?:.*model([a-z]+))?.*", "\\1", regex=True)
         )
+
+        df.model = df.model.replace("", "vit")
 
         def select_func(row, selection_df, selection_column):
             if selection_column == "rew" and "dg" not in row.model:
@@ -378,24 +390,24 @@ def main():
         # print(df)
         selected_df = df[(df.select_lr == 1) & (df.select_rew == 1)]
         # selected_df = df[(df.select_lr == 1)]
-        potential_runs = (
-            selected_df[(selected_df.study == "iid_study")][
-                ["model", "lr", "run", "do", "rew",]
-            ]
-            .drop_duplicates()
-            .groupby(["model", "lr", "do", "rew",])
-            .max()
-            .reset_index()
-        )
+        # potential_runs = (
+        #     selected_df[(selected_df.study == "iid_study")][
+        #         ["model", "lr", "run", "do", "rew",]
+        #     ]
+        #     .drop_duplicates()
+        #     .groupby(["model", "lr", "do", "rew",])
+        #     .max()
+        #     .reset_index()
+        # )
 
         # print(potential_runs)
-        for run in potential_runs.itertuples():
+        # for run in potential_runs.itertuples():
             # print(run)
-            print(f'(["{dataset}"], ["{run.model}"], ["vit"], [{run.lr}], [128], [{run.do}], [{run.rew}], range({int(run.run) + 1}, 5), [1, 2]),')
+            # print(f'(["{dataset}"], ["{run.model}"], ["vit"], [{run.lr}], [128], [{run.do}], [{run.rew}], range({int(run.run) + 1}, 5), [1, 2]),')
 
         dataset = dataset.replace("wilds_", "")
         dataset = dataset.replace("cifar10_", "cifar10")
-        # print(selected_df)
+        print(len(selected_df))
 
         out_path = Path("~/Projects/failure-detection-benchmark/results").expanduser()
         selected_df.to_csv(out_path / f"{dataset}vit.csv")
