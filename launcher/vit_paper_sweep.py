@@ -17,7 +17,7 @@ else:
     )
 
 
-def get_base_command(mode: str, model: str, dataset: str, stage: Optional[int]):
+def get_base_command(mode: str, model: str, dataset: str, stage: Optional[int], bb):
     if system_name == "local":
         return (
             "echo {exp_name} && bash -li -c 'source ~/.bashrc && conda activate failure-detection "
@@ -56,7 +56,23 @@ def get_base_command(mode: str, model: str, dataset: str, stage: Optional[int]):
     #             "-g /t974t/train",
     #         ]
     #     )
-    if model == "confidnet" and stage == 1:
+    if bb == "svhn_small_conv":
+        base_command.extend(
+            [
+                "-gpu num=1:j_exclusive=yes:gmem=10.7G",
+                "-g /t974t/train_small",
+                '-J "{exp_name}"',
+            ]
+        )
+    elif bb == "resnet50":
+        base_command.extend(
+            [
+                "-gpu num=1:j_exclusive=yes:gmem=10.7G",
+                "-g /t974t/train_small",
+                '-J "{exp_name}"',
+            ]
+        )
+    elif model == "confidnet" and stage == 1:
         base_command.extend(
             [
                 "-gpu num=4:j_exclusive=yes:gmem=10.7G",
@@ -136,6 +152,7 @@ MODE = "train_test"
 
 rewards = [2.2, 3, 4.5, 6, 10]
 experiments: list[
+    #     dset  model bb    lr    bsize do    reward    runs            confid stages
     tuple[list, list, list, list, list, list, list, Union[range, list], Optional[list]]
 ] = [
     # (
@@ -167,12 +184,28 @@ experiments: list[
     # (["svhn_openset"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
     (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [0], [0], range(0, 5), [None]),
     (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
+    (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(0, 1), [None]),
+    # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [0], [0], range(0, 5), [None]),
+    # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
     # (["wilds_animals_openset"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [1, 2]),
     # (["wilds_animals_openset"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(0, 5), [None]),
     # (["wilds_animals_openset"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
     # (["wilds_animals_openset"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
     # (["wilds_animals_openset"], ["vit"], ["vit"], [0.001], [128], [0], [0], range(0, 5), [None]),
     # (["wilds_animals_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
+
+    # (["svhn_openset"], ["dg"], ["svhn_small_conv"], [0.01], [128], [1], [3], range(0, 5), [None]),
+    # (["svhn_openset"], ["confidnet"], ["svhn_small_conv"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
+    # (["svhn_openset"], ["devries"], ["svhn_small_conv"], [0.01], [128], [0], [2.2], range(0, 5), [None]),
+    # (["svhn_openset"], ["devries"], ["svhn_small_conv"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
+    (["svhn_openset"], ["dg"], ["svhn_small_conv"], [0.01], [128], [1], [3], range(0, 5), [None]),
+    (["svhn_openset"], ["confidnet"], ["svhn_small_conv"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
+    (["svhn_openset"], ["devries"], ["svhn_small_conv"], [0.01], [128], [0], [2.2], range(0, 5), [None]),
+    (["svhn_openset"], ["devries"], ["svhn_small_conv"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
+    (["wilds_animals_openset"], ["dg"], ["resnet50"], [0.01], [128], [1], [6], range(0, 5), [None]),
+    (["wilds_animals_openset"], ["confidnet"], ["resnet50"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
+    (["wilds_animals_openset"], ["devries"], ["resnet50"], [0.01], [128], [0], [2.2], range(0, 5), [None]),
+    (["wilds_animals_openset"], ["devries"], ["resnet50"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
 ]
 
 for experiment in experiments:
@@ -229,6 +262,26 @@ for experiment in experiments:
                     "++test.iid_set_split=devries",
                 ]
             )
+            if bb == "svhn_small_conv":
+                command_line_args.extend([
+                    "data={}".format("svhn_openset_data"),
+                    "++model.network.name={}".format("devries_and_enc"),
+                    "++trainer.num_epochs={}".format(100),
+                    "++trainer.optimizer.learning_rate={}".format(0.01),
+                    "++trainer.lr_scheduler.max_epochs=100",
+                ])
+
+            if bb == "resnet50":
+                command_line_args.extend([
+                    "data={}".format("wilds_animals_openset_data"),
+                    "++model.network.name={}".format("devries_and_enc"),
+                    "++trainer.num_epochs={}".format(12),
+                    "++trainer.batch_size={} ".format(16),
+                    "++trainer.optimizer.learning_rate={}".format(0.001),
+                    "++trainer.lr_scheduler.max_epochs=12",
+                    "++trainer.optimizer.weight_decay=0",
+                    "++model.fc_dim={}".format(2048)
+                ])
 
         if model == "dg":
             command_line_args.extend(
@@ -266,8 +319,35 @@ for experiment in experiments:
             if do == 1:
                 command_line_args.append("++model.avg_pool={}".format(False))
 
+            if bb == "svhn_small_conv":
+                command_line_args.extend([
+                    "data={}".format("svhn_openset_data"),
+                    "++model.network.name={}".format(bb),
+                    "++trainer.num_epochs={}".format(150),
+                    "++trainer.dg_pretrain_epochs={}".format(50),
+                    "++trainer.optimizer.learning_rate={}".format(0.01),
+                    "++trainer.lr_scheduler.name=CosineAnnealing",
+                    "++trainer.lr_scheduler.max_epochs=150",
+                ])
+            if bb == "resnet50":
+                command_line_args.extend([
+                    "data={}".format("wilds_animals_openset_data"),
+                    "++model.network.name={}".format(bb),
+                    "++trainer.batch_size={} ".format(16),
+                    "++trainer.num_epochs={}".format(18),
+                    "++trainer.dg_pretrain_epochs={}".format(6),
+                    "++trainer.optimizer.learning_rate={}".format(0.001),
+                    "++trainer.lr_scheduler.name=CosineAnnealing",
+                    "++trainer.lr_scheduler.max_epochs=18",
+                    "++trainer.optimizer.weight_decay=0",
+                    "++model.fc_dim={}".format(2048)
+                ])
+
         if model == "confidnet":
-            pretrained_path = base_path / cn_pretrained_bbs[dataset][do]
+            if dataset in cn_pretrained_bbs:
+                pretrained_path = base_path / cn_pretrained_bbs[dataset][do]
+            else:
+                pretrained_path = "null"
             if stage == 1:
                 command_line_args.append("++trainer.num_epochs=220",)
                 command_line_args.append(
@@ -319,8 +399,31 @@ for experiment in experiments:
                     "++data.reproduce_confidnet_splits={}".format("True"),
                 ]
             )
+            if bb == "svhn_small_conv":
+                command_line_args.extend([
+                    "data={}".format("svhn_openset_data"),
+                    "++model.network.name={}".format("confidnet_and_enc"),
+                    "++model.network.backbone={}".format(bb),
+                    "++trainer.num_epochs={}".format(320),
+                    "++trainer.num_epochs_backbone={} ".format(100),
+                    "++trainer.callbacks.training_stages.milestones=\"{}\"".format([100, 300]),
+                    "++trainer.learning_rate={}".format(0.01),
+                ])
+            if bb == "resnet50":
+                command_line_args.extend([
+                    "data={}".format("wilds_animals_openset_data"),
+                    "++model.network.name={}".format("confidnet_and_enc"),
+                    "++model.network.backbone={}".format(bb),
+                    "++trainer.batch_size={} ".format(16),
+                    "++trainer.num_epochs={}".format(20),
+                    "++trainer.num_epochs_backbone={} ".format(12),
+                    "++trainer.callbacks.training_stages.milestones=\"{}\"".format([12, 17]),
+                    "++trainer.learning_rate={}".format(0.001),
+                    "++trainer.optimizer.weight_decay=0",
+                    "++model.fc_dim={}".format(2048)
+                ])
 
-        base_command = get_base_command("train", model, dataset, stage)
+        base_command = get_base_command("train", model, dataset, stage, bb)
 
         launch_command = base_command.format(
             exp_name=exp_name, cmd=exec_path, args=" ".join(command_line_args),
@@ -339,6 +442,17 @@ for experiment in experiments:
         command_line_args[0] = "exp.mode={}".format("test")
         command_line_args.append("++trainer.batch_size=128")
         command_line_args.append("++trainer.accelerator=ddp")
+        if bb == "svhn_small_conv":
+            command_line_args.extend([
+                "++eval.query_studies.iid_study=svhn_openset",
+                "~eval.query_studies.new_class_study",
+            ])
+        if bb == "resnet50":
+            command_line_args.extend([
+                "++eval.query_studies.iid_study=wilds_animals_openset",
+                "~eval.query_studies.new_class_study",
+                "~eval.query_studies.in_class_study",
+            ])
         if do == 1:
             command_line_args.append(
                 'eval.confidence_measures.test="{}"'.format(
@@ -358,7 +472,7 @@ for experiment in experiments:
                 )
             )
 
-        base_command = get_base_command("test", model, dataset, stage)
+        base_command = get_base_command("test", model, dataset, stage, bb)
 
         if stage == 2:
             exp_name = exp_name + "_stage2"
