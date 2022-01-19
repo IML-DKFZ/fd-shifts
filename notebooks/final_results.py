@@ -29,6 +29,11 @@ from rich import print
 import gc
 import multiprocessing as mp
 import logging
+<<<<<<< HEAD
+=======
+from pathlib import Path
+from itertools import zip_longest
+>>>>>>> bd6a403 (feat: do openset analysis)
 
 pd.set_option("display.max_rows", 100)
 pd.set_option("display.max_columns", None)
@@ -48,6 +53,8 @@ def load_data():
         "camelyon",
         "animals",
         "breeds",
+        "svhn_openset",
+        # "animals_openset",
         "svhnvit",
         "cifar10vit",
         "cifar100vit",
@@ -55,8 +62,8 @@ def load_data():
         "camelyonvit",
         "animalsvit",
         "breedsvit",
-#         "svhn_opensetvit",
-#         "animals_opensetvit",
+        "svhn_opensetvit",
+        "animals_opensetvit",
     ]
 
     df_list = []
@@ -84,8 +91,33 @@ def load_data():
             df["study"] = df.apply(
                 lambda row: "cifar100vit_in_class_study_superclasses", axis=1
             )
+        elif exp == "svhn_openset":
+            df = df[(df.study == "iid_study")]
+            df["study"] = df.apply(
+                lambda row: "svhn_openset_study", axis=1
+            )
+        elif exp == "svhn_opensetvit":
+            df = df[(df.study == "iid_study")]
+            df["study"] = df.apply(
+                lambda row: "svhnvit_openset_study", axis=1
+            )
+        elif exp == "animals_openset":
+            df = df[(df.study == "iid_study")]
+            df["study"] = df.apply(
+                lambda row: "animals_openset_study", axis=1
+            )
+        elif exp == "animals_opensetvit":
+            df = df[(df.study == "iid_study")]
+            df["study"] = df.apply(
+                lambda row: "animalsvit_openset_study", axis=1
+            )
         else:
             df["study"] = df.apply(lambda row: exp + "_" + row["study"], axis=1)
+<<<<<<< HEAD
+=======
+
+        df.loc[df["ece"] < 0, "ece"] = np.nan
+>>>>>>> bd6a403 (feat: do openset analysis)
         print(exp, len(df.groupby("name").count()))
 
         df_list.append(df)
@@ -146,6 +178,8 @@ gc.collect()
 def select_models(df):
 
     def select_func(row, selection_df, selection_column):
+        if "openset" in row["study"]:
+            return 1
         name_splitter = -1 if selection_column == "rew" else -2
         row_exp = row["study"].split("_")[0] + "_"
         row_confid = "_".join(row["confid"].split("_")[:name_splitter])
@@ -312,13 +346,18 @@ gc.collect()
 
 def tripple_results(df):
     non_agg_columns = ["study", "confid"]  # might need rew if no model selection
-    filter_metrics_df = df[non_agg_columns + ["run", metric]]
+    df_acc = (
+        df[non_agg_columns + ["run", "accuracy"]]
+        .groupby(by=non_agg_columns)
+        .mean()
+        .reset_index()
+        .round(2)
+    )
     df_aurc = (
         df[non_agg_columns + ["run", "aurc"]]
         .groupby(by=non_agg_columns)
         .mean()
         .reset_index()
-        .round(2)
     )
     df_auc = (
         df[non_agg_columns + ["run", "failauc"]]
@@ -326,31 +365,42 @@ def tripple_results(df):
         .mean()
         .reset_index()
     )
-    df_acc = (
-        df[non_agg_columns + ["run", "accuracy"]]
+    df_ece = (
+        df[non_agg_columns + ["run", "ece"]]
         .groupby(by=non_agg_columns)
         .mean()
         .reset_index()
     )
-    df_acc["aurc"] = df_acc["accuracy"] * 100
-    df_acc = df_acc.round(2)
-    df_auc["aurc"] = df_auc["failauc"] * 100
+    df_nll = (
+        df[non_agg_columns + ["run", "fail-NLL"]]
+        .groupby(by=non_agg_columns)
+        .mean()
+        .reset_index()
+    )
+    df_acc["accuracy"] = df_acc["accuracy"] * 100
+    df_aurc["accuracy"] = df_aurc["aurc"]
+    df_aurc = df_aurc.round(2)
+    df_auc["accuracy"] = df_auc["failauc"] * 100
     df_auc = df_auc.round(2)
-    studies = df_aurc.study.unique().tolist()
-    tripple_dff = df_aurc[df_aurc.study == "cifar100_iid_study"][["confid"]]
-#     print("CHECK LEN DFF", len(dff), len(df_aurc))
-
+    df_ece["accuracy"] = df_ece["ece"]
+    df_ece = df_ece.round(2)
+    df_nll["accuracy"] = df_nll["fail-NLL"]
+    df_nll = df_nll.round(2)
+    studies = df_acc.study.unique().tolist()
+    tripple_dff = df_acc[df_acc.study == "cifar100_iid_study"][["confid"]]
 
     agg_mean_std = (
         lambda s1, s2: s1
         if (s1.name == "confid" or s1.name == "study" or s1.name == "rew")
         else s1.astype(str) + " / " + s2.astype(str)
     )
-    df_aurc = df_aurc.combine(df_acc, agg_mean_std)
-    df_aurc = df_aurc.combine(df_auc, agg_mean_std)
+    df_acc = df_acc.combine(df_aurc, agg_mean_std)
+    df_acc = df_acc.combine(df_auc, agg_mean_std)
+    df_acc = df_acc.combine(df_ece, agg_mean_std)
+    df_acc = df_acc.combine(df_nll, agg_mean_std)
     for s in studies:
-        sdf = df_aurc[df_aurc.study == s]
-        tripple_dff[s] = tripple_dff["confid"].map(sdf.set_index("confid")["aurc"])
+        sdf = df_acc[df_acc.study == s]
+        tripple_dff[s] = tripple_dff["confid"].map(sdf.set_index("confid")["accuracy"])
 
     return tripple_dff
     
@@ -360,19 +410,38 @@ gc.collect()
 
 # %% jupyter={"source_hidden": true} pycharm={"name": "#%%\n"} tags=[]
 # PLOT METRICS SELECTION
-# df_acc
-plot_dff = dff[["confid"] + [c for c in dff.columns if c.startswith("animals_")]]
-columns = (
+exps = [
+    "cifar10",
+    "cifar100",
+    "svhn",
+    "breeds",
+    "animals",
+    "camelyon",
+]
+
+for exp in exps:
+    plot_dff = tripple_dff[["confid"] + [c for c in dff.columns if c.startswith(f"{exp}_")]]
+    columns = (
     ["confid"]
     + [c for c in plot_dff.columns if "iid" in c]
+    + [c for c in plot_dff.columns if "super" in c]
+    + [c for c in plot_dff.columns if "noise" in c]
+    + [c for c in plot_dff.columns if "openset" in c]
     + [c for c in plot_dff.columns if "ood" in c]
     + [c for c in plot_dff.columns if "proposed" in c]
-)
-print(columns, plot_dff.columns)
-# columns = ["confid"]+ [c for c in plot_dff.columns if "noise" in c]
-plot_dff[columns].set_index("confid").to_latex(
-    "/home/t974t/Projects/failure-detection-benchmark/results/animals"
-)
+    )
+    print(columns, plot_dff.columns)
+    # columns = ["confid"]+ [c for c in plot_dff.columns if "noise" in c]
+    plot_dff[columns].set_index("confid").to_latex(
+       base_path / f"{exp}.tex"
+    )
+    for i, c in enumerate(zip_longest([columns[0]]*len(columns[1::2]), columns[1::2], columns[2::2])):
+        filter_c = [a for a in c if a]
+        print(filter_c)
+        plot_dff[filter_c].set_index("confid").to_latex(
+           base_path / f"{exp}_{i}.tex"
+        )
+# print(tripple_dff)
 # print(len(df_aurc), len(df_auc), len(df_acc))
 # df_acc
 # dff[["confid", "dropout"] + [c for c in dff.columns if "original" in c]]
@@ -394,7 +463,7 @@ def make_rank_df(dff):
 
 rank_df = make_rank_df(dff)
 gc.collect()
-# print(select_df)
+print(rank_df.confid.unique())
 
 # %% jupyter={"source_hidden": true} pycharm={"name": "#%%\n"} tags=[]
 # RANKING PLOTS
@@ -969,6 +1038,7 @@ def final_strip_plots_sc():
         'corruption-shift-3',
         'corruption-shift-4',
         'corruption-shift-5',
+        'openset_study',
         'new-class-shift-cifar10',
         'new-class-shift-cifar10-original-mode',
         'new-class-shift-cifar100',
@@ -1399,6 +1469,7 @@ def final_strip_plots_whisk():
         'corruption-shift-3',
         'corruption-shift-4',
         'corruption-shift-5',
+        'openset-study',
         'new-class-shift-cifar10',
         'new-class-shift-cifar10-original-mode',
         'new-class-shift-cifar100',
@@ -1477,25 +1548,28 @@ def final_strip_plots_whisk():
                     sns.set_palette(palette)
 
                     # print(data[~data[dim].str.startswith("VIT")])
+                    # logger.info(data[data.study == "openset-study"])
 
                     order = data[dim].str.replace("VIT-", "").sort_values().unique()
 
-                    sns.boxplot(
-                        ax=saxs[yix],
-                        x=data[~data[dim].str.startswith("VIT")][dim],
-                        y=metric,
-                        data=data[~data[dim].str.startswith("VIT")],
-                        medianprops=dict(alpha=0),
-                        saturation=0,
-                        showbox=False,
-                        showcaps=False,
-                        showfliers=False,
-                        whiskerprops=whiskerprops,
-                        showmeans=True,
-                        meanprops=meanprops,
-                        meanline=True,
-                        order=order,
-                    )
+
+                    if len(data[~data[dim].str.startswith("VIT")]) > 0:
+                        sns.boxplot(
+                            ax=saxs[yix],
+                            x=data[~data[dim].str.startswith("VIT")][dim],
+                            y=metric,
+                            data=data[~data[dim].str.startswith("VIT")],
+                            medianprops=dict(alpha=0),
+                            saturation=0,
+                            showbox=False,
+                            showcaps=False,
+                            showfliers=False,
+                            whiskerprops=whiskerprops,
+                            showmeans=True,
+                            meanprops=meanprops,
+                            meanline=True,
+                            order=order,
+                        )
                     sns.boxplot(
                         ax=saxs[yix],
                         x=data[data[dim].str.startswith("VIT-")][dim].str.replace("VIT-", ""),
@@ -1513,25 +1587,26 @@ def final_strip_plots_whisk():
                         order=order,
                     )
                     
-                    lcount = len(saxs[yix].lines)
-                    ccount = len(saxs[yix].collections)
-                    sns.pointplot(
-                        ax=saxs[yix],
-                        x=data[~data[dim].str.startswith("VIT")][dim],
-                        y=metric,
-                        data=data[~data[dim].str.startswith("VIT")],
-                        join=False,
-                        makers="",
-                        order=order,
-                        ci='sd',
-                        capsize=0.6,
-                        palette=palette,
-                    )
-                    trans = transforms.offset_copy(saxs[yix].transData, fig=f, x=-5/72, y=0, units='inches')
-                    for l in saxs[yix].lines[lcount:]:
-                        l.set_transform(trans)
-                    for _ in range(len(saxs[yix].collections[ccount:])):
-                        del saxs[yix].collections[-1]
+                    if len(data[~data[dim].str.startswith("VIT")]) > 0:
+                        lcount = len(saxs[yix].lines)
+                        ccount = len(saxs[yix].collections)
+                        sns.pointplot(
+                            ax=saxs[yix],
+                            x=data[~data[dim].str.startswith("VIT")][dim],
+                            y=metric,
+                            data=data[~data[dim].str.startswith("VIT")],
+                            join=False,
+                            makers="",
+                            order=order,
+                            ci='sd',
+                            capsize=0.6,
+                            palette=palette,
+                        )
+                        trans = transforms.offset_copy(saxs[yix].transData, fig=f, x=-5/72, y=0, units='inches')
+                        for l in saxs[yix].lines[lcount:]:
+                            l.set_transform(trans)
+                        for _ in range(len(saxs[yix].collections[ccount:])):
+                            del saxs[yix].collections[-1]
 
                     lcount = len(saxs[yix].lines)
                     ccount = len(saxs[yix].collections)

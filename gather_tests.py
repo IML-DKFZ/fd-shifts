@@ -227,7 +227,12 @@ def rename(row: re.Match) -> str:
     if not row:
         raise ValueError
 
-    name = "vit"
+    model = re.search(r"model([a-z]+)", row)
+    if model is None:
+        model = "vit"
+    else:
+        model = model[1]
+    name = model
 
     lr = re.search("lr([0-9.]+)", row)[1]
     name = f"{name}_lr{lr}"
@@ -245,16 +250,16 @@ def rename(row: re.Match) -> str:
     else:
         rew = rew[1]
 
-    model = re.search(r"model([a-z]+)", row)
-    if model is None:
-        model = "vit"
-    else:
-        model = model[1]
     if model == "confidnet":
         rew = 2.2
     name = f"{name}_rew{rew}"
 
-    name = f"{name}_bbvit"
+    bb = re.search(r"bb([a-z]+)", row)
+    if bb is None:
+        bb = "vit"
+    else:
+        bb = bb[1]
+    name = f"{name}_bb{bb}"
 
     run = re.search(r"run([0-9])", row)[1]
     name = f"{name}_run{run}"
@@ -270,10 +275,13 @@ def main():
         print("[bold]Looking for test results...")
 
         base_path = Path("~/results").expanduser()
-        df = [
-            pd.read_csv(p)
-            for p in base_path.glob(f"{dataset}*_run*/test_results/*.csv")
-        ]
+
+        paths = base_path.glob(f"{dataset}*_run*/test_results/*.csv")
+
+        if "openset" not in dataset:
+            paths = filter(lambda x: "openset" not in str(x), paths)
+
+        df = [pd.read_csv(p) for p in paths]
 
         print("[bold]Processing test results...")
 
@@ -287,17 +295,26 @@ def main():
             return value.str.replace(r".*" + metric + r"([0-9.]+).*", "\\1", regex=True)
 
         df = df.assign(
-            lr = lambda value: name_to_metric("lr", value.name),
-            do = lambda value: name_to_metric("do", value.name),
-            run = lambda value: name_to_metric("run", value.name),
-            rew = lambda value: name_to_metric("rew", value.name),
-            model = lambda value: value.old_name.str.replace("(?:.*model([a-z]+))?.*", "\\1", regex=True)
+            lr=lambda value: name_to_metric("lr", value.name),
+            do=lambda value: name_to_metric("do", value.name),
+            run=lambda value: name_to_metric("run", value.name),
+            rew=lambda value: name_to_metric("rew", value.name),
+            model=lambda value: value.old_name.str.replace(
+                "(?:.*model([a-z]+))?.*", "\\1", regex=True
+            ),
+            bb=lambda value: value.old_name.str.replace(
+                "(?:.*bb([a-z]+))?.*", "\\1", regex=True
+            ),
         )
 
         df.model = df.model.replace("", "vit")
+        df.bb = df.bb.replace("", "vit")
 
         def select_func(row, selection_df, selection_column):
             if selection_column == "rew" and "dg" not in row.model:
+                return 1
+
+            if "vit" not in row.bb:
                 return 1
 
             if "det" in row.confid:
@@ -337,7 +354,7 @@ def main():
         # Select best single run lr based on metric
         metric = "aurc"
         selection_df = df[(df.study == "val_tuning")][
-            ["name", "confid", "lr", "do", "run", metric]
+            ["name", "confid", "lr", "do", "run", "bb", metric]
         ]
         selection_df = selection_df[
             (selection_df.confid.str.contains("pe"))
@@ -365,7 +382,7 @@ def main():
         # Select best single run rew based on metric
         metric = "aurc"
         selection_df = df[(df.study == "val_tuning") & (df.select_lr == 1)][
-            ["name", "confid", "rew", "do", "run", metric]
+            ["name", "confid", "rew", "do", "run", "bb", metric]
         ]
         # selection_df = selection_df[df[(df.study == "val_tuning")]["select_lr"] == 1]
         selection_df = selection_df[
@@ -402,15 +419,17 @@ def main():
 
         # print(potential_runs)
         # for run in potential_runs.itertuples():
-            # print(run)
-            # print(f'(["{dataset}"], ["{run.model}"], ["vit"], [{run.lr}], [128], [{run.do}], [{run.rew}], range({int(run.run) + 1}, 5), [1, 2]),')
+        # print(run)
+        # print(f'(["{dataset}"], ["{run.model}"], ["vit"], [{run.lr}], [128], [{run.do}], [{run.rew}], range({int(run.run) + 1}, 5), [1, 2]),')
 
         dataset = dataset.replace("wilds_", "")
         dataset = dataset.replace("cifar10_", "cifar10")
         print(len(selected_df))
 
         out_path = Path("~/Projects/failure-detection-benchmark/results").expanduser()
-        selected_df.to_csv(out_path / f"{dataset}vit.csv")
+        selected_df[selected_df.bb == "vit"].to_csv(out_path / f"{dataset}vit.csv")
+        if "openset" in dataset:
+            selected_df[selected_df.bb != "vit"].to_csv(out_path / f"{dataset}.csv")
 
 
 if __name__ == "__main__":
