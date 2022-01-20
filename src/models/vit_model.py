@@ -92,7 +92,7 @@ class net(pl.LightningModule):
             y = torch.cat(self.labels, dim=0)
 
             mean = []
-            for c in range(self.hparams.data.num_classes):
+            for c in y.unique():
                 mean.append(z[y == c].mean(dim=0))
 
             mean = torch.stack(mean, dim=0)
@@ -137,7 +137,7 @@ class net(pl.LightningModule):
         all_y = torch.cat(all_y, dim=0)
 
         mean = []
-        for c in range(self.hparams.data.num_classes):
+        for c in all_y.unique():
             mean.append(all_z[all_y == c].mean(dim=0))
 
         mean = torch.stack(mean, dim=0)
@@ -151,6 +151,7 @@ class net(pl.LightningModule):
 
         maha = -(torch.einsum('inj,jk,ink->in', zm, self.icov, zm))
         maha = maha.max(dim=1)[0]
+        print(maha)
 
         probs = self.model.head(z)
 
