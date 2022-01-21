@@ -405,22 +405,22 @@ def main():
         )
 
         # print(df)
-        selected_df = df[(df.select_lr == 1) & (df.select_rew == 1)]
+        selected_df = df[(df.select_lr == 1) & (df.select_rew == 1)].reset_index()
         # selected_df = df[(df.select_lr == 1)]
-        # potential_runs = (
-        #     selected_df[(selected_df.study == "iid_study")][
-        #         ["model", "lr", "run", "do", "rew",]
-        #     ]
-        #     .drop_duplicates()
-        #     .groupby(["model", "lr", "do", "rew",])
-        #     .max()
-        #     .reset_index()
-        # )
+        potential_runs = (
+            selected_df[(selected_df.study == "iid_study")][
+                ["model", "lr", "run", "do", "rew",]
+            ]
+            .drop_duplicates()
+            .groupby(["model", "lr", "do", "rew",])
+            .max()
+            .reset_index()
+        )
 
         # print(potential_runs)
-        # for run in potential_runs.itertuples():
+        for run in potential_runs.itertuples():
         # print(run)
-        # print(f'(["{dataset}"], ["{run.model}"], ["vit"], [{run.lr}], [128], [{run.do}], [{run.rew}], range({int(run.run) + 1}, 5), [1, 2]),')
+            print(f'(["{dataset}"], ["{run.model}"], ["vit"], [{run.lr}], [128], [{run.do}], [{run.rew}], range({int(run.run) + 1}, 5), [1, 2]),')
 
         dataset = dataset.replace("wilds_", "")
         dataset = dataset.replace("cifar10_", "cifar10")

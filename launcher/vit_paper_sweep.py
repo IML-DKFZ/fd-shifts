@@ -27,6 +27,22 @@ def get_base_command(mode: str, model: str, dataset: str, stage: Optional[int], 
         )
 
     if mode == "test":
+        if bb in ["svhn_small_conv", "resnet50"]:
+            return " \\\n".join(
+                [
+                    "bsub",
+                    "-gpu num=1:j_exclusive=yes:gmem=10.7G",
+                    "-L /bin/bash -q gpu-lowprio",
+                    "-u 'till.bungert@dkfz-heidelberg.de' -B -N",
+                    '-w "done({exp_name})"',
+                    "-g /t974t/test",
+                    '-J "{exp_name}_test"',
+                    (
+                        "'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && "
+                        "python -W ignore {cmd} {args}'"
+                    ),
+                ]
+            )
         return " \\\n".join(
             [
                 "bsub",
@@ -134,6 +150,10 @@ cn_pretrained_bbs = {
         "vit/svhn_lr0.01_run0/version_0/last.ckpt",
         "vit/svhn_lr0.01_run0_do1/version_0/last.ckpt",
     ],
+    "svhn_openset": [
+        "vit/svhn_openset_modelvit_bbvit_lr0.01_bs128_run0_do0_rew0/version_5/last.ckpt",
+        "vit/svhn_openset_modelvit_bbvit_lr0.01_bs128_run0_do1_rew0/version_4/last.ckpt",
+    ],
     "breeds": [
         "vit/breeds_lr0.001_run0/version_2/last.ckpt",
         "vit/breeds_lr0.01_run0_do1/version_0/last.ckpt",
@@ -141,6 +161,10 @@ cn_pretrained_bbs = {
     "wilds_animals": [
         "vit/wilds_animals_lr0.001_run0/version_2/last.ckpt",
         "vit/wilds_animals_lr0.01_run0_do1/version_0/last.ckpt",
+    ],
+    "wilds_animals_openset": [
+        "vit/wilds_animals_openset_modelvit_bbvit_lr0.001_bs128_run0_do0_rew0/version_1/last.ckpt",
+        "vit/wilds_animals_openset_modelvit_bbvit_lr0.01_bs128_run0_do1_rew0/version_1/last.ckpt",
     ],
     "wilds_camelyon": [
         "vit/wilds_camelyon_lr0.001_run0_do0/version_1/last.ckpt",
@@ -178,17 +202,19 @@ experiments: list[
     #     [3],
     #     [1, 2],
     # ),
-    # (["svhn_openset"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [1, 2]),
+    (["svhn_openset"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [1, 2]),
     # (["svhn_openset"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(1, 5), [None]),
     # (["svhn_openset"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
     # (["svhn_openset"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
-    (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(1, 5), [None]),
-    (["cifar100"], ["dg"], ["vit"], [0.01], [128], [1], [3], range(0, 5), [None]),
-    (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], [3], range(0, 5), [None]),
-    (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
-    (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
-    (["wilds_animals"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
-    (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], [2.2], range(0, 5), [None]),
+
+    # (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(1, 5), [None]),
+    # (["cifar100"], ["dg"], ["vit"], [0.01], [128], [1], [3], range(0, 5), [None]),
+    # (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], [3], range(0, 5), [None]),
+    # (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
+    # (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
+    # (["wilds_animals"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
+    # (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], [2.2], range(0, 5), [None]),
+
     # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [0], [0], range(0, 5), [None]),
     # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
     # (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(0, 1), [None]),
@@ -204,6 +230,7 @@ experiments: list[
     # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [0], [0], range(0, 5), [None]),
     # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
     # (["wilds_animals_openset"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [1, 2]),
+    (["wilds_animals_openset"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [1, 2]),
     # (["wilds_animals_openset"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(0, 5), [None]),
     # (["wilds_animals_openset"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
     # (["wilds_animals_openset"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
