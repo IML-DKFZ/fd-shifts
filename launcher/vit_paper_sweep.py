@@ -148,7 +148,7 @@ cn_pretrained_bbs = {
     ],
 }
 
-MODE = "test"
+MODE = "train_test"
 
 rewards = [2.2, 3, 4.5, 6, 10]
 experiments: list[
@@ -182,20 +182,33 @@ experiments: list[
     # (["svhn_openset"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(1, 5), [None]),
     # (["svhn_openset"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
     # (["svhn_openset"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
-    (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [0], [0], range(0, 5), [None]),
-    (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
-    (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(0, 1), [None]),
+    (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(1, 5), [None]),
+    (["cifar100"], ["dg"], ["vit"], [0.01], [128], [1], [3], range(0, 5), [None]),
+    (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], [3], range(0, 5), [None]),
+    (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
+    (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
+    (["wilds_animals"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
+    (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], [2.2], range(0, 5), [None]),
     # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [0], [0], range(0, 5), [None]),
     # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
     # (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(0, 1), [None]),
     (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [0], [0], range(0, 5), [None]),
     (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
+    (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(1, 5), [None]),
+    (["cifar100"], ["dg"], ["vit"], [0.01], [128], [1], [3], range(0, 5), [None]),
+    (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], [3], range(0, 5), [None]),
+    (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
+    (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
+    (["wilds_animals"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
+    (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], [2.2], range(0, 5), [None]),
+    # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [0], [0], range(0, 5), [None]),
+    # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
     # (["wilds_animals_openset"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [1, 2]),
     # (["wilds_animals_openset"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(0, 5), [None]),
     # (["wilds_animals_openset"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
     # (["wilds_animals_openset"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
-    (["wilds_animals_openset"], ["vit"], ["vit"], [0.001], [128], [0], [0], range(0, 5), [None]),
-    (["wilds_animals_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
+    # (["wilds_animals_openset"], ["vit"], ["vit"], [0.001], [128], [0], [0], range(0, 5), [None]),
+    # (["wilds_animals_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
 
     # (["svhn_openset"], ["dg"], ["svhn_small_conv"], [0.01], [128], [1], [3], range(0, 5), [None]),
     # (["svhn_openset"], ["confidnet"], ["svhn_small_conv"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
@@ -253,7 +266,7 @@ for experiment in experiments:
                     "++trainer.optimizer.learning_rate={}".format(lr),
                     "++trainer.optimizer.momentum=0.9",
                     "++trainer.optimizer.nesterov=true",
-                    "++trainer.optimizer.weight_decay=0.0005",
+                    "++trainer.optimizer.weight_decay=0",
                     "++model.name=devries_model",
                     "++model.fc_dim=768",
                     "++model.confidnet_fc_dim=400",
@@ -304,7 +317,7 @@ for experiment in experiments:
                     "++trainer.optimizer.learning_rate={}".format(lr),
                     "++trainer.optimizer.momentum=0.9",
                     "++trainer.optimizer.nesterov=false",
-                    "++trainer.optimizer.weight_decay=0.0005",
+                    "++trainer.optimizer.weight_decay=0",
                     "++model.name=devries_model",
                     "++model.fc_dim=768",
                     "++model.confidnet_fc_dim=400",
@@ -380,7 +393,7 @@ for experiment in experiments:
                         "++trainer.lr_scheduler.max_epochs="
                         "'\"'\"'${trainer.num_epochs_backbone}'\"'\"'"
                     ),
-                    "++trainer.weight_decay=0.0005",
+                    "++trainer.weight_decay=0",
                     "++model.name=confidnet_model",
                     "++model.network=None",
                     "++test.selection_mode=null",
