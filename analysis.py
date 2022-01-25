@@ -71,6 +71,8 @@ class Analysis():
             print("CHECK IN DATASETS", np.unique(method_dict["raw_dataset_ix"], return_counts=True))
             method_dict["raw_labels"] = raw_outputs[:, -2]
             method_dict["raw_softmax"] = raw_outputs[:, :-2]
+            if "openset" in method_dict["cfg"].exp.name:
+                method_dict["raw_softmax"][:, method_dict["cfg"].data.kwargs.out_classes] = 0
             method_dict["raw_correct"] = (np.argmax(method_dict["raw_softmax"], axis=1) == method_dict["raw_labels"]) * 1
             print("analysis softmax in shape:", method_dict["raw_softmax"].shape)
 
@@ -80,6 +82,8 @@ class Analysis():
                     mcd_softmax_dist = mcd_softmax_dist.f.arr_0
                 except:
                     pass
+                if "openset" in method_dict["cfg"].exp.name:
+                    mcd_softmax_dist[:, :, method_dict["cfg"].data.kwargs.out_classes] = 0
                 mcd_softmax_mean = np.mean(mcd_softmax_dist, axis=2)
                 mcd_correct = (np.argmax(mcd_softmax_mean, axis=1) == method_dict["raw_labels"]) * 1
                 method_dict["raw_mcd_correct"] = mcd_correct

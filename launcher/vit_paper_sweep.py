@@ -10,7 +10,7 @@ system_name = os.environ["SYSTEM_NAME"]
 if system_name == "cluster":
     base_path = Path("/gpu/checkpoints/OE0612/t974t/experiments/")
 elif system_name == "local":
-    base_path = Path("~/checkpoints/experiments/").expanduser()
+    base_path = Path("~/results/").expanduser()
 else:
     raise ValueError(
         "Environment Variable SYSTEM_NAME must be either 'cluster' or 'local'"
@@ -21,8 +21,8 @@ def get_base_command(mode: str, model: str, dataset: str, stage: Optional[int], 
     if system_name == "local":
         return (
             "echo {exp_name} && bash -li -c 'source ~/.bashrc && conda activate failure-detection "
-            "&& EXPERIMENT_ROOT_DIR=/home/t974t/checkpoints/experiments "
-            "DATASET_ROOT_DIR=/home/t974t/Data "
+            "&& EXPERIMENT_ROOT_DIR=/home/tillb/results "
+            "DATASET_ROOT_DIR=/home/tillb/Data "
             "python -W ignore {cmd} {args}'"
         )
 
@@ -172,7 +172,7 @@ cn_pretrained_bbs = {
     ],
 }
 
-MODE = "train_test"
+MODE = "analysis"
 
 rewards = [2.2, 3, 4.5, 6, 10]
 experiments: list[
@@ -202,10 +202,10 @@ experiments: list[
     #     [3],
     #     [1, 2],
     # ),
-    (["svhn_openset"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [1, 2]),
-    # (["svhn_openset"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(1, 5), [None]),
-    # (["svhn_openset"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
-    # (["svhn_openset"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
+    # (["svhn_openset"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [1, 2]),
+    (["svhn_openset"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(0, 5), [None]),
+    (["svhn_openset"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
+    (["svhn_openset"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
 
     # (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(1, 5), [None]),
     # (["cifar100"], ["dg"], ["vit"], [0.01], [128], [1], [3], range(0, 5), [None]),
@@ -215,32 +215,15 @@ experiments: list[
     # (["wilds_animals"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
     # (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], [2.2], range(0, 5), [None]),
 
-    # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [0], [0], range(0, 5), [None]),
-    # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
-    # (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(0, 1), [None]),
     (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [0], [0], range(0, 5), [None]),
     (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
-    (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(1, 5), [None]),
-    (["cifar100"], ["dg"], ["vit"], [0.01], [128], [1], [3], range(0, 5), [None]),
-    (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], [3], range(0, 5), [None]),
-    (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
-    (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
-    (["wilds_animals"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
-    (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], [2.2], range(0, 5), [None]),
-    # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [0], [0], range(0, 5), [None]),
-    # (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
     # (["wilds_animals_openset"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [1, 2]),
-    (["wilds_animals_openset"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [1, 2]),
-    # (["wilds_animals_openset"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(0, 5), [None]),
-    # (["wilds_animals_openset"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
-    # (["wilds_animals_openset"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
-    # (["wilds_animals_openset"], ["vit"], ["vit"], [0.001], [128], [0], [0], range(0, 5), [None]),
-    # (["wilds_animals_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
+    (["wilds_animals_openset"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(0, 5), [None]),
+    (["wilds_animals_openset"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
+    (["wilds_animals_openset"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
+    (["wilds_animals_openset"], ["vit"], ["vit"], [0.001], [128], [0], [0], range(0, 5), [None]),
+    (["wilds_animals_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
 
-    # (["svhn_openset"], ["dg"], ["svhn_small_conv"], [0.01], [128], [1], [3], range(0, 5), [None]),
-    # (["svhn_openset"], ["confidnet"], ["svhn_small_conv"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
-    # (["svhn_openset"], ["devries"], ["svhn_small_conv"], [0.01], [128], [0], [2.2], range(0, 5), [None]),
-    # (["svhn_openset"], ["devries"], ["svhn_small_conv"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
     (["svhn_openset"], ["dg"], ["svhn_small_conv"], [0.01], [128], [1], [3], range(0, 5), [None]),
     (["svhn_openset"], ["confidnet"], ["svhn_small_conv"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
     (["svhn_openset"], ["devries"], ["svhn_small_conv"], [0.01], [128], [0], [2.2], range(0, 5), [None]),
@@ -249,10 +232,6 @@ experiments: list[
     (["wilds_animals_openset"], ["confidnet"], ["resnet50"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
     (["wilds_animals_openset"], ["devries"], ["resnet50"], [0.01], [128], [0], [2.2], range(0, 5), [None]),
     (["wilds_animals_openset"], ["devries"], ["resnet50"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
-    # (["wilds_animals_openset"], ["dg"], ["resnet50"], [0.01], [128], [1], [6], range(0, 5), [None]),
-    # (["wilds_animals_openset"], ["confidnet"], ["resnet50"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
-    # (["wilds_animals_openset"], ["devries"], ["resnet50"], [0.01], [128], [0], [2.2], range(0, 5), [None]),
-    # (["wilds_animals_openset"], ["devries"], ["resnet50"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
 ]
 
 for experiment in experiments:
@@ -270,7 +249,7 @@ for experiment in experiments:
             "exp.name={}".format(exp_name),
             "trainer.learning_rate={}".format(lr),
             "trainer.val_split=devries",
-            "+trainer.do_val=true",
+            "+trainer.do_val=false",
             "+eval.val_tuning=true",
             "+eval.r_star=0.25",
             "+eval.r_delta=0.05",
@@ -519,6 +498,12 @@ for experiment in experiments:
                 )
             )
 
+        if "analysis" in MODE:
+            command_line_args = [
+                "--config-path={}/vit/{}/hydra".format(base_path, exp_name),
+                "exp.mode={}".format("analysis"),
+            ]
+
         base_command = get_base_command("test", model, dataset, stage, bb)
 
         if stage == 2:
@@ -528,7 +513,7 @@ for experiment in experiments:
             exp_name=exp_name, cmd=exec_path, args=" ".join(command_line_args),
         )
 
-        if "test" in MODE:
+        if "test" in MODE or "analysis" in MODE:
             print("Launch command: ", launch_command, end="\n\n")
-            subprocess.call(launch_command, shell=True)
+            subprocess.run(launch_command, shell=True, check=True)
             time.sleep(1)

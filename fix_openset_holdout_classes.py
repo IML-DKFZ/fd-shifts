@@ -6,7 +6,7 @@ from rich import print  # pylint: disable=redefined-builtin
 
 
 def main():
-    base_path = Path("~/results").expanduser()
+    base_path = Path("~/results/vit").expanduser()
 
     for path in base_path.glob("*openset*"):
         versions = sorted(path.glob("*version*"))

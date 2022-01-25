@@ -31,18 +31,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from rich import print
-<<<<<<< HEAD
-import gc
-import multiprocessing as mp
-import logging
-<<<<<<< HEAD
-=======
-from pathlib import Path
-from itertools import zip_longest
->>>>>>> bd6a403 (feat: do openset analysis)
-=======
 from tqdm import tqdm
->>>>>>> 75d8619 (wip: new plottin and table changes)
 
 pd.set_option("display.max_rows", 100)
 pd.set_option("display.max_columns", None)
@@ -50,6 +39,8 @@ pd.set_option("display.width", None)
 pd.set_option("display.max_colwidth", -1)
 meanprops = dict(linestyle="-", linewidth=6, color="k", alpha=1, zorder=99)
 whiskerprops = dict(linestyle="-", linewidth=0)
+
+base_path = Path("~/Projects/failure-detection-benchmark/results").expanduser()
 
 
 # %% jupyter={"outputs_hidden": false} pycharm={"name": "#%%\n"}
@@ -78,9 +69,10 @@ def load_data():
     df_list = []
     for exp in exp_names:
         # in_path = os.path.join("/Users/Paul/research/files/analysis/csvs/{}_paper_sweep.csv".format(exp))
-        in_path = os.path.join(
-            "/home/tillb/Projects/failure-detection-benchmark/results/{}.csv".format(exp)
-        )
+        # in_path = os.path.join(
+        #     "/home/tillb/Projects/failure-detection-benchmark/results/{}.csv".format(exp)
+        # )
+        in_path = base_path / f"{exp}.csv"
         df = pd.read_csv(in_path)
         df = df.dropna(subset=["name", "model"])
         df = df.drop_duplicates(subset=["name", "study", "model", "network", "confid"])
@@ -114,11 +106,8 @@ def load_data():
             df["study"] = df.apply(lambda row: "animalsvit_openset_study", axis=1)
         else:
             df["study"] = df.apply(lambda row: exp + "_" + row["study"], axis=1)
-<<<<<<< HEAD
-=======
 
         df.loc[df["ece"] < 0, "ece"] = np.nan
->>>>>>> bd6a403 (feat: do openset analysis)
         print(exp, len(df.groupby("name").count()))
 
         df_list.append(df)
@@ -411,40 +400,48 @@ def tripple_results(df):
 
     df_aurc["accuracy"] = df_aurc["aurc"]
     df_aurc = df_aurc.round(2)
+    df_aurc["aurc"] = df_aurc["aurc"].map("{:>3.2f}".format)
     df_aurc["accuracy"] = df_aurc["accuracy"].map("{:>3.2f}".format)
 
     df_auc["accuracy"] = df_auc["failauc"] * 100
     df_auc = df_auc.round(2)
+    df_auc["failauc"] = df_auc["failauc"].map("{:>2.2f}".format)
     df_auc["accuracy"] = df_auc["accuracy"].map("{:>2.2f}".format)
 
     df_ece["accuracy"] = df_ece["ece"]
     df_ece = df_ece.round(2)
+    df_ece["ece"] = df_ece["ece"].map("{:>2.2f}".format)
     df_ece["accuracy"] = df_ece["accuracy"].map("{:>2.2f}".format)
 
     df_nll["accuracy"] = df_nll["fail-NLL"]
     df_nll = df_nll.round(2)
+    df_nll["fail-NLL"] = df_nll["fail-NLL"].map("{:>2.2f}".format)
     df_nll["accuracy"] = df_nll["accuracy"].map("{:>2.2f}".format)
 
     studies = df_acc.study.unique().tolist()
-    tripple_dff = df_acc[df_acc.study == "cifar100_iid_study"][["confid"]]
+#     tripple_dff = df_acc[df_acc.study == "cifar100_iid_study"][["confid"]]
 
-    agg_mean_std = (
-        lambda s1, s2: s1
-        if (s1.name == "confid" or s1.name == "study" or s1.name == "rew")
-        else s1.astype(str) + " / " + s2.astype(str)
-    )
-    df_acc = df_acc.combine(df_aurc, agg_mean_std)
-    df_acc = df_acc.combine(df_auc, agg_mean_std)
-    df_acc = df_acc.combine(df_ece, agg_mean_std)
-    df_acc = df_acc.combine(df_nll, agg_mean_std)
-    for s in studies:
-        sdf = df_acc[df_acc.study == s]
-        tripple_dff[s] = tripple_dff["confid"].map(sdf.set_index("confid")["accuracy"])
+#     agg_mean_std = (
+#         lambda s1, s2: s1
+#         if (s1.name == "confid" or s1.name == "study" or s1.name == "rew")
+#         else s1.astype(str) + " / " + s2.astype(str)
+#     )
+#     df_acc = df_acc.combine(df_aurc, agg_mean_std)
+#     df_acc = df_acc.combine(df_auc, agg_mean_std)
+#     df_acc = df_acc.combine(df_ece, agg_mean_std)
+#     df_acc = df_acc.combine(df_nll, agg_mean_std)
+#     for s in studies:
+#         sdf = df_acc[df_acc.study == s]
+#         tripple_dff[s] = tripple_dff["confid"].map(sdf.set_index("confid")["accuracy"])
 
+    tripple_dff = pd.concat([df_acc[["confid", "study", "accuracy"]], df_aurc["aurc"], df_auc["failauc"], df_ece["ece"], df_nll["fail-NLL"]], axis=1)
+    tripple_dff = pd.pivot(tripple_dff, index="confid", columns="study").swaplevel(0, 1, 1).sort_index(axis=1, level=0).reset_index()
+    
     return tripple_dff
 
 
 tripple_dff = tripple_results(df)
+print(tripple_dff)
 gc.collect()
 
 
@@ -463,24 +460,28 @@ for exp in exps:
     plot_dff = tripple_dff[
         ["confid"] + [c for c in dff.columns if c.startswith(f"{exp}_")]
     ]
-    columns = (
+#     print(plot_dff.columns.get_level_values(0).unique())
+
+    columns = list((
         ["confid"]
-        + [c for c in plot_dff.columns if "iid" in c]
-        + [c for c in plot_dff.columns if "super" in c]
-        + [c for c in plot_dff.columns if "noise" in c]
-        + [c for c in plot_dff.columns if "openset" in c]
-        + [c for c in plot_dff.columns if "ood" in c]
-        + [c for c in plot_dff.columns if "proposed" in c]
-    )
-    print(columns, plot_dff.columns)
+        + [c for c in plot_dff.columns.get_level_values(0).unique() if "iid" in c]
+        + [c for c in plot_dff.columns.get_level_values(0).unique() if "super" in c]
+        + [c for c in plot_dff.columns.get_level_values(0).unique() if "noise" in c]
+        + [c for c in plot_dff.columns.get_level_values(0).unique() if "openset" in c]
+        + [c for c in plot_dff.columns.get_level_values(0).unique() if "ood" in c]
+        + [c for c in plot_dff.columns.get_level_values(0).unique() if "proposed" in c]
+    ))
+#     print(columns, plot_dff.columns)
     # columns = ["confid"]+ [c for c in plot_dff.columns if "noise" in c]
+#     print(plot_dff.columns)
+#     print(plot_dff[columns].set_index("confid"))
     plot_dff[columns].set_index("confid").to_latex(base_path / f"{exp}.tex")
     for i, c in enumerate(
         zip_longest([columns[0]] * len(columns[1::2]), columns[1::2], columns[2::2])
     ):
         filter_c = [a for a in c if a]
         print(filter_c)
-        plot_dff[filter_c].set_index("confid").to_latex(base_path / f"{exp}_{i}.tex")
+        plot_dff[filter_c].set_index("confid").to_latex(base_path / f"{exp}_{i}.tex", column_format='l|rrrrr|rrrrr')
 # print(tripple_dff)
 # print(len(df_aurc), len(df_auc), len(df_acc))
 # df_acc
@@ -567,7 +568,7 @@ colors = [
     "tab:purple",
     "orange",
 ]
-print(len(rank_df.confid.str.replace("VIT-", "").unique().tolist()))
+print(rank_df.confid.str.replace("VIT-", "").unique().tolist())
 print(len(colors))
 
 color_dict = {
@@ -748,7 +749,8 @@ def plot_sum_ranking(rank_df):
     )
     plt.tight_layout()
     # plt.savefig("/Users/Paul/research/files/analysis/paper_plots/ranking.png")
-    plt.savefig("/home/tillb/Projects/failure-detection-benchmark/results/ranking.png")
+    # plt.savefig("/home/tillb/Projects/failure-detection-benchmark/results/ranking.png")
+    plt.savefig(base_path / "ranking.png")
     plt.show()
 
 
@@ -1276,15 +1278,7 @@ def final_strip_plots():
                     # if "iid" in study and metric == "failauc":
                     #     axs[xix, yix].set_ylim(0.90, 0.96)
         plt.tight_layout()
-<<<<<<< HEAD
-        plt.savefig(
-            "/home/tillb/Projects/failure-detection-benchmark/results/final_paper_{}.png".format(
-                exp
-            )
-        )
-=======
         plt.savefig(base_path / f"final_paper_{exp}.png")
->>>>>>> 75d8619 (wip: new plottin and table changes)
         plt.close(f)
 
 
@@ -1509,20 +1503,12 @@ def final_strip_plots_sc():
                     # if "iid" in study and metric == "failauc":
                     #     axs[xix, yix].set_ylim(0.90, 0.96)
         plt.tight_layout()
-<<<<<<< HEAD
-        plt.savefig(
-            "/home/tillb/Projects/failure-detection-benchmark/results/final_paper_{}_single_column.png".format(
-                exp
-            )
-        )
-=======
         # plt.savefig(
         #     "/home/tillb/Projects/failure-detection-benchmark/results/final_paper_{}_single_column.png".format(
         #         exp
         #     )
         # )
         plt.savefig(base_path / f"final_paper_{exp}_single_column.png")
->>>>>>> 75d8619 (wip: new plottin and table changes)
         plt.close(f)
 
 
@@ -1737,20 +1723,12 @@ def final_strip_plots_box():
                     # if "iid" in study and metric == "failauc":
                     #     axs[xix, yix].set_ylim(0.90, 0.96)
         plt.tight_layout()
-<<<<<<< HEAD
-        plt.savefig(
-            "/home/tillb/Projects/failure-detection-benchmark/results/final_paper_{}_single_column_box.png".format(
-                exp
-            )
-        )
-=======
         # plt.savefig(
         #     "/home/tillb/Projects/failure-detection-benchmark/results/final_paper_{}_single_column_box.png".format(
         #         exp
         #     )
         # )
         plt.savefig(base_path / f"final_paper_{exp}_single_column_box.png")
->>>>>>> 75d8619 (wip: new plottin and table changes)
         plt.close(f)
 
 
@@ -1763,9 +1741,6 @@ gc.collect()
 # %% pycharm={"name": "#%%\n"} tags=[]
 # FINAL STRIP PLOTS Whiskers
 
-<<<<<<< HEAD
-import logging
-=======
 
 def is_outlier(points, threshold=0.1, keep=None):
     """
@@ -1807,17 +1782,11 @@ def is_outlier(points, threshold=0.1, keep=None):
     modified_z_score = 0.6745 * diff / med_abs_deviation
 
     return (modified_z_score > threshold) & (~keep_array)
->>>>>>> 75d8619 (wip: new plottin and table changes)
 
 
 def final_strip_plots_whisk():
     logger = mp.log_to_stderr()
     logger.setLevel(logging.INFO)
-<<<<<<< HEAD
-    metrics = [
-        "accuracy", "aurc", "failauc", "ece",  "fail-NLL"
-    ]
-=======
 
     metrics = ["accuracy", "aurc", "failauc", "ece", "fail-NLL"]
     metrics_keep = {
@@ -1827,7 +1796,6 @@ def final_strip_plots_whisk():
         "ece": "min",
         "fail-NLL": "min",
     }
->>>>>>> 75d8619 (wip: new plottin and table changes)
     plot_exps = [
         "cifar10",
         "cifar100",
@@ -1852,24 +1820,6 @@ def final_strip_plots_whisk():
     dims = ["confid"]
 
     studies = [
-<<<<<<< HEAD
-        'iid-study',
-        'sub-class-shift',
-        'corruption-shift-1',
-        'corruption-shift-2',
-        'corruption-shift-3',
-        'corruption-shift-4',
-        'corruption-shift-5',
-        'openset-study',
-        'new-class-shift-cifar10',
-        'new-class-shift-cifar10-original-mode',
-        'new-class-shift-cifar100',
-        'new-class-shift-cifar100-original-mode',
-        'new-class-shift-svhn',
-        'new-class-shift-svhn-original-mode',
-        'new-class-shift-tinyimagenet',
-        'new-class-shift-tinyimagenet-original-mode'
-=======
         "iid-study",
         "sub-class-shift",
         "corruption-shift-1",
@@ -1886,7 +1836,6 @@ def final_strip_plots_whisk():
         # 'new-class-shift-svhn-original-mode',
         "new-class-shift-tinyimagenet",
         # 'new-class-shift-tinyimagenet-original-mode'
->>>>>>> 75d8619 (wip: new plottin and table changes)
     ]
 
     # print(df)
@@ -1910,18 +1859,15 @@ def final_strip_plots_whisk():
             n = n.replace("-superclasses", "")
             return n
 
-<<<<<<< HEAD
-=======
         pdata["study"] = pdata.study.apply(fix_studies)
         pdata = pdata[pdata.study.isin(studies)]
         pdata = pdata.sort_values(by="study", key=lambda x: x.apply(studies.index))
->>>>>>> 75d8619 (wip: new plottin and table changes)
 
         plot_studies = pdata.study.unique().tolist()
-        plot_studies = [
-            c for c in plot_studies if not "val_tuning" in c
-        ]  # & (data["ne"].str.contains("250")) & (data["ap"]==False)]
-        plot_studies = list(sorted(plot_studies, key=lambda x: fix_studies(x)))
+        # plot_studies = [
+        #     c for c in plot_studies if not "val_tuning" in c
+        # ]
+        # plot_studies = list(sorted(plot_studies, key=lambda x: fix_studies(x)))
         # print(studies)
         cols = [c for c in plot_studies if exp + "_" in c]
         # plot_studies = studies
@@ -1937,26 +1883,21 @@ def final_strip_plots_whisk():
         # axs = axs.flatten()
 
         for mix, metric in enumerate(metrics):
-<<<<<<< HEAD
-            plot_data = df[df.study.str.startswith(exp + "_")][
-                ["study", "confid", "run", metric]
-            ]
-=======
             plot_data = pdata[["study", "confid", "run", metric]]
->>>>>>> 75d8619 (wip: new plottin and table changes)
             # print(plot_studies, plot_data.columns)
             saxs = axs[mix]
             for xix, dim in enumerate(dims):
-                skipped = 0
-                for yix, study in enumerate(studies):
-                    if study not in [fix_studies(s) for s in plot_studies]:
-                        skipped += 1
-                        continue
+                # skipped = 0
+                for yix, study in enumerate(plot_studies):
+                    # if study not in [fix_studies(s) for s in plot_studies]:
+                    #     skipped += 1
+                    #     continue
 
-                    yix = yix - skipped
+                    # yix = yix - skipped
                     y = metric
                     # print(plot_data.study.apply(fix_studies), study)
-                    data = plot_data[plot_data.study.apply(fix_studies) == study].sort_values(by="confid")
+                    data = plot_data[plot_data.study == study].sort_values(by="confid")
+                    # logger.info(data[metric])
                     plot_colors = [
                         color_dict[conf] for conf in data.confid.unique().tolist()
                     ]
@@ -2066,10 +2007,6 @@ def final_strip_plots_whisk():
                     saxs[yix].set_title(fix_studies(study), pad=35)
                     saxs[yix].set_ylabel("")
                     saxs[yix].set_xlabel("")
-<<<<<<< HEAD
-                    lim0 = data[metric].mean() - data[metric].std()
-                    lim1 = data[metric].mean() + data[metric].std()
-=======
                     data = data.reset_index()
                     # logger.info(f"Before: {len(data)}")
                     data2 = data[
@@ -2086,7 +2023,6 @@ def final_strip_plots_whisk():
                     lim1 = data[metric].max() + 0.1 * (
                         data[metric].max() - data[metric].min()
                     )
->>>>>>> 75d8619 (wip: new plottin and table changes)
                     saxs[yix].set_ylim(lim0, lim1)
                     for ix, x_ in enumerate(order):
                         if (
@@ -2181,13 +2117,6 @@ def final_strip_plots_whisk():
                     # if "iid" in study and metric == "failauc":
                     #     axs[xix, yix].set_ylim(0.90, 0.96)
         plt.tight_layout()
-<<<<<<< HEAD
-        plt.savefig(
-            "/home/tillb/Projects/failure-detection-benchmark/results/final_paper_{}_single_column_whisk.png".format(
-                exp
-            )
-        )
-=======
         # plt.savefig(
         #     "/home/tillb/Projects/failure-detection-benchmark/results/final_paper_{}_single_column_whisk.png".format(
         #         exp
@@ -2197,7 +2126,6 @@ def final_strip_plots_whisk():
         #     base_path / f"final_paper_{exp}_single_column_whisk.png"
         # )
         plt.savefig(base_path / f"final_paper_{exp}.png")
->>>>>>> 75d8619 (wip: new plottin and table changes)
         plt.close(f)
 
 
@@ -2208,18 +2136,13 @@ del proc
 gc.collect()
 
 
-<<<<<<< HEAD
-# %% [markdown]
-# ## Main Overview Plot
-=======
 # %% jupyter={"outputs_hidden": false} pycharm={"name": "#%%\n"}
 # VIT VS CNN BOX
 
 
-def vit_v_cnn_box():
+def vit_v_cnn_box(metric):
     logger = mp.log_to_stderr()
     logger.setLevel(logging.INFO)
-    metric = "aurc"
     plot_exps = [
         "cifar10",
         "cifar100",
@@ -2273,12 +2196,12 @@ def vit_v_cnn_box():
         nrows=1, ncols=1, figsize=(4 * scale * 1.2, 1 * scale * 1.2), squeeze=True
     )
 
-    plot_data = df[["study", "confid", "run", metric]][df.study.str.contains("iid")]
+    plot_data = df[["study", "confid", "run", metric]][(df.study.str.contains("iid")) & (~df.confid.str.contains("DG"))]
     y = metric
     data = plot_data.assign(
         dataset=lambda row: row.study.str.split("_", 1, expand=True)[0]
     )
-    logger.info(data.dataset)
+#     logger.info(data.dataset)
     plot_colors = [color_dict[conf] for conf in data.confid.unique().tolist()]
     # print(plot_colors)
     palette = sns.color_palette(plot_colors)
@@ -2343,6 +2266,7 @@ def vit_v_cnn_box():
             label.set_fontsize(28)
             label.set_bbox(dict(facecolor="white", edgecolor="None", alpha=0.75))
 
+        axs_.grid(False)
         if i != 0:
             axs_.set_ylabel("")
         else:
@@ -2351,9 +2275,10 @@ def vit_v_cnn_box():
     axs.set_xticklabels(plot_exps)
 
     # axs.set_title(fix_studies(study), pad=35)
-    axs.set_ylabel("aurc")
+    axs.set_ylabel(metric)
     axs.set_xlabel("")
     axs.yaxis.set_visible(False)
+    axs.grid(False)
     # lim0 = data[metric].mean() - data[metric].std()
     # lim1 = data[metric].mean() + data[metric].std()
     # saxs[yix].set_ylim(lim0, lim1)
@@ -2374,28 +2299,27 @@ def vit_v_cnn_box():
     #         exp
     #     )
     # )
-    plt.savefig(base_path / f"vit_v_cnn.png")
+    plt.savefig(base_path / f"vit_v_cnn_{metric}.png")
     plt.close(f)
 
 
-proc = mp.Process(target=vit_v_cnn_box)
+proc = mp.Process(target=vit_v_cnn_box, args=("aurc",))
+proc.start()
+proc.join()
+proc = mp.Process(target=vit_v_cnn_box, args=("ece",))
 proc.start()
 proc.join()
 del proc
 gc.collect()
 
->>>>>>> 75d8619 (wip: new plottin and table changes)
 
 # %%
 # Rank-style AURC plots
 
 
-def plot_rank_style(df):
+def plot_rank_style(df, exp, metric):
     logger = mp.log_to_stderr()
     logger.setLevel(logging.INFO)
-
-    exp = "cifar100"
-    metric = "aurc"
 
     def fix_studies(n):
         n = n.replace(exp + "_", "")
@@ -2459,13 +2383,13 @@ def plot_rank_style(df):
     f, axs = plt.subplots(nrows=1, ncols=1, figsize=(4 * scale, 1.5 * scale * 1.2))
     x0 = np.arange(len(plot_data0.study.unique()))
     x1 = np.arange(
-        len(plot_data0.study.unique()),
-        len(plot_data0.study.unique()) + len(plot_data1.study.unique()),
+        x0[-1] + 1,
+        x0[-1] + 1 + len(plot_data1.study.unique())/2,
+        0.5,
     )
     x2 = np.arange(
-        len(plot_data0.study.unique()) + len(plot_data1.study.unique()),
-        len(plot_data0.study.unique())
-        + len(plot_data1.study.unique())
+        x1[-1] + 1,
+        x1[-1] + 1
         + len(plot_data2.study.unique()),
     )
     ranked_confids = (
@@ -2476,10 +2400,10 @@ def plot_rank_style(df):
     logger.info(ranked_confids)
     twin0 = axs.twinx()
     twin0.yaxis.tick_left()
-    twin0.spines["left"].set_position(("data", len(studies0)))
+    twin0.spines["left"].set_position(("data", x1[0]))
     twin1 = axs.twinx()
     twin1.yaxis.tick_left()
-    twin1.spines["left"].set_position(("data", len(studies0) + len(studies1)))
+    twin1.spines["left"].set_position(("data", x2[0]))
     for c in plot_data0["confid"]:
         confid_data0 = plot_data0[plot_data0["confid"] == c][
             ["study", metric]
@@ -2567,11 +2491,11 @@ def plot_rank_style(df):
         + list(plot_data1.study.unique())
         + list(plot_data2.study.unique())
     )
-    axs.set_xticks(range(len(studies)))
+    axs.set_xticks(np.concatenate((x0, x1, x2)))
     axs.set_xticklabels(studies, rotation=90)
-    axs.set_xlim(0, len(studies) - 0.5)
+    axs.set_xlim(0, x2[-1] + 0.5)
 
-    ylim0 = [plot_data0.aurc.min(), plot_data0.aurc.max()]
+    ylim0 = [plot_data0[metric].min(), plot_data0[metric].max()]
 
     ylim0[0] -= 0.07 * (ylim0[1] - ylim0[0])
     ylim0[1] += 0.07 * (ylim0[1] - ylim0[0])
@@ -2596,7 +2520,7 @@ def plot_rank_style(df):
         label.set_fontsize(18)
         label.set_bbox(dict(facecolor="white", edgecolor="None", alpha=0.75))
 
-    ylim1 = [plot_data1.aurc.min(), plot_data1.aurc.max()]
+    ylim1 = [plot_data1[metric].min(), plot_data1[metric].max()]
     ylim1[0] -= 0.07 * (ylim1[1] - ylim1[0])
     ylim1[1] += 0.07 * (ylim1[1] - ylim1[0])
     twin0.set_ylim(ylim1)
@@ -2612,7 +2536,7 @@ def plot_rank_style(df):
         label.set_fontsize(18)
         label.set_bbox(dict(facecolor="white", edgecolor="None", alpha=0.75))
 
-    ylim2 = [plot_data2.aurc.min(), plot_data2.aurc.max()]
+    ylim2 = [plot_data2[metric].min(), plot_data2[metric].max()]
     ylim2[0] -= 0.07 * (ylim2[1] - ylim2[0])
     ylim2[1] += 0.07 * (ylim2[1] - ylim2[0])
     twin1.set_ylim(ylim2)
@@ -2629,27 +2553,14 @@ def plot_rank_style(df):
         label.set_bbox(dict(facecolor="white", edgecolor="None", alpha=0.75))
 
     plt.tight_layout()
-<<<<<<< HEAD
-<<<<<<< HEAD
-    plt.savefig(
-            "/home/tillb/Projects/failure-detection-benchmark/results/rank_style_aurc_{}.png".format(
-                exp
-            )
-        )
-=======
-    # plt.savefig(
-    #         "/home/tillb/Projects/failure-detection-benchmark/results/rank_style_aurc_{}.png".format(
-    #             exp
-    #         )
-    #     )
-=======
->>>>>>> bdadedc (wip: some more result output changes)
-    plt.savefig(base_path / f"rank_style_aurc_{exp}.png")
->>>>>>> 75d8619 (wip: new plottin and table changes)
+    plt.savefig(base_path / f"rank_style_{metric}_{exp}.png")
     plt.close(f)
 
 
-proc = mp.Process(target=plot_rank_style, args=[df])
+proc = mp.Process(target=plot_rank_style, args=(df, "cifar100", "aurc"))
+proc.start()
+proc.join()
+proc = mp.Process(target=plot_rank_style, args=(df, "cifar100", "ece"))
 proc.start()
 proc.join()
 del proc
@@ -2660,6 +2571,7 @@ gc.collect()
 def _dataset(row):
     tmp = row.study.str.split("_", -1, expand=True)
     tmp.loc[~tmp[1].str.contains("openset"), 1] = ""
+    tmp.loc[row.study.str.contains("superclasses"), 0] = "super_cifar100"
     tmp[0] = tmp[0].str.cat(tmp[1])
     return tmp[0]
 
@@ -2674,7 +2586,7 @@ df.loc[df["model"].isnull(), "model"] = "vit"
 
 param_table = (
     df[df.confid.str.contains("VIT")][
-        ["dataset", "model", "study", "confid", "rew", "lr", "do"]
+        ["dataset", "model", "study", "rew", "lr", "do"]
     ]
     .drop_duplicates(["dataset", "model", "rew", "lr", "do"])
     .drop("study", axis=1)
@@ -2682,13 +2594,11 @@ param_table = (
     .reset_index(drop=True)
 )
 
-print(
-    param_table[
-        (param_table.dataset == "breeds") & (param_table.confid.str.contains("VIT-MSR"))
-    ]
-)
+param_table.loc[param_table.model != "dg", "rew"] = "---"
+
+print(param_table)
 datasets = [
-    ["cifar10", "cifar100", "svhn", "svhnopenset"],
+    ["cifar10", "cifar100", "super_cifar100", "svhn", "svhnopenset"],
     ["breeds", "animals", "animalsopenset", "camelyon"],
 ]
 param_table[param_table["dataset"].isin(datasets[0])].set_index("dataset").to_latex(

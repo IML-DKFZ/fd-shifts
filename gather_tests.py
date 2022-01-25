@@ -117,7 +117,7 @@ def main():
         print(f"[bold]Experiment: [/][bold red]{dataset.replace('_', '')}[/]")
         print("[bold]Looking for test results...")
 
-        base_path = Path("~/results").expanduser()
+        base_path = Path("~/results/vit").expanduser()
 
         paths = base_path.glob(f"{dataset}*_run*/test_results/*.csv")
 
