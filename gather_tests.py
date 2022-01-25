@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-from rich import print
+from rich import print  # pylint: disable=redefined-builtin
 
 datasets = [
     "cifar10_",
@@ -14,216 +14,14 @@ datasets = [
     "svhn",
     "wilds_animals",
     "wilds_camelyon",
-    "svhn_openset",  # TODO: rerun failed runs
-    "wilds_animals_openset",  # TODO: rerun these
-]
-
-experiments = [
-    "vit",
-    "vit_devries",
-    "vit_dg",
-    "vit_confidnet",
+    "svhn_openset",
+    "wilds_animals_openset",
 ]
 
 
-def check_missing_tests():
-    rewards = [2.2, 3, 4.5, 6, 10]
-    exps: list[
-        tuple[list, list, list, list, list, list, list, range, Optional[list]]
-    ] = [
-        (
-            ["cifar10"],
-            ["confidnet"],
-            ["vit"],
-            [0.01],
-            [256 // 2],
-            [1],
-            [2.2],
-            range(1),
-            [2],
-        ),
-        (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1), [None]),
-        (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], rewards, range(1), [None]),
-        (
-            ["wilds_camelyon"],
-            ["dg"],
-            ["vit"],
-            [0.003],
-            [128],
-            [1],
-            rewards,
-            range(1),
-            [None],
-        ),
-        (
-            ["cifar10"],
-            ["devries"],
-            ["vit"],
-            [0.0003],
-            [128],
-            [0],
-            [2.2],
-            range(1),
-            [None],
-        ),
-        (
-            ["cifar10"],
-            ["devries"],
-            ["vit"],
-            [0.01],
-            [128],
-            [1],
-            [2.2],
-            range(1),
-            [None],
-        ),
-        (
-            ["breeds"],
-            ["devries"],
-            ["vit"],
-            [0.001],
-            [128],
-            [0],
-            [2.2],
-            range(1),
-            [None],
-        ),
-        (["breeds"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
-        (["svhn"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(1), [None]),
-        (["svhn"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(1), [None]),
-        (
-            ["wilds_camelyon"],
-            ["devries"],
-            ["vit"],
-            [0.001],
-            [128],
-            [0],
-            [2.2],
-            range(1),
-            [None],
-        ),
-        (
-            ["wilds_camelyon"],
-            ["devries"],
-            ["vit"],
-            [0.003],
-            [128],
-            [1],
-            [2.2],
-            range(1),
-            [None],
-        ),
-        (["cifar100"], ["dg"], ["vit"], [0.01], [512], [1], rewards, range(1), [None]),
-        (
-            ["wilds_animals"],
-            ["dg"],
-            ["vit"],
-            [0.01],
-            [512],
-            [1],
-            rewards,
-            range(1),
-            [None],
-        ),
-        (
-            ["cifar100"],
-            ["devries"],
-            ["vit"],
-            [0.03],
-            [512],
-            [0],
-            [2.2],
-            range(1),
-            [None],
-        ),
-        (
-            ["wilds_animals"],
-            ["devries"],
-            ["vit"],
-            [0.001],
-            [512],
-            [0],
-            [2.2],
-            range(1),
-            [None],
-        ),
-        (
-            ["cifar100"],
-            ["devries"],
-            ["vit"],
-            [0.01],
-            [512],
-            [1],
-            [2.2],
-            range(1),
-            [None],
-        ),
-        (
-            ["wilds_animals"],
-            ["devries"],
-            ["vit"],
-            [0.01],
-            [512],
-            [1],
-            [2.2],
-            range(1),
-            [None],
-        ),
-        (
-            ["super_cifar100"],
-            ["dg"],
-            ["vit"],
-            [0.001],
-            [128],
-            [1],
-            rewards,
-            range(1),
-            [None],
-        ),
-        (
-            ["super_cifar100"],
-            ["devries"],
-            ["vit"],
-            [0.003],
-            [128],
-            [0],
-            [2.2],
-            range(1),
-            [None],
-        ),
-        (
-            ["super_cifar100"],
-            ["devries"],
-            ["vit"],
-            [0.001],
-            [128],
-            [1],
-            [2.2],
-            range(1),
-            [None],
-        ),
-    ]
-
-    base_path = Path("~/results").expanduser()
-
-    for experiment in exps:
-        for dataset, model, bb, lr, bs, do, rew, run, stage in product(*experiment):
-            exp_name = "{}_model{}_bb{}_lr{}_bs{}_run{}_do{}_rew{}".format(
-                dataset, model, bb, lr, bs, run, do, rew,
-            )
-
-            if not (base_path / exp_name).exists():
-                print(
-                    f"[bold blue]{exp_name} not found, might not have been run at all (or uses old naming scheme)"
-                )
-                continue
-
-            if not (base_path / exp_name / "test_results").exists():
-                print(f"[bold red]{exp_name}/test_results not found")
-
-
-def rename(row: re.Match) -> str:
-    row = row[0]
+def rename(row_match: re.Match) -> str:
+    # pylint: disable=invalid-name
+    row: str = row_match[0]
     if not row:
         raise ValueError
 
@@ -234,7 +32,9 @@ def rename(row: re.Match) -> str:
         model = model[1]
     name = model
 
-    lr = re.search("lr([0-9.]+)", row)[1]
+    lr = re.search(r"lr([0-9.]+)", row)
+    assert lr
+    lr = lr[1]
     name = f"{name}_lr{lr}"
 
     do = re.search(r"do([0-9.]+)", row)
@@ -261,10 +61,53 @@ def rename(row: re.Match) -> str:
         bb = bb[1]
     name = f"{name}_bb{bb}"
 
-    run = re.search(r"run([0-9])", row)[1]
+    run = re.search(r"run([0-9])", row)
+    assert run
+    run = run[1]
     name = f"{name}_run{run}"
 
     return name
+
+
+def select_func(row, selection_df, selection_column):
+    if selection_column == "rew" and "dg" not in row.model:
+        return 1
+
+    if "vit" not in row.bb:
+        return 1
+
+    if "det" in row.confid:
+        row_confid = "det_"
+    elif "mcd" in row.confid:
+        row_confid = "mcd_"
+    else:
+        row_confid = ""
+
+    if "maha" in row.confid:
+        row_confid = row_confid + "maha"
+    elif "dg" in row.model:
+        row_confid = "dg"
+    elif "devries" in row.confid:
+        row_confid = row_confid + "devries"
+    elif "tcp" in row.confid:
+        row_confid = row_confid + "tcp"
+    else:
+        row_confid = row_confid + "pe"
+
+    if selection_column == "rew":
+        row_confid = "dg"
+
+    selection_df = selection_df[
+        (selection_df.confid == row_confid) & (selection_df.do == row.do)
+    ]
+
+    try:
+        if row[selection_column] == selection_df[selection_column].tolist()[0]:
+            return 1
+        return 0
+    except IndexError as error:
+        print(f"{row_confid} {row}")
+        raise error
 
 
 def main():
@@ -309,47 +152,6 @@ def main():
 
         df.model = df.model.replace("", "vit")
         df.bb = df.bb.replace("", "vit")
-
-        def select_func(row, selection_df, selection_column):
-            if selection_column == "rew" and "dg" not in row.model:
-                return 1
-
-            if "vit" not in row.bb:
-                return 1
-
-            if "det" in row.confid:
-                row_confid = "det_"
-            elif "mcd" in row.confid:
-                row_confid = "mcd_"
-            else:
-                row_confid = ""
-
-            if "maha" in row.confid:
-                row_confid = row_confid + "maha"
-            elif "dg" in row.model:
-                row_confid = "dg"
-            elif "devries" in row.confid:
-                row_confid = row_confid + "devries"
-            elif "tcp" in row.confid:
-                row_confid = row_confid + "tcp"
-            else:
-                row_confid = row_confid + "pe"
-
-            if selection_column == "rew":
-                row_confid = "dg"
-
-            selection_df = selection_df[
-                (selection_df.confid == row_confid) & (selection_df.do == row.do)
-            ]
-
-            try:
-                if row[selection_column] == selection_df[selection_column].tolist()[0]:
-                    return 1
-                else:
-                    return 0
-            except IndexError as e:
-                print(f"{dataset} {row_confid} {row}")
-                raise e
 
         # Select best single run lr based on metric
         metric = "aurc"
@@ -419,8 +221,10 @@ def main():
 
         # print(potential_runs)
         for run in potential_runs.itertuples():
-        # print(run)
-            print(f'(["{dataset}"], ["{run.model}"], ["vit"], [{run.lr}], [128], [{run.do}], [{run.rew}], range({int(run.run) + 1}, 5), [1, 2]),')
+            # print(run)
+            print(
+                f'(["{dataset}"], ["{run.model}"], ["vit"], [{run.lr}], [128], [{run.do}], [{run.rew}], range({int(run.run) + 1}, 5), [1, 2]),'
+            )
 
         dataset = dataset.replace("wilds_", "")
         dataset = dataset.replace("cifar10_", "cifar10")
@@ -434,4 +238,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # check_missing_tests()
