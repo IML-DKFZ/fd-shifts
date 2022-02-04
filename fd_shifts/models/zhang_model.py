@@ -3,7 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 import pytorch_lightning as pl
 from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
-from src.models.networks import get_network
+from fd_shifts.models.networks import get_network
 
 
 class net(pl.LightningModule):

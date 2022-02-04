@@ -1,5 +1,5 @@
-from src.models.callbacks import confid_monitor
-from src.models.callbacks import training_stages
+from fd_shifts.models.callbacks import confid_monitor
+from fd_shifts.models.callbacks import training_stages
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks import GPUStatsMonitor

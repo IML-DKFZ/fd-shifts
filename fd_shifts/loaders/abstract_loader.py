@@ -2,10 +2,10 @@ import torch
 from torch.utils.data.sampler import SubsetRandomSampler
 import pytorch_lightning as pl
 from omegaconf import OmegaConf
-from src.utils.aug_utils import transforms_collection
-from src.loaders.dataset_collection import get_dataset
+from fd_shifts.utils.aug_utils import transforms_collection
+from fd_shifts.loaders.dataset_collection import get_dataset
 from sklearn.model_selection import KFold
-import src.configs.data as data_configs
+import fd_shifts.configs.data as data_configs
 import os
 import pickle
 import numpy as np

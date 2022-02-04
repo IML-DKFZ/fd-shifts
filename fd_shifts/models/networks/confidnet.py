@@ -1,4 +1,4 @@
-import src.models.networks as networks
+import fd_shifts.models.networks as networks
 from torch import nn
 from torch.nn import functional as F
 

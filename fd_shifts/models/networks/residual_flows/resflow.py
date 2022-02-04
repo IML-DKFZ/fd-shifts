@@ -2,8 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-import src.models.networks.residual_flows.layers as layers
-import src.models.networks.residual_flows.layers.base as base_layers
+import fd_shifts.models.networks.residual_flows.layers as layers
+import fd_shifts.models.networks.residual_flows.layers.base as base_layers
 
 ACT_FNS = {
     "softplus": lambda b: nn.Softplus(),
