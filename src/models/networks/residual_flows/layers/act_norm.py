@@ -2,18 +2,17 @@ import torch
 import torch.nn as nn
 from torch.nn import Parameter
 
-__all__ = ['ActNorm1d', 'ActNorm2d']
+__all__ = ["ActNorm1d", "ActNorm2d"]
 
 
 class ActNormNd(nn.Module):
-
     def __init__(self, num_features, eps=1e-12):
         super(ActNormNd, self).__init__()
         self.num_features = num_features
         self.eps = eps
         self.weight = Parameter(torch.Tensor(num_features))
         self.bias = Parameter(torch.Tensor(num_features))
-        self.register_buffer('initialized', torch.tensor(0))
+        self.register_buffer("initialized", torch.tensor(0))
 
     @property
     def shape(self):
@@ -59,21 +58,27 @@ class ActNormNd(nn.Module):
             return x, logpy + self._logdetgrad(x)
 
     def _logdetgrad(self, x):
-        return self.weight.view(*self.shape).expand(*x.size()).contiguous().view(x.size(0), -1).sum(1, keepdim=True)
+        return (
+            self.weight.view(*self.shape)
+            .expand(*x.size())
+            .contiguous()
+            .view(x.size(0), -1)
+            .sum(1, keepdim=True)
+        )
 
     def __repr__(self):
-        return ('{name}({num_features})'.format(name=self.__class__.__name__, **self.__dict__))
+        return "{name}({num_features})".format(
+            name=self.__class__.__name__, **self.__dict__
+        )
 
 
 class ActNorm1d(ActNormNd):
-
     @property
     def shape(self):
         return [1, -1]
 
 
 class ActNorm2d(ActNormNd):
-
     @property
     def shape(self):
         return [1, -1, 1, 1]

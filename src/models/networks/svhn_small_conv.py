@@ -1,11 +1,16 @@
-
 from torch import nn
 from torch.nn import functional as F
 import torch
 
+
 class Conv2dSame(nn.Module):
     def __init__(
-        self, in_channels, out_channels, kernel_size, bias=True, padding_layer=nn.ReflectionPad2d
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        bias=True,
+        padding_layer=nn.ReflectionPad2d,
     ):
         super().__init__()
         ka = kernel_size // 2
@@ -24,7 +29,7 @@ class SmallConv(nn.Module):
         super(SmallConv, self).__init__()
         num_classes = cf.data.num_classes
         if cf.eval.ext_confid_name == "dg":
-            num_classes +=1
+            num_classes += 1
 
         self.encoder = Encoder(cf)
         self.classifier = Classifier(cf.model.fc_dim, num_classes)
@@ -35,6 +40,7 @@ class SmallConv(nn.Module):
         x = self.classifier(x)
 
         return x
+
 
 class Encoder(nn.Module):
     def __init__(self, cf):
@@ -104,13 +110,13 @@ class Encoder(nn.Module):
     def disable_dropout(self):
 
         for layer in self.named_modules():
-            if isinstance(layer[1],torch.nn.modules.dropout.Dropout):
+            if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].eval()
 
     def enable_dropout(self):
 
         for layer in self.named_modules():
-            if isinstance(layer[1],torch.nn.modules.dropout.Dropout):
+            if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].train()
 
 

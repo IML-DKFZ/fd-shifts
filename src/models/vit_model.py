@@ -29,7 +29,9 @@ class net(pl.LightningModule):
         self.model.head.weight.tensor = torch.zeros_like(self.model.head.weight)
         self.model.head.bias.tensor = torch.zeros_like(self.model.head.bias)
 
-        self.mean = torch.zeros((self.hparams.data.num_classes, self.model.num_features))
+        self.mean = torch.zeros(
+            (self.hparams.data.num_classes, self.model.num_features)
+        )
         self.icov = torch.eye(self.model.num_features)
 
         self.ext_confid_name = self.hparams.eval.ext_confid_name
@@ -61,7 +63,7 @@ class net(pl.LightningModule):
             softmax = torch.softmax(probs, dim=1)
             zm = z[:, None, :] - self.mean
 
-            maha = -(torch.einsum('inj,jk,ink->in', zm, self.icov, zm))
+            maha = -(torch.einsum("inj,jk,ink->in", zm, self.icov, zm))
             maha = maha.max(dim=1)[0].type_as(x)
 
             softmax_list.append(softmax.unsqueeze(2))
@@ -97,7 +99,11 @@ class net(pl.LightningModule):
 
             mean = torch.stack(mean, dim=0)
             self.mean = mean
-            self.icov = torch.inverse(torch.tensor(np.cov(z.numpy(), rowvar=False)).type_as(self.model.head.weight)).cpu()
+            self.icov = torch.inverse(
+                torch.tensor(np.cov(z.numpy(), rowvar=False)).type_as(
+                    self.model.head.weight
+                )
+            ).cpu()
 
         self.latent = []
         self.labels = []
@@ -111,13 +117,18 @@ class net(pl.LightningModule):
         z = self.model.forward_features(x)
         zm = z[:, None, :].cpu() - self.mean
 
-        maha = -(torch.einsum('inj,jk,ink->in', zm, self.icov, zm))
+        maha = -(torch.einsum("inj,jk,ink->in", zm, self.icov, zm))
         maha = maha.max(dim=1)[0]
 
         probs = self.model.head(z)
         loss = torch.nn.functional.cross_entropy(probs, y)
 
-        return {"loss": loss, "softmax": torch.softmax(probs, dim=1), "labels": y, "confid": maha.type_as(x)}
+        return {
+            "loss": loss,
+            "softmax": torch.softmax(probs, dim=1),
+            "labels": y,
+            "confid": maha.type_as(x),
+        }
 
     def validation_step_end(self, batch_parts):
         return batch_parts
@@ -142,14 +153,18 @@ class net(pl.LightningModule):
 
         mean = torch.stack(mean, dim=0)
         self.mean = mean.type_as(self.model.head.weight)
-        self.icov = torch.inverse(torch.tensor(np.cov(all_z.numpy(), rowvar=False)).type_as(self.model.head.weight))
+        self.icov = torch.inverse(
+            torch.tensor(np.cov(all_z.numpy(), rowvar=False)).type_as(
+                self.model.head.weight
+            )
+        )
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
         z = self.model.forward_features(x)
         zm = z[:, None, :] - self.mean
 
-        maha = -(torch.einsum('inj,jk,ink->in', zm, self.icov, zm))
+        maha = -(torch.einsum("inj,jk,ink->in", zm, self.icov, zm))
         maha = maha.max(dim=1)[0]
         print(maha)
 
@@ -158,9 +173,17 @@ class net(pl.LightningModule):
         softmax_dist = None
         confid_dist = None
         if any("mcd" in cfd for cfd in self.query_confids["test"]):
-            softmax_dist, confid_dist = self.mcd_eval_forward(x=x, n_samples=self.test_mcd_samples)
+            softmax_dist, confid_dist = self.mcd_eval_forward(
+                x=x, n_samples=self.test_mcd_samples
+            )
 
-        self.test_results = {"softmax": torch.softmax(probs, dim=1), "labels": y, "confid": maha.type_as(x), "softmax_dist": softmax_dist, "confid_dist": confid_dist}
+        self.test_results = {
+            "softmax": torch.softmax(probs, dim=1),
+            "labels": y,
+            "confid": maha.type_as(x),
+            "softmax_dist": softmax_dist,
+            "confid_dist": confid_dist,
+        }
 
     def configure_optimizers(self):
         optim = torch.optim.SGD(

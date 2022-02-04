@@ -20,27 +20,27 @@ def _get_checkerboard_mask(x, swap=False):
 
 def _get_channel_mask(x, swap=False):
     n, c, h, w = x.size()
-    assert (c % 2 == 0)
+    assert c % 2 == 0
 
     # construct channel-wise mask
     mask = torch.zeros(x.size())
     if not swap:
-        mask[:, :c // 2] = 1
+        mask[:, : c // 2] = 1
     else:
-        mask[:, c // 2:] = 1
+        mask[:, c // 2 :] = 1
     return mask
 
 
 def get_mask(x, mask_type=None):
     if mask_type is None:
         return torch.zeros(x.size()).to(x)
-    elif mask_type == 'channel0':
+    elif mask_type == "channel0":
         return _get_channel_mask(x, swap=False)
-    elif mask_type == 'channel1':
+    elif mask_type == "channel1":
         return _get_channel_mask(x, swap=True)
-    elif mask_type == 'checkerboard0':
+    elif mask_type == "checkerboard0":
         return _get_checkerboard_mask(x, swap=False)
-    elif mask_type == 'checkerboard1':
+    elif mask_type == "checkerboard1":
         return _get_checkerboard_mask(x, swap=True)
     else:
-        raise ValueError('Unknown mask type {}'.format(mask_type))
+        raise ValueError("Unknown mask type {}".format(mask_type))

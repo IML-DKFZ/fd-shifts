@@ -50,7 +50,7 @@ class Encoder(nn.Module):
     def forward(self, x):
         x = self.model.forward_features(x)
         return x
-    
+
     # def load_state_dict(self, state_dict, strict=True):
     #     print(state_dict)
     #     self.model.load_state_dict(state_dict, strict)

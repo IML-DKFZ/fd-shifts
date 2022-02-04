@@ -38,7 +38,10 @@ class CosineAnnealingWarmRestarts(_LRScheduler):
 
     def get_lr(self):
         return [
-            self.eta_min + (base_lr - self.eta_min) * (1 + math.cos(math.pi * self.T_cur / self.T_i)) / 2
+            self.eta_min
+            + (base_lr - self.eta_min)
+            * (1 + math.cos(math.pi * self.T_cur / self.T_i))
+            / 2
             for base_lr in self.base_lrs
         ]
 
@@ -64,12 +67,18 @@ class CosineAnnealingWarmRestarts(_LRScheduler):
                 if self.T_mult == 1:
                     self.T_cur = epoch % self.T_0
                 else:
-                    n = int(math.log((epoch / self.T_0 * (self.T_mult - 1) + 1), self.T_mult))
-                    self.T_cur = epoch - self.T_0 * (self.T_mult**n - 1) / (self.T_mult - 1)
-                    self.T_i = self.T_0 * self.T_mult**(n)
+                    n = int(
+                        math.log(
+                            (epoch / self.T_0 * (self.T_mult - 1) + 1), self.T_mult
+                        )
+                    )
+                    self.T_cur = epoch - self.T_0 * (self.T_mult**n - 1) / (
+                        self.T_mult - 1
+                    )
+                    self.T_i = self.T_0 * self.T_mult ** (n)
             else:
                 self.T_i = self.T_0
                 self.T_cur = epoch
         self.last_epoch = math.floor(epoch)
         for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):
-            param_group['lr'] = lr
+            param_group["lr"] = lr

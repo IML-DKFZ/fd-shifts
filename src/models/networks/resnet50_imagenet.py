@@ -6,12 +6,20 @@ from typing import Type, Any, Callable, Union, List, Optional
 import torch.nn.functional as F
 
 
-
-
-def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
+def conv3x3(
+    in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1
+) -> nn.Conv2d:
     """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=dilation, groups=groups, bias=False, dilation=dilation)
+    return nn.Conv2d(
+        in_planes,
+        out_planes,
+        kernel_size=3,
+        stride=stride,
+        padding=dilation,
+        groups=groups,
+        bias=False,
+        dilation=dilation,
+    )
 
 
 def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.Conv2d:
@@ -33,7 +41,7 @@ class BasicBlock(nn.Module):
         dilation: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
         dropout_rate: float = 0.0,
-        eval_mcdropout: bool = False
+        eval_mcdropout: bool = False,
     ) -> None:
         super(BasicBlock, self).__init__()
 
@@ -43,7 +51,7 @@ class BasicBlock(nn.Module):
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         if groups != 1 or base_width != 64:
-            raise ValueError('BasicBlock only supports groups=1 and base_width=64')
+            raise ValueError("BasicBlock only supports groups=1 and base_width=64")
         if dilation > 1:
             raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
@@ -104,7 +112,7 @@ class Bottleneck(nn.Module):
         dilation: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
         dropout_rate: float = 0.0,
-        eval_mcdropout: bool = False
+        eval_mcdropout: bool = False,
     ) -> None:
         super(Bottleneck, self).__init__()
 
@@ -113,7 +121,7 @@ class Bottleneck(nn.Module):
 
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
-        width = int(planes * (base_width / 64.)) * groups
+        width = int(planes * (base_width / 64.0)) * groups
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv1x1(inplanes, width)
         self.bn1 = norm_layer(width)
@@ -160,33 +168,36 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
     def __init__(
-            self,
-            block: Type[Union[BasicBlock, Bottleneck]],
-            layers: List[int],
-            num_classes: int,
-            zero_init_residual: bool = False,
-            groups: int = 1,
-            width_per_group: int = 64,
-            replace_stride_with_dilation: Optional[List[bool]] = None,
-            norm_layer: Optional[Callable[..., nn.Module]] = None,
-            dropout_rate: float = 0.0
+        self,
+        block: Type[Union[BasicBlock, Bottleneck]],
+        layers: List[int],
+        num_classes: int,
+        zero_init_residual: bool = False,
+        groups: int = 1,
+        width_per_group: int = 64,
+        replace_stride_with_dilation: Optional[List[bool]] = None,
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+        dropout_rate: float = 0.0,
     ) -> None:
         super(ResNet, self).__init__()
 
-        self.encoder = ResNetEncoder(block,
-                                     layers,
-                                     zero_init_residual,
-                                     groups,
-                                     width_per_group,
-                                     replace_stride_with_dilation,
-                                     norm_layer,
-                                     dropout_rate)
+        self.encoder = ResNetEncoder(
+            block,
+            layers,
+            zero_init_residual,
+            groups,
+            width_per_group,
+            replace_stride_with_dilation,
+            norm_layer,
+            dropout_rate,
+        )
         self.classifier = ResNetClassifier(block, num_classes)
 
     def forward(self, x):
         x = self.encoder(x)
         x = self.classifier(x)
         return x
+
 
 class ResNetClassifier(nn.Module):
     def __init__(self, block, num_classes):
@@ -199,8 +210,8 @@ class ResNetClassifier(nn.Module):
         x = self.fc(x)
         return x
 
-class ResNetEncoder(nn.Module):
 
+class ResNetEncoder(nn.Module):
     def __init__(
         self,
         block: Type[Union[BasicBlock, Bottleneck]],
@@ -210,7 +221,7 @@ class ResNetEncoder(nn.Module):
         width_per_group: int = 64,
         replace_stride_with_dilation: Optional[List[bool]] = None,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
-        dropout_rate:  float = 0.0
+        dropout_rate: float = 0.0,
     ) -> None:
         super(ResNetEncoder, self).__init__()
         if norm_layer is None:
@@ -225,29 +236,50 @@ class ResNetEncoder(nn.Module):
             # the 2x2 stride with a dilated convolution instead
             replace_stride_with_dilation = [False, False, False]
         if len(replace_stride_with_dilation) != 3:
-            raise ValueError("replace_stride_with_dilation should be None "
-                             "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+            raise ValueError(
+                "replace_stride_with_dilation should be None "
+                "or a 3-element tuple, got {}".format(replace_stride_with_dilation)
+            )
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
-                               bias=False)
+        self.conv1 = nn.Conv2d(
+            3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False
+        )
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.dropout1 = nn.Dropout(dropout_rate)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
-                                       dilate=replace_stride_with_dilation[0], dropout_rate=dropout_rate)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
-                                       dilate=replace_stride_with_dilation[1], dropout_rate=dropout_rate)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
-                                       dilate=replace_stride_with_dilation[2], dropout_rate=dropout_rate)
+        self.layer2 = self._make_layer(
+            block,
+            128,
+            layers[1],
+            stride=2,
+            dilate=replace_stride_with_dilation[0],
+            dropout_rate=dropout_rate,
+        )
+        self.layer3 = self._make_layer(
+            block,
+            256,
+            layers[2],
+            stride=2,
+            dilate=replace_stride_with_dilation[1],
+            dropout_rate=dropout_rate,
+        )
+        self.layer4 = self._make_layer(
+            block,
+            512,
+            layers[3],
+            stride=2,
+            dilate=replace_stride_with_dilation[2],
+            dropout_rate=dropout_rate,
+        )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.dropout2 = nn.Dropout(dropout_rate)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -262,8 +294,15 @@ class ResNetEncoder(nn.Module):
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
 
-    def _make_layer(self, block: Type[Union[BasicBlock, Bottleneck]], planes: int, blocks: int,
-                    stride: int = 1, dilate: bool = False, dropout_rate: float = 0.0) -> nn.Sequential:
+    def _make_layer(
+        self,
+        block: Type[Union[BasicBlock, Bottleneck]],
+        planes: int,
+        blocks: int,
+        stride: int = 1,
+        dilate: bool = False,
+        dropout_rate: float = 0.0,
+    ) -> nn.Sequential:
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -277,13 +316,34 @@ class ResNetEncoder(nn.Module):
             )
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
-                            self.base_width, previous_dilation, norm_layer, dropout_rate, self.eval_mcdropout))
+        layers.append(
+            block(
+                self.inplanes,
+                planes,
+                stride,
+                downsample,
+                self.groups,
+                self.base_width,
+                previous_dilation,
+                norm_layer,
+                dropout_rate,
+                self.eval_mcdropout,
+            )
+        )
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes, groups=self.groups,
-                                base_width=self.base_width, dilation=self.dilation,
-                                norm_layer=norm_layer, dropout_rate=dropout_rate, eval_mcdropout=self.eval_mcdropout))
+            layers.append(
+                block(
+                    self.inplanes,
+                    planes,
+                    groups=self.groups,
+                    base_width=self.base_width,
+                    dilation=self.dilation,
+                    norm_layer=norm_layer,
+                    dropout_rate=dropout_rate,
+                    eval_mcdropout=self.eval_mcdropout,
+                )
+            )
 
         return nn.Sequential(*layers)
 
@@ -324,14 +384,15 @@ class ResNetEncoder(nn.Module):
     def disable_dropout(self):
 
         for layer in self.named_modules():
-            if isinstance(layer[1],torch.nn.modules.dropout.Dropout):
+            if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].eval()
 
     def enable_dropout(self):
 
         for layer in self.named_modules():
-            if isinstance(layer[1],torch.nn.modules.dropout.Dropout):
+            if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].train()
+
 
 def _resnet(
     block: Type[Union[BasicBlock, Bottleneck]],
@@ -345,8 +406,9 @@ def _resnet(
     return model
 
 
-
-def resnet50(cf, pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ResNet:
+def resnet50(
+    cf, pretrained: bool = False, progress: bool = True, **kwargs: Any
+) -> ResNet:
     r"""ResNet-50 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
 
@@ -359,6 +421,6 @@ def resnet50(cf, pretrained: bool = False, progress: bool = True, **kwargs: Any)
     if cf.eval.ext_confid_name == "dg":
         num_classes += 1
     dropout_rate = cf.model.dropout_rate * 0.1
-    return _resnet(Bottleneck, [3, 4, 6, 3], num_classes, progress, dropout_rate, **kwargs)
-
-
+    return _resnet(
+        Bottleneck, [3, 4, 6, 3], num_classes, progress, dropout_rate, **kwargs
+    )

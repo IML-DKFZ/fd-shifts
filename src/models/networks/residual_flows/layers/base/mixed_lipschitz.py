@@ -6,14 +6,23 @@ import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
 
-__all__ = ['InducedNormLinear', 'InducedNormConv2d']
+__all__ = ["InducedNormLinear", "InducedNormConv2d"]
 
 
 class InducedNormLinear(nn.Module):
-
     def __init__(
-        self, in_features, out_features, bias=True, coeff=0.97, domain=2, codomain=2, n_iterations=None, atol=None,
-        rtol=None, zero_init=False, **unused_kwargs
+        self,
+        in_features,
+        out_features,
+        bias=True,
+        coeff=0.97,
+        domain=2,
+        codomain=2,
+        n_iterations=None,
+        atol=None,
+        rtol=None,
+        zero_init=False,
+        **unused_kwargs
     ):
         del unused_kwargs
         super(InducedNormLinear, self).__init__()
@@ -29,16 +38,20 @@ class InducedNormLinear(nn.Module):
         if bias:
             self.bias = nn.Parameter(torch.Tensor(out_features))
         else:
-            self.register_parameter('bias', None)
+            self.register_parameter("bias", None)
         self.reset_parameters(zero_init)
 
         with torch.no_grad():
             domain, codomain = self.compute_domain_codomain()
 
         h, w = self.weight.shape
-        self.register_buffer('scale', torch.tensor(0.))
-        self.register_buffer('u', normalize_u(self.weight.new_empty(h).normal_(0, 1), codomain))
-        self.register_buffer('v', normalize_v(self.weight.new_empty(w).normal_(0, 1), domain))
+        self.register_buffer("scale", torch.tensor(0.0))
+        self.register_buffer(
+            "u", normalize_u(self.weight.new_empty(h).normal_(0, 1), codomain)
+        )
+        self.register_buffer(
+            "v", normalize_v(self.weight.new_empty(w).normal_(0, 1), domain)
+        )
 
         # Try different random seeds to find the best u and v.
         with torch.no_grad():
@@ -47,8 +60,13 @@ class InducedNormLinear(nn.Module):
             best_u, best_v = self.u.clone(), self.v.clone()
             if not (domain == 2 and codomain == 2):
                 for _ in range(10):
-                    self.register_buffer('u', normalize_u(self.weight.new_empty(h).normal_(0, 1), codomain))
-                    self.register_buffer('v', normalize_v(self.weight.new_empty(w).normal_(0, 1), domain))
+                    self.register_buffer(
+                        "u",
+                        normalize_u(self.weight.new_empty(h).normal_(0, 1), codomain),
+                    )
+                    self.register_buffer(
+                        "v", normalize_v(self.weight.new_empty(w).normal_(0, 1), domain)
+                    )
                     self.compute_weight(True, n_iterations=200)
                     if self.scale > best_scale:
                         best_u, best_v = self.u.clone(), self.v.clone()
@@ -94,7 +112,7 @@ class InducedNormLinear(nn.Module):
             rtol = self.rtol if rtol is None else atol
 
             if n_iterations is None and (atol is None or rtol is None):
-                raise ValueError('Need one of n_iteration or (atol, rtol).')
+                raise ValueError("Need one of n_iteration or (atol, rtol).")
 
             max_itrs = 200
             if n_iterations is not None:
@@ -112,8 +130,8 @@ class InducedNormLinear(nn.Module):
                     v = normalize_v(torch.mv(weight.t(), u), domain, out=v)
 
                     if n_iterations is None and atol is not None and rtol is not None:
-                        err_u = torch.norm(u - old_u) / (u.nelement()**0.5)
-                        err_v = torch.norm(v - old_v) / (v.nelement()**0.5)
+                        err_u = torch.norm(u - old_u) / (u.nelement() ** 0.5)
+                        err_v = torch.norm(v - old_v) / (v.nelement() ** 0.5)
                         tol_u = atol + rtol * torch.max(u)
                         tol_v = atol + rtol * torch.max(v)
                         if err_u < tol_u and err_v < tol_v:
@@ -138,19 +156,38 @@ class InducedNormLinear(nn.Module):
     def extra_repr(self):
         domain, codomain = self.compute_domain_codomain()
         return (
-            'in_features={}, out_features={}, bias={}'
-            ', coeff={}, domain={:.2f}, codomain={:.2f}, n_iters={}, atol={}, rtol={}, learnable_ord={}'.format(
-                self.in_features, self.out_features, self.bias is not None, self.coeff, domain, codomain,
-                self.n_iterations, self.atol, self.rtol, torch.is_tensor(self.domain)
+            "in_features={}, out_features={}, bias={}"
+            ", coeff={}, domain={:.2f}, codomain={:.2f}, n_iters={}, atol={}, rtol={}, learnable_ord={}".format(
+                self.in_features,
+                self.out_features,
+                self.bias is not None,
+                self.coeff,
+                domain,
+                codomain,
+                self.n_iterations,
+                self.atol,
+                self.rtol,
+                torch.is_tensor(self.domain),
             )
         )
 
 
 class InducedNormConv2d(nn.Module):
-
     def __init__(
-        self, in_channels, out_channels, kernel_size, stride, padding, bias=True, coeff=0.97, domain=2, codomain=2,
-        n_iterations=None, atol=None, rtol=None, **unused_kwargs
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride,
+        padding,
+        bias=True,
+        coeff=0.97,
+        domain=2,
+        codomain=2,
+        n_iterations=None,
+        atol=None,
+        rtol=None,
+        **unused_kwargs
     ):
         del unused_kwargs
         super(InducedNormConv2d, self).__init__()
@@ -165,17 +202,19 @@ class InducedNormConv2d(nn.Module):
         self.codomain = codomain
         self.atol = atol
         self.rtol = rtol
-        self.weight = nn.Parameter(torch.Tensor(out_channels, in_channels, *self.kernel_size))
+        self.weight = nn.Parameter(
+            torch.Tensor(out_channels, in_channels, *self.kernel_size)
+        )
         if bias:
             self.bias = nn.Parameter(torch.Tensor(out_channels))
         else:
-            self.register_parameter('bias', None)
+            self.register_parameter("bias", None)
         self.reset_parameters()
-        self.register_buffer('initialized', torch.tensor(0))
-        self.register_buffer('spatial_dims', torch.tensor([1., 1.]))
-        self.register_buffer('scale', torch.tensor(0.))
-        self.register_buffer('u', self.weight.new_empty(self.out_channels))
-        self.register_buffer('v', self.weight.new_empty(self.in_channels))
+        self.register_buffer("initialized", torch.tensor(0))
+        self.register_buffer("spatial_dims", torch.tensor([1.0, 1.0]))
+        self.register_buffer("scale", torch.tensor(0.0))
+        self.register_buffer("u", self.weight.new_empty(self.out_channels))
+        self.register_buffer("v", self.weight.new_empty(self.in_channels))
 
     def compute_domain_codomain(self):
         if torch.is_tensor(self.domain):
@@ -201,14 +240,22 @@ class InducedNormConv2d(nn.Module):
                 self.v.resize_(self.in_channels).normal_(0, 1)
                 self.v.copy_(normalize_v(self.v, domain))
             else:
-                c, h, w = self.in_channels, int(self.spatial_dims[0].item()), int(self.spatial_dims[1].item())
+                c, h, w = (
+                    self.in_channels,
+                    int(self.spatial_dims[0].item()),
+                    int(self.spatial_dims[1].item()),
+                )
                 with torch.no_grad():
                     num_input_dim = c * h * w
                     self.v.resize_(num_input_dim).normal_(0, 1)
                     self.v.copy_(normalize_v(self.v, domain))
                     # forward call to infer the shape
                     u = F.conv2d(
-                        self.v.view(1, c, h, w), self.weight, stride=self.stride, padding=self.padding, bias=None
+                        self.v.view(1, c, h, w),
+                        self.weight,
+                        stride=self.stride,
+                        padding=self.padding,
+                        bias=None,
                     )
                     num_output_dim = u.shape[0] * u.shape[1] * u.shape[2] * u.shape[3]
                     # overwrite u with random init
@@ -224,11 +271,29 @@ class InducedNormConv2d(nn.Module):
             if not (domain == 2 and codomain == 2):
                 for _ in range(10):
                     if self.kernel_size == (1, 1):
-                        self.u.copy_(normalize_u(self.weight.new_empty(self.out_channels).normal_(0, 1), codomain))
-                        self.v.copy_(normalize_v(self.weight.new_empty(self.in_channels).normal_(0, 1), domain))
+                        self.u.copy_(
+                            normalize_u(
+                                self.weight.new_empty(self.out_channels).normal_(0, 1),
+                                codomain,
+                            )
+                        )
+                        self.v.copy_(
+                            normalize_v(
+                                self.weight.new_empty(self.in_channels).normal_(0, 1),
+                                domain,
+                            )
+                        )
                     else:
-                        self.u.copy_(normalize_u(torch.randn(num_output_dim).to(self.weight), codomain))
-                        self.v.copy_(normalize_v(torch.randn(num_input_dim).to(self.weight), domain))
+                        self.u.copy_(
+                            normalize_u(
+                                torch.randn(num_output_dim).to(self.weight), codomain
+                            )
+                        )
+                        self.v.copy_(
+                            normalize_v(
+                                torch.randn(num_input_dim).to(self.weight), domain
+                            )
+                        )
                     self.compute_weight(True, n_iterations=200)
                     if self.scale > best_scale:
                         best_u, best_v = self.u.clone(), self.v.clone()
@@ -237,7 +302,7 @@ class InducedNormConv2d(nn.Module):
 
     def compute_one_iter(self):
         if not self.initialized:
-            raise ValueError('Layer needs to be initialized first.')
+            raise ValueError("Layer needs to be initialized first.")
         domain, codomain = self.compute_domain_codomain()
         if self.kernel_size == (1, 1):
             u = self.u.detach()
@@ -250,15 +315,35 @@ class InducedNormConv2d(nn.Module):
             u = self.u.detach()
             v = self.v.detach()
             weight = self.weight.detach()
-            c, h, w = self.in_channels, int(self.spatial_dims[0].item()), int(self.spatial_dims[1].item())
-            u_s = F.conv2d(v.view(1, c, h, w), weight, stride=self.stride, padding=self.padding, bias=None)
+            c, h, w = (
+                self.in_channels,
+                int(self.spatial_dims[0].item()),
+                int(self.spatial_dims[1].item()),
+            )
+            u_s = F.conv2d(
+                v.view(1, c, h, w),
+                weight,
+                stride=self.stride,
+                padding=self.padding,
+                bias=None,
+            )
             out_shape = u_s.shape
             u = normalize_u(u_s.view(-1), codomain)
             v_s = F.conv_transpose2d(
-                u.view(out_shape), weight, stride=self.stride, padding=self.padding, output_padding=0
+                u.view(out_shape),
+                weight,
+                stride=self.stride,
+                padding=self.padding,
+                output_padding=0,
             )
             v = normalize_v(v_s.view(-1), domain)
-            weight_v = F.conv2d(v.view(1, c, h, w), weight, stride=self.stride, padding=self.padding, bias=None)
+            weight_v = F.conv2d(
+                v.view(1, c, h, w),
+                weight,
+                stride=self.stride,
+                padding=self.padding,
+                bias=None,
+            )
             return torch.dot(u.view(-1), weight_v.view(-1))
 
     def compute_weight(self, update=True, n_iterations=None, atol=None, rtol=None):
@@ -276,7 +361,7 @@ class InducedNormConv2d(nn.Module):
         rtol = self.rtol if rtol is None else atol
 
         if n_iterations is None and (atol is None or rtol is None):
-            raise ValueError('Need one of n_iteration or (atol, rtol).')
+            raise ValueError("Need one of n_iteration or (atol, rtol).")
 
         max_itrs = 200
         if n_iterations is not None:
@@ -299,8 +384,8 @@ class InducedNormConv2d(nn.Module):
                     itrs_used = itrs_used + 1
 
                     if n_iterations is None and atol is not None and rtol is not None:
-                        err_u = torch.norm(u - old_u) / (u.nelement()**0.5)
-                        err_v = torch.norm(v - old_v) / (v.nelement()**0.5)
+                        err_u = torch.norm(u - old_u) / (u.nelement() ** 0.5)
+                        err_v = torch.norm(v - old_v) / (v.nelement() ** 0.5)
                         tol_u = atol + rtol * torch.max(u)
                         tol_v = atol + rtol * torch.max(v)
                         if err_u < tol_u and err_v < tol_v:
@@ -308,7 +393,7 @@ class InducedNormConv2d(nn.Module):
                 if itrs_used > 0:
                     if domain != 1 and domain != 2:
                         self.v.copy_(v)
-                    if codomain != 2 and codomain != float('inf'):
+                    if codomain != 2 and codomain != float("inf"):
                         self.u.copy_(u)
                     u = u.clone()
                     v = v.clone()
@@ -327,7 +412,7 @@ class InducedNormConv2d(nn.Module):
         rtol = self.rtol if rtol is None else atol
 
         if n_iterations is None and (atol is None or rtol is None):
-            raise ValueError('Need one of n_iteration or (atol, rtol).')
+            raise ValueError("Need one of n_iteration or (atol, rtol).")
 
         max_itrs = 200
         if n_iterations is not None:
@@ -336,7 +421,11 @@ class InducedNormConv2d(nn.Module):
         u = self.u
         v = self.v
         weight = self.weight
-        c, h, w = self.in_channels, int(self.spatial_dims[0].item()), int(self.spatial_dims[1].item())
+        c, h, w = (
+            self.in_channels,
+            int(self.spatial_dims[0].item()),
+            int(self.spatial_dims[1].item()),
+        )
         if update:
             with torch.no_grad():
                 domain, codomain = self.compute_domain_codomain()
@@ -345,19 +434,29 @@ class InducedNormConv2d(nn.Module):
                     old_u = u.clone()
                     old_v = v.clone()
 
-                    u_s = F.conv2d(v.view(1, c, h, w), weight, stride=self.stride, padding=self.padding, bias=None)
+                    u_s = F.conv2d(
+                        v.view(1, c, h, w),
+                        weight,
+                        stride=self.stride,
+                        padding=self.padding,
+                        bias=None,
+                    )
                     out_shape = u_s.shape
                     u = normalize_u(u_s.view(-1), codomain, out=u)
 
                     v_s = F.conv_transpose2d(
-                        u.view(out_shape), weight, stride=self.stride, padding=self.padding, output_padding=0
+                        u.view(out_shape),
+                        weight,
+                        stride=self.stride,
+                        padding=self.padding,
+                        output_padding=0,
                     )
                     v = normalize_v(v_s.view(-1), domain, out=v)
 
                     itrs_used = itrs_used + 1
                     if n_iterations is None and atol is not None and rtol is not None:
-                        err_u = torch.norm(u - old_u) / (u.nelement()**0.5)
-                        err_v = torch.norm(v - old_v) / (v.nelement()**0.5)
+                        err_u = torch.norm(u - old_u) / (u.nelement() ** 0.5)
+                        err_v = torch.norm(v - old_v) / (v.nelement() ** 0.5)
                         tol_u = atol + rtol * torch.max(u)
                         tol_v = atol + rtol * torch.max(v)
                         if err_u < tol_u and err_v < tol_v:
@@ -370,7 +469,13 @@ class InducedNormConv2d(nn.Module):
                     v = v.clone()
                     u = u.clone()
 
-        weight_v = F.conv2d(v.view(1, c, h, w), weight, stride=self.stride, padding=self.padding, bias=None)
+        weight_v = F.conv2d(
+            v.view(1, c, h, w),
+            weight,
+            stride=self.stride,
+            padding=self.padding,
+            bias=None,
+        )
         weight_v = weight_v.view(-1)
         sigma = torch.dot(u.view(-1), weight_v)
         with torch.no_grad():
@@ -381,19 +486,31 @@ class InducedNormConv2d(nn.Module):
         return weight
 
     def forward(self, input):
-        if not self.initialized: self.spatial_dims.copy_(torch.tensor(input.shape[2:4]).to(self.spatial_dims))
+        if not self.initialized:
+            self.spatial_dims.copy_(
+                torch.tensor(input.shape[2:4]).to(self.spatial_dims)
+            )
         weight = self.compute_weight(update=False)
         return F.conv2d(input, weight, self.bias, self.stride, self.padding, 1, 1)
 
     def extra_repr(self):
         domain, codomain = self.compute_domain_codomain()
-        s = ('{in_channels}, {out_channels}, kernel_size={kernel_size}' ', stride={stride}')
+        s = (
+            "{in_channels}, {out_channels}, kernel_size={kernel_size}"
+            ", stride={stride}"
+        )
         if self.padding != (0,) * len(self.padding):
-            s += ', padding={padding}'
+            s += ", padding={padding}"
         if self.bias is None:
-            s += ', bias=False'
-        s += ', coeff={}, domain={:.2f}, codomain={:.2f}, n_iters={}, atol={}, rtol={}, learnable_ord={}'.format(
-            self.coeff, domain, codomain, self.n_iterations, self.atol, self.rtol, torch.is_tensor(self.domain)
+            s += ", bias=False"
+        s += ", coeff={}, domain={:.2f}, codomain={:.2f}, n_iters={}, atol={}, rtol={}, learnable_ord={}".format(
+            self.coeff,
+            domain,
+            codomain,
+            self.n_iterations,
+            self.atol,
+            self.rtol,
+            torch.is_tensor(self.domain),
         )
         return s.format(**self.__dict__)
 
@@ -416,7 +533,7 @@ def normalize_v(v, domain, out=None):
         vph = v / vabs
         vph[torch.isnan(vph)] = 1
         vabs = vabs / torch.max(vabs)
-        vabs = vabs**(1 / (domain - 1))
+        vabs = vabs ** (1 / (domain - 1))
         v = vph * vabs / vector_norm(vabs, domain)
     return v
 
@@ -424,16 +541,16 @@ def normalize_v(v, domain, out=None):
 def normalize_u(u, codomain, out=None):
     if not torch.is_tensor(codomain) and codomain == 2:
         u = F.normalize(u, p=2, dim=0, out=out)
-    elif codomain == float('inf'):
+    elif codomain == float("inf"):
         u = projmax_(u)
     else:
         uabs = torch.abs(u)
         uph = u / uabs
         uph[torch.isnan(uph)] = 1
         uabs = uabs / torch.max(uabs)
-        uabs = uabs**(codomain - 1)
+        uabs = uabs ** (codomain - 1)
         if codomain == 1:
-            u = uph * uabs / vector_norm(uabs, float('inf'))
+            u = uph * uabs / vector_norm(uabs, float("inf"))
         else:
             u = uph * uabs / vector_norm(uabs, codomain / (codomain - 1))
     return u
@@ -441,7 +558,7 @@ def normalize_u(u, codomain, out=None):
 
 def vector_norm(x, p):
     x = x.view(-1)
-    return torch.sum(x**p)**(1 / p)
+    return torch.sum(x**p) ** (1 / p)
 
 
 def leaky_elu(x, a=0.3):
@@ -457,7 +574,6 @@ def asym_squash(x):
 
 
 def _ntuple(n):
-
     def parse(x):
         if isinstance(x, container_abcs.Iterable):
             return x
@@ -471,7 +587,7 @@ _pair = _ntuple(2)
 _triple = _ntuple(3)
 _quadruple = _ntuple(4)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     p = nn.Parameter(torch.tensor(2.1))
 

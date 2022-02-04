@@ -7,7 +7,7 @@ from src.models import vit_model
 
 def get_model(model_name):
     """
-        Return a new instance of model
+    Return a new instance of model
     """
 
     # Available models

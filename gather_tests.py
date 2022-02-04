@@ -211,10 +211,23 @@ def main():
         # selected_df = df[(df.select_lr == 1)]
         potential_runs = (
             selected_df[(selected_df.study == "iid_study")][
-                ["model", "lr", "run", "do", "rew",]
+                [
+                    "model",
+                    "lr",
+                    "run",
+                    "do",
+                    "rew",
+                ]
             ]
             .drop_duplicates()
-            .groupby(["model", "lr", "do", "rew",])
+            .groupby(
+                [
+                    "model",
+                    "lr",
+                    "do",
+                    "rew",
+                ]
+            )
             .max()
             .reset_index()
         )

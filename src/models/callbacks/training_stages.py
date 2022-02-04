@@ -3,8 +3,8 @@ import torch
 from collections import OrderedDict
 from copy import deepcopy
 
-class TrainingStages(Callback):
 
+class TrainingStages(Callback):
     def __init__(self, milestones, disable_dropout_at_finetuning):
         self.milestones = milestones
         self.disable_dropout_at_finetuning = disable_dropout_at_finetuning
@@ -18,11 +18,17 @@ class TrainingStages(Callback):
 
         # self.check_weight_consistency(pl_module)
 
-        if pl_module.current_epoch == self.milestones[0]: # this is the end before the queried epoch
+        if (
+            pl_module.current_epoch == self.milestones[0]
+        ):  # this is the end before the queried epoch
             print("Starting Training ConfidNet")
             pl_module.training_stage = 1
-            if pl_module.pretrained_backbone_path is None: # trained from scratch, reload best epoch
-                best_ckpt_path = trainer.checkpoint_callbacks[0].last_model_path # No backbone model selection!!
+            if (
+                pl_module.pretrained_backbone_path is None
+            ):  # trained from scratch, reload best epoch
+                best_ckpt_path = trainer.checkpoint_callbacks[
+                    0
+                ].last_model_path  # No backbone model selection!!
                 print("Check last backbone path", best_ckpt_path)
             else:
                 best_ckpt_path = pl_module.pretrained_backbone_path
@@ -31,20 +37,36 @@ class TrainingStages(Callback):
             loaded_state_dict = loaded_ckpt["state_dict"]
 
             backbone_encoder_state_dict = OrderedDict(
-                (k.replace("backbone.encoder.", ""), v) for k, v in loaded_state_dict.items() if
-                "backbone.encoder." in k)
+                (k.replace("backbone.encoder.", ""), v)
+                for k, v in loaded_state_dict.items()
+                if "backbone.encoder." in k
+            )
             if len(backbone_encoder_state_dict) == 0:
                 backbone_encoder_state_dict = loaded_state_dict
             backbone_classifier_state_dict = OrderedDict(
-                (k.replace("backbone.classifier.", ""), v) for k, v in loaded_state_dict.items() if
-                "backbone.classifier." in k)
+                (k.replace("backbone.classifier.", ""), v)
+                for k, v in loaded_state_dict.items()
+                if "backbone.classifier." in k
+            )
 
-            pl_module.backbone.encoder.load_state_dict(backbone_encoder_state_dict, strict=True)
-            pl_module.backbone.classifier.load_state_dict(backbone_classifier_state_dict, strict=True)
-            pl_module.network.encoder.load_state_dict(backbone_encoder_state_dict, strict=True)
-            pl_module.network.classifier.load_state_dict(backbone_classifier_state_dict, strict=True)
+            pl_module.backbone.encoder.load_state_dict(
+                backbone_encoder_state_dict, strict=True
+            )
+            pl_module.backbone.classifier.load_state_dict(
+                backbone_classifier_state_dict, strict=True
+            )
+            pl_module.network.encoder.load_state_dict(
+                backbone_encoder_state_dict, strict=True
+            )
+            pl_module.network.classifier.load_state_dict(
+                backbone_classifier_state_dict, strict=True
+            )
 
-            print("loaded checkpoint {} from epoch {} into backbone and network.".format(best_ckpt_path, loaded_ckpt["epoch"]))
+            print(
+                "loaded checkpoint {} from epoch {} into backbone and network.".format(
+                    best_ckpt_path, loaded_ckpt["epoch"]
+                )
+            )
 
             pl_module.network.encoder = deepcopy(pl_module.backbone.encoder)
             pl_module.network.classifier = deepcopy(pl_module.backbone.classifier)
@@ -55,22 +77,28 @@ class TrainingStages(Callback):
             self.freeze_layers(pl_module.network.encoder)
             self.freeze_layers(pl_module.network.classifier)
 
-            new_optimizer = torch.optim.Adam(pl_module.network.confid_net.parameters(),
-                               lr=pl_module.learning_rate_confidnet,
-                                )
+            new_optimizer = torch.optim.Adam(
+                pl_module.network.confid_net.parameters(),
+                lr=pl_module.learning_rate_confidnet,
+            )
 
             trainer.optimizers = [new_optimizer]
             trainer.lr_schedulers = []
             new_schedulers = []
             if pl_module.confidnet_lr_scheduler:
                 print("initializing new scheduler for confidnet...")
-                new_schedulers.append({"scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=new_optimizer,
-                                                                                         T_max=self.milestones[1]-self.milestones[0],
-                                                                                         verbose=True),
-                                      "interval": "epoch",
-                                      "frequency": 1,
-                                      "name": "confidnet_adam"})
-
+                new_schedulers.append(
+                    {
+                        "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
+                            optimizer=new_optimizer,
+                            T_max=self.milestones[1] - self.milestones[0],
+                            verbose=True,
+                        ),
+                        "interval": "epoch",
+                        "frequency": 1,
+                        "name": "confidnet_adam",
+                    }
+                )
 
                 trainer.lr_schedulers = trainer.configure_schedulers(new_schedulers)
 
@@ -78,8 +106,6 @@ class TrainingStages(Callback):
             if len(lr_monitor) > 0:
                 lr_monitor[0].__init__()
                 lr_monitor[0].on_train_start(trainer)
-
-
 
             # self.check_weight_consistency(pl_module)
 
@@ -89,13 +115,17 @@ class TrainingStages(Callback):
             for param_group in trainer.optimizers[0].param_groups:
                 print("CHECK ConfidNet RATE", param_group["lr"])
 
-
         if pl_module.current_epoch == self.milestones[1]:
-            print("Starting Training Fine Tuning ConfidNet")# new optimizer or add param groups? both adam according to paper!
+            print(
+                "Starting Training Fine Tuning ConfidNet"
+            )  # new optimizer or add param groups? both adam according to paper!
             pl_module.training_stage = 2
             if pl_module.pretrained_confidnet_path is not None:
                 best_ckpt_path = pl_module.pretrained_confidnet_path
-            elif hasattr(pl_module, "test_selection_criterion") and "latest" not in pl_module.test_selection_criterion:
+            elif (
+                hasattr(pl_module, "test_selection_criterion")
+                and "latest" not in pl_module.test_selection_criterion
+            ):
                 best_ckpt_path = trainer.checkpoint_callbacks[1].best_model_path
                 print("Test selection criterion", pl_module.test_selection_criterion)
                 print("Check BEST confidnet path", best_ckpt_path)
@@ -105,15 +135,25 @@ class TrainingStages(Callback):
             if best_ckpt_path is not None:
                 loaded_ckpt = torch.load(best_ckpt_path)
                 loaded_state_dict = loaded_ckpt["state_dict"]
-                loaded_state_dict = OrderedDict((k.replace("network.confid_net.",""),v) for k, v in loaded_state_dict.items() if
-                    "network.confid_net" in k)
-                pl_module.network.confid_net.load_state_dict(loaded_state_dict, strict=True)
-                print("loaded checkpoint {} from epoch {} into new encoder".format(best_ckpt_path, loaded_ckpt["epoch"]))
+                loaded_state_dict = OrderedDict(
+                    (k.replace("network.confid_net.", ""), v)
+                    for k, v in loaded_state_dict.items()
+                    if "network.confid_net" in k
+                )
+                pl_module.network.confid_net.load_state_dict(
+                    loaded_state_dict, strict=True
+                )
+                print(
+                    "loaded checkpoint {} from epoch {} into new encoder".format(
+                        best_ckpt_path, loaded_ckpt["epoch"]
+                    )
+                )
 
             self.unfreeze_layers(pl_module.network.encoder)
-            new_optimizer = torch.optim.Adam(pl_module.network.parameters(),
-                                              lr=pl_module.learning_rate_confidnet_finetune,
-                                             )
+            new_optimizer = torch.optim.Adam(
+                pl_module.network.parameters(),
+                lr=pl_module.learning_rate_confidnet_finetune,
+            )
             trainer.optimizers = [new_optimizer]
             trainer.optimizer_frequencies = []
 
@@ -142,14 +182,18 @@ class TrainingStages(Callback):
 
     def unfreeze_layers(self, model, unfreeze_string=None):
         for param in model.named_parameters():
-           if unfreeze_string is None or unfreeze_string in param[0]:
+            if unfreeze_string is None or unfreeze_string in param[0]:
                 param[1].requires_grad = True
 
     def disable_bn(self, model):
         # Freeze also BN running average parameters
         for layer in model.named_modules():
             # print("BN CHECK", layer)
-            if "bn" in layer[0] or "cbr_unit.1" in layer[0] or isinstance(layer[1], torch.nn.BatchNorm2d):
+            if (
+                "bn" in layer[0]
+                or "cbr_unit.1" in layer[0]
+                or isinstance(layer[1], torch.nn.BatchNorm2d)
+            ):
                 layer[1].momentum = 0
                 layer[1].eval()
                 # print("disabling bn", layer[1])
@@ -160,7 +204,6 @@ class TrainingStages(Callback):
             if "dropout" in layer[0] or isinstance(layer[1], torch.nn.Dropout):
                 layer[1].eval()
                 # print("disabling dropout", layer[1], layer[0])
-
 
     def check_weight_consistency(self, pl_module):
 

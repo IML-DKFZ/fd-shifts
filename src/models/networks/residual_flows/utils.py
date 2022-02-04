@@ -10,7 +10,9 @@ def makedirs(dirname):
         os.makedirs(dirname)
 
 
-def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True, debug=False):
+def get_logger(
+    logpath, filepath, package_files=[], displaying=True, saving=True, debug=False
+):
     logger = logging.getLogger()
     if debug:
         level = logging.DEBUG
@@ -77,7 +79,7 @@ class RunningAverageMeter(object):
 
 def inf_generator(iterable):
     """Allows training with DataLoaders in a single infinite loop:
-        for i, (x, y) in enumerate(inf_generator(train_loader)):
+    for i, (x, y) in enumerate(inf_generator(train_loader)):
     """
     iterator = iterable.__iter__()
     while True:
@@ -90,18 +92,18 @@ def inf_generator(iterable):
 def save_checkpoint(state, save, epoch, last_checkpoints=None, num_checkpoints=None):
     if not os.path.exists(save):
         os.makedirs(save)
-    filename = os.path.join(save, 'checkpt-%04d.pth' % epoch)
+    filename = os.path.join(save, "checkpt-%04d.pth" % epoch)
     torch.save(state, filename)
 
     if last_checkpoints is not None and num_checkpoints is not None:
         last_checkpoints.append(epoch)
         if len(last_checkpoints) > num_checkpoints:
             rm_epoch = last_checkpoints.pop(0)
-            os.remove(os.path.join(save, 'checkpt-%04d.pth' % rm_epoch))
+            os.remove(os.path.join(save, "checkpt-%04d.pth" % rm_epoch))
 
 
 def isnan(tensor):
-    return (tensor != tensor)
+    return tensor != tensor
 
 
 def logsumexp(value, dim=None, keepdim=False):
@@ -124,7 +126,6 @@ def logsumexp(value, dim=None, keepdim=False):
 
 
 class ExponentialMovingAverage(object):
-
     def __init__(self, module, decay=0.999):
         """Initializes the model when .apply() is called the first time.
         This is to take into account data-dependent initialization that occurs in the first iteration."""
@@ -143,7 +144,9 @@ class ExponentialMovingAverage(object):
         else:
             with torch.no_grad():
                 for name, param in self.module.named_parameters():
-                    self.shadow_params[name] -= (1 - self.decay) * (self.shadow_params[name] - param.data)
+                    self.shadow_params[name] -= (1 - self.decay) * (
+                        self.shadow_params[name] - param.data
+                    )
 
     def set(self, other_ema):
         self.init()
@@ -162,8 +165,9 @@ class ExponentialMovingAverage(object):
             param.data.copy_(tmp)
 
     def __repr__(self):
-        return (
-            '{}(decay={}, module={}, nparams={})'.format(
-                self.__class__.__name__, self.decay, self.module.__class__.__name__, self.nparams
-            )
+        return "{}(decay={}, module={}, nparams={})".format(
+            self.__class__.__name__,
+            self.decay,
+            self.module.__class__.__name__,
+            self.nparams,
         )

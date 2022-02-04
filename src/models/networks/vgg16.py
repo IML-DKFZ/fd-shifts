@@ -6,7 +6,12 @@ import torch
 
 class Conv2dSame(nn.Module):
     def __init__(
-        self, in_channels, out_channels, kernel_size, bias=True, padding_layer=nn.ReflectionPad2d
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        bias=True,
+        padding_layer=nn.ReflectionPad2d,
     ):
         super().__init__()
         ka = kernel_size // 2
@@ -18,7 +23,6 @@ class Conv2dSame(nn.Module):
 
     def forward(self, x):
         return self.net(x)
-
 
 
 class VGG16(nn.Module):
@@ -43,7 +47,7 @@ class Encoder(nn.Module):
         self.img_size = cf.data.img_size
         self.fc_dim = cf.model.fc_dim
         self.eval_mcdropout = False
-        self.dropout_flag = True #cf.model.dropout_flag
+        self.dropout_flag = True  # cf.model.dropout_flag
         print("CHECK DROPOUT IN VGG", self.dropout_flag)
 
         self.conv1 = Conv2dSame(self.img_size[-1], 64, 3)
@@ -212,6 +216,7 @@ class Encoder(nn.Module):
                 assert l1.bias.size() == l2.bias.size()
                 l2.weight.data = l1.weight.data
                 l2.bias.data = l1.bias.data
+
 
 class Classifier(nn.Module):
     def __init__(self, cf):
