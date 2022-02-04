@@ -3,19 +3,16 @@ defaults:
   - data: wilds_animals_data.yaml #svhn_data.yaml
   - study: dg_cifar_study.yaml # svhn_confid_study.yaml
 
-
-
 hydra:
   run:
     dir: ${exp.dir}
   output_subdir: hydra # hydra # needs to be null for manual testing!
 
-
 exp:
   # group_name: checks
   # name: check_risk_thresh # cifar10_run_0_sebastian
   version: None
-  mode: train_test   # train or test
+  mode: train_test # train or test
   work_dir: ${hydra:runtime.cwd}
   fold_dir: exp/${exp.fold}
   root_dir: ${env:EXPERIMENT_ROOT_DIR}
@@ -40,8 +37,4 @@ exp:
       external_confids_dist: ${test.dir}/external_confids_dist.npz
   log_path: ${exp.dir}/log.txt
   global_seed: False # set to False to disable deterministic training.
-
-
-
-
 

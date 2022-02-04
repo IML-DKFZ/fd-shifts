@@ -1,21 +1,21 @@
 # @package _group_
-  dataset: tinyimagenet
-  data_dir: ${env:DATASET_ROOT_DIR}/${data.dataset}
-  pin_memory: True
-  img_size: [384, 384, 3]
-  num_workers: 24
-  num_classes: 200
-  reproduce_confidnet_splits: False
-  augmentations:
-    train:
-      to_tensor:
-      resize: 384
-      normalize:  [[0.485, 0.456, 0.406], [0.229, 0.384, 0.225]]
-    val:
-      to_tensor:
-      resize: 384
-      normalize:  [[0.485, 0.456, 0.406], [0.229, 0.384, 0.225]]
-    test:
-      to_tensor:
-      resize: 384
-      normalize: [[0.485, 0.456, 0.406], [0.229, 0.384, 0.225]]
+dataset: tinyimagenet
+data_dir: ${env:DATASET_ROOT_DIR}/${data.dataset}
+pin_memory: True
+img_size: [384, 384, 3]
+num_workers: 24
+num_classes: 200
+reproduce_confidnet_splits: False
+augmentations:
+  train:
+    to_tensor:
+    resize: 384
+    normalize: [[0.485, 0.456, 0.406], [0.229, 0.384, 0.225]]
+  val:
+    to_tensor:
+    resize: 384
+    normalize: [[0.485, 0.456, 0.406], [0.229, 0.384, 0.225]]
+  test:
+    to_tensor:
+    resize: 384
+    normalize: [[0.485, 0.456, 0.406], [0.229, 0.384, 0.225]]
