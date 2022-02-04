@@ -3,11 +3,11 @@ from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.loggers import TensorBoardLogger
 import hydra
 from omegaconf import DictConfig, OmegaConf
-from src.loaders.abstract_loader import AbstractDataLoader
-from src.models import get_model
-from src.models.callbacks import get_callbacks
-from src.utils import exp_utils
-import analysis
+from fd_shifts.loaders.abstract_loader import AbstractDataLoader
+from fd_shifts.models import get_model
+from fd_shifts.models.callbacks import get_callbacks
+from fd_shifts.utils import exp_utils
+from fd_shifts import analysis
 import os
 import torch
 import sys

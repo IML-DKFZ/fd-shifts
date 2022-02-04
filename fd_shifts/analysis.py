@@ -1,7 +1,7 @@
 from omegaconf import OmegaConf
 import os
 import numpy as np
-from src.utils.eval_utils import (
+from fd_shifts.utils.eval_utils import (
     ConfidEvaluator,
     ConfidPlotter,
     ThresholdPlot,
