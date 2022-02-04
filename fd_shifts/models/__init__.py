@@ -1,8 +1,8 @@
-from src.models import det_mcd_model
-from src.models import confidnet_model
-from src.models import zhang_model
-from src.models import devries_model
-from src.models import vit_model
+from fd_shifts.models import det_mcd_model
+from fd_shifts.models import confidnet_model
+from fd_shifts.models import zhang_model
+from fd_shifts.models import devries_model
+from fd_shifts.models import vit_model
 
 
 def get_model(model_name):

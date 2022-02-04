@@ -1,7 +1,7 @@
-import src.models.networks as networks
-from src.models.networks.residual_flows.resflow import ResidualFlow
-from src.models.networks.residual_flows import layers
-import src.models.networks.residual_flows.layers.base as base_layers
+import fd_shifts.models.networks as networks
+from fd_shifts.models.networks.residual_flows.resflow import ResidualFlow
+from fd_shifts.models.networks.residual_flows import layers
+import fd_shifts.models.networks.residual_flows.layers.base as base_layers
 from torch import nn
 from torch.nn import functional as F
 import math

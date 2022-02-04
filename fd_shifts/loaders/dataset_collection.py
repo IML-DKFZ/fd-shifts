@@ -9,8 +9,8 @@ from robustness.tools.breeds_helpers import ClassHierarchy
 from wilds.datasets.iwildcam_dataset import IWildCamDataset
 from wilds.datasets.camelyon17_dataset import Camelyon17Dataset
 from wilds.datasets.wilds_dataset import WILDSSubset
-from src.loaders import breeds_hierarchies
-from src.utils import eval_utils
+from fd_shifts.loaders import breeds_hierarchies
+from fd_shifts.utils import eval_utils
 import numpy as np
 from PIL import Image
 import io
