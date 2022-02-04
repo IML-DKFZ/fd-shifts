@@ -2,7 +2,7 @@
 
 ## Todo
 - [ ] Implement analysis tests
-- [ ] Clean up dependencies
+- [x] Clean up dependencies
 - [ ] Document usage
 - [ ] Refactor analysis
 - [ ] Refactor rest of codebase
