@@ -8,7 +8,7 @@ dependencies:
   - black==19.10b0
   - imageio==2.9.0
   - matplotlib==3.3.4
-  - numpy==1.19.5
+  - numpy==1.22.2
   - pandas==1.2.3
   - pip
   - python==3.9.6
