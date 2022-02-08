@@ -35,3 +35,5 @@ dependencies:
     - robustness==1.2.1
     - torchmetrics==0.2.0
     - wilds==1.1.0
+    - pytest
+    - syrupy
