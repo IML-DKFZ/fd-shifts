@@ -32,6 +32,45 @@
   
   '
 ---
+# name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].10
+  'master_plot_noise_study_2.png'
+---
+# name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].11
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].12
+  'master_plot_noise_study_3.png'
+---
+# name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].13
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].14
+  'master_plot_noise_study_4.png'
+---
+# name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].15
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].16
+  'master_plot_noise_study_5.png'
+---
+# name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].17
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].18
+  'master_plot_val_tuning.png'
+---
 # name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].2
   '
   ,name,study,model,network,fold,confid,n_test,accuracy,nll,brier_score,failauc,failap_suc,failap_err,fail-NLL,mce,ece,e-aurc,aurc,fpr@95tpr,risk@100cov,risk@95cov,risk@90cov,risk@85cov,risk@80cov,risk@75cov,test_risk,test_cov,diff_risk,diff_cov,rstar,val_theta
@@ -172,6 +211,21 @@
   
   '
 ---
+# name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].7
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].8
+  'master_plot_noise_study_1.png'
+---
+# name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2].9
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
 # name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2]
   '
   ,name,study,model,network,fold,confid,n_test,accuracy,nll,brier_score,failauc,failap_suc,failap_err,fail-NLL,mce,ece,e-aurc,aurc,fpr@95tpr,risk@100cov,risk@95cov,risk@90cov,risk@85cov,risk@80cov,risk@75cov,test_risk,test_cov,diff_risk,diff_cov,rstar,val_theta
@@ -189,6 +243,45 @@
   2,tests,noise_study_2,devries_model,vit,0,devries,450,0.98889,0.01047,0.01898,0.55236,0.98741,0.12493,0.11129,0.01107,0.01107,12.64731,12.70926,0.60000,1.11111,0.89286,0.70423,0.70423,0.70423,0.70423,0.00893,0.99556,-0.24107,-0.00044,0.25000,0.99952
   
   '
+---
+# name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].10
+  'master_plot_noise_study_2.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].11
+  <class 'tuple'> (
+    1500,
+    1200,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].12
+  'master_plot_noise_study_3.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].13
+  <class 'tuple'> (
+    1500,
+    1200,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].14
+  'master_plot_noise_study_4.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].15
+  <class 'tuple'> (
+    1500,
+    1200,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].16
+  'master_plot_noise_study_5.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].17
+  <class 'tuple'> (
+    1500,
+    1200,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].18
+  'master_plot_val_tuning.png'
 ---
 # name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].2
   '
@@ -249,6 +342,21 @@
   2,tests,noise_study_5,devries_model,vit,0,devries,450,0.98889,0.00369,0.01592,0.85978,0.99812,0.08146,0.10283,0.01106,0.01106,1.88291,1.94487,0.60000,1.11111,0.90293,0.47733,0.47733,0.26525,0.26525,0.01116,0.99556,-0.23884,-0.00044,0.25000,0.99952
   
   '
+---
+# name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].7
+  <class 'tuple'> (
+    1500,
+    1200,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].8
+  'master_plot_noise_study_1.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldevries_bbvit_lr0.0003_bs128_run0_do0_rew2.2].9
+  <class 'tuple'> (
+    1500,
+    1200,
+  )
 ---
 # name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6]
   '
@@ -484,6 +592,33 @@
   
   '
 ---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].14
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].15
+  'master_plot_iid_study.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].16
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].17
+  'master_plot_new_class_study_cifar100_384_original_mode.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].18
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].19
+  'master_plot_new_class_study_cifar100_384_proposed_mode.png'
+---
 # name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].2
   '
   ,name,study,model,network,fold,confid,n_test,accuracy,nll,brier_score,failauc,failap_suc,failap_err,fail-NLL,mce,ece,e-aurc,aurc,fpr@95tpr,risk@100cov,risk@95cov,risk@90cov,risk@85cov,risk@80cov,risk@75cov,test_risk,test_cov,diff_risk,diff_cov,rstar,val_theta
@@ -501,6 +636,51 @@
   
   '
 ---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].20
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].21
+  'master_plot_new_class_study_svhn_384_original_mode.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].22
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].23
+  'master_plot_new_class_study_svhn_384_proposed_mode.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].24
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].25
+  'master_plot_new_class_study_tinyimagenet_384_original_mode.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].26
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].27
+  'master_plot_new_class_study_tinyimagenet_384_proposed_mode.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].28
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].29
+  'master_plot_noise_study_1.png'
+---
 # name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].3
   '
   ,name,study,model,network,fold,confid,n_test,accuracy,nll,brier_score,failauc,failap_suc,failap_err,fail-NLL,mce,ece,e-aurc,aurc,fpr@95tpr,risk@100cov,risk@95cov,risk@90cov,risk@85cov,risk@80cov,risk@75cov,test_risk,test_cov,diff_risk,diff_cov,rstar,val_theta
@@ -517,6 +697,51 @@
   10,tests,new_class_study_svhn_384_original_mode,devries_model,,0,mcd_waic,8758,0.25691,,,0.92752,0.75128,0.96021,2.88097,0.88896,0.61163,76.72067,470.66517,0.17978,74.30920,73.05152,71.60979,70.00672,68.21750,66.19504,0.69343,0.83055,0.44343,-0.16545,0.25000,0.66260
   
   '
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].30
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].31
+  'master_plot_noise_study_2.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].32
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].33
+  'master_plot_noise_study_3.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].34
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].35
+  'master_plot_noise_study_4.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].36
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].37
+  'master_plot_noise_study_5.png'
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].38
+  <class 'tuple'> (
+    1500,
+    2400,
+  )
+---
+# name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].39
+  'master_plot_val_tuning.png'
 ---
 # name: test_analysis_blackbox[cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6].4
   '
@@ -649,4 +874,22 @@
   2,tests,iid_study,vit_model,,0,maha,6508,0.55624,0.70326,0.82224,0.48731,0.54024,0.48464,0.75076,0.98716,0.15292,343.79930,461.29460,0.87535,44.37615,42.63303,42.30252,42.30252,42.30252,42.30252,1.00000,0.00015,0.75000,-0.00385,0.25000,1.00000
   
   '
+---
+# name: test_analysis_blackbox[svhn_openset_modelvit_bbvit_lr0.01_bs128_run0_do0_rew0].3
+  <class 'tuple'> (
+    1500,
+    1200,
+  )
+---
+# name: test_analysis_blackbox[svhn_openset_modelvit_bbvit_lr0.01_bs128_run0_do0_rew0].4
+  'master_plot_iid_study.png'
+---
+# name: test_analysis_blackbox[svhn_openset_modelvit_bbvit_lr0.01_bs128_run0_do0_rew0].5
+  <class 'tuple'> (
+    1500,
+    1200,
+  )
+---
+# name: test_analysis_blackbox[svhn_openset_modelvit_bbvit_lr0.01_bs128_run0_do0_rew0].6
+  'master_plot_val_tuning.png'
 ---
