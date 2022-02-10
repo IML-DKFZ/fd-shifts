@@ -1,16 +1,92 @@
-from omegaconf import OmegaConf
+from __future__ import annotations
+
 import os
-import numpy as np
-from fd_shifts.utils.eval_utils import (
-    ConfidEvaluator,
-    ConfidPlotter,
-    ThresholdPlot,
-    qual_plot,
-    cifar100_classes,
-)
-import pandas as pd
 from copy import deepcopy
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import numpy.typing as npt
 import omegaconf
+import pandas as pd
+from omegaconf import OmegaConf
+
+from fd_shifts.utils.eval_utils import (ConfidEvaluator, ConfidPlotter,
+                                        ThresholdPlot, cifar100_classes,
+                                        qual_plot)
+
+
+@dataclass
+class ExperimentData:
+    softmax_output: npt.NDArray[Any]
+    labels: npt.NDArray[Any]
+    dataset_idx: npt.NDArray[Any]
+
+    mcd_softmax_dist: npt.NDArray[Any] | None = None
+
+    external_confids: npt.NDArray[Any] | None = None
+    mcd_external_confids_dist: npt.NDArray[Any] | None = None
+
+    correct: npt.NDArray[Any] = field(init=False)
+    mcd_correct: npt.NDArray[Any] | None = field(default=None, init=False)
+    mcd_softmax_mean: npt.NDArray[Any] | None = field(default=None, init=False)
+
+    def __post_init__(self):
+        self.correct = (np.argmax(self.softmax_output, axis=1) == self.labels).astype(
+            int
+        )
+
+        if self.mcd_softmax_dist is not None:
+            self.mcd_softmax_mean = np.mean(self.mcd_softmax_dist, axis=2)
+            self.mcd_correct = (
+                np.argmax(self.mcd_softmax_mean, axis=1) == self.labels
+            ).astype(int)
+
+    @staticmethod
+    def __load_npz_if_exists(path: Path) -> npt.NDArray[np.float64] | None:
+        if not path.is_file():
+            return None
+
+        with np.load(path) as npz:
+            return npz.f.arr_0
+
+    @staticmethod
+    def from_experiment(
+        test_dir: Path, holdout_classes: list | None = None
+    ) -> ExperimentData:
+        if type(test_dir) != Path:
+            test_dir = Path(test_dir)
+
+        if not (test_dir / "raw_output.npz").is_file():
+            raise FileNotFoundError
+
+        with np.load(test_dir / "raw_output.npz") as npz:
+            raw_output = npz.f.arr_0
+
+        mcd_softmax_dist = ExperimentData.__load_npz_if_exists(
+            test_dir / "raw_output_dist.npz"
+        )
+
+        # HACK: OpenSet runs currently output all classes, but only train on in-classes
+        if holdout_classes is not None:
+            raw_output[:, holdout_classes] = 0
+
+            if mcd_softmax_dist is not None:
+                mcd_softmax_dist[:, :, holdout_classes] = 0
+
+        return ExperimentData(
+            softmax_output=raw_output[:, :-2],
+            labels=raw_output[:, -2],
+            dataset_idx=raw_output[:, -1],
+            mcd_softmax_dist=mcd_softmax_dist,
+            external_confids=ExperimentData.__load_npz_if_exists(
+                test_dir / "external_confids.npz"
+            ),
+            mcd_external_confids_dist=ExperimentData.__load_npz_if_exists(
+                test_dir / "external_confids_dist.npz"
+            ),
+        )
 
 
 class Analysis:
@@ -36,41 +112,20 @@ class Analysis:
             else cf,
             "name": path.split("/")[-2],  # last level is version or test dir
         }
-        for np_postfix in ["npy", "npz", "npy.npz"]:
-            if os.path.isfile(
-                os.path.join(path, "raw_output.{}".format(np_postfix))
-            ):
-                self.method_dict["raw_output"] = np.load(
-                    os.path.join(path, "raw_output.{}".format(np_postfix))
-                )
-            if os.path.isfile(
-                os.path.join(path, "raw_output_dist.{}".format(np_postfix))
-            ):
-                self.method_dict["raw_output_dist"] = np.load(
-                    os.path.join(path, "raw_output_dist.{}".format(np_postfix))
-                )
-            if os.path.isfile(
-                os.path.join(path, "external_confids.{}".format(np_postfix))
-            ):
-                self.method_dict["raw_external_confids"] = np.load(
-                    os.path.join(path, "external_confids.{}".format(np_postfix))
-                )
-            if os.path.isfile(
-                os.path.join(path, "external_confids_dist.{}".format(np_postfix))
-            ):
-                self.method_dict["raw_external_confids_dist"] = np.load(
-                    os.path.join(
-                        path, "external_confids_dist.{}".format(np_postfix)
-                    )
-                )
+
+        # HACK: OpenSet runs currently output all classes, but only train on in-classes
+        holdout_classes: list | None = kwargs.get("out_classes") if (
+            kwargs := cf.data.get("kwargs")
+        ) else None
+        self.experiment_data = ExperimentData.from_experiment(path, holdout_classes)
 
         if self.method_dict["cfg"].data.num_classes is None:
             self.method_dict["cfg"].data.num_classes = self.method_dict[
                 "cfg"
             ].trainer.num_classes
-        self.method_dict["query_confids"] = self.method_dict["cfg"].eval.confidence_measures[
-            "test"
-        ]
+        self.method_dict["query_confids"] = self.method_dict[
+            "cfg"
+        ].eval.confidence_measures["test"]
         print("CHECK QUERY CONFIDS", self.method_dict["query_confids"])
 
         self.query_performance_metrics = query_performance_metrics
@@ -89,67 +144,8 @@ class Analysis:
         self.threshold_plot_confid = threshold_plot_confid
         self.qual_plot_confid = qual_plot_confid
 
-    def process_outputs(self):
-
-
-        raw_outputs = self.method_dict["raw_output"]
-        try:
-            raw_outputs = raw_outputs.f.arr_0
-        except:
-            pass
-        self.method_dict["raw_dataset_ix"] = raw_outputs[:, -1]
-        print(
-            "CHECK IN DATASETS",
-            np.unique(self.method_dict["raw_dataset_ix"], return_counts=True),
-        )
-        self.method_dict["raw_labels"] = raw_outputs[:, -2]
-        self.method_dict["raw_softmax"] = raw_outputs[:, :-2]
-        if "openset" in self.method_dict["cfg"].exp.name:
-            self.method_dict["raw_softmax"][
-                :, self.method_dict["cfg"].data.kwargs.out_classes
-            ] = 0
-        self.method_dict["raw_correct"] = (
-            np.argmax(self.method_dict["raw_softmax"], axis=1)
-            == self.method_dict["raw_labels"]
-        ) * 1
-        print("analysis softmax in shape:", self.method_dict["raw_softmax"].shape)
-
-        mcd_softmax_dist = self.method_dict.get("raw_output_dist")
-        if mcd_softmax_dist is not None:
-            try:
-                mcd_softmax_dist = mcd_softmax_dist.f.arr_0
-            except:
-                pass
-            if "openset" in self.method_dict["cfg"].exp.name:
-                mcd_softmax_dist[
-                    :, :, self.method_dict["cfg"].data.kwargs.out_classes
-                ] = 0
-            mcd_softmax_mean = np.mean(mcd_softmax_dist, axis=2)
-            mcd_correct = (
-                np.argmax(mcd_softmax_mean, axis=1) == self.method_dict["raw_labels"]
-            ) * 1
-            self.method_dict["raw_mcd_correct"] = mcd_correct
-            self.method_dict["raw_mcd_softmax_mean"] = mcd_softmax_mean
-            self.method_dict["raw_mcd_softmax_dist"] = mcd_softmax_dist
-
-        raw_external_confids = self.method_dict.get("raw_external_confids")
-        if raw_external_confids is not None:
-            try:
-                raw_external_confids = raw_external_confids.f.arr_0
-            except:
-                pass
-            self.method_dict["raw_external_confids"] = raw_external_confids
-        raw_external_confids_dist = self.method_dict.get("raw_external_confids_dist")
-        if raw_external_confids_dist is not None:
-            try:
-                raw_external_confids_dist = raw_external_confids_dist.f.arr_0
-            except:
-                pass
-            self.method_dict["raw_external_confids_dist"] = raw_external_confids_dist
-
     def register_and_perform_studies(self):
 
-        self.process_outputs()
         if self.qual_plot_confid:
             self.get_dataloader()
         flat_test_set_list = []
@@ -172,27 +168,27 @@ class Analysis:
             iid_set_ix = 0
             self.current_dataloader_ix = 0
 
-            select_ix = np.argwhere(self.method_dict["raw_dataset_ix"] == iid_set_ix)[
+            select_ix = np.argwhere(self.experiment_data.dataset_idx == iid_set_ix)[
                 :, 0
             ]
 
             self.method_dict["study_softmax"] = deepcopy(
-                self.method_dict["raw_softmax"][select_ix]
+                self.experiment_data.softmax_output[select_ix]
             )
             self.method_dict["study_labels"] = deepcopy(
-                self.method_dict["raw_labels"][select_ix]
+                self.experiment_data.labels[select_ix]
             )
             self.method_dict["study_correct"] = deepcopy(
-                self.method_dict["raw_correct"][select_ix]
+                self.experiment_data.correct[select_ix]
             )
 
-            if self.method_dict.get("raw_external_confids") is not None:
+            if self.experiment_data.external_confids is not None:
                 self.method_dict["study_external_confids"] = deepcopy(
-                    self.method_dict["raw_external_confids"][select_ix]
+                    self.experiment_data.external_confids[select_ix]
                 )
-            if self.method_dict.get("raw_external_confids_dist") is not None:
+            if self.experiment_data.mcd_external_confids_dist is not None:
                 self.method_dict["study_external_confids_dist"] = deepcopy(
-                    self.method_dict["raw_external_confids_dist"][select_ix]
+                    self.experiment_data.mcd_external_confids_dist[select_ix]
                 )
                 std = self.method_dict["study_external_confids_dist"].std(1)
                 print(
@@ -204,15 +200,15 @@ class Analysis:
                     self.method_dict["study_external_confids_dist"][0],
                 )
 
-            if self.method_dict.get("raw_mcd_softmax_dist") is not None:
+            if self.experiment_data.mcd_softmax_dist is not None:
                 self.method_dict["study_mcd_softmax_mean"] = deepcopy(
-                    self.method_dict["raw_mcd_softmax_mean"][select_ix]
+                    self.experiment_data.mcd_softmax_mean[select_ix]
                 )
                 self.method_dict["study_mcd_softmax_dist"] = deepcopy(
-                    self.method_dict["raw_mcd_softmax_dist"][select_ix]
+                    self.experiment_data.mcd_softmax_dist[select_ix]
                 )
                 self.method_dict["study_mcd_correct"] = deepcopy(
-                    self.method_dict["raw_mcd_correct"][select_ix]
+                    self.experiment_data.mcd_correct[select_ix]
                 )
 
             self.rstar = self.method_dict["cfg"].eval.r_star
@@ -227,26 +223,26 @@ class Analysis:
                 self.current_dataloader_ix = iid_set_ix + val_ix_shift
 
                 select_ix = np.argwhere(
-                    self.method_dict["raw_dataset_ix"] == iid_set_ix + val_ix_shift
+                    self.experiment_data.dataset_idx == iid_set_ix + val_ix_shift
                 )[:, 0]
 
                 self.method_dict["study_softmax"] = deepcopy(
-                    self.method_dict["raw_softmax"][select_ix]
+                    self.experiment_data.softmax_output[select_ix]
                 )
                 self.method_dict["study_labels"] = deepcopy(
-                    self.method_dict["raw_labels"][select_ix]
+                    self.experiment_data.labels[select_ix]
                 )
                 self.method_dict["study_correct"] = deepcopy(
-                    self.method_dict["raw_correct"][select_ix]
+                    self.experiment_data.correct[select_ix]
                 )
 
-                if self.method_dict.get("raw_external_confids") is not None:
+                if self.experiment_data.external_confids is not None:
                     self.method_dict["study_external_confids"] = deepcopy(
-                        self.method_dict["raw_external_confids"][select_ix]
+                        self.experiment_data.external_confids[select_ix]
                     )
-                if self.method_dict.get("raw_external_confids_dist") is not None:
+                if self.experiment_data.mcd_external_confids_dist is not None:
                     self.method_dict["study_external_confids_dist"] = deepcopy(
-                        self.method_dict["raw_external_confids_dist"][select_ix]
+                        self.experiment_data.mcd_external_confids_dist[select_ix]
                     )
                     std = self.method_dict["study_external_confids_dist"].std(1)
                     print(
@@ -258,15 +254,15 @@ class Analysis:
                         self.method_dict["study_external_confids_dist"][0],
                     )
 
-                if self.method_dict.get("raw_mcd_softmax_dist") is not None:
+                if self.experiment_data.mcd_softmax_dist is not None:
                     self.method_dict["study_mcd_softmax_mean"] = deepcopy(
-                        self.method_dict["raw_mcd_softmax_mean"][select_ix]
+                        self.experiment_data.mcd_softmax_mean[select_ix]
                     )
                     self.method_dict["study_mcd_softmax_dist"] = deepcopy(
-                        self.method_dict["raw_mcd_softmax_dist"][select_ix]
+                        self.experiment_data.mcd_softmax_dist[select_ix]
                     )
                     self.method_dict["study_mcd_correct"] = deepcopy(
-                        self.method_dict["raw_mcd_correct"][select_ix]
+                        self.experiment_data.mcd_correct[select_ix]
                     )
 
                 self.perform_study(study_name)
@@ -274,31 +270,29 @@ class Analysis:
             if study_name == "in_class_study":
 
                 for in_class_set in self.query_studies[study_name]:
-                    iid_set_ix = (
-                        flat_test_set_list.index(in_class_set) + val_ix_shift
-                    )
+                    iid_set_ix = flat_test_set_list.index(in_class_set) + val_ix_shift
                     self.current_dataloader_ix = iid_set_ix
                     select_ix = np.argwhere(
-                        self.method_dict["raw_dataset_ix"] == iid_set_ix
+                        self.experiment_data.dataset_idx == iid_set_ix
                     )[:, 0]
 
                     self.method_dict["study_softmax"] = deepcopy(
-                        self.method_dict["raw_softmax"][select_ix]
+                        self.experiment_data.softmax_output[select_ix]
                     )
                     self.method_dict["study_labels"] = deepcopy(
-                        self.method_dict["raw_labels"][select_ix]
+                        self.experiment_data.labels[select_ix]
                     )
                     self.method_dict["study_correct"] = deepcopy(
-                        self.method_dict["raw_correct"][select_ix]
+                        self.experiment_data.correct[select_ix]
                     )
 
-                    if self.method_dict.get("raw_external_confids") is not None:
+                    if self.experiment_data.external_confids is not None:
                         self.method_dict["study_external_confids"] = deepcopy(
-                            self.method_dict["raw_external_confids"][select_ix]
+                            self.experiment_data.external_confids[select_ix]
                         )
-                    if self.method_dict.get("raw_external_confids_dist") is not None:
+                    if self.experiment_data.mcd_external_confids_dist is not None:
                         self.method_dict["study_external_confids_dist"] = deepcopy(
-                            self.method_dict["raw_external_confids_dist"][select_ix]
+                            self.experiment_data.mcd_external_confids_dist[select_ix]
                         )
                         std = self.method_dict["study_external_confids_dist"].std(1)
                         print(
@@ -310,29 +304,26 @@ class Analysis:
                             self.method_dict["study_external_confids_dist"][0],
                         )
 
-                    if self.method_dict.get("raw_mcd_softmax_dist") is not None:
+                    if self.experiment_data.mcd_softmax_dist is not None:
                         self.method_dict["study_mcd_softmax_mean"] = deepcopy(
-                            self.method_dict["raw_mcd_softmax_mean"][select_ix]
+                            self.experiment_data.mcd_softmax_mean[select_ix]
                         )
                         self.method_dict["study_mcd_softmax_dist"] = deepcopy(
-                            self.method_dict["raw_mcd_softmax_dist"][select_ix]
+                            self.experiment_data.mcd_softmax_dist[select_ix]
                         )
                         self.method_dict["study_mcd_correct"] = deepcopy(
-                            self.method_dict["raw_mcd_correct"][select_ix]
+                            self.experiment_data.mcd_correct[select_ix]
                         )
 
                     self.perform_study("in_class_study_{}".format(in_class_set))
 
             if study_name == "new_class_study":
 
-
                 for new_class_set in self.query_studies[study_name]:
                     for mode in ["original_mode", "proposed_mode"]:
 
                         iid_set_ix = (
-                            flat_test_set_list.index(
-                                self.query_studies["iid_study"]
-                            )
+                            flat_test_set_list.index(self.query_studies["iid_study"])
                             + val_ix_shift
                         )
                         new_class_set_ix = (
@@ -340,70 +331,70 @@ class Analysis:
                         )
                         self.current_dataloader_ix = new_class_set_ix
                         select_ix_in = np.argwhere(
-                            self.method_dict["raw_dataset_ix"] == iid_set_ix
+                            self.experiment_data.dataset_idx == iid_set_ix
                         )[:, 0]
                         select_ix_out = np.argwhere(
-                            self.method_dict["raw_dataset_ix"] == new_class_set_ix
+                            self.experiment_data.dataset_idx == new_class_set_ix
                         )[:, 0]
 
-                        correct = deepcopy(self.method_dict["raw_correct"])
+                        correct = deepcopy(self.experiment_data.correct)
                         correct[select_ix_out] = 0
                         if mode == "original_mode":
                             correct[
                                 select_ix_in
                             ] = 1  # nice to see so visual how little practical sense the current protocol makes!
-                        labels = deepcopy(self.method_dict["raw_labels"])
+                        labels = deepcopy(self.experiment_data.labels)
                         labels[select_ix_out] = -99
 
                         select_ix_all = np.argwhere(
-                            (self.method_dict["raw_dataset_ix"] == new_class_set_ix)
+                            (self.experiment_data.dataset_idx == new_class_set_ix)
                             | (
-                                (self.method_dict["raw_dataset_ix"] == iid_set_ix)
+                                (self.experiment_data.dataset_idx == iid_set_ix)
                                 & (correct == 1)
                             )
                         )[
                             :, 0
                         ]  # de-select incorrect inlier predictions.
                         self.method_dict["study_softmax"] = deepcopy(
-                            self.method_dict["raw_softmax"]
+                            self.experiment_data.softmax_output
                         )[select_ix_all]
                         self.method_dict["study_labels"] = labels[select_ix_all]
                         self.method_dict["study_correct"] = correct[select_ix_all]
-                        if self.method_dict.get("raw_external_confids") is not None:
+                        if self.experiment_data.external_confids is not None:
                             self.method_dict["study_external_confids"] = deepcopy(
-                                self.method_dict["raw_external_confids"][select_ix_all]
+                                self.experiment_data.external_confids[select_ix_all]
                             )
 
-                        if self.method_dict.get("raw_mcd_softmax_dist") is not None:
-                            correct = deepcopy(self.method_dict["raw_mcd_correct"])
+                        if self.experiment_data.mcd_softmax_dist is not None:
+                            correct = deepcopy(self.experiment_data.mcd_correct)
                             correct[select_ix_out] = 0
                             if mode == "original_mode":
                                 correct[select_ix_in] = 1
 
                             select_ix_all = np.argwhere(
-                                (self.method_dict["raw_dataset_ix"] == new_class_set_ix)
+                                (self.experiment_data.dataset_idx == new_class_set_ix)
                                 | (
-                                    (self.method_dict["raw_dataset_ix"] == iid_set_ix)
+                                    (self.experiment_data.dataset_idx == iid_set_ix)
                                     & (correct == 1)
                                 )
                             )[:, 0]
                             self.method_dict["study_mcd_softmax_mean"] = deepcopy(
-                                self.method_dict["raw_mcd_softmax_mean"][select_ix_all]
+                                self.experiment_data.mcd_softmax_mean[select_ix_all]
                             )
                             self.method_dict["study_mcd_softmax_dist"] = deepcopy(
-                                self.method_dict["raw_mcd_softmax_dist"][select_ix_all]
+                                self.experiment_data.mcd_softmax_dist[select_ix_all]
                             )
                             self.method_dict["study_mcd_correct"] = correct[
                                 select_ix_all
                             ]
                             if (
-                                self.method_dict.get("raw_external_confids_dist")
+                                self.experiment_data.mcd_external_confids_dist
                                 is not None
                             ):
                                 self.method_dict[
                                     "study_external_confids_dist"
                                 ] = deepcopy(
-                                    self.method_dict["raw_external_confids_dist"][
+                                    self.experiment_data.mcd_external_confids_dist[
                                         select_ix_all
                                     ]
                                 )
@@ -421,56 +412,55 @@ class Analysis:
                     # here could be a loop over explicit corruptions.
                     for intensity_level in range(5):
 
-
                         noise_set_ix = (
                             flat_test_set_list.index(noise_set) + val_ix_shift
                         )
                         self.current_dataloader_ix = noise_set_ix
 
                         select_ix = np.argwhere(
-                            self.method_dict["raw_dataset_ix"] == noise_set_ix
+                            self.experiment_data.dataset_idx == noise_set_ix
                         )[:, 0]
-                        print(self.method_dict["raw_softmax"].shape)
-                        print(self.method_dict["raw_softmax"][select_ix].shape)
+                        print(self.experiment_data.softmax_output.shape)
+                        print(self.experiment_data.softmax_output[select_ix].shape)
 
                         # new shape: n_corruptions, n_intensity_levels, n_test_cases, n_classes
                         self.method_dict["study_softmax"] = (
-                            deepcopy(self.method_dict["raw_softmax"][select_ix])
+                            deepcopy(self.experiment_data.softmax_output[select_ix])
                             .reshape(
-                                15, 5, -1, self.method_dict["raw_softmax"].shape[-1]
+                                15, 5, -1, self.experiment_data.softmax_output.shape[-1]
                             )[:, intensity_level]
-                            .reshape(-1, self.method_dict["raw_softmax"].shape[-1])
+                            .reshape(-1, self.experiment_data.softmax_output.shape[-1])
                         )
                         self.method_dict["study_labels"] = (
-                            deepcopy(self.method_dict["raw_labels"][select_ix])
+                            deepcopy(self.experiment_data.labels[select_ix])
                             .reshape(15, 5, -1)[:, intensity_level]
                             .reshape(-1)
                         )
                         self.method_dict["study_correct"] = (
-                            deepcopy(self.method_dict["raw_correct"][select_ix])
+                            deepcopy(self.experiment_data.correct[select_ix])
                             .reshape(15, 5, -1)[:, intensity_level]
                             .reshape(-1)
                         )
                         self.dummy_noise_ixs = (
-                            np.arange(len(self.method_dict["raw_correct"][select_ix]))
+                            np.arange(len(self.experiment_data.correct[select_ix]))
                             .reshape(15, 5, -1)[:, intensity_level]
                             .reshape(-1)
                         )
-                        if self.method_dict.get("raw_external_confids") is not None:
+                        if self.experiment_data.external_confids is not None:
                             self.method_dict["study_external_confids"] = (
                                 deepcopy(
-                                    self.method_dict["raw_external_confids"][select_ix]
+                                    self.experiment_data.external_confids[select_ix]
                                 )
                                 .reshape(15, 5, -1)[:, intensity_level]
                                 .reshape(-1)
                             )
-                        if self.method_dict.get("raw_external_confids_dist") is not None:
+                        if self.experiment_data.mcd_external_confids_dist is not None:
                             # self.method_dict["study_external_confids_dist"] = deepcopy(
-                            #     self.method_dict["raw_external_confids_dist"][select_ix]).reshape(15, 5, -1)[:, intensity_level].reshape(-1)
+                            #     self.experiment_data.mcd_external_confids_dist[select_ix]).reshape(15, 5, -1)[:, intensity_level].reshape(-1)
 
                             self.method_dict["study_external_confids_dist"] = (
                                 deepcopy(
-                                    self.method_dict["raw_external_confids_dist"][
+                                    self.experiment_data.mcd_external_confids_dist[
                                         select_ix
                                     ]
                                 )
@@ -478,13 +468,13 @@ class Analysis:
                                     15,
                                     5,
                                     -1,
-                                    self.method_dict["raw_external_confids_dist"].shape[
+                                    self.experiment_data.mcd_external_confids_dist.shape[
                                         -1
                                     ],
                                 )[:, intensity_level]
                                 .reshape(
                                     -1,
-                                    self.method_dict["raw_external_confids_dist"].shape[
+                                    self.experiment_data.mcd_external_confids_dist.shape[
                                         -1
                                     ],
                                 )
@@ -495,38 +485,37 @@ class Analysis:
                         ):
                             self.method_dict["study_mcd_softmax_mean"] = (
                                 deepcopy(
-                                    self.method_dict["raw_mcd_softmax_mean"][select_ix]
+                                    self.experiment_data.mcd_softmax_mean[select_ix]
                                 )
                                 .reshape(
                                     15,
                                     5,
                                     -1,
-                                    self.method_dict["raw_mcd_softmax_mean"].shape[-1],
+                                    self.experiment_data.mcd_softmax_mean.shape[-1],
                                 )[:, intensity_level]
                                 .reshape(
-                                    -1,
-                                    self.method_dict["raw_mcd_softmax_mean"].shape[-1],
+                                    -1, self.experiment_data.mcd_softmax_mean.shape[-1],
                                 )
                             )
                             self.method_dict["study_mcd_softmax_dist"] = (
                                 deepcopy(
-                                    self.method_dict["raw_mcd_softmax_dist"][select_ix]
+                                    self.experiment_data.mcd_softmax_dist[select_ix]
                                 )
                                 .reshape(
                                     15,
                                     5,
                                     -1,
-                                    self.method_dict["raw_mcd_softmax_dist"].shape[-2],
-                                    self.method_dict["raw_mcd_softmax_dist"].shape[-1],
+                                    self.experiment_data.mcd_softmax_dist.shape[-2],
+                                    self.experiment_data.mcd_softmax_dist.shape[-1],
                                 )[:, intensity_level]
                                 .reshape(
                                     -1,
-                                    self.method_dict["raw_mcd_softmax_dist"].shape[-2],
-                                    self.method_dict["raw_mcd_softmax_dist"].shape[-1],
+                                    self.experiment_data.mcd_softmax_dist.shape[-2],
+                                    self.experiment_data.mcd_softmax_dist.shape[-1],
                                 )
                             )
                             self.method_dict["study_mcd_correct"] = (
-                                deepcopy(self.method_dict["raw_mcd_correct"][select_ix])
+                                deepcopy(self.experiment_data.mcd_correct[select_ix])
                                 .reshape(15, 5, -1)[:, intensity_level]
                                 .reshape(-1)
                             )
@@ -551,7 +540,6 @@ class Analysis:
     # query_confids per method!Method should have a different method now with
 
     def get_confidence_scores(self):
-
 
         softmax = self.method_dict["study_softmax"]
         labels = self.method_dict["study_labels"]
@@ -616,9 +604,7 @@ class Analysis:
         if "mcd_ee" in self.method_dict["query_confids"]:
             self.method_dict["mcd_ee"] = {}
             tmp_confids = np.mean(
-                np.sum(
-                    mcd_softmax_dist * (-np.log(mcd_softmax_dist + 1e-7)), axis=1
-                ),
+                np.sum(mcd_softmax_dist * (-np.log(mcd_softmax_dist + 1e-7)), axis=1),
                 axis=1,
             )
             self.method_dict["mcd_ee"]["confids"] = tmp_confids
@@ -629,7 +615,8 @@ class Analysis:
         if "mcd_mi" in self.method_dict["query_confids"]:
             self.method_dict["mcd_mi"] = {}
             tmp_confids = (
-                self.method_dict["mcd_pe"]["confids"] - self.method_dict["mcd_ee"]["confids"]
+                self.method_dict["mcd_pe"]["confids"]
+                - self.method_dict["mcd_ee"]["confids"]
             )
             self.method_dict["mcd_mi"]["confids"] = tmp_confids
             self.method_dict["mcd_mi"]["correct"] = deepcopy(mcd_correct)
@@ -651,8 +638,7 @@ class Analysis:
             self.method_dict["mcd_waic"] = {}
             # [b, cl, mcd] - [b, cl]
             tmp_confids = np.max(mcd_softmax_mean, axis=1) - np.take(
-                np.std(mcd_softmax_dist, axis=2),
-                np.argmax(mcd_softmax_mean, axis=1),
+                np.std(mcd_softmax_dist, axis=2), np.argmax(mcd_softmax_mean, axis=1),
             )
             self.method_dict["mcd_waic"]["confids"] = tmp_confids
             self.method_dict["mcd_waic"]["correct"] = deepcopy(mcd_correct)
@@ -765,15 +751,12 @@ class Analysis:
                     "CHECK BEFORE NORM VALUES INCORRECT",
                     np.median(confid_dict["confids"][confid_dict["correct"] == 0]),
                 )
-            if any(
-                cfd in confid_key for cfd in ["_pe", "_ee", "_mi", "_sv", "bpd"]
-            ):
+            if any(cfd in confid_key for cfd in ["_pe", "_ee", "_mi", "_sv", "bpd"]):
                 unnomred_confids = confid_dict["confids"].astype(np.float64)
                 min_confid = np.min(unnomred_confids)
                 max_confid = np.max(unnomred_confids)
                 confid_dict["confids"] = 1 - (
-                    (unnomred_confids - min_confid)
-                    / (max_confid - min_confid + 1e-9)
+                    (unnomred_confids - min_confid) / (max_confid - min_confid + 1e-9)
                 )
             if "maha" in confid_key:
                 unnomred_confids = confid_dict["confids"].astype(np.float64)
@@ -814,9 +797,7 @@ class Analysis:
                 selected_residuals = (
                     1
                     - confid_dict["correct"][
-                        np.argwhere(
-                            confid_dict["confids"] > val_risk_scores["theta"]
-                        )
+                        np.argwhere(confid_dict["confids"] > val_risk_scores["theta"])
                     ]
                 )
                 test_risk_scores["test_risk"] = np.sum(selected_residuals) / (
@@ -887,9 +868,7 @@ class Analysis:
                     emp_risk = np.sum(selected_residuals) / (
                         len(selected_residuals) + 1e-9
                     )
-                    emp_coverage = len(selected_residuals) / len(
-                        confid_dict["correct"]
-                    )
+                    emp_coverage = len(selected_residuals) / len(confid_dict["correct"])
                     diff_risk = emp_risk - self.rstar
                     plot_string += "delta: {:.3f}: ".format(self.rdelta[ix])
                     plot_string += "erisk: {:.3f} ".format(emp_risk)
@@ -918,12 +897,8 @@ class Analysis:
                 self.threshold_plot_dict[self.study_name]["correct"] = confid_dict[
                     "correct"
                 ]
-                self.threshold_plot_dict[self.study_name][
-                    "plot_string"
-                ] = plot_string
-                self.threshold_plot_dict[self.study_name][
-                    "true_thresh"
-                ] = true_thresh
+                self.threshold_plot_dict[self.study_name]["plot_string"] = plot_string
+                self.threshold_plot_dict[self.study_name]["true_thresh"] = true_thresh
                 self.threshold_plot_dict[self.study_name][
                     "delta_threshs"
                 ] = self.plot_threshs
@@ -1002,9 +977,7 @@ class Analysis:
                     hasattr(dataset, "classes")
                     and "tinyimagenet" not in self.study_name
                 ):
-                    fp_dict["labels"] = [
-                        dataset.classes[l] for l in fp_dict["labels"]
-                    ]
+                    fp_dict["labels"] = [dataset.classes[l] for l in fp_dict["labels"]]
                     if not "new_class" in self.study_name:
                         fp_dict["predicts"] = [
                             dataset.classes[l] for l in fp_dict["predicts"]
@@ -1013,9 +986,7 @@ class Analysis:
                         fp_dict["predicts"] = [
                             cifar100_classes[l] for l in fp_dict["predicts"]
                         ]
-                    fn_dict["labels"] = [
-                        dataset.classes[l] for l in fn_dict["labels"]
-                    ]
+                    fn_dict["labels"] = [dataset.classes[l] for l in fn_dict["labels"]]
                     fn_dict["predicts"] = [
                         dataset.classes[l] for l in fn_dict["predicts"]
                     ]
@@ -1028,9 +999,7 @@ class Analysis:
                     for ix in fn_ixs:
                         corr_ix = self.dummy_noise_ixs[ix] % 50000
                         corr_ix = corr_ix // 10000
-                        print(
-                            "noise sanity check", corr_ix, self.dummy_noise_ixs[ix]
-                        )
+                        print("noise sanity check", corr_ix, self.dummy_noise_ixs[ix])
 
                 out_path = os.path.join(
                     self.analysis_out_dir,
