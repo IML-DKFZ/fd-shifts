@@ -15,6 +15,7 @@ DATA_DIR = Path(__file__).absolute().parent / "data"
 
 @pytest.fixture(
     params=[
+        "breeds_lr0.001_run0_do0",
         "svhn_openset_modelvit_bbvit_lr0.01_bs128_run0_do0_rew0",
         "cifar10_modeldg_bbvit_lr0.01_bs128_run0_do0_rew6",
         "cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2",
