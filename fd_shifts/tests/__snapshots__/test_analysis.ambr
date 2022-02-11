@@ -1,3 +1,72 @@
+# name: test_analysis_blackbox[breeds_lr0.001_run0_do0]
+  '
+  ,name,study,model,network,fold,confid,n_test,accuracy,nll,brier_score,failauc,failap_suc,failap_err,fail-NLL,mce,ece,e-aurc,aurc,fpr@95tpr,risk@100cov,risk@95cov,risk@90cov,risk@85cov,risk@80cov,risk@75cov,test_risk,test_cov,diff_risk,diff_cov,rstar,val_theta
+  0,tests,iid_study,vit_model,,0,det_mcp,10000,0.97860,0.00977,0.03813,0.89099,0.99559,0.30230,0.12826,0.65698,0.01701,4.33103,4.56166,0.25234,2.14000,0.78839,0.40292,0.40292,0.40292,0.40292,0.02103,0.99880,-0.22897,-0.00020,0.25000,0.51855
+  1,tests,iid_study,vit_model,,0,det_pe,10000,0.97860,0.00977,0.03813,0.93019,0.99746,0.32557,0.09118,1.00000,0.01381,2.49621,2.72684,0.23832,2.14000,0.76826,0.32101,0.23081,0.18173,0.18173,0.02092,0.99900,-0.22908,0.00000,0.25000,0.29659
+  2,tests,iid_study,vit_model,,0,maha,10000,0.97860,0.00977,0.03813,0.89725,0.99738,0.15294,0.27899,1.00000,0.20263,2.58023,2.81087,0.52804,2.14000,1.31579,0.89910,0.60968,0.42184,0.33231,0.02121,0.99930,-0.22879,0.00030,0.25000,0.18302
+  
+  '
+---
+# name: test_analysis_blackbox[breeds_lr0.001_run0_do0].1
+  '
+  ,name,study,model,network,fold,confid,n_test,accuracy,nll,brier_score,failauc,failap_suc,failap_err,fail-NLL,mce,ece,e-aurc,aurc,fpr@95tpr,risk@100cov,risk@95cov,risk@90cov,risk@85cov,risk@80cov,risk@75cov,test_risk,test_cov,diff_risk,diff_cov,rstar,val_theta
+  0,tests,in_class_study_breeds_ood_test_384,vit_model,,0,det_mcp,167592,0.79864,0.09429,0.34106,0.76575,0.91026,0.46690,0.97120,0.26777,0.13951,75.60730,97.39665,0.72752,20.13581,17.90986,16.01957,14.36021,12.96172,11.75877,0.18795,0.97144,-0.06205,-0.02756,0.25000,0.51855
+  1,tests,in_class_study_breeds_ood_test_384,vit_model,,0,det_pe,167592,0.79864,0.09429,0.34106,0.76696,0.91415,0.46496,0.71257,0.30432,0.12126,72.28695,94.07630,0.73831,20.13581,17.99191,16.12713,14.47073,13.05473,11.81600,0.19684,0.99115,-0.05316,-0.00785,0.25000,0.29659
+  2,tests,in_class_study_breeds_ood_test_384,vit_model,,0,maha,167592,0.79864,0.09429,0.34106,0.62359,0.87453,0.26805,0.63367,0.53423,0.25182,108.74161,130.53096,0.90793,20.13581,19.51838,19.06416,18.68622,18.29450,17.91947,0.20131,0.99973,-0.04869,0.00073,0.25000,0.18302
+  
+  '
+---
+# name: test_analysis_blackbox[breeds_lr0.001_run0_do0].2
+  '
+  ,name,study,model,network,fold,confid,n_test,accuracy,nll,brier_score,failauc,failap_suc,failap_err,fail-NLL,mce,ece,e-aurc,aurc,fpr@95tpr,risk@100cov,risk@95cov,risk@90cov,risk@85cov,risk@80cov,risk@75cov,test_risk,test_cov,diff_risk,diff_cov,rstar,val_theta
+  0,tests,val_tuning,vit_model,,0,det_mcp,1000,0.98200,0.00843,0.03242,0.92165,0.99745,0.29494,0.09468,0.57690,0.01621,2.49613,2.65911,0.22222,1.80000,0.52521,0.21413,0.21413,0.21413,0.21413,0.01804,0.99800,-0.23196,-0.00100,0.25000,0.51855
+  1,tests,val_tuning,vit_model,,0,det_pe,1000,0.98200,0.00843,0.03242,0.94702,0.99881,0.38270,0.06799,0.83627,0.01941,1.17943,1.34241,0.16667,1.80000,0.42061,0.21598,0.11468,0.11468,0.11468,0.01603,0.99800,-0.23397,-0.00100,0.25000,0.29659
+  2,tests,val_tuning,vit_model,,0,maha,1000,0.98200,0.00843,0.03242,0.90049,0.99799,0.16141,0.27792,1.00000,0.19457,1.99061,2.15359,0.50000,1.80000,0.94241,0.77348,0.69364,0.61050,0.26560,0.01804,0.99800,-0.23196,-0.00100,0.25000,0.18302
+  
+  '
+---
+# name: test_analysis_blackbox[breeds_lr0.001_run0_do0].3
+  '
+  ,name,study,model,network,fold,confid,n_test,accuracy,nll,brier_score,failauc,failap_suc,failap_err,fail-NLL,mce,ece,e-aurc,aurc,fpr@95tpr,risk@100cov,risk@95cov,risk@90cov,risk@85cov,risk@80cov,risk@75cov,test_risk,test_cov,diff_risk,diff_cov,rstar,val_theta
+  0,tests,val_tuning,vit_model,,0,det_mcp,1000,0.98200,0.00843,0.03242,0.92165,0.99745,0.29494,0.09468,0.57690,0.01621,2.49613,2.65911,0.22222,1.80000,0.52521,0.21413,0.21413,0.21413,0.21413,0.01804,0.99800,-0.23196,-0.00100,0.25000,0.51855
+  1,tests,val_tuning,vit_model,,0,det_pe,1000,0.98200,0.00843,0.03242,0.94702,0.99881,0.38270,0.06799,0.83627,0.01941,1.17943,1.34241,0.16667,1.80000,0.42061,0.21598,0.11468,0.11468,0.11468,0.01603,0.99800,-0.23397,-0.00100,0.25000,0.29659
+  2,tests,val_tuning,vit_model,,0,maha,1000,0.98200,0.00843,0.03242,0.90049,0.99799,0.16141,0.27792,1.00000,0.19457,1.99061,2.15359,0.50000,1.80000,0.94241,0.77348,0.69364,0.61050,0.26560,0.01804,0.99800,-0.23196,-0.00100,0.25000,0.18302
+  0,tests,iid_study,vit_model,,0,det_mcp,10000,0.97860,0.00977,0.03813,0.89099,0.99559,0.30230,0.12826,0.65698,0.01701,4.33103,4.56166,0.25234,2.14000,0.78839,0.40292,0.40292,0.40292,0.40292,0.02103,0.99880,-0.22897,-0.00020,0.25000,0.51855
+  1,tests,iid_study,vit_model,,0,det_pe,10000,0.97860,0.00977,0.03813,0.93019,0.99746,0.32557,0.09118,1.00000,0.01381,2.49621,2.72684,0.23832,2.14000,0.76826,0.32101,0.23081,0.18173,0.18173,0.02092,0.99900,-0.22908,0.00000,0.25000,0.29659
+  2,tests,iid_study,vit_model,,0,maha,10000,0.97860,0.00977,0.03813,0.89725,0.99738,0.15294,0.27899,1.00000,0.20263,2.58023,2.81087,0.52804,2.14000,1.31579,0.89910,0.60968,0.42184,0.33231,0.02121,0.99930,-0.22879,0.00030,0.25000,0.18302
+  0,tests,in_class_study_breeds_ood_test_384,vit_model,,0,det_mcp,167592,0.79864,0.09429,0.34106,0.76575,0.91026,0.46690,0.97120,0.26777,0.13951,75.60730,97.39665,0.72752,20.13581,17.90986,16.01957,14.36021,12.96172,11.75877,0.18795,0.97144,-0.06205,-0.02756,0.25000,0.51855
+  1,tests,in_class_study_breeds_ood_test_384,vit_model,,0,det_pe,167592,0.79864,0.09429,0.34106,0.76696,0.91415,0.46496,0.71257,0.30432,0.12126,72.28695,94.07630,0.73831,20.13581,17.99191,16.12713,14.47073,13.05473,11.81600,0.19684,0.99115,-0.05316,-0.00785,0.25000,0.29659
+  2,tests,in_class_study_breeds_ood_test_384,vit_model,,0,maha,167592,0.79864,0.09429,0.34106,0.62359,0.87453,0.26805,0.63367,0.53423,0.25182,108.74161,130.53096,0.90793,20.13581,19.51838,19.06416,18.68622,18.29450,17.91947,0.20131,0.99973,-0.04869,0.00073,0.25000,0.18302
+  
+  '
+---
+# name: test_analysis_blackbox[breeds_lr0.001_run0_do0].4
+  <class 'tuple'> (
+    1500,
+    1200,
+  )
+---
+# name: test_analysis_blackbox[breeds_lr0.001_run0_do0].5
+  'master_plot_iid_study.png'
+---
+# name: test_analysis_blackbox[breeds_lr0.001_run0_do0].6
+  <class 'tuple'> (
+    1500,
+    1200,
+  )
+---
+# name: test_analysis_blackbox[breeds_lr0.001_run0_do0].7
+  'master_plot_in_class_study_breeds_ood_test_384.png'
+---
+# name: test_analysis_blackbox[breeds_lr0.001_run0_do0].8
+  <class 'tuple'> (
+    1500,
+    1200,
+  )
+---
+# name: test_analysis_blackbox[breeds_lr0.001_run0_do0].9
+  'master_plot_val_tuning.png'
+---
 # name: test_analysis_blackbox[cifar10_modelconfidnet_bbvit_lr0.01_bs128_run0_do1_rew2.2]
   '
   ,name,study,model,network,fold,confid,n_test,accuracy,nll,brier_score,failauc,failap_suc,failap_err,fail-NLL,mce,ece,e-aurc,aurc,fpr@95tpr,risk@100cov,risk@95cov,risk@90cov,risk@85cov,risk@80cov,risk@75cov,test_risk,test_cov,diff_risk,diff_cov,rstar,val_theta
