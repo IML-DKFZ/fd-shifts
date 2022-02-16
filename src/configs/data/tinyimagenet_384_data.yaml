@@ -3,7 +3,7 @@
   data_dir: ${env:DATASET_ROOT_DIR}/${data.dataset}
   pin_memory: True
   img_size: [384, 384, 3]
-  num_workers: 12
+  num_workers: 24
   num_classes: 200
   reproduce_confidnet_splits: False
   augmentations:

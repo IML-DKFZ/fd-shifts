@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from . import mask_utils
 
-__all__ = ['CouplingBlock', 'ChannelCouplingBlock', 'MaskedCouplingBlock']
+__all__ = ["CouplingBlock", "ChannelCouplingBlock", "MaskedCouplingBlock"]
 
 
 class CouplingBlock(nn.Module):
@@ -23,35 +23,35 @@ class CouplingBlock(nn.Module):
             t (nn.Module)
         """
         super(CouplingBlock, self).__init__()
-        assert (dim % 2 == 0)
+        assert dim % 2 == 0
         self.d = dim // 2
         self.nnet = nnet
         self.swap = swap
 
     def func_s_t(self, x):
         f = self.nnet(x)
-        s = f[:, :self.d]
-        t = f[:, self.d:]
+        s = f[:, : self.d]
+        t = f[:, self.d :]
         return s, t
 
     def forward(self, x, logpx=None):
-        """Forward computation of a simple coupling split on the axis=1.
-        """
-        x_a = x[:, :self.d] if not self.swap else x[:, self.d:]
-        x_b = x[:, self.d:] if not self.swap else x[:, :self.d]
+        """Forward computation of a simple coupling split on the axis=1."""
+        x_a = x[:, : self.d] if not self.swap else x[:, self.d :]
+        x_b = x[:, self.d :] if not self.swap else x[:, : self.d]
         y_a, y_b, logdetgrad = self._forward_computation(x_a, x_b)
         y = [y_a, y_b] if not self.swap else [y_b, y_a]
 
         if logpx is None:
             return torch.cat(y, dim=1)
         else:
-            return torch.cat(y, dim=1), logpx - logdetgrad.view(x.size(0), -1).sum(1, keepdim=True)
+            return torch.cat(y, dim=1), logpx - logdetgrad.view(x.size(0), -1).sum(
+                1, keepdim=True
+            )
 
     def inverse(self, y, logpy=None):
-        """Inverse computation of a simple coupling split on the axis=1.
-        """
-        y_a = y[:, :self.d] if not self.swap else y[:, self.d:]
-        y_b = y[:, self.d:] if not self.swap else y[:, :self.d]
+        """Inverse computation of a simple coupling split on the axis=1."""
+        y_a = y[:, : self.d] if not self.swap else y[:, self.d :]
+        y_b = y[:, self.d :] if not self.swap else y[:, : self.d]
         x_a, x_b, logdetgrad = self._inverse_computation(y_a, y_b)
         x = [x_a, x_b] if not self.swap else [x_b, x_a]
         if logpy is None:
@@ -62,7 +62,7 @@ class CouplingBlock(nn.Module):
     def _forward_computation(self, x_a, x_b):
         y_a = x_a
         s_a, t_a = self.func_s_t(x_a)
-        scale = torch.sigmoid(s_a + 2.)
+        scale = torch.sigmoid(s_a + 2.0)
         y_b = x_b * scale + t_a
         logdetgrad = self._logdetgrad(scale)
         return y_a, y_b, logdetgrad
@@ -70,7 +70,7 @@ class CouplingBlock(nn.Module):
     def _inverse_computation(self, y_a, y_b):
         x_a = y_a
         s_a, t_a = self.func_s_t(y_a)
-        scale = torch.sigmoid(s_a + 2.)
+        scale = torch.sigmoid(s_a + 2.0)
         x_b = (y_b - t_a) / scale
         logdetgrad = self._logdetgrad(scale)
         return x_a, x_b, logdetgrad
@@ -83,32 +83,30 @@ class CouplingBlock(nn.Module):
         return torch.log(scale).view(scale.shape[0], -1).sum(1, keepdim=True)
 
     def extra_repr(self):
-        return 'dim={d}, swap={swap}'.format(**self.__dict__)
+        return "dim={d}, swap={swap}".format(**self.__dict__)
 
 
 class ChannelCouplingBlock(CouplingBlock):
-    """Channel-wise coupling layer for images.
-    """
+    """Channel-wise coupling layer for images."""
 
-    def __init__(self, dim, nnet, mask_type='channel0'):
-        if mask_type == 'channel0':
+    def __init__(self, dim, nnet, mask_type="channel0"):
+        if mask_type == "channel0":
             swap = False
-        elif mask_type == 'channel1':
+        elif mask_type == "channel1":
             swap = True
         else:
-            raise ValueError('Unknown mask type.')
+            raise ValueError("Unknown mask type.")
         super(ChannelCouplingBlock, self).__init__(dim, nnet, swap)
         self.mask_type = mask_type
 
     def extra_repr(self):
-        return 'dim={d}, mask_type={mask_type}'.format(**self.__dict__)
+        return "dim={d}, mask_type={mask_type}".format(**self.__dict__)
 
 
 class MaskedCouplingBlock(nn.Module):
-    """Coupling layer for images implemented using masks.
-    """
+    """Coupling layer for images implemented using masks."""
 
-    def __init__(self, dim, nnet, mask_type='checkerboard0'):
+    def __init__(self, dim, nnet, mask_type="checkerboard0"):
         nn.Module.__init__(self)
         self.d = dim
         self.nnet = nnet
@@ -116,8 +114,8 @@ class MaskedCouplingBlock(nn.Module):
 
     def func_s_t(self, x):
         f = self.nnet(x)
-        s = torch.sigmoid(f[:, :self.d] + 2.)
-        t = f[:, self.d:]
+        s = torch.sigmoid(f[:, : self.d] + 2.0)
+        t = f[:, self.d :]
         return s, t
 
     def forward(self, x, logpx=None):
@@ -152,4 +150,4 @@ class MaskedCouplingBlock(nn.Module):
         return torch.log(s).mul_(1 - mask).view(s.shape[0], -1).sum(1, keepdim=True)
 
     def extra_repr(self):
-        return 'dim={d}, mask_type={mask_type}'.format(**self.__dict__)
+        return "dim={d}, mask_type={mask_type}".format(**self.__dict__)

@@ -1,4 +1,3 @@
-
 import src.models.networks as networks
 from torch import nn
 from torch.nn import functional as F
@@ -8,10 +7,12 @@ class ConfidNetAndEncoder(nn.Module):
     def __init__(self, cf):
         super().__init__()
 
-        network = networks.get_network(cf.model.network.backbone)(cf) # todo make arguments explcit!
+        network = networks.get_network(cf.model.network.backbone)(
+            cf
+        )  # todo make arguments explcit!
         self.encoder = network.encoder
         self.classifier = network.classifier
-        self.confid_net = ConfidNet(cf) # todo make arguments explcit!
+        self.confid_net = ConfidNet(cf)  # todo make arguments explcit!
 
     def forward(self, x):
 

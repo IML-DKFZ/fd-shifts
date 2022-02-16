@@ -1,5 +1,8 @@
 # @package _global_
 
+exp:
+  group_name: dg_vit
+  name: cifar10
 
 trainer:
   num_epochs: 300 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
@@ -12,9 +15,10 @@ trainer:
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
   lr_scheduler:
-    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
+    name: "LinearWarmupCosineAnnealing" # "MultiStep" "CosineAnnealing"
     milestones: [25,50,75,100,125,150,175,200,225,250,275] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
     max_epochs: ${trainer.num_epochs}
+    warmup_epochs: 3
     gamma: 0.5
   optimizer:
     name: SGD
@@ -44,7 +48,8 @@ trainer:
 
 model:
   name: devries_model # det_mcd_model #
-  fc_dim: 512
+  # fc_dim: 512
+  fc_dim: 768
   confidnet_fc_dim: 400
   dg_reward:  2.2
   avg_pool: True

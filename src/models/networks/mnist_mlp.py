@@ -1,4 +1,3 @@
-
 from torch import nn
 from torch.nn import functional as F
 
@@ -16,6 +15,7 @@ class MLP(nn.Module):
         x = self.classifier(x)
 
         return x
+
 
 class Encoder(nn.Module):
     def __init__(self, cf):

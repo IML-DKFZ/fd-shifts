@@ -1,4 +1,3 @@
-
 from torch import nn
 from torch.nn import functional as F
 
@@ -17,6 +16,7 @@ class SmallConv(nn.Module):
 
         return x
 
+
 class Encoder(nn.Module):
     def __init__(self, cf):
         super(Encoder, self).__init__()
@@ -29,7 +29,7 @@ class Encoder(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, 3)
         self.maxpool = nn.MaxPool2d(2)
         self.dropout1 = nn.Dropout(0.25)
-        self.fc1 = nn.Linear(9216, self.fc_dim) # 128
+        self.fc1 = nn.Linear(9216, self.fc_dim)  # 128
         self.dropout2 = nn.Dropout(0.5)
 
     def forward(self, x):
