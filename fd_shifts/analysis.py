@@ -5,7 +5,7 @@ from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -16,6 +16,16 @@ from omegaconf import DictConfig, ListConfig, OmegaConf
 from fd_shifts.utils.eval_utils import (ConfidEvaluator, ConfidPlotter,
                                         ThresholdPlot, cifar100_classes,
                                         qual_plot)
+
+EXTERNAL_CONFIDS = ["ext", "bpd", "maha", "tcp", "dg", "devries"]
+
+
+def is_external_confid(name: str):
+    return name.split("_")[0] in EXTERNAL_CONFIDS
+
+
+def is_mcd_confid(name: str):
+    return "mcd" in name or "waic" in name
 
 
 @dataclass
@@ -159,7 +169,9 @@ class Study:
     def perform(self, analysis: Analysis):
         study_data = self.filter_data(
             analysis.experiment_data,
-            "val_tuning" if self.study_name == "val_tuning" else analysis.query_studies[self.study_name]
+            "val_tuning"
+            if self.study_name == "val_tuning"
+            else analysis.query_studies[self.study_name],
         )
 
         analysis.method_dict["study_softmax"] = study_data.softmax_output
@@ -174,16 +186,13 @@ class Study:
         analysis.method_dict["study_mcd_softmax_dist"] = study_data.mcd_softmax_dist
         analysis.method_dict["study_mcd_correct"] = study_data.mcd_correct
 
-        analysis.perform_study(self.study_name)
+        analysis.perform_study(self.study_name, study_data)
 
 
 class InClassStudy(Study):
     def perform(self, analysis: Analysis):
         for in_class_set in analysis.query_studies[self.study_name]:
-            study_data = self.filter_data(
-                analysis.experiment_data,
-                in_class_set,
-            )
+            study_data = self.filter_data(analysis.experiment_data, in_class_set,)
 
             analysis.method_dict["study_softmax"] = study_data.softmax_output
             analysis.method_dict["study_labels"] = study_data.labels
@@ -197,7 +206,8 @@ class InClassStudy(Study):
             analysis.method_dict["study_mcd_softmax_dist"] = study_data.mcd_softmax_dist
             analysis.method_dict["study_mcd_correct"] = study_data.mcd_correct
 
-            analysis.perform_study(f"{self.study_name}_{in_class_set}")
+            analysis.perform_study(f"{self.study_name}_{in_class_set}", study_data)
+
 
 class NewClassStudy(Study):
     def filter_data(
@@ -283,16 +293,24 @@ class NewClassStudy(Study):
                 analysis.method_dict["study_softmax"] = study_data.softmax_output
                 analysis.method_dict["study_labels"] = study_data.labels
                 analysis.method_dict["study_correct"] = study_data.correct
-                analysis.method_dict["study_external_confids"] = study_data.external_confids
+                analysis.method_dict[
+                    "study_external_confids"
+                ] = study_data.external_confids
                 analysis.method_dict[
                     "study_external_confids_dist"
                 ] = study_data.mcd_external_confids_dist
 
-                analysis.method_dict["study_mcd_softmax_mean"] = study_data.mcd_softmax_mean
-                analysis.method_dict["study_mcd_softmax_dist"] = study_data.mcd_softmax_dist
+                analysis.method_dict[
+                    "study_mcd_softmax_mean"
+                ] = study_data.mcd_softmax_mean
+                analysis.method_dict[
+                    "study_mcd_softmax_dist"
+                ] = study_data.mcd_softmax_dist
                 analysis.method_dict["study_mcd_correct"] = study_data.mcd_correct
 
-                analysis.perform_study(f"{self.study_name}_{new_class_set}_{mode}")
+                analysis.perform_study(
+                    f"{self.study_name}_{new_class_set}_{mode}", study_data
+                )
 
 
 class NoiseStudy(Study):
@@ -301,9 +319,7 @@ class NoiseStudy(Study):
     ) -> ExperimentData:
         noise_set_ix = data.dataset_name_to_idx(dataset_name)
 
-        select_ix = np.argwhere(
-            data.dataset_idx == noise_set_ix
-        )[:, 0]
+        select_ix = np.argwhere(data.dataset_idx == noise_set_ix)[:, 0]
 
         def __filter_intensity_3d(data, mask, noise_level):
             if data is None:
@@ -311,9 +327,9 @@ class NoiseStudy(Study):
 
             data = data[mask]
 
-            return data.reshape(
-                15, 5, -1, data.shape[-2], data.shape[-1]
-            )[:, noise_level].reshape(-1, data.shape[-2], data.shape[-1])
+            return data.reshape(15, 5, -1, data.shape[-2], data.shape[-1])[
+                :, noise_level
+            ].reshape(-1, data.shape[-2], data.shape[-1])
 
         def __filter_intensity_2d(data, mask, noise_level):
             if data is None:
@@ -321,9 +337,9 @@ class NoiseStudy(Study):
 
             data = data[mask]
 
-            return data.reshape(
-                15, 5, -1, data.shape[-1]
-            )[:, noise_level].reshape(-1, data.shape[-1])
+            return data.reshape(15, 5, -1, data.shape[-1])[:, noise_level].reshape(
+                -1, data.shape[-1]
+            )
 
         def __filter_intensity_1d(data, mask, noise_level):
             if data is None:
@@ -331,19 +347,27 @@ class NoiseStudy(Study):
 
             data = data[mask]
 
-            return data.reshape(
-                15, 5, -1
-            )[:, noise_level].reshape(-1)
+            return data.reshape(15, 5, -1)[:, noise_level].reshape(-1)
 
         return ExperimentData(
-            softmax_output=__filter_intensity_2d(data.softmax_output, select_ix, noise_level),
+            softmax_output=__filter_intensity_2d(
+                data.softmax_output, select_ix, noise_level
+            ),
             labels=__filter_intensity_1d(data.labels, select_ix, noise_level),
             correct=__filter_intensity_1d(data.correct, select_ix, noise_level),
             dataset_idx=__filter_intensity_1d(data.dataset_idx, select_ix, noise_level),
-            external_confids=__filter_intensity_1d(data.external_confids, select_ix, noise_level),
-            mcd_external_confids_dist=__filter_intensity_2d(data.mcd_external_confids_dist, select_ix, noise_level),
-            mcd_softmax_mean=__filter_intensity_2d(data.mcd_softmax_mean, select_ix, noise_level),
-            mcd_softmax_dist=__filter_intensity_3d(data.mcd_softmax_dist, select_ix, noise_level),
+            external_confids=__filter_intensity_1d(
+                data.external_confids, select_ix, noise_level
+            ),
+            mcd_external_confids_dist=__filter_intensity_2d(
+                data.mcd_external_confids_dist, select_ix, noise_level
+            ),
+            mcd_softmax_mean=__filter_intensity_2d(
+                data.mcd_softmax_mean, select_ix, noise_level
+            ),
+            mcd_softmax_dist=__filter_intensity_3d(
+                data.mcd_softmax_dist, select_ix, noise_level
+            ),
             mcd_correct=__filter_intensity_1d(data.mcd_correct, select_ix, noise_level),
             config=data.config,
         )
@@ -352,29 +376,34 @@ class NoiseStudy(Study):
         for noise_set in analysis.query_studies[self.study_name]:
             for intensity_level in range(5):
                 print(
-                    "starting noise study with intensitiy level ",
-                    intensity_level + 1,
+                    "starting noise study with intensitiy level ", intensity_level + 1,
                 )
 
                 study_data = self.filter_data(
-                    analysis.experiment_data,
-                    noise_set,
-                    intensity_level,
+                    analysis.experiment_data, noise_set, intensity_level,
                 )
 
                 analysis.method_dict["study_softmax"] = study_data.softmax_output
                 analysis.method_dict["study_labels"] = study_data.labels
                 analysis.method_dict["study_correct"] = study_data.correct
-                analysis.method_dict["study_external_confids"] = study_data.external_confids
+                analysis.method_dict[
+                    "study_external_confids"
+                ] = study_data.external_confids
                 analysis.method_dict[
                     "study_external_confids_dist"
                 ] = study_data.mcd_external_confids_dist
 
-                analysis.method_dict["study_mcd_softmax_mean"] = study_data.mcd_softmax_mean
-                analysis.method_dict["study_mcd_softmax_dist"] = study_data.mcd_softmax_dist
+                analysis.method_dict[
+                    "study_mcd_softmax_mean"
+                ] = study_data.mcd_softmax_mean
+                analysis.method_dict[
+                    "study_mcd_softmax_dist"
+                ] = study_data.mcd_softmax_dist
                 analysis.method_dict["study_mcd_correct"] = study_data.mcd_correct
 
-                analysis.perform_study(f"{self.study_name}_{intensity_level + 1}")
+                analysis.perform_study(
+                    f"{self.study_name}_{intensity_level + 1}", study_data
+                )
 
 
 def get_study_handler(study_name) -> Study:
@@ -388,6 +417,174 @@ def get_study_handler(study_name) -> Study:
         return Study(study_name)
 
     return defaults[study_name](study_name)
+
+
+_confid_funcs = {}
+
+
+def register_confid_func(name: str) -> Callable:
+    def _inner_wrapper(func: Callable) -> Callable:
+        _confid_funcs[name] = func
+        return func
+
+    return _inner_wrapper
+
+
+def get_confid_function(confid_name):
+    if confid_name not in _confid_funcs:
+        raise NotImplementedError(f"Function for {confid_name} not implemented.")
+
+    return _confid_funcs[confid_name]
+
+
+@register_confid_func("det_mcp")
+def maximum_softmax_probability(softmax: npt.NDArray[Any]) -> npt.NDArray[Any]:
+    return np.max(softmax, axis=1)
+
+
+@register_confid_func("mcd_mcp")
+def mcd_maximum_softmax_probability(
+    softmax: npt.NDArray[Any], mcd_softmax_mean: npt.NDArray
+) -> npt.NDArray[Any]:
+    return maximum_softmax_probability(softmax)
+
+
+@register_confid_func("det_pe")
+def predictive_entropy(softmax: npt.NDArray[Any]) -> npt.NDArray[Any]:
+    return np.sum(softmax * (-np.log(softmax + 1e-7)), axis=1)
+
+
+@register_confid_func("mcd_pe")
+def mcd_predictive_entropy(
+    softmax: npt.NDArray[Any], mcd_softmax_mean: npt.NDArray
+) -> npt.NDArray[Any]:
+    return predictive_entropy(softmax)
+
+
+@register_confid_func("mcd_ee")
+def expected_entropy(
+    mcd_softmax_mean: npt.NDArray[Any], mcd_softmax_dist: npt.NDArray[Any]
+) -> npt.NDArray[Any]:
+    return np.mean(
+        np.sum(mcd_softmax_dist * (-np.log(mcd_softmax_dist + 1e-7)), axis=1), axis=1,
+    )
+
+
+@register_confid_func("mcd_mi")
+def mutual_information(
+    mcd_softmax_mean: npt.NDArray[Any], mcd_softmax_dist: npt.NDArray[Any]
+) -> npt.NDArray[Any]:
+    return predictive_entropy(mcd_softmax_mean) - expected_entropy(
+        mcd_softmax_mean, mcd_softmax_dist
+    )
+
+
+@register_confid_func("mcd_sv")
+def softmax_variance(
+    mcd_softmax_mean: npt.NDArray[Any], mcd_softmax_dist: npt.NDArray[Any]
+) -> npt.NDArray[Any]:
+    return np.mean(np.std(mcd_softmax_dist, axis=2), axis=(1))
+
+
+@register_confid_func("mcd_waic")
+def mcd_waic(
+    mcd_softmax_mean: npt.NDArray[Any], mcd_softmax_dist: npt.NDArray[Any]
+) -> npt.NDArray[Any]:
+    return np.max(mcd_softmax_mean, axis=1) - np.take(
+        np.std(mcd_softmax_dist, axis=2), np.argmax(mcd_softmax_mean, axis=1),
+    )
+
+
+@register_confid_func("ext_waic")
+@register_confid_func("bpd_waic")
+@register_confid_func("maha_waic")
+@register_confid_func("tcp_waic")
+@register_confid_func("dg_waic")
+@register_confid_func("devries_waic")
+def ext_waic(
+    mcd_softmax_mean: npt.NDArray[Any], mcd_softmax_dist: npt.NDArray[Any]
+) -> npt.NDArray[Any]:
+    return mcd_softmax_mean - np.std(mcd_softmax_dist, axis=1)
+
+
+@register_confid_func("ext_mcd")
+@register_confid_func("bpd_mcd")
+@register_confid_func("maha_mcd")
+@register_confid_func("tcp_mcd")
+@register_confid_func("dg_mcd")
+@register_confid_func("devries_mcd")
+def mcd_ext(
+    mcd_softmax_mean: npt.NDArray[Any], mcd_softmax_dist: npt.NDArray[Any]
+) -> npt.NDArray[Any]:
+    return mcd_softmax_mean
+
+
+@register_confid_func("ext")
+@register_confid_func("bpd")
+@register_confid_func("maha")
+@register_confid_func("tcp")
+@register_confid_func("dg")
+@register_confid_func("devries")
+def ext_confid(softmax: npt.NDArray[Any]) -> npt.NDArray[Any]:
+    return softmax
+
+
+class ConfidScore:
+    def __init__(
+        self, study_data: ExperimentData, query_confid: str, analysis: Analysis,
+    ) -> None:
+        if is_mcd_confid(query_confid):
+            assert study_data.mcd_softmax_mean is not None
+            assert study_data.mcd_softmax_dist is not None
+            self.softmax = study_data.mcd_softmax_mean
+            self.correct = study_data.mcd_correct
+            self.confid_args = (
+                study_data.mcd_softmax_mean,
+                study_data.mcd_softmax_dist,
+            )
+            self.performance_args = (
+                study_data.mcd_softmax_mean,
+                study_data.labels,
+                study_data.mcd_correct,
+            )
+
+            if is_external_confid(query_confid):
+                assert study_data.mcd_external_confids_dist is not None
+                self.confid_args = (
+                    np.mean(study_data.mcd_external_confids_dist, axis=1),
+                    study_data.mcd_external_confids_dist,
+                )
+
+        else:
+            self.softmax = study_data.softmax_output
+            self.correct = study_data.correct
+            self.confid_args = (study_data.softmax_output,)
+            self.performance_args = (
+                study_data.softmax_output,
+                study_data.labels,
+                study_data.correct,
+            )
+
+            if is_external_confid(query_confid):
+                assert study_data.external_confids is not None
+                self.confid_args = (
+                    study_data.external_confids,
+                )
+
+        self.confid_func = get_confid_function(query_confid)
+        self.analysis = analysis
+
+    @property
+    def confids(self) -> npt.NDArray[Any]:
+        return self.confid_func(*self.confid_args)
+
+    @property
+    def predict(self) -> npt.NDArray[Any]:
+        return np.argmax(self.softmax, axis=1)
+
+    @property
+    def metrics(self):
+        return self.analysis.compute_performance_metrics(*self.performance_args)
 
 
 class Analysis:
@@ -462,193 +659,45 @@ class Analysis:
             study: Study = get_study_handler(study_name)
             study.perform(analysis=self)
 
-    def perform_study(self, study_name):
+    def perform_study(self, study_name, study_data: ExperimentData):
 
         self.study_name = study_name
-        self.get_confidence_scores()
+        self.get_confidence_scores(study_data)
         self.compute_confid_metrics()
         self.create_results_csv()
         self.create_master_plot()
 
-    # required input to analysis: softmax, labels, correct, mcd_correct, mcd_softmax_mean, mcd_softmax_dist
-    # query_confids per method!Method should have a different method now with
+    def _fix_external_confid_name(self, name: str):
+        if not is_external_confid(name):
+            return name
 
-    def get_confidence_scores(self):
+        ext_confid_name = self.method_dict["cfg"].eval.ext_confid_name
 
-        softmax = self.method_dict["study_softmax"]
-        labels = self.method_dict["study_labels"]
-        correct = self.method_dict["study_correct"]
-        predict = np.argmax(softmax, axis=1)
+        suffix = f"_{parts[1]}" if len(parts := name.split("_")) > 1 else ""
 
-        if any("mcd" in cfd for cfd in self.method_dict["query_confids"]):
-            mcd_softmax_mean = self.method_dict["study_mcd_softmax_mean"]
-            mcd_predict = np.argmax(mcd_softmax_mean, axis=1)
-            mcd_softmax_dist = self.method_dict["study_mcd_softmax_dist"]
-            mcd_correct = self.method_dict["study_mcd_correct"]
-            mcd_performance_metrics = self.compute_performance_metrics(
-                mcd_softmax_mean, labels, mcd_correct, self.method_dict
+        query_confid = ext_confid_name + suffix
+
+        self.method_dict["query_confids"] = [
+            query_confid if v == name else v for v in self.method_dict["query_confids"]
+        ]
+
+        return query_confid
+
+    def get_confidence_scores(self, study_data: ExperimentData):
+        for query_confid in self.method_dict["query_confids"]:
+            confid_score = ConfidScore(
+                study_data=study_data, query_confid=query_confid, analysis=self,
             )
 
-        performance_metrics = self.compute_performance_metrics(
-            softmax, labels, correct, self.method_dict
-        )
-        # here is where threshold considerations would come int
-        # also with BDL methods here first the merging method needs to be decided.
+            query_confid = self._fix_external_confid_name(query_confid)
 
-        # The case that test measures are not in val is prohibited anyway, because mcd-softmax output needs to fit.
-        if "det_mcp" in self.method_dict["query_confids"]:
-            self.method_dict["det_mcp"] = {}
-            self.method_dict["det_mcp"]["confids"] = np.max(softmax, axis=1)
-            self.method_dict["det_mcp"]["correct"] = deepcopy(correct)
-            self.method_dict["det_mcp"]["metrics"] = deepcopy(performance_metrics)
-            self.method_dict["det_mcp"]["predict"] = deepcopy(predict)
-            print(
-                "CHECK DET MCP",
-                np.sum(self.method_dict["det_mcp"]["confids"]),
-                np.sum(self.method_dict["det_mcp"]["correct"]),
-            )
+            self.method_dict[query_confid] = {}
+            self.method_dict[query_confid]["confids"] = confid_score.confids
+            self.method_dict[query_confid]["correct"] = confid_score.correct
+            self.method_dict[query_confid]["metrics"] = confid_score.metrics
+            self.method_dict[query_confid]["predict"] = confid_score.predict
 
-        if "det_pe" in self.method_dict["query_confids"]:
-            self.method_dict["det_pe"] = {}
-            self.method_dict["det_pe"]["confids"] = np.sum(
-                softmax * (-np.log(softmax + 1e-7)), axis=1
-            )
-            self.method_dict["det_pe"]["correct"] = deepcopy(correct)
-            self.method_dict["det_pe"]["metrics"] = deepcopy(performance_metrics)
-            self.method_dict["det_pe"]["predict"] = deepcopy(predict)
-
-        if "mcd_mcp" in self.method_dict["query_confids"]:
-            self.method_dict["mcd_mcp"] = {}
-            tmp_confids = np.max(mcd_softmax_mean, axis=1)
-            self.method_dict["mcd_mcp"]["confids"] = tmp_confids
-            self.method_dict["mcd_mcp"]["correct"] = deepcopy(mcd_correct)
-            self.method_dict["mcd_mcp"]["metrics"] = deepcopy(mcd_performance_metrics)
-            self.method_dict["mcd_mcp"]["predict"] = deepcopy(mcd_predict)
-
-        if "mcd_pe" in self.method_dict["query_confids"]:
-            self.method_dict["mcd_pe"] = {}
-            tmp_confids = np.sum(
-                mcd_softmax_mean * (-np.log(mcd_softmax_mean + 1e-7)), axis=1
-            )
-            self.method_dict["mcd_pe"]["confids"] = tmp_confids
-            self.method_dict["mcd_pe"]["correct"] = deepcopy(mcd_correct)
-            self.method_dict["mcd_pe"]["metrics"] = deepcopy(mcd_performance_metrics)
-            self.method_dict["mcd_pe"]["predict"] = deepcopy(mcd_predict)
-
-        if "mcd_ee" in self.method_dict["query_confids"]:
-            self.method_dict["mcd_ee"] = {}
-            tmp_confids = np.mean(
-                np.sum(mcd_softmax_dist * (-np.log(mcd_softmax_dist + 1e-7)), axis=1),
-                axis=1,
-            )
-            self.method_dict["mcd_ee"]["confids"] = tmp_confids
-            self.method_dict["mcd_ee"]["correct"] = deepcopy(mcd_correct)
-            self.method_dict["mcd_ee"]["metrics"] = deepcopy(mcd_performance_metrics)
-            self.method_dict["mcd_ee"]["predict"] = deepcopy(mcd_predict)
-
-        if "mcd_mi" in self.method_dict["query_confids"]:
-            self.method_dict["mcd_mi"] = {}
-            tmp_confids = (
-                self.method_dict["mcd_pe"]["confids"]
-                - self.method_dict["mcd_ee"]["confids"]
-            )
-            self.method_dict["mcd_mi"]["confids"] = tmp_confids
-            self.method_dict["mcd_mi"]["correct"] = deepcopy(mcd_correct)
-            self.method_dict["mcd_mi"]["metrics"] = deepcopy(mcd_performance_metrics)
-            self.method_dict["mcd_mi"]["predict"] = deepcopy(mcd_predict)
-
-        if "mcd_sv" in self.method_dict["query_confids"]:
-            self.method_dict["mcd_sv"] = {}
-            # [b, cl, mcd] - [b, cl]
-            print("CHECK FINAL DIST SHAPE", mcd_softmax_dist.shape)
-            tmp_confids = np.mean(np.std(mcd_softmax_dist, axis=2), axis=(1))
-            # tmp_confids = np.mean((mcd_softmax_dist - np.expand_dims(mcd_softmax_mean, axis=2))**2, axis=(1,2))
-            self.method_dict["mcd_sv"]["confids"] = tmp_confids
-            self.method_dict["mcd_sv"]["correct"] = deepcopy(mcd_correct)
-            self.method_dict["mcd_sv"]["metrics"] = deepcopy(mcd_performance_metrics)
-            self.method_dict["mcd_sv"]["predict"] = deepcopy(mcd_predict)
-
-        if "mcd_waic" in self.method_dict["query_confids"]:
-            self.method_dict["mcd_waic"] = {}
-            # [b, cl, mcd] - [b, cl]
-            tmp_confids = np.max(mcd_softmax_mean, axis=1) - np.take(
-                np.std(mcd_softmax_dist, axis=2), np.argmax(mcd_softmax_mean, axis=1),
-            )
-            self.method_dict["mcd_waic"]["confids"] = tmp_confids
-            self.method_dict["mcd_waic"]["correct"] = deepcopy(mcd_correct)
-            self.method_dict["mcd_waic"]["metrics"] = deepcopy(mcd_performance_metrics)
-            self.method_dict["mcd_waic"]["predict"] = deepcopy(mcd_predict)
-
-        if any(
-            cfd in self.method_dict["query_confids"]
-            for cfd in [
-                "ext_waic",
-                "bpd_waic",
-                "maha_waic",
-                "tcp_waic",
-                "dg_waic",
-                "devries_waic",
-            ]
-        ):
-            ext_confid_name = self.method_dict["cfg"].eval.ext_confid_name
-            out_name = ext_confid_name + "_waic"
-            self.method_dict[out_name] = {}
-            tmp_confids = np.mean(
-                self.method_dict["study_external_confids_dist"], axis=1
-            ) - np.std(self.method_dict["study_external_confids_dist"], axis=1)
-            self.method_dict[out_name]["confids"] = tmp_confids
-            self.method_dict[out_name]["correct"] = deepcopy(mcd_correct)
-            self.method_dict[out_name]["metrics"] = deepcopy(mcd_performance_metrics)
-            self.method_dict[out_name]["predict"] = deepcopy(mcd_predict)
-            self.method_dict["query_confids"] = [
-                out_name if v == "ext_waic" else v
-                for v in self.method_dict["query_confids"]
-            ]
-
-        if any(
-            cfd in self.method_dict["query_confids"]
-            for cfd in [
-                "ext_mcd",
-                "bpd_mcd",
-                "maha_mcd",
-                "tcp_mcd",
-                "dg_mcd",
-                "devries_mcd",
-            ]
-        ):
-            ext_confid_name = self.method_dict["cfg"].eval.ext_confid_name
-            out_name = ext_confid_name + "_mcd"
-            self.method_dict[out_name] = {}
-            tmp_confids = np.mean(
-                self.method_dict["study_external_confids_dist"], axis=1
-            )
-            self.method_dict[out_name]["confids"] = tmp_confids
-            self.method_dict[out_name]["correct"] = deepcopy(mcd_correct)
-            self.method_dict[out_name]["metrics"] = deepcopy(mcd_performance_metrics)
-            self.method_dict[out_name]["predict"] = deepcopy(mcd_predict)
-            self.method_dict["query_confids"] = [
-                out_name if v == "ext_mcd" else v
-                for v in self.method_dict["query_confids"]
-            ]
-
-        if any(
-            cfd in self.method_dict["query_confids"]
-            for cfd in ["ext", "bpd", "maha", "tcp", "dg", "devries"]
-        ):
-            ext_confid_name = self.method_dict["cfg"].eval.ext_confid_name
-            self.method_dict[ext_confid_name] = {}
-            self.method_dict[ext_confid_name]["confids"] = self.method_dict[
-                "study_external_confids"
-            ]
-            self.method_dict[ext_confid_name]["correct"] = deepcopy(correct)
-            self.method_dict[ext_confid_name]["metrics"] = deepcopy(performance_metrics)
-            self.method_dict[ext_confid_name]["predict"] = deepcopy(predict)
-            self.method_dict["query_confids"] = [
-                ext_confid_name if v == "ext" else v
-                for v in self.method_dict["query_confids"]
-            ]
-
-    def compute_performance_metrics(self, softmax, labels, correct, method_dict):
+    def compute_performance_metrics(self, softmax, labels, correct):
         performance_metrics = {}
         num_classes = self.num_classes
         if "nll" in self.query_performance_metrics:

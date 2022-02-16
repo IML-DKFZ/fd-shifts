@@ -29,3 +29,4 @@ wilds==1.1.0
 yaml==0.2.5
 pytest
 syrupy
+typing_extensions
