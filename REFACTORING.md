@@ -9,9 +9,10 @@ This file tracks TODOs and notes for the refactoring of the codebase for submiss
 - [x] Fix code formatting (black)
 - [x] Fix config formatting (prettier)
 - [x] Clean up dependencies
-- [ ] Implement analysis tests
+- [x] Implement analysis tests
 - [ ] Document usage
-- [ ] Refactor analysis
+- [o] Refactor analysis
+- [ ] Save rc stats
 - [ ] Refactor rest of codebase
 - [ ] Fix ECE computation
 - [ ] Fix ViT backbone models

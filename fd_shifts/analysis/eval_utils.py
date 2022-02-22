@@ -12,6 +12,8 @@ from sklearn import metrics as skm
 from sklearn.calibration import calibration_curve
 from torchmetrics import Metric
 
+from .metrics import StatsCache, get_metric_function
+
 # BUG: Replace -1 as a failure marker
 # NOTE: Use NaN? Explicitly error? Clearer warning?
 
@@ -131,44 +133,30 @@ class ConfidEvaluator:
         self.precision_list = None
         self.recall_list = None
 
+        self.stats_cache = StatsCache(self.confids, self.correct, self.bins)
+
     def get_metrics_per_confid(self):
 
         out_metrics = {}
         if "failauc" in self.query_metrics or "fpr@95tpr" in self.query_metrics:
-            if self.fpr_list is None:
-                self.get_roc_curve_stats()
-
             if "failauc" in self.query_metrics:
-                try:
-                    out_metrics["failauc"] = skm.auc(self.fpr_list, self.tpr_list)
-                except:
-                    out_metrics["failauc"] = -1
+                out_metrics["failauc"] = get_metric_function("failauc")(self.stats_cache)
             if "fpr@95tpr" in self.query_metrics:
-                # soft threshold from corbiere et al. (confidnet)
-                try:
-                    out_metrics["fpr@95tpr"] = np.min(
-                        self.fpr_list[np.argwhere(self.tpr_list >= 0.9495)]
-                    )
-                except:
-                    out_metrics["fpr@95tpr"] = -1
+                out_metrics["fpr@95tpr"] = get_metric_function("fpr@95tpr")(self.stats_cache)
 
         if "failap_suc" in self.query_metrics:
-            out_metrics["failap_suc"] = skm.average_precision_score(
-                self.correct, self.confids, pos_label=1
-            )
+            out_metrics["failap_suc"] = get_metric_function("failap_suc")(self.stats_cache)
         if "failap_err" in self.query_metrics:
-            out_metrics["failap_err"] = skm.average_precision_score(
-                self.correct, -self.confids, pos_label=0
-            )
+            out_metrics["failap_err"] = get_metric_function("failap_err")(self.stats_cache)
 
         if "aurc" in self.query_metrics or "e-aurc" in self.query_metrics:
             if self.rc_curve is None:
                 self.get_rc_curve_stats()
             if "aurc" in self.query_metrics:
-                out_metrics["aurc"] = self.aurc * 1000
+                out_metrics["aurc"] = get_metric_function("aurc")(self.stats_cache)
 
             if "e-aurc" in self.query_metrics:
-                out_metrics["e-aurc"] = self.eaurc * 1000
+                out_metrics["e-aurc"] = get_metric_function("e-aurc")(self.stats_cache)
 
             if "risk@95cov" in self.query_metrics:
                 coverages = np.array(self.rc_curve[0])
@@ -192,34 +180,18 @@ class ConfidEvaluator:
                     np.min(risks[np.argwhere(coverages >= 0.75)]) * 100
                 )
 
-        hist_confids = np.histogram(self.confids, bins=self.bins, range=(0, 1))[0]
         if self.bin_accs is None:
             self.get_calibration_stats()
-        bin_discrepancies = np.abs(self.bin_accs - self.bin_confids)
 
         if "mce" in self.query_metrics:
-            out_metrics["mce"] = (bin_discrepancies).max()
+            out_metrics["mce"] = get_metric_function("mce")(self.stats_cache)
 
         # BUG: Check length of bin_discrepancies and non-zero hist_confids
         if "ece" in self.query_metrics:
-            try:
-                out_metrics["ece"] = (
-                    np.dot(
-                        bin_discrepancies, hist_confids[np.argwhere(hist_confids > 0)]
-                    )
-                    / np.sum(hist_confids)
-                )[0]
-            except:
-                logger.warn("sklearn calibration failed. passing -1 for ECE.")
-                out_metrics["ece"] = -1
+            out_metrics["ece"] = get_metric_function("ece")(self.stats_cache)
 
         if "fail-NLL" in self.query_metrics:
-            # flip confids for wrong predictions to get likelihood for "fail class"
-            # out_metrics["fail-NLL"] = np.mean(- np.log(np.abs((1-self.correct) - self.confids) + 1e-7 )) could this work? :D
-            out_metrics["fail-NLL"] = -np.mean(
-                self.correct * np.log(self.confids + 1e-7)
-                + (1 - self.correct) * np.log(1 - self.confids + 1e-7)
-            )
+            out_metrics["fail-NLL"] = get_metric_function("fail-NLL")(self.stats_cache)
             logger.debug("CHECK FAIL NLL: \n%s\n%s", self.confids.max(), self.confids.min())
 
         return out_metrics

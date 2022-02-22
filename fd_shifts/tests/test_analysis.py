@@ -45,7 +45,7 @@ def tmp_test_dir(tmp_path, data_dir):
     return tmp_test_path
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def mock_env(monkeypatch, tmp_test_dir):
     monkeypatch.setenv("EXPERIMENT_ROOT_DIR", str(tmp_test_dir))
     monkeypatch.setenv("DATASET_ROOT_DIR", "")
@@ -70,7 +70,7 @@ def _check_dir_content(test_dir: Path, expected_dir: Path, snapshot):
             assert False
 
 
-def test_analysis_blackbox(tmp_test_dir, data_dir, snapshot):
+def test_analysis_blackbox(tmp_test_dir, data_dir, snapshot, mock_env):
     exp_utils.set_seed(42)
 
     cf = OmegaConf.load(data_dir / "config.yaml")
@@ -87,3 +87,7 @@ def test_analysis_blackbox(tmp_test_dir, data_dir, snapshot):
     )
 
     _check_dir_content(tmp_test_dir, data_dir, snapshot)
+
+
+def test_ece():
+    pass
