@@ -29,25 +29,28 @@ class ExperimentData:
     external_confids: npt.NDArray[Any] | None = None
     mcd_external_confids_dist: npt.NDArray[Any] | None = None
 
-    correct: npt.NDArray[Any] | None = field(default=None)
-    mcd_correct: npt.NDArray[Any] | None = field(default=None)
-    mcd_softmax_mean: npt.NDArray[Any] | None = field(default=None)
-    mcd_dataset_idx: npt.NDArray[Any] | None = field(default=None)
+    _mcd_correct: npt.NDArray[Any] | None = field(default=None)
+    _correct: npt.NDArray[Any] | None = field(default=None)
 
-    def __post_init__(self):
-        if self.correct is None:
-            self.correct = (
-                np.argmax(self.softmax_output, axis=1) == self.labels
-            ).astype(int)
+    @property
+    def correct(self) -> npt.NDArray[Any]:
+        if self._correct is not None:
+            return self._correct
+        return (np.argmax(self.softmax_output, axis=1) == self.labels).astype(int)
 
-        if self.mcd_softmax_dist is not None:
-            self.mcd_softmax_mean = np.mean(self.mcd_softmax_dist, axis=2)
-            if self.mcd_correct is None:
-                self.mcd_correct = (
-                    np.argmax(self.mcd_softmax_mean, axis=1) == self.labels
-                ).astype(int)
-            if self.mcd_dataset_idx is None:
-                self.mcd_dataset_idx = self.dataset_idx
+    @property
+    def mcd_softmax_mean(self) -> npt.NDArray[Any] | None:
+        if self.mcd_softmax_dist is None:
+            return None
+        return np.mean(self.mcd_softmax_dist, axis=2)
+
+    @property
+    def mcd_correct(self) -> npt.NDArray[Any] | None:
+        if self._mcd_correct is not None:
+            return self._mcd_correct
+        if self.mcd_softmax_mean is None:
+            return None
+        return (np.argmax(self.mcd_softmax_mean, axis=1) == self.labels).astype(int)
 
     def dataset_name_to_idx(self, dataset_name: str) -> int:
         if dataset_name == "val_tuning":
@@ -71,7 +74,6 @@ class ExperimentData:
         return self.filter_dataset_by_index(self.dataset_name_to_idx(dataset_name))
 
     def filter_dataset_by_index(self, dataset_idx: int) -> ExperimentData:
-        # TODO: Currently dataset idx is 2D but could be collapsed into 1D
         mask = np.argwhere(self.dataset_idx == dataset_idx)[:, 0]
 
         def _filter_if_exists(data: npt.NDArray[Any] | None):
@@ -88,9 +90,6 @@ class ExperimentData:
             external_confids=_filter_if_exists(self.external_confids),
             mcd_external_confids_dist=_filter_if_exists(self.mcd_external_confids_dist),
             config=self.config,
-            correct=_filter_if_exists(self.correct),
-            mcd_correct=_filter_if_exists(self.mcd_correct),
-            mcd_softmax_mean=_filter_if_exists(self.mcd_softmax_mean),
         )
 
     @staticmethod

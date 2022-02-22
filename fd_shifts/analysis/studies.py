@@ -137,10 +137,8 @@ def filter_new_class_study_data(
             data.mcd_external_confids_dist, select_ix_all_mcd
         ),
         config=data.config,
-        correct=__filter_if_exists(correct, select_ix_all),
-        mcd_correct=__filter_if_exists(mcd_correct, select_ix_all_mcd),
-        mcd_softmax_mean=__filter_if_exists(data.mcd_softmax_mean, select_ix_all_mcd),
-        mcd_dataset_idx=__filter_if_exists(data.mcd_dataset_idx, select_ix_all_mcd),
+        _correct=__filter_if_exists(correct, select_ix_all),
+        _mcd_correct=__filter_if_exists(mcd_correct, select_ix_all_mcd),
     )
 
 
@@ -203,7 +201,6 @@ def filter_noise_study_data(
             data.softmax_output, select_ix, noise_level
         ),
         labels=__filter_intensity_1d(data.labels, select_ix, noise_level),
-        correct=__filter_intensity_1d(data.correct, select_ix, noise_level),
         dataset_idx=__filter_intensity_1d(data.dataset_idx, select_ix, noise_level),
         external_confids=__filter_intensity_1d(
             data.external_confids, select_ix, noise_level
@@ -211,13 +208,9 @@ def filter_noise_study_data(
         mcd_external_confids_dist=__filter_intensity_2d(
             data.mcd_external_confids_dist, select_ix, noise_level
         ),
-        mcd_softmax_mean=__filter_intensity_2d(
-            data.mcd_softmax_mean, select_ix, noise_level
-        ),
         mcd_softmax_dist=__filter_intensity_3d(
             data.mcd_softmax_dist, select_ix, noise_level
         ),
-        mcd_correct=__filter_intensity_1d(data.mcd_correct, select_ix, noise_level),
         config=data.config,
     )
 
