@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import os
-from collections import defaultdict
-from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, overload
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-import omegaconf
 import pandas as pd
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
@@ -60,8 +57,8 @@ class ExperimentData:
 
         flat_test_set_list = []
         for _, datasets in self.config.eval.query_studies.items():
-            if isinstance(datasets, list) or isinstance(datasets, ListConfig):
-                flat_test_set_list.extend([dataset for dataset in datasets])
+            if isinstance(datasets, (list, ListConfig)):
+                flat_test_set_list.extend(list(datasets))
             else:
                 flat_test_set_list.append(datasets)
 
@@ -79,7 +76,7 @@ class ExperimentData:
         # TODO: Currently dataset idx is 2D but could be collapsed into 1D
         mask = np.argwhere(self.dataset_idx == dataset_idx)[:, 0]
 
-        def __filter_if_exists(data: npt.NDArray[Any] | None):
+        def _filter_if_exists(data: npt.NDArray[Any] | None):
             if data is not None:
                 return data[mask]
 
@@ -89,15 +86,15 @@ class ExperimentData:
             softmax_output=self.softmax_output[mask],
             labels=self.labels[mask],
             dataset_idx=self.dataset_idx[mask],
-            mcd_softmax_dist=__filter_if_exists(self.mcd_softmax_dist),
-            external_confids=__filter_if_exists(self.external_confids),
-            mcd_external_confids_dist=__filter_if_exists(
+            mcd_softmax_dist=_filter_if_exists(self.mcd_softmax_dist),
+            external_confids=_filter_if_exists(self.external_confids),
+            mcd_external_confids_dist=_filter_if_exists(
                 self.mcd_external_confids_dist
             ),
             config=self.config,
-            correct=__filter_if_exists(self.correct),
-            mcd_correct=__filter_if_exists(self.mcd_correct),
-            mcd_softmax_mean=__filter_if_exists(self.mcd_softmax_mean),
+            correct=_filter_if_exists(self.correct),
+            mcd_correct=_filter_if_exists(self.mcd_correct),
+            mcd_softmax_mean=_filter_if_exists(self.mcd_softmax_mean),
         )
 
     @staticmethod
@@ -114,7 +111,7 @@ class ExperimentData:
         holdout_classes: list | None = None,
         config: DictConfig | ListConfig | None = None,
     ) -> ExperimentData:
-        if type(test_dir) != Path:
+        if not isinstance(test_dir, Path):
             test_dir = Path(test_dir)
 
         if not (test_dir / "raw_output.npz").is_file():
@@ -169,7 +166,7 @@ class Analysis:
 
         self.method_dict = {
             "cfg": OmegaConf.load(
-                os.path.join(os.path.dirname(path), "hydra", "config.yaml")
+                Path(path).parent / "hydra" / "config.yaml"
             )
             if cf is None
             else cf,

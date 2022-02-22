@@ -1,14 +1,18 @@
-import torch
+import math
 import os
+
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.calibration import calibration_curve
-from sklearn import metrics as skm
-import seaborn
-from torchmetrics import Metric
 import pandas as pd
-import math
 import scipy
+import seaborn
+import torch
+from sklearn import metrics as skm
+from sklearn.calibration import calibration_curve
+from torchmetrics import Metric
+
+# BUG: Replace -1 as a failure marker
+# NOTE: Use NaN? Explicitly error? Clearer warning?
 
 
 def get_tb_hparams(cf):
@@ -194,6 +198,7 @@ class ConfidEvaluator:
         if "mce" in self.query_metrics:
             out_metrics["mce"] = (bin_discrepancies).max()
 
+        # BUG: Check length of bin_discrepancies and non-zero hist_confids
         if "ece" in self.query_metrics:
             try:
                 out_metrics["ece"] = (
@@ -710,6 +715,7 @@ def RC_curve(residuals, confidence):
     # aurc is computed as a weighted average over risk scores analogously to the average precision score.
     aurc = sum([a * w for a, w in zip(risks, weights)])
 
+    # TODO: Switch to new aurc calculation
     # compute e-aurc
     err = np.mean(residuals)
     kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
@@ -717,55 +723,6 @@ def RC_curve(residuals, confidence):
 
     curve = (coverages, risks)
     return curve, aurc, e_aurc
-
-    curve = []
-    m = len(residuals)
-    idx_sorted = np.argsort(confidence)
-    temp1 = residuals[idx_sorted]
-    cov = len(temp1)
-    acc = sum(temp1)
-    curve.append((cov / m, acc / len(temp1)))
-    for i in range(0, len(idx_sorted) - 1):
-        cov = cov - 1
-        acc = acc - residuals[idx_sorted[i]]
-        curve.append((cov / m, acc / (m - i)))
-    AUC = sum([a[1] for a in curve]) / len(curve)
-    err = np.mean(residuals)
-    kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
-    EAURC = AUC - kappa_star_aurc
-    return curve, AUC, EAURC
-
-
-def AURC(residuals, confidence):
-    coverages = []
-    risks = []
-    n = len(residuals)
-    idx_sorted = np.argsort(confidence)
-    cov = n
-    error_sum = sum(residuals[idx_sorted])
-    coverages.append(cov / n),
-    risks.append(error_sum / n)
-    weights = []
-    tmp_weight = 0
-    for i in range(0, len(idx_sorted) - 1):
-        cov = cov - 1
-        error_sum = error_sum - residuals[idx_sorted[i]]
-        selective_risk = error_sum / (n - 1 - i)
-        tmp_weight += 1
-        if i == 0 or confidence[idx_sorted[i]] != confidence[idx_sorted[i - 1]]:
-            coverages.append(cov / n)
-            risks.append(selective_risk)
-            weights.append(tmp_weight / n)
-            tmp_weight = 0
-
-    if tmp_weight > 0:
-        coverages.append(0)
-        risks.append(risks[-1])
-        weights.append(tmp_weight / n)
-
-    aurc = sum([a * w for a, w in zip(risks, weights)])
-    curve = (coverages, risks)
-    return curve, aurc
 
 
 class BrierScore(Metric):

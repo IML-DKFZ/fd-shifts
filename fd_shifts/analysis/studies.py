@@ -90,6 +90,8 @@ def filter_new_class_study_data(
     select_ix_in = np.argwhere(data.dataset_idx == iid_set_ix)[:, 0]
     select_ix_out = np.argwhere(data.dataset_idx == new_class_set_ix)[:, 0]
 
+    assert data.correct is not None
+
     correct = deepcopy(data.correct)
     correct[select_ix_out] = 0
     if mode == "original_mode":
