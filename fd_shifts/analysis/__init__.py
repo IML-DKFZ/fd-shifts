@@ -10,11 +10,9 @@ import numpy.typing as npt
 import pandas as pd
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
-from fd_shifts.utils.eval_utils import (ConfidEvaluator, ConfidPlotter,
-                                        ThresholdPlot, cifar100_classes,
-                                        qual_plot)
-
 from .confid_scores import ConfidScore, is_external_confid
+from .eval_utils import (ConfidEvaluator, ConfidPlotter, ThresholdPlot,
+                         cifar100_classes, qual_plot)
 from .studies import get_study_iterator
 
 
@@ -88,9 +86,7 @@ class ExperimentData:
             dataset_idx=self.dataset_idx[mask],
             mcd_softmax_dist=_filter_if_exists(self.mcd_softmax_dist),
             external_confids=_filter_if_exists(self.external_confids),
-            mcd_external_confids_dist=_filter_if_exists(
-                self.mcd_external_confids_dist
-            ),
+            mcd_external_confids_dist=_filter_if_exists(self.mcd_external_confids_dist),
             config=self.config,
             correct=_filter_if_exists(self.correct),
             mcd_correct=_filter_if_exists(self.mcd_correct),
@@ -165,9 +161,7 @@ class Analysis:
     ):
 
         self.method_dict = {
-            "cfg": OmegaConf.load(
-                Path(path).parent / "hydra" / "config.yaml"
-            )
+            "cfg": OmegaConf.load(Path(path).parent / "hydra" / "config.yaml")
             if cf is None
             else cf,
             "name": path.split("/")[-2],  # last level is version or test dir
@@ -213,11 +207,15 @@ class Analysis:
 
             self.rstar = self.method_dict["cfg"].eval.r_star
             self.rdelta = self.method_dict["cfg"].eval.r_delta
-            for study_name, study_data in get_study_iterator("val_tuning")("val_tuning", self):
+            for study_name, study_data in get_study_iterator("val_tuning")(
+                "val_tuning", self
+            ):
                 self.perform_study("val_tuning", study_data)
 
         for query_study in self.query_studies.keys():
-            for study_name, study_data in get_study_iterator(query_study)(query_study, self):
+            for study_name, study_data in get_study_iterator(query_study)(
+                query_study, self
+            ):
                 self.perform_study(study_name, study_data)
 
     def perform_study(self, study_name, study_data: ExperimentData):

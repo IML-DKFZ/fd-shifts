@@ -716,6 +716,8 @@ def RC_curve(residuals, confidence):
     aurc = sum([a * w for a, w in zip(risks, weights)])
 
     # TODO: Switch to new aurc calculation
+    # aurc = sum([(risks[i] + risks[i+1]) * 0.5 * weights[i] for i in range(len(weights)) ])
+
     # compute e-aurc
     err = np.mean(residuals)
     kappa_star_aurc = err + (1 - err) * (np.log(1 - err))

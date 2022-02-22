@@ -4,7 +4,7 @@ from pytorch_lightning.trainer.connectors.logger_connector.logger_connector impo
 )
 import torch
 import numpy as np
-from fd_shifts.utils import eval_utils
+from fd_shifts.analysis import eval_utils
 from tqdm import tqdm
 
 
