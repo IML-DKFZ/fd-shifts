@@ -13,6 +13,8 @@ pytest-conda:
   before_script:
   - python --version
   - conda env create -f environment.yaml
+  - conda init bash
+  - source ~/.bashrc
   - conda activate failure-detection
   script:
   - python -m pytest -W ignore
