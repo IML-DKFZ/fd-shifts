@@ -4,26 +4,26 @@ channels:
   - defaults
   - pytorch
 dependencies:
-  - pylint==2.9.6
-  - black==19.10b0
-  - imageio==2.9.0
-  - matplotlib==3.3.4
-  - numpy==1.22.2
-  - pandas==1.2.3
-  - pip
-  - python==3.9.6
-  - pytorch==1.8.0
-  - rich==10.7.0
-  - scikit-image==0.18.2
-  - scikit-learn==0.24.2
-  - scipy==1.6.1
-  - seaborn==0.11.1
-  - tensorboard==2.4.1
-  - timm==0.4.12
-  - toml==0.10.2
-  - torchvision==0.9.0
-  - tqdm==4.62.0
-  - yaml==0.2.5
+  - pylint=2.9.6
+  - black=19.10b0
+  - imageio=2.9.0
+  - matplotlib=3.3.4
+  - numpy=1.22.2
+  - pandas=1.2.3
+  - pip=21.2.4
+  - python=3.9.6
+  - pytorch=1.8.0
+  - rich=10.7.0
+  - scikit-image=0.18.2
+  - scikit-learn=0.24.2
+  - scipy=1.6.1
+  - seaborn=0.11.1
+  - tensorboard=2.4.1
+  - timm=0.4.12
+  - toml=0.10.2
+  - torchvision=0.9.0
+  - tqdm=4.62.0
+  - yaml=0.2.5
   - pip:
     - albumentations==1.0.3
     - hydra-colorlog==1.1.0
@@ -35,6 +35,6 @@ dependencies:
     - robustness==1.2.1
     - torchmetrics==0.2.0
     - wilds==1.1.0
-    - pytest
-    - syrupy
-    - typing_extensions
+    - pytest==7.0.1
+    - syrupy==1.7.4
+    - typing_extensions==4.1.1
