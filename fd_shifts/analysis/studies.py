@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Tuple
+import logging
 
 import numpy as np
 import numpy.typing as npt
@@ -10,6 +11,8 @@ if TYPE_CHECKING:
     from fd_shifts.analysis import Analysis, ExperimentData
 
 _filter_funcs = {}
+
+logger = logging.getLogger()
 
 
 def register_filter_func(name: str) -> Callable:
@@ -222,8 +225,8 @@ def iterate_noise_study_data(
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     for noise_set in analysis.query_studies[study_name]:
         for intensity_level in range(5):
-            print(
-                "starting noise study with intensitiy level ", intensity_level + 1,
+            logger.debug(
+                "starting noise study with intensitiy level %s", intensity_level + 1,
             )
 
             study_data = filter_func(

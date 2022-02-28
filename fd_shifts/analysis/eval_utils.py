@@ -1,4 +1,5 @@
 import math
+import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -14,6 +15,7 @@ from torchmetrics import Metric
 # BUG: Replace -1 as a failure marker
 # NOTE: Use NaN? Explicitly error? Clearer warning?
 
+logger = logging.getLogger()
 
 def get_tb_hparams(cf):
 
@@ -208,7 +210,7 @@ class ConfidEvaluator:
                     / np.sum(hist_confids)
                 )[0]
             except:
-                print("sklearn calibration failed. passing -1 for ECE.")
+                logger.warn("sklearn calibration failed. passing -1 for ECE.")
                 out_metrics["ece"] = -1
 
         if "fail-NLL" in self.query_metrics:
@@ -218,7 +220,7 @@ class ConfidEvaluator:
                 self.correct * np.log(self.confids + 1e-7)
                 + (1 - self.correct) * np.log(1 - self.confids + 1e-7)
             )
-            print("CHECK FAIL NLL:", self.confids.max(), self.confids.min())
+            logger.debug("CHECK FAIL NLL: \n%s\n%s", self.confids.max(), self.confids.min())
 
         return out_metrics
 
@@ -263,8 +265,8 @@ class ConfidEvaluator:
         try:
             self.fpr_list, self.tpr_list, _ = skm.roc_curve(self.correct, self.confids)
         except:
-            print(
-                "FAIL CHECK",
+            logger.debug(
+                "FAIL CHECK\n%s\n%s\n%s\n%s\n%s\n%s",
                 self.correct.shape,
                 self.confids.shape,
                 np.min(self.correct),
@@ -352,8 +354,8 @@ class ConfidEvaluator:
         val_risk_scores["val_risk"] = risk
         val_risk_scores["val_cov"] = coverage
         val_risk_scores["theta"] = theta
-        print(
-            "STRAIGHT FROM THRESH CALCULATION",
+        logger.debug(
+            "STRAIGHT FROM THRESH CALCULATION\n%s\n%s\n%s\n%s\n%s\n%s",
             risk,
             coverage,
             theta,
@@ -759,12 +761,12 @@ def clean_logging(log_dir):
         df = df.groupby("step").max().round(3)
         df.to_csv(os.path.join(log_dir, "metrics.csv"))
     except:
-        print("no metrics.csv found in clean logging!")
+        logger.exception("no metrics.csv found in clean logging!")
 
 
 def plot_input_imgs(x, y, out_path):
 
-    print(x.mean().item(), x.std().item(), x.min().item(), x.max().item())
+    logger.debug("%s\n%s\n%s\n%s", x.mean().item(), x.std().item(), x.min().item(), x.max().item())
     f, axs = plt.subplots(nrows=4, ncols=4, figsize=(10, 10))
     for ix in range(len(f.axes)):
         ax = f.axes[ix]
@@ -808,7 +810,7 @@ def qual_plot(fp_dict, fn_dict, out_path):
     plt.subplots_adjust(wspace=0.23, hspace=0.4)
     f.savefig(out_path)
     plt.close()
-    print("saved qual_plot to ", out_path)
+    logger.debug("saved qual_plot to %s", out_path)
 
 
 def ThresholdPlot(plot_dict):
@@ -821,10 +823,10 @@ def ThresholdPlot(plot_dict):
         nrows=n_rows, ncols=n_cols, figsize=(n_cols * scale * 0.6, n_rows * scale * 0.4)
     )
 
-    print("plot in", len(plot_dict))
+    logger.debug("plot in %s", len(plot_dict))
     for ix, (study, study_dict) in enumerate(plot_dict.items()):
 
-        print("threshold plot", study, len(study_dict["confids"]))
+        logger.debug("threshold plot %s %s", study, len(study_dict["confids"]))
         confids = study_dict["confids"]
         correct = study_dict["correct"]
         delta_threshs = study_dict["delta_threshs"]
@@ -857,7 +859,7 @@ def ThresholdPlot(plot_dict):
         # self.ax.vlines(np.mean(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_y_data, color="g", linestyles="-", label="correct mean")
         # self.ax.vlines(np.median(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_y_data, color="g", linestyles="--", label="correct median")
         for idx, dt in enumerate(delta_threshs):
-            print("drawing line", idx, dt, delta_threshs, deltas)
+            logger.debug("drawing line", idx, dt, delta_threshs, deltas)
             axs[ix].vlines(
                 dt,
                 ymin=0,

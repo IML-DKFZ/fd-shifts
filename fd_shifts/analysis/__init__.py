@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,6 +15,8 @@ from .confid_scores import ConfidScore, is_external_confid
 from .eval_utils import (ConfidEvaluator, ConfidPlotter, ThresholdPlot,
                          cifar100_classes, qual_plot)
 from .studies import get_study_iterator
+
+logger = logging.getLogger()
 
 
 @dataclass
@@ -179,7 +182,7 @@ class Analysis:
         self.method_dict["query_confids"] = self.method_dict[
             "cfg"
         ].eval.confidence_measures["test"]
-        print("CHECK QUERY CONFIDS", self.method_dict["query_confids"])
+        logger.debug("CHECK QUERY CONFIDS\n%s", self.method_dict["query_confids"])
 
         self.query_performance_metrics = query_performance_metrics
         self.query_confid_metrics = query_confid_metrics
@@ -281,15 +284,15 @@ class Analysis:
     def compute_confid_metrics(self):
 
         for confid_key in self.method_dict["query_confids"]:
-            print(self.study_name, confid_key)
+            logger.debug("%s\n%s", self.study_name, confid_key)
             confid_dict = self.method_dict[confid_key]
             if confid_key == "bpd" or confid_key == "maha":
-                print(
-                    "CHECK BEFORE NORM VALUES CORRECT",
+                logger.debug(
+                    "CHECK BEFORE NORM VALUES CORRECT\n%s",
                     np.median(confid_dict["confids"][confid_dict["correct"] == 1]),
                 )
-                print(
-                    "CHECK BEFORE NORM VALUES INCORRECT",
+                logger.debug(
+                    "CHECK BEFORE NORM VALUES INCORRECT\n%s",
                     np.median(confid_dict["confids"][confid_dict["correct"] == 0]),
                 )
             if any(cfd in confid_key for cfd in ["_pe", "_ee", "_mi", "_sv", "bpd"]):
@@ -308,12 +311,12 @@ class Analysis:
                 )
 
             if confid_key == "bpd" or confid_key == "maha":
-                print(
-                    "CHECK AFTER NORM VALUES CORRECT",
+                logger.debug(
+                    "CHECK AFTER NORM VALUES CORRECT\n%s",
                     np.median(confid_dict["confids"][confid_dict["correct"] == 1]),
                 )
-                print(
-                    "CHECK AFTER NORM VALUES INCORRECT",
+                logger.debug(
+                    "CHECK AFTER NORM VALUES INCORRECT\n%s",
                     np.median(confid_dict["confids"][confid_dict["correct"] == 0]),
                 )
 
@@ -368,7 +371,7 @@ class Analysis:
                         ]
                     )
 
-            print("checking in", self.threshold_plot_confid, confid_key)
+            logger.debug("checking in\n%s\n%s", self.threshold_plot_confid, confid_key)
             if (
                 self.threshold_plot_confid is not None
                 and confid_key == self.threshold_plot_confid
@@ -384,14 +387,15 @@ class Analysis:
                     self.threshold_plot_dict = {}
                     self.plot_threshs = []
                     self.true_covs = []
-                    print("creating threshold_plot_dict....")
+                    logger.debug("creating threshold_plot_dict....")
                     for delta in self.rdelta:
                         plot_val_risk_scores = eval.get_val_risk_scores(
                             self.rstar, delta
                         )
                         self.plot_threshs.append(plot_val_risk_scores["theta"])
                         self.true_covs.append(plot_val_risk_scores["val_cov"])
-                        print(
+                        logger.debug(
+                            "%s\n%s\n%s\n%s",
                             self.rstar,
                             delta,
                             plot_val_risk_scores["theta"],
@@ -430,7 +434,7 @@ class Analysis:
                     self.rstar, 0.1, no_bound_mode=True
                 )["theta"]
 
-                print("creating new dict entry", self.study_name)
+                logger.debug("creating new dict entry\n%s", self.study_name)
                 self.threshold_plot_dict[self.study_name] = {}
                 self.threshold_plot_dict[self.study_name]["confids"] = confid_dict[
                     "confids"
@@ -540,7 +544,11 @@ class Analysis:
                     for ix in fn_ixs:
                         corr_ix = self.dummy_noise_ixs[ix] % 50000
                         corr_ix = corr_ix // 10000
-                        print("noise sanity check", corr_ix, self.dummy_noise_ixs[ix])
+                        logger.debug(
+                            "noise sanity check\n%s\n%s",
+                            corr_ix,
+                            self.dummy_noise_ixs[ix],
+                        )
 
                 out_path = os.path.join(
                     self.analysis_out_dir,
@@ -592,8 +600,8 @@ class Analysis:
             float_format="%.5f",
             decimal=".",
         )
-        print(
-            "saved csv to ",
+        logger.debug(
+            "saved csv to %s",
             os.path.join(
                 self.analysis_out_dir, "analysis_metrics_{}.csv".format(self.study_name)
             ),
@@ -618,8 +626,8 @@ class Analysis:
                 "threshold_plot_{}.png".format(self.threshold_plot_confid),
             )
         )
-        print(
-            "saved threshold_plot to ",
+        logger.debug(
+            "saved threshold_plot to %s",
             os.path.join(
                 self.analysis_out_dir,
                 "threshold_plot_{}.png".format(self.threshold_plot_confid),
@@ -641,8 +649,8 @@ class Analysis:
                 self.analysis_out_dir, "master_plot_{}.png".format(self.study_name)
             )
         )
-        print(
-            "saved masterplot to ",
+        logger.debug(
+            "saved masterplot to %s",
             os.path.join(
                 self.analysis_out_dir, "master_plot_{}.png".format(self.study_name)
             ),
@@ -663,7 +671,7 @@ def main(
     query_studies=None,
     add_val_tuning=True,
     cf=None,
-    threshold_plot_confid="tcp_mcd",
+    threshold_plot_confid: str | None = "tcp_mcd",
     qual_plot_confid=None,
 ):  # qual plot to false
 
@@ -703,7 +711,7 @@ def main(
     if not os.path.exists(analysis_out_dir):
         os.mkdir(analysis_out_dir)
 
-    print(
+    logger.debug(
         "starting analysis with in_path {}, out_path {}, and query studies {}".format(
             path_to_test_dir, analysis_out_dir, query_studies
         )
