@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 _filter_funcs = {}
 
-logger = logging.getLogger()
+logger = logging.getLogger("fd_shifts")
 
 
 def register_filter_func(name: str) -> Callable:

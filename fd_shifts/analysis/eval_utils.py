@@ -17,7 +17,7 @@ from .metrics import StatsCache, get_metric_function
 # BUG: Replace -1 as a failure marker
 # NOTE: Use NaN? Explicitly error? Clearer warning?
 
-logger = logging.getLogger()
+logger = logging.getLogger("fd_shifts")
 
 def get_tb_hparams(cf):
 

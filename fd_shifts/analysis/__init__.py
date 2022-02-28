@@ -16,7 +16,7 @@ from .eval_utils import (ConfidEvaluator, ConfidPlotter, ThresholdPlot,
                          cifar100_classes, qual_plot)
 from .studies import get_study_iterator
 
-logger = logging.getLogger()
+logger = logging.getLogger("fd_shifts")
 
 
 @dataclass
