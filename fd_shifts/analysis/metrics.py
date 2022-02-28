@@ -160,8 +160,10 @@ def failap_err(stats_cache: StatsCache):
 @may_raise_sklearn_exception
 def aurc(stats_cache: StatsCache):
     _, risks, weights = stats_cache.rc_curve_stats
-    return sum([a * w for a, w in zip(risks, weights)]) * AURC_DISPLAY_SCALE
-    # return sum([(risks[i] + risks[i+1]) * 0.5 * weights[i] for i in range(len(weights)) ]) * AURC_DISPLAY_SCALE
+    return (
+        sum([(risks[i] + risks[i + 1]) * 0.5 * weights[i] for i in range(len(weights))])
+        * AURC_DISPLAY_SCALE
+    )
 
 
 @register_metric_func("e-aurc")
