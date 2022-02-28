@@ -186,7 +186,6 @@ class ConfidEvaluator:
         if "mce" in self.query_metrics:
             out_metrics["mce"] = get_metric_function("mce")(self.stats_cache)
 
-        # BUG: Check length of bin_discrepancies and non-zero hist_confids
         if "ece" in self.query_metrics:
             out_metrics["ece"] = get_metric_function("ece")(self.stats_cache)
 

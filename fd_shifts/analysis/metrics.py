@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cached_property
+import logging
 from typing import Any, Callable, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
 from sklearn import calibration as skc
 from sklearn import metrics as skm
+from sklearn import preprocessing as skp
+from sklearn import utils as sku
 from typing_extensions import ParamSpec
 
 AURC_DISPLAY_SCALE = 1000
@@ -17,12 +20,14 @@ _metric_funcs = {}
 T = TypeVar("T")
 P = ParamSpec("P")
 
+logger = logging.getLogger("fd_shifts")
 
 def may_raise_sklearn_exception(func: Callable[P, T]) -> Callable[P, T]:
     def _inner_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
         try:
             return func(*args, **kwargs)
         except ValueError:
+            logger.exception("exception in sklearn computation")
             return cast(T, np.nan)
 
     return _inner_wrapper
@@ -89,19 +94,43 @@ class StatsCache:
     @cached_property
     def calibration_stats(self):
         calib_confids = np.clip(self.confids, 0, 1)  # necessary for waic
-        bin_accs, bin_confids = skc.calibration_curve(
-            self.correct, calib_confids, n_bins=self.n_bins
-        )
 
-        return bin_accs, bin_confids
+        n_bins = self.n_bins
+        y_true = sku.column_or_1d(self.correct)
+        y_prob = sku.column_or_1d(calib_confids)
+        # check_consistent_length(y_true, y_prob)
 
-    @cached_property
-    def hist_confids(self):
-        return np.histogram(self.confids, bins=self.n_bins, range=(0, 1))[0]
+        if y_prob.min() < 0 or y_prob.max() > 1:
+            raise ValueError(
+                "y_prob has values outside [0, 1] and normalize is " "set to False."
+            )
+
+        labels = np.unique(y_true)
+        if len(labels) > 2:
+            raise ValueError(
+                "Only binary classification is supported. "
+                "Provided labels %s." % labels
+            )
+        y_true = skp.label_binarize(y_true, classes=labels)[:, 0]
+
+        bins = np.linspace(0.0, 1.0 + 1e-8, n_bins + 1)
+
+        binids = np.digitize(y_prob, bins) - 1
+
+        bin_sums = np.bincount(binids, weights=y_prob, minlength=len(bins))
+        bin_true = np.bincount(binids, weights=y_true, minlength=len(bins))
+        bin_total = np.bincount(binids, minlength=len(bins))
+
+        nonzero = bin_total != 0
+        prob_true = bin_true[nonzero] / bin_total[nonzero]
+        prob_pred = bin_sums[nonzero] / bin_total[nonzero]
+        prob_total = bin_total[nonzero] / bin_total.sum()
+
+        return prob_total, prob_true, prob_pred
 
     @cached_property
     def bin_discrepancies(self):
-        bin_accs, bin_confids = self.calibration_stats
+        _, bin_accs, bin_confids = self.calibration_stats
         return np.abs(bin_accs - bin_confids)
 
 
@@ -183,14 +212,8 @@ def maximum_calibration_error(stats_cache: StatsCache):
 @register_metric_func("ece")
 @may_raise_sklearn_exception
 def expected_calibration_error(stats_cache: StatsCache):
-    # BUG: Check length of bin_discrepancies and non-zero hist_confids
-    return (
-        np.dot(
-            stats_cache.bin_discrepancies,
-            stats_cache.hist_confids[np.argwhere(stats_cache.hist_confids > 0)],
-        )
-        / np.sum(stats_cache.hist_confids)
-    )[0]
+    prob_total, _, _ = stats_cache.calibration_stats
+    return np.dot(stats_cache.bin_discrepancies, prob_total)
 
 
 @register_metric_func("fail-NLL")
