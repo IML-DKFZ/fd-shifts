@@ -29,7 +29,7 @@ def run_analysis(path: Path):
 
         if not config_path.is_file():
             logger.error("File %s does not exist", config_path)
-            return
+            return 1
 
         config = OmegaConf.load(config_path)
 
@@ -43,13 +43,14 @@ def run_analysis(path: Path):
         )
 
         logger.info("Finished analysis in %s", path)
-        return
+        return 0
     except KeyboardInterrupt:
         logger.warning("keyboard interrupt")
     except:
         logger.exception("Exception occured in %s", path)
         logger.info("Abnormally finished analysis in %s", path)
-        return
+    finally:
+        return 1
 
 
 def get_all_experiments(path: Path):
@@ -89,8 +90,10 @@ def main():
         with Progress(console=console) as progress:
             task_id = progress.add_task("[cyan]Working...", total=len(tasks))
             with Pool(processes=args.num_proc) as pool:
-                for _ in pool.imap(run_analysis, tasks):
+                for _ in pool.imap_unordered(run_analysis, tasks):
                     progress.advance(task_id)
+                pool.close()
+                pool.join()
     except KeyboardInterrupt:
         root_logger.error("keyboard interrupt")
         return
