@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from functools import cached_property
-import logging
 from typing import Any, Callable, TypeVar, cast
 
 import numpy as np
@@ -21,6 +21,7 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 logger = logging.getLogger("fd_shifts")
+
 
 def may_raise_sklearn_exception(func: Callable[P, T]) -> Callable[P, T]:
     def _inner_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
@@ -93,6 +94,9 @@ class StatsCache:
 
     @cached_property
     def calibration_stats(self):
+        """Adapted from
+        https://github.com/scikit-learn/scikit-learn/blob/7e1e6d09b/sklearn/calibration.py#L869
+        """
         calib_confids = np.clip(self.confids, 0, 1)  # necessary for waic
 
         n_bins = self.n_bins
@@ -212,6 +216,9 @@ def maximum_calibration_error(stats_cache: StatsCache):
 @register_metric_func("ece")
 @may_raise_sklearn_exception
 def expected_calibration_error(stats_cache: StatsCache):
+    """See reference
+    https://github.com/tensorflow/probability/blob/v0.16.0/tensorflow_probability/python/stats/calibration.py#L258-L319
+    """
     prob_total, _, _ = stats_cache.calibration_stats
     return np.dot(stats_cache.bin_discrepancies, prob_total)
 
