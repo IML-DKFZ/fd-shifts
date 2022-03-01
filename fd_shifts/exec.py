@@ -174,7 +174,7 @@ def test(cf):
     # how to print the tested epoch into csv log?
 
 
-@hydra.main(config_path="src/configs", config_name="config")
+@hydra.main(config_path="configs", config_name="config")
 def main(cf: DictConfig):
 
     sys.stdout = exp_utils.Logger(cf.exp.log_path)
