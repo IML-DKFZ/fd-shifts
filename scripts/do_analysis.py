@@ -3,6 +3,7 @@ import logging
 from multiprocessing import Pool
 from pathlib import Path
 from random import shuffle
+from datetime import datetime
 
 from multiprocessing_logging import install_mp_handler
 from omegaconf import OmegaConf
@@ -42,11 +43,12 @@ def run_analysis(path: Path):
         )
 
         logger.info("Finished analysis in %s", path)
-        return 1
+        return
     except KeyboardInterrupt:
         logger.warning("keyboard interrupt")
     except:
         logger.exception("Exception occured in %s", path)
+        logger.info("Abnormally finished analysis in %s", path)
         return
 
 
@@ -63,7 +65,7 @@ def main():
     console_handler = RichHandler(console=console, rich_tracebacks=True)
     root_logger.addHandler(console_handler)
 
-    log_file = open("do_analysis.log", "w")
+    log_file = open(f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_analysis.log", "w")
     file_handler = RichHandler(
         console=Console(file=log_file, force_terminal=True), rich_tracebacks=True
     )
@@ -87,7 +89,7 @@ def main():
         with Progress(console=console) as progress:
             task_id = progress.add_task("[cyan]Working...", total=len(tasks))
             with Pool(processes=args.num_proc) as pool:
-                for result in pool.imap(run_analysis, tasks):
+                for _ in pool.imap(run_analysis, tasks):
                     progress.advance(task_id)
     except KeyboardInterrupt:
         root_logger.error("keyboard interrupt")
