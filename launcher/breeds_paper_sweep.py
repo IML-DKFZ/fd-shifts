@@ -3,14 +3,12 @@ import subprocess
 from itertools import product
 import time
 
-system_name = os.environ['SYSTEM_NAME']
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
 exec_path = os.path.join(exec_dir,"exec.py")
 
-# todo:
-# currently 18 jobs!! reduce?
+
 
 
 train_mode = "train" # "test" / "train" / "analysis"
@@ -18,14 +16,14 @@ backbones = ["resnet50"] #
 dropouts = [1, 0] # #
 modes = ["dg", "confidnet", "devries"]
 runs = [1 , 2]
-rewards = [2.2]
+rewards = [2.2, 3, 6, 10, 15]
 my_ix = 0
 
 exp_name_list = []
 
 for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts, runs ,rewards)):
 
-    if  (mode=="devries" and do==1) and not (mode!="dg" and rew > 2.2): # todo changed
+    if  not (mode!="dg" and rew > 2.2):
 
 
         exp_group_name = "breeds_paper_sweep"
@@ -48,7 +46,7 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
 
 
                 if mode == "devries":
-                    command_line_args += "study={} ".format("cifar_devries_study")
+                    command_line_args += "study={} ".format("devries")
                     command_line_args += "model.network.name={} ".format("devries_and_enc")
                     command_line_args += "model.network.backbone={} ".format(bb)
                     command_line_args += "trainer.num_epochs={} ".format(300)
@@ -56,7 +54,7 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
 
 
                 elif mode == "dg":
-                    command_line_args += "study={} ".format("dg_cifar_study")
+                    command_line_args += "study={} ".format("deepgamblers")
                     command_line_args += "model.network.name={} ".format(bb)
                     command_line_args += "model.dg_reward={} ".format(rew)
                     command_line_args += "trainer.num_epochs={} ".format(350)
@@ -65,7 +63,7 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
 
 
                 elif mode == "confidnet":
-                    command_line_args += "study={} ".format("cifar_tcp_confid_sweep")
+                    command_line_args += "study={} ".format("confidnet")
                     command_line_args += "model.network.name={} ".format("confidnet_and_enc")
                     command_line_args += "model.network.backbone={} ".format(bb)
                     command_line_args += "trainer.num_epochs={} ".format(520)
@@ -100,34 +98,12 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
                 command_line_args += "+eval.query_studies.in_class_study=\"{}\" ".format(['breeds_ood_test'])
 
 
-            if system_name == "cluster":
-
-                launch_command = ""
-                launch_command += "bsub "
-                launch_command += "-gpu num=1:"
-                launch_command += "j_exclusive=yes:"
-                launch_command += "mode=exclusive_process:"
-                # launch_command += "gmodel=TITANXp:"
-                launch_command += "gmem=20G "
-                launch_command += "-L /bin/bash -q gpu-lowprio "
-                launch_command += "-u 'p.jaeger@dkfz-heidelberg.de' -B -N "
-                launch_command += "'source ~/.bashrc && "
-                launch_command += "source ~/.virtualenvs/confid/bin/activate && "
-                launch_command += "python -u {} ".format(exec_path)
-                launch_command += command_line_args
-                launch_command += "'"
-
-            elif system_name == "mbi":
-                launch_command = "python -u {} ".format(exec_path)
-                launch_command += command_line_args
-
-            else:
-                RuntimeError("system_name environment variable not known.")
-
+            launch_command = "python -u {} ".format(exec_path)
+            launch_command += command_line_args
             print("Launch command: ", launch_command)
             subprocess.call(launch_command, shell=True)
             time.sleep(2)
 
 print(my_ix)
 print(exp_name_list)
-#subprocess.call("python {}/utils/job_surveillance.py --in_name {} --out_name {} --n_jobs {} &".format(exec_dir, log_folder, sur_out_name, job_ix), shell=True)
+

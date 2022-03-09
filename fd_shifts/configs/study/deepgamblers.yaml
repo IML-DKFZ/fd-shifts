@@ -1,63 +1,57 @@
 # @package _global_
 
-exp:
-  group_name: devries_vit
-  name: cifar10
-
 trainer:
-  num_epochs: 250 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs: 300 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
+  dg_pretrain_epochs: 100 # 100 and 300 total epochs
   val_every_n_epoch: 1 #has to be 1 because of schedulers
-  val_split: "devries" #"devries"  # leave empty for no val
-  do_val: False #"devries"  # leave empty for no val
+  # val splits:
+  # - null: no validation set is created
+  # - "devries": split the first 1000 cases of the iid test set as validation set
+  # - cv: split 10% of the training set as validation set
+  # - repro_confidnet: use the same cv split as Corbiere et al. 2020 (ConfidNet)
+  val_split: "devries"
+  do_val: False
   batch_size: 128
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
   lr_scheduler:
     name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
-    milestones: [60, 120, 160] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
+    milestones: [25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
     max_epochs: ${trainer.num_epochs}
-    gamma: 0.2
+    gamma: 0.5
   optimizer:
     name: SGD
     learning_rate: 1e-1
     momentum: 0.9
-    nesterov: True
+    nesterov: False
     weight_decay: 0.0005
   callbacks:
     model_checkpoint:
-    #      n: 1
-    #      selection_metric: ["val/accuracy"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
-    #      mode: ["max"]
-    #      filename: ["best_valacc"] # min:lower is better, max: higher is better
-    #      save_top_k: [1]
-    confid_monitor: # not nice: model_checkpoint callback depends on confid_mointor callback
+    monitor:
     learning_rate_monitor:
 
 model:
-  name: devries_model # devries_model #
-  # fc_dim: 512
-  fc_dim: 768
-  confidnet_fc_dim: 400
-  dg_reward: -1 # 2.2
+  name: devries_and_dg_model # det_mcd_model #
+  fc_dim: 512
+  dg_reward: 2.2
   avg_pool: True
   dropout_rate: 0 # 0 sets dropout to false
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   budget: 0.3
   network:
-    name: devries_and_enc #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
-    backbone: vgg13
+    name: vgg13 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
     imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
     load_dg_backbone_path: #${exp.dir}/dg_backbone_2.ckpt  # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
-    save_dg_backbone_path: # ${exp.dir}/dg_backbone.ckpt # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
+    save_dg_backbone_path: ${exp.dir}/dg_backbone.ckpt # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 test:
   name: test_results
   dir: ${exp.dir}/${test.name}
   cf_path: ${exp.dir}/hydra/config.yaml
   selection_criterion: "latest" #"best_valacc" #best_valacc # model selection criterion or "latest"
-  selection_mode: #"l#max # model selection criterion or "latest"
+  #  selection_mode: "l#max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
   devries_repro_ood_split: False
@@ -96,7 +90,7 @@ eval:
     ]
 
   tb_hparams: ["fold"]
-  ext_confid_name: "devries"
+  ext_confid_name: "dg"
   test_conf_scaling: False
   val_tuning: True
   r_star: 0.25
@@ -107,7 +101,6 @@ eval:
     noise_study:
       - corrupt_cifar10
     new_class_study:
-      - tinyimagenet
       - tinyimagenet_resize
       - cifar100
       - svhn

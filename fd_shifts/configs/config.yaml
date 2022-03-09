@@ -1,12 +1,12 @@
 defaults:
   - hydra/job_logging: disabled
-  - data: wilds_animals_data.yaml #svhn_data.yaml
-  - study: dg_cifar_study.yaml # svhn_confid_study.yaml
+  - data: svhn_data.yaml
+  - study: deepgamblers.yaml
 
 hydra:
   run:
     dir: ${exp.dir}
-  output_subdir: hydra # hydra # needs to be null for manual testing!
+  output_subdir: hydra # needs to be null for manual testing!
 
 exp:
   # group_name: checks
@@ -20,7 +20,7 @@ exp:
   group_dir: ${env:EXPERIMENT_ROOT_DIR}/${exp.group_name}
   dir: ${exp.group_dir}/${exp.name}
   version_dir: ${exp.dir}/version_${exp.version}
-  fold: 0 # call folds in launcher  via command line
+  fold: 0
   crossval_n_folds: 10
   crossval_ids_path: ${exp.dir}/crossval_ids.pickle
   output_paths:

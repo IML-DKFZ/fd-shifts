@@ -1,17 +1,18 @@
 # @package _global_
 
-exp:
-  group_name: confid_vit
-  name: cifar10
-
 trainer:
-  num_epochs: 470 #470 # 500 has to be >1 because of incompatibility of lighting eval with psuedo test
+  num_epochs: 470
   num_epochs_backbone: 250
   val_every_n_epoch: 1
-  val_split: "devries" #"devries"  # leave empty for no val
-  do_val: False #"devries"  # leave empty for no val
+  # val splits:
+  # - null: no validation set is created
+  # - "devries": split the first 1000 cases of the iid test set as validation set
+  # - cv: split 10% of the training set as validation set
+  # - repro_confidnet: use the same cv split as Corbiere et al. 2020 (ConfidNet)
+  val_split: "devries"
+  do_val: False
   learning_rate: 1e-1
-  learning_rate_confidnet: 1e-4 # only so high with annealing! if not: 1e-4
+  learning_rate_confidnet: 1e-4
   learning_rate_confidnet_finetune: 1e-6
   lr_scheduler:
     name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
@@ -27,11 +28,11 @@ trainer:
     #      n: 2
     #      selection_metric: ["val/accuracy", "val/ext_failap_err"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
     #      mode: ["max", "max"]
-    #      filename: ["best_valacc", "best_failap_err"] # min:lower is better, max: higher is better
+    #      filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
     #      save_top_k: [1, 1]
-    confid_monitor: # not nice: model_checkpoint callback depends on confid_mointor callback
+    monitor:
     training_stages:
-      milestones: [250, 450] # 250, 450
+      milestones: [250, 450]
       pretrained_backbone_path: #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
       disable_dropout_at_finetuning: True
@@ -40,8 +41,7 @@ trainer:
 
 model:
   name: confidnet_model #det_mcd_model
-  # fc_dim: 512
-  fc_dim: 768
+  fc_dim: 512
   avg_pool: True
   confidnet_fc_dim: 400
   dropout_rate: 0
@@ -106,7 +106,6 @@ eval:
     noise_study:
       - corrupt_cifar10
     new_class_study:
-      - tinyimagenet
       - tinyimagenet_resize
       - cifar100
       - svhn
