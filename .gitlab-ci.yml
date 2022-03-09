@@ -1,13 +1,21 @@
-image: "python:3.9"
-
-before_script:
+pytest-pip:
+  stage: test
+  image: "python:3.9"
+  before_script:
   - python --version
   - pip install -r requirements.txt
-
-stages:
-  - Test
-
-pytest:
-  stage: Test
   script:
   - python -m pytest -W ignore
+
+pytest-conda:
+  stage: test
+  image: continuumio/miniconda3:latest
+  before_script:
+  - python --version
+  - conda env create -f environment.yaml
+  - conda init bash
+  - source ~/.bashrc
+  - conda activate failure-detection
+  script:
+  - python -m pytest -W ignore
+

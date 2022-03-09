@@ -1,0 +1,40 @@
+defaults:
+  - hydra/job_logging: disabled
+  - data: wilds_animals_data.yaml #svhn_data.yaml
+  - study: dg_cifar_study.yaml # svhn_confid_study.yaml
+
+hydra:
+  run:
+    dir: ${exp.dir}
+  output_subdir: hydra # hydra # needs to be null for manual testing!
+
+exp:
+  # group_name: checks
+  # name: check_risk_thresh # cifar10_run_0_sebastian
+  version: None
+  mode: train_test # train or test
+  work_dir: ${hydra:runtime.cwd}
+  fold_dir: exp/${exp.fold}
+  root_dir: ${env:EXPERIMENT_ROOT_DIR}
+  data_root_dir: ${env:DATASET_ROOT_DIR}
+  group_dir: ${env:EXPERIMENT_ROOT_DIR}/${exp.group_name}
+  dir: ${exp.group_dir}/${exp.name}
+  version_dir: ${exp.dir}/version_${exp.version}
+  fold: 0 # call folds in launcher  via command line
+  crossval_n_folds: 10
+  crossval_ids_path: ${exp.dir}/crossval_ids.pickle
+  output_paths:
+    fit:
+      input_imgs_plot: ${exp.dir}/input_imgs.png
+      raw_output: ${exp.version_dir}/raw_output.npz
+      raw_output_dist: ${exp.version_dir}/raw_output_dist.npz
+      external_confids: ${exp.version_dir}/external_confids.npz
+      external_confids_dist: ${exp.version_dir}/external_confids_dist.npz
+    test:
+      raw_output: ${test.dir}/raw_output.npz
+      raw_output_dist: ${test.dir}/raw_output_dist.npz
+      external_confids: ${test.dir}/external_confids.npz
+      external_confids_dist: ${test.dir}/external_confids_dist.npz
+  log_path: ${exp.dir}/log.txt
+  global_seed: False # set to False to disable deterministic training.
+

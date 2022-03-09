@@ -1,0 +1,170 @@
+data:
+  augmentations:
+    test:
+      normalize:
+      - - 0.4376821
+        - 0.4437697
+        - 0.47280442
+      - - 0.19803012
+        - 0.20101562
+        - 0.19703614
+      resize: 384
+      to_tensor: null
+    train:
+      normalize:
+      - - 0.4376821
+        - 0.4437697
+        - 0.47280442
+      - - 0.19803012
+        - 0.20101562
+        - 0.19703614
+      resize: 384
+      to_tensor: null
+    val:
+      normalize:
+      - - 0.4376821
+        - 0.4437697
+        - 0.47280442
+      - - 0.19803012
+        - 0.20101562
+        - 0.19703614
+      resize: 384
+      to_tensor: null
+  data_dir: ${env:DATASET_ROOT_DIR}/svhn
+  dataset: svhn_openset
+  img_size:
+  - 384
+  - 384
+  - 3
+  kwargs:
+    out_classes:
+    - 9
+    - 8
+    - 1
+    - 3
+  num_classes: 10
+  num_workers: 24
+  pin_memory: true
+  reproduce_confidnet_splits: true
+eval:
+  confid_metrics:
+    test:
+    - failauc
+    - mce
+    - ece
+    - e-aurc
+    - aurc
+    - fpr@95tpr
+    train:
+    - failauc
+    - fpr@95tpr
+    val:
+    - failauc
+    - fpr@95tpr
+    - e-aurc
+    - aurc
+  confidence_measures:
+    test:
+    - det_mcp
+    - det_pe
+    - ext
+    train:
+    - det_mcp
+    val:
+    - det_mcp
+    - ext
+  ext_confid_name: maha
+  monitor_plots:
+  - hist_per_confid
+  performance_metrics:
+    test:
+    - nll
+    - accuracy
+    - brier_score
+    train:
+    - loss
+    - nll
+    - accuracy
+    val:
+    - loss
+    - nll
+    - accuracy
+    - brier_score
+  query_studies:
+    iid_study: svhn_openset_384
+  r_delta: 0.05
+  r_star: 0.25
+  tb_hparams:
+  - fold
+  val_tuning: true
+exp:
+  crossval_ids_path: ${exp.dir}/crossval_ids.pickle
+  crossval_n_folds: 10
+  data_root_dir: ${env:DATASET_ROOT_DIR}
+  dir: ${exp.group_dir}/${exp.name}
+  fold: 0
+  fold_dir: exp/${exp.fold}
+  global_seed: false
+  group_dir: ${env:EXPERIMENT_ROOT_DIR}/${exp.group_name}
+  group_name: vit
+  log_path: ${exp.dir}/log.txt
+  mode: test
+  name: svhn_openset_modelvit_bbvit_lr0.01_bs128_run0_do0_rew0
+  output_paths:
+    fit:
+      external_confids: ${exp.version_dir}/external_confids.npz
+      external_confids_dist: ${exp.version_dir}/external_confids_dist.npz
+      input_imgs_plot: ${exp.dir}/input_imgs.png
+      raw_output: ${exp.version_dir}/raw_output.npz
+      raw_output_dist: ${exp.version_dir}/raw_output_dist.npz
+    test:
+      external_confids: ${test.dir}/external_confids.npz
+      external_confids_dist: ${test.dir}/external_confids_dist.npz
+      raw_output: ${test.dir}/raw_output.npz
+      raw_output_dist: ${test.dir}/raw_output_dist.npz
+  root_dir: ${env:EXPERIMENT_ROOT_DIR}
+  version: None
+  version_dir: ${exp.dir}/version_${exp.version}
+  work_dir: ${hydra:runtime.cwd}
+model:
+  dropout_rate: 0
+  name: vit_model
+  network: null
+test:
+  assim_ood_norm_flag: false
+  best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt
+  cf_path: ${exp.dir}/hydra/config.yaml
+  devries_repro_ood_split: false
+  dir: ${exp.dir}/${test.name}
+  external_confids_output_path: ${test.dir}/external_confids.npy
+  iid_set_split: all
+  name: test_results
+  only_latest_version: true
+  raw_output_path: ${test.dir}/raw_output.npy
+  selection_criterion: latest
+  selection_mode: max
+trainer:
+  accelerator: ddp
+  batch_size: 128
+  benchmark: true
+  callbacks:
+    confid_monitor: null
+    learning_rate_monitor: null
+    model_checkpoint: null
+  do_val: false
+  fast_dev_run: false
+  learning_rate: 0.01
+  lr_scheduler:
+    eta_min: 0
+    max_epochs: 40000
+    name: LinearWarmupCosineAnnealing
+    warmup_epochs: 500
+    warmup_start_lr: 0
+  momentum: 0.9
+  num_epochs: null
+  num_steps: 40000
+  resume_from_ckpt: false
+  resume_from_ckpt_confidnet: false
+  val_every_n_epoch: 10
+  val_split: devries
+  weight_decay: 0.0
