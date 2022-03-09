@@ -2,6 +2,7 @@ import re
 from itertools import product
 from pathlib import Path
 from typing import Optional
+import time
 
 import pandas as pd
 from rich import print  # pylint: disable=redefined-builtin
@@ -117,9 +118,18 @@ def main():
         print(f"[bold]Experiment: [/][bold red]{dataset.replace('_', '')}[/]")
         print("[bold]Looking for test results...")
 
-        base_path = Path("~/results/vit").expanduser()
+        base_path = Path("~/Experiments/vit").expanduser()
 
         paths = base_path.glob(f"{dataset}*_run*/test_results/*.csv")
+
+        paths = filter(
+            lambda x: (
+                ("modeldg" not in str(x))
+                or (time.time() - x.stat().st_mtime < (6 * 7 * 24 * 60 * 60))
+            ),
+            paths,
+        )
+
 
         if "openset" not in dataset:
             paths = filter(lambda x: "openset" not in str(x), paths)

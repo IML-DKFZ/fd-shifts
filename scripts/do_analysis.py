@@ -1,15 +1,14 @@
 import argparse
-import logging
-from multiprocessing import Pool
+from multiprocessing import Pool, set_start_method
 from pathlib import Path
 from random import shuffle
-from datetime import datetime
 
-from multiprocessing_logging import install_mp_handler
+import torch
+from loguru import logger
 from omegaconf import OmegaConf
 from rich.console import Console
-from rich.logging import RichHandler
 from rich.progress import Progress
+from threadpoolctl import threadpool_limits
 
 from fd_shifts import analysis
 
@@ -20,10 +19,17 @@ VIT_PATH = Path("~/Experiments/vit/").expanduser()
 BASE_PATH = Path("~/Experiments/fd-shifts/").expanduser()
 
 
+def set_logger(logger_):
+    global logger
+    logger = logger_
+
+
 def run_analysis(path: Path):
-    logger = logging.getLogger("fd_shifts")
+    analysis.logger = logger
+    analysis.eval_utils.logger = logger
+    analysis.studies.logger = logger
     try:
-        logger.info("Started analysis in %s", path)
+        logger.info("Started analysis in {}", path)
 
         config_path = path.parent / "hydra" / "config.yaml"
 
@@ -42,14 +48,16 @@ def run_analysis(path: Path):
             cf=config,
         )
 
-        logger.info("Finished analysis in %s", path)
+        logger.info("Finished analysis in {}", path)
+        logger.complete()
         return 0
     except KeyboardInterrupt:
         logger.warning("keyboard interrupt")
     except:
-        logger.exception("Exception occured in %s", path)
-        logger.info("Abnormally finished analysis in %s", path)
+        logger.exception("Exception occured in {}", path)
+        logger.info("Abnormally finished analysis in {}", path)
     finally:
+        logger.complete()
         return 1
 
 
@@ -58,21 +66,21 @@ def get_all_experiments(path: Path):
 
 
 def main():
+    set_start_method("spawn")
+    torch.set_num_threads(1)
 
-    root_logger = logging.getLogger("fd_shifts")
-    root_logger.setLevel(logging.INFO)
+    console = Console(stderr=True)
+    logger.remove()  # Remove default 'stderr' handler
 
-    console = Console()
-    console_handler = RichHandler(console=console, rich_tracebacks=True)
-    root_logger.addHandler(console_handler)
-
-    log_file = open(f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_analysis.log", "w")
-    file_handler = RichHandler(
-        console=Console(file=log_file, force_terminal=True), rich_tracebacks=True
+    # We need to specify end=''" as log message already ends with \n (thus the lambda function)
+    # Also forcing 'colorize=True' otherwise Loguru won't recognize that the sink support colors
+    logger.add(
+        lambda m: console.print(m, end="", markup=False, highlight=False),
+        colorize=True,
+        enqueue=True,
+        level="INFO",
     )
-    root_logger.addHandler(file_handler)
-
-    install_mp_handler()
+    logger.add("{time}_do-analysis.log", enqueue=True, level="INFO")
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--continue", action="store_true")
@@ -81,24 +89,25 @@ def main():
     parser.add_argument("-l", "--log-level", type=str, default="info")
     args = parser.parse_args()
 
-    root_logger.setLevel(getattr(logging, args.log_level.upper()))
-
-    tasks = list(get_all_experiments(args.path))
-    shuffle(tasks)
-
     try:
         with Progress(console=console) as progress:
-            task_id = progress.add_task("[cyan]Working...", total=len(tasks))
-            with Pool(processes=args.num_proc) as pool:
-                for _ in pool.imap_unordered(run_analysis, tasks):
-                    progress.advance(task_id)
-                pool.close()
-                pool.join()
+            task_id = progress.add_task(
+                "[cyan]Working...", total=len(list(get_all_experiments(args.path)))
+            )
+            with threadpool_limits(limits=1, user_api="blas"):
+                with Pool(
+                    processes=args.num_proc,
+                    initializer=set_logger,
+                    initargs=(logger,),
+                    maxtasksperchild=1,
+                ) as pool:
+                    for _ in pool.imap_unordered(
+                        run_analysis, get_all_experiments(args.path),
+                    ):
+                        progress.advance(task_id)
     except KeyboardInterrupt:
-        root_logger.error("keyboard interrupt")
+        logger.error("keyboard interrupt")
         return
-    finally:
-        log_file.close()
 
 
 if __name__ == "__main__":
