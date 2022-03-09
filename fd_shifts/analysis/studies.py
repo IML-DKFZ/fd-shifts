@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Tuple
-import logging
 
 import numpy as np
 import numpy.typing as npt
+
+from . import logger
 
 if TYPE_CHECKING:
     from fd_shifts.analysis import Analysis, ExperimentData
 
 _filter_funcs = {}
 
-logger = logging.getLogger("fd_shifts")
 
 
 def register_filter_func(name: str) -> Callable:

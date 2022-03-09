@@ -1,5 +1,4 @@
 import math
-import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -13,11 +12,11 @@ from sklearn.calibration import calibration_curve
 from torchmetrics import Metric
 
 from .metrics import StatsCache, get_metric_function
+from . import logger
 
 # BUG: Replace -1 as a failure marker
 # NOTE: Use NaN? Explicitly error? Clearer warning?
 
-logger = logging.getLogger("fd_shifts")
 
 def get_tb_hparams(cf):
 
@@ -191,7 +190,7 @@ class ConfidEvaluator:
 
         if "fail-NLL" in self.query_metrics:
             out_metrics["fail-NLL"] = get_metric_function("fail-NLL")(self.stats_cache)
-            logger.debug("CHECK FAIL NLL: \n%s\n%s", self.confids.max(), self.confids.min())
+            logger.debug("CHECK FAIL NLL: \n{}\n{}", self.confids.max(), self.confids.min())
 
         return out_metrics
 
@@ -237,7 +236,7 @@ class ConfidEvaluator:
             self.fpr_list, self.tpr_list, _ = skm.roc_curve(self.correct, self.confids)
         except:
             logger.debug(
-                "FAIL CHECK\n%s\n%s\n%s\n%s\n%s\n%s",
+                "FAIL CHECK\n{}\n{}\n{}\n{}\n{}\n{}",
                 self.correct.shape,
                 self.confids.shape,
                 np.min(self.correct),
@@ -326,7 +325,7 @@ class ConfidEvaluator:
         val_risk_scores["val_cov"] = coverage
         val_risk_scores["theta"] = theta
         logger.debug(
-            "STRAIGHT FROM THRESH CALCULATION\n%s\n%s\n%s\n%s\n%s\n%s",
+            "STRAIGHT FROM THRESH CALCULATION\n{}\n{}\n{}\n{}\n{}\n{}",
             risk,
             coverage,
             theta,
@@ -737,7 +736,7 @@ def clean_logging(log_dir):
 
 def plot_input_imgs(x, y, out_path):
 
-    logger.debug("%s\n%s\n%s\n%s", x.mean().item(), x.std().item(), x.min().item(), x.max().item())
+    logger.debug("{}\n{}\n{}\n{}", x.mean().item(), x.std().item(), x.min().item(), x.max().item())
     f, axs = plt.subplots(nrows=4, ncols=4, figsize=(10, 10))
     for ix in range(len(f.axes)):
         ax = f.axes[ix]
@@ -781,7 +780,7 @@ def qual_plot(fp_dict, fn_dict, out_path):
     plt.subplots_adjust(wspace=0.23, hspace=0.4)
     f.savefig(out_path)
     plt.close()
-    logger.debug("saved qual_plot to %s", out_path)
+    logger.debug("saved qual_plot to {}", out_path)
 
 
 def ThresholdPlot(plot_dict):
@@ -794,10 +793,10 @@ def ThresholdPlot(plot_dict):
         nrows=n_rows, ncols=n_cols, figsize=(n_cols * scale * 0.6, n_rows * scale * 0.4)
     )
 
-    logger.debug("plot in %s", len(plot_dict))
+    logger.debug("plot in {}", len(plot_dict))
     for ix, (study, study_dict) in enumerate(plot_dict.items()):
 
-        logger.debug("threshold plot %s %s", study, len(study_dict["confids"]))
+        logger.debug("threshold plot {} {}", study, len(study_dict["confids"]))
         confids = study_dict["confids"]
         correct = study_dict["correct"]
         delta_threshs = study_dict["delta_threshs"]

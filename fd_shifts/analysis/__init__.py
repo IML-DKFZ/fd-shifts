@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import logging
+from loguru import logger
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -16,7 +16,6 @@ from .eval_utils import (ConfidEvaluator, ConfidPlotter, ThresholdPlot,
                          cifar100_classes, qual_plot)
 from .studies import get_study_iterator
 
-logger = logging.getLogger("fd_shifts")
 
 
 @dataclass
@@ -182,7 +181,7 @@ class Analysis:
         self.method_dict["query_confids"] = self.method_dict[
             "cfg"
         ].eval.confidence_measures["test"]
-        logger.debug("CHECK QUERY CONFIDS\n%s", self.method_dict["query_confids"])
+        logger.debug("CHECK QUERY CONFIDS\n{}", self.method_dict["query_confids"])
 
         self.query_performance_metrics = query_performance_metrics
         self.query_confid_metrics = query_confid_metrics
@@ -284,15 +283,15 @@ class Analysis:
     def compute_confid_metrics(self):
 
         for confid_key in self.method_dict["query_confids"]:
-            logger.debug("%s\n%s", self.study_name, confid_key)
+            logger.debug("{}\n{}", self.study_name, confid_key)
             confid_dict = self.method_dict[confid_key]
             if confid_key == "bpd" or confid_key == "maha":
                 logger.debug(
-                    "CHECK BEFORE NORM VALUES CORRECT\n%s",
+                    "CHECK BEFORE NORM VALUES CORRECT\n{}",
                     np.median(confid_dict["confids"][confid_dict["correct"] == 1]),
                 )
                 logger.debug(
-                    "CHECK BEFORE NORM VALUES INCORRECT\n%s",
+                    "CHECK BEFORE NORM VALUES INCORRECT\n{}",
                     np.median(confid_dict["confids"][confid_dict["correct"] == 0]),
                 )
             if any(cfd in confid_key for cfd in ["_pe", "_ee", "_mi", "_sv", "bpd"]):
@@ -312,11 +311,11 @@ class Analysis:
 
             if confid_key == "bpd" or confid_key == "maha":
                 logger.debug(
-                    "CHECK AFTER NORM VALUES CORRECT\n%s",
+                    "CHECK AFTER NORM VALUES CORRECT\n{}",
                     np.median(confid_dict["confids"][confid_dict["correct"] == 1]),
                 )
                 logger.debug(
-                    "CHECK AFTER NORM VALUES INCORRECT\n%s",
+                    "CHECK AFTER NORM VALUES INCORRECT\n{}",
                     np.median(confid_dict["confids"][confid_dict["correct"] == 0]),
                 )
 
@@ -371,7 +370,7 @@ class Analysis:
                         ]
                     )
 
-            logger.debug("checking in\n%s\n%s", self.threshold_plot_confid, confid_key)
+            logger.debug("checking in\n{}\n{}", self.threshold_plot_confid, confid_key)
             if (
                 self.threshold_plot_confid is not None
                 and confid_key == self.threshold_plot_confid
@@ -395,7 +394,7 @@ class Analysis:
                         self.plot_threshs.append(plot_val_risk_scores["theta"])
                         self.true_covs.append(plot_val_risk_scores["val_cov"])
                         logger.debug(
-                            "%s\n%s\n%s\n%s",
+                            "{}\n{}\n{}\n{}",
                             self.rstar,
                             delta,
                             plot_val_risk_scores["theta"],
@@ -434,7 +433,7 @@ class Analysis:
                     self.rstar, 0.1, no_bound_mode=True
                 )["theta"]
 
-                logger.debug("creating new dict entry\n%s", self.study_name)
+                logger.debug("creating new dict entry\n{}", self.study_name)
                 self.threshold_plot_dict[self.study_name] = {}
                 self.threshold_plot_dict[self.study_name]["confids"] = confid_dict[
                     "confids"
@@ -545,7 +544,7 @@ class Analysis:
                         corr_ix = self.dummy_noise_ixs[ix] % 50000
                         corr_ix = corr_ix // 10000
                         logger.debug(
-                            "noise sanity check\n%s\n%s",
+                            "noise sanity check\n{}\n{}",
                             corr_ix,
                             self.dummy_noise_ixs[ix],
                         )
@@ -601,7 +600,7 @@ class Analysis:
             decimal=".",
         )
         logger.debug(
-            "saved csv to %s",
+            "saved csv to {}",
             os.path.join(
                 self.analysis_out_dir, "analysis_metrics_{}.csv".format(self.study_name)
             ),
@@ -627,7 +626,7 @@ class Analysis:
             )
         )
         logger.debug(
-            "saved threshold_plot to %s",
+            "saved threshold_plot to {}",
             os.path.join(
                 self.analysis_out_dir,
                 "threshold_plot_{}.png".format(self.threshold_plot_confid),
@@ -650,7 +649,7 @@ class Analysis:
             )
         )
         logger.debug(
-            "saved masterplot to %s",
+            "saved masterplot to {}",
             os.path.join(
                 self.analysis_out_dir, "master_plot_{}.png".format(self.study_name)
             ),

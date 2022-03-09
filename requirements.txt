@@ -31,3 +31,4 @@ wilds==1.1.0
 pytest==7.0.1
 syrupy==1.7.4
 typing_extensions==4.1.1
+loguru
