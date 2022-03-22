@@ -1,8 +1,8 @@
 import re
+from datetime import datetime
 from itertools import product
 from pathlib import Path
 from typing import Optional
-import time
 
 import pandas as pd
 from rich import print  # pylint: disable=redefined-builtin
@@ -122,14 +122,18 @@ def main():
 
         paths = base_path.glob(f"{dataset}*_run*/test_results/*.csv")
 
+        # TODO: Cannot filter based on csv age because of the new analysis
         paths = filter(
             lambda x: (
+                # (("modeldg" not in str(x)) and ("modeldevries" not in str(x)))
                 ("modeldg" not in str(x))
-                or (time.time() - x.stat().st_mtime < (6 * 7 * 24 * 60 * 60))
+                or (
+                    (x.parent / "raw_output.npz").stat().st_mtime
+                    > datetime(2022, 1, 10).timestamp()
+                )
             ),
             paths,
         )
-
 
         if "openset" not in dataset:
             paths = filter(lambda x: "openset" not in str(x), paths)
@@ -218,26 +222,22 @@ def main():
 
         # print(df)
         selected_df = df[(df.select_lr == 1) & (df.select_rew == 1)].reset_index()
+        if not "openset" in dataset:
+            selected_df = selected_df[
+                ~(
+                    (selected_df.confid.str.contains("mcd"))
+                    & ~((selected_df.model == "vit") | (selected_df.model == "dg"))
+                )
+            ]
+            # selected_df = selected_df[~((selected_df.model == "devries") & (selected_df.do == "1"))]
+            # print(selected_df[selected_df.model.str.contains("devries")][["aurc", "model", "old_name", "do"]].sort_values("aurc"))
         # selected_df = df[(df.select_lr == 1)]
         potential_runs = (
             selected_df[(selected_df.study == "iid_study")][
-                [
-                    "model",
-                    "lr",
-                    "run",
-                    "do",
-                    "rew",
-                ]
+                ["model", "lr", "run", "do", "rew",]
             ]
             .drop_duplicates()
-            .groupby(
-                [
-                    "model",
-                    "lr",
-                    "do",
-                    "rew",
-                ]
-            )
+            .groupby(["model", "lr", "do", "rew",])
             .max()
             .reset_index()
         )
