@@ -138,7 +138,9 @@ def main():
         if "openset" not in dataset:
             paths = filter(lambda x: "openset" not in str(x), paths)
 
-        df = [pd.read_csv(p) for p in paths]
+        paths = map(lambda x: (x, (x.parent / "raw_output.npz").stat().st_mtime), paths)
+
+        df = [pd.read_csv(p).assign(date=datetime.fromtimestamp(d)) for p, d in paths]
 
         print("[bold]Processing test results...")
 
@@ -229,9 +231,24 @@ def main():
                     & ~((selected_df.model == "vit") | (selected_df.model == "dg"))
                 )
             ]
+
+        selected_df = selected_df[
+            ~(
+                ((selected_df.confid.str.contains("det_mcp")) | (selected_df.confid.str.contains("det_pe")))
+                & ~(selected_df.model == "vit")
+            ) | (selected_df.bb != "vit")
+        ].reset_index(drop=True)
             # selected_df = selected_df[~((selected_df.model == "devries") & (selected_df.do == "1"))]
             # print(selected_df[selected_df.model.str.contains("devries")][["aurc", "model", "old_name", "do"]].sort_values("aurc"))
         # selected_df = df[(df.select_lr == 1)]
+        if dataset == "svhn_openset":
+            print(selected_df[selected_df.study.str.startswith("iid") & selected_df.confid.str.startswith("mcd_pe") & selected_df.name.str.contains("bbvit")].sort_values("aurc")[["name", "aurc", "date"]])
+            selected_df = selected_df[~(selected_df.name.str.startswith("vit") & selected_df.confid.str.startswith("mcd_pe") & selected_df.name.str.contains("bbvit") & (selected_df.date > datetime(2022, 1, 22)))]
+
+        if dataset == "cifar10_":
+            print(selected_df[selected_df.study.str.startswith("iid") & selected_df.confid.str.startswith("det_pe")].sort_values("aurc")[["name", "aurc", "date"]])
+            # selected_df = selected_df[~(selected_df.name.str.startswith("vit") & selected_df.confid.str.startswith("mcd_pe") & selected_df.name.str.contains("bbvit") & (selected_df.date > datetime(2022, 1, 22)))]
+
         potential_runs = (
             selected_df[(selected_df.study == "iid_study")][
                 ["model", "lr", "run", "do", "rew",]
