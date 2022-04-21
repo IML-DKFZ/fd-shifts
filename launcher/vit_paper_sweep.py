@@ -10,7 +10,7 @@ system_name = os.environ["SYSTEM_NAME"]
 if system_name == "cluster":
     base_path = Path("/gpu/checkpoints/OE0612/t974t/experiments/")
 elif system_name == "local":
-    base_path = Path("~/results/").expanduser()
+    base_path = Path("~/Experiments/").expanduser()
 else:
     raise ValueError(
         "Environment Variable SYSTEM_NAME must be either 'cluster' or 'local'"
@@ -20,9 +20,12 @@ else:
 def get_base_command(mode: str, model: str, dataset: str, stage: Optional[int], bb):
     if system_name == "local":
         return (
-            "echo {exp_name} && bash -li -c 'source ~/.bashrc && conda activate failure-detection "
-            "&& EXPERIMENT_ROOT_DIR=/home/tillb/results "
-            "DATASET_ROOT_DIR=/home/tillb/Data "
+            "echo {exp_name} && "
+            "bash -li -c "
+            "'source ~/.bashrc && "
+            "micromamba activate fd-shifts-test "
+            "&& EXPERIMENT_ROOT_DIR=/home/t974t/Experiments "
+            "DATASET_ROOT_DIR=/home/t974t/Data "
             "python -W ignore {cmd} {args}'"
         )
 
@@ -46,14 +49,14 @@ def get_base_command(mode: str, model: str, dataset: str, stage: Optional[int], 
         return " \\\n".join(
             [
                 "bsub",
-                "-gpu num=4:j_exclusive=yes:gmem=10.7G",
+                "-gpu num=1:j_exclusive=yes:gmem=10.7G",
                 "-L /bin/bash -q gpu-lowprio",
                 "-u 'till.bungert@dkfz-heidelberg.de' -B -N",
-                '-w "done({exp_name})"',
+                # '-w "done({exp_name})"',
                 "-g /t974t/test",
                 '-J "{exp_name}_test"',
                 (
-                    "'source ~/.bashrc && conda activate $CONDA_ENV/failure-detection && "
+                    "'source ~/.bashrc && conda activate $CONDA_ENV/fd-shifts && "
                     "python -W ignore {cmd} {args}'"
                 ),
             ]
@@ -125,13 +128,9 @@ def get_base_command(mode: str, model: str, dataset: str, stage: Optional[int], 
     return " \\\n".join(base_command)
 
 
-def check_done():
-    pass
-
-
 current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
-exec_path = os.path.join(exec_dir, "exec.py")
+exec_path = os.path.join(exec_dir, "fd_shifts/exec.py")
 
 cn_pretrained_bbs = {
     "cifar10": [
@@ -172,78 +171,97 @@ cn_pretrained_bbs = {
     ],
 }
 
-MODE = "analysis"
+MODE = "test"
 
 rewards = [2.2, 3, 4.5, 6, 10]
 experiments: list[
     #     dset  model bb    lr    bsize do    reward    runs            confid stages
     tuple[list, list, list, list, list, list, list, Union[range, list], Optional[list]]
 ] = [
-    # (
-    #     ["super_cifar100"],
-    #     ["confidnet"],
-    #     ["vit"],
-    #     [0.001],
-    #     [128],
-    #     [1],
-    #     [3],
-    #     range(1),
-    #     [1, 2],
-    # ),
-    # (["cifar100"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], [2, 4], [1, 2],),
-    # (
-    #     ["wilds_animals"],
-    #     ["confidnet"],
-    #     ["vit"],
-    #     [0.01],
-    #     [128],
-    #     [1],
-    #     [2.2],
-    #     [3],
-    #     [1, 2],
-    # ),
-    # (["svhn_openset"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [1, 2]),
-    (["svhn_openset"], ["devries"], ["vit"], [0.01], [128], [0], [2.2], range(0, 5), [None]),
-    (["svhn_openset"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
-    (["svhn_openset"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
-
-    # (["cifar10"], ["dg"], ["vit"], [0.01], [128], [1], [6], range(1, 5), [None]),
-    # (["cifar100"], ["dg"], ["vit"], [0.01], [128], [1], [3], range(0, 5), [None]),
-    # (["super_cifar100"], ["dg"], ["vit"], [0.001], [128], [1], [3], range(0, 5), [None]),
-    # (["breeds"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
-    # (["svhn"], ["dg"], ["vit"], [0.01], [128], [1], [4.5], range(0, 5), [None]),
-    # (["wilds_animals"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
-    # (["wilds_camelyon"], ["dg"], ["vit"], [0.003], [128], [1], [2.2], range(0, 5), [None]),
-
-    (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [0], [0], range(0, 5), [None]),
-    (["svhn_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
-    # (["wilds_animals_openset"], ["confidnet"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [1, 2]),
-    (["wilds_animals_openset"], ["devries"], ["vit"], [0.001], [128], [0], [2.2], range(0, 5), [None]),
-    (["wilds_animals_openset"], ["devries"], ["vit"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
-    (["wilds_animals_openset"], ["dg"], ["vit"], [0.01], [128], [1], [10], range(0, 5), [None]),
-    (["wilds_animals_openset"], ["vit"], ["vit"], [0.001], [128], [0], [0], range(0, 5), [None]),
-    (["wilds_animals_openset"], ["vit"], ["vit"], [0.01], [128], [1], [0], range(0, 5), [None]),
-
-    (["svhn_openset"], ["dg"], ["svhn_small_conv"], [0.01], [128], [1], [3], range(0, 5), [None]),
-    (["svhn_openset"], ["confidnet"], ["svhn_small_conv"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
-    (["svhn_openset"], ["devries"], ["svhn_small_conv"], [0.01], [128], [0], [2.2], range(0, 5), [None]),
-    (["svhn_openset"], ["devries"], ["svhn_small_conv"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
-    (["wilds_animals_openset"], ["dg"], ["resnet50"], [0.01], [128], [1], [6], range(0, 5), [None]),
-    (["wilds_animals_openset"], ["confidnet"], ["resnet50"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
-    (["wilds_animals_openset"], ["devries"], ["resnet50"], [0.01], [128], [0], [2.2], range(0, 5), [None]),
-    (["wilds_animals_openset"], ["devries"], ["resnet50"], [0.01], [128], [1], [2.2], range(0, 5), [None]),
+    # (['breeds'], ['confidnet'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['breeds'], ['devries'], ['vit'], ['0.001'], ['128'], ['0'], ['2.2'], range(0, 5), [None]),
+    # (['breeds'], ['devries'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['breeds'], ['dg'], ['vit'], ['0.01'], ['128'], ['1'], ['4.5', '2.2', '6', '3', '10'], range(0, 5), [None]),
+    # (['breeds'], ['vit'], ['vit'], ['0.003', '0.001', '0.0001', '0.0003', '0.03', '0.01'], ['128'], ['0'], ['0'], range(0, 5), [None]),
+    (
+        ["breeds"],
+        ["vit"],
+        ["vit"],
+        ["0.003"],
+        ["128"],
+        ["0"],
+        ["0"],
+        range(0, 1),
+        [None],
+    ),
+    # (['breeds'], ['vit'], ['vit'], ['0.03', '0.01', '0.001'], ['128'], ['1'], ['0'], range(0, 5), [None]),
+    # (['cifar10'], ['confidnet'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['cifar10'], ['devries'], ['vit'], ['0.0003'], ['128'], ['0'], ['2.2'], range(0, 5), [None]),
+    # (['cifar10'], ['devries'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['cifar10'], ['dg'], ['vit'], ['0.01'], ['128'], ['1'], ['4.5', '2.2', '6', '3', '10'], range(0, 5), [None]),
+    # (['cifar10'], ['vit'], ['vit'], ['0.003', '0.001', '0.0001', '0.0003', '0.03', '0.01'], ['128'], ['0'], ['0'], range(0, 5), [None]),
+    # (['cifar10'], ['vit'], ['vit'], ['0.03', '0.003', '0.01', '0.001'], ['128'], ['1'], ['0'], range(0, 5), [None]),
+    # (['cifar100'], ['confidnet'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['cifar100'], ['devries'], ['vit'], ['0.03'], ['128'], ['0'], ['2.2'], range(0, 5), [None]),
+    # (['cifar100'], ['devries'], ['vit'], ['0.01'], ['128'], ['1'], ['3', '2.2'], range(0, 5), [None]),
+    # (['cifar100'], ['dg'], ['vit'], ['0.01'], ['128'], ['1'], ['4.5', '2.2', '6', '3', '10'], range(0, 5), [None]),
+    # (['cifar100'], ['vit'], ['vit'], ['0.003', '0.001', '0.0001', '0.0003', '0.03', '0.01'], ['128'], ['0'], ['0'], range(0, 5), [None]),
+    # (['cifar100'], ['vit'], ['vit'], ['0.03', '0.003', '0.01', '0.001'], ['128'], ['1'], ['0'], range(0, 5), [None]),
+    # (['super_cifar100'], ['confidnet'], ['vit'], ['0.001'], ['128'], ['1'], ['3'], range(0, 5), [None]),
+    # (['super_cifar100'], ['devries'], ['vit'], ['0.003'], ['128'], ['0'], ['2.2'], range(0, 5), [None]),
+    # (['super_cifar100'], ['devries'], ['vit'], ['0.001'], ['128'], ['1'], ['3', '2.2'], range(0, 5), [None]),
+    # (['super_cifar100'], ['dg'], ['vit'], ['0.001'], ['128'], ['1'], ['4.5', '2.2', '6', '3', '10'], range(0, 5), [None]),
+    # (['super_cifar100'], ['vit'], ['vit'], ['0.03', '0.003', '0.01', '0.001'], ['128'], ['0'], ['0'], range(0, 5), [None]),
+    # (['super_cifar100'], ['vit'], ['vit'], ['0.03', '0.003', '0.01', '0.001'], ['128'], ['1'], ['0'], range(0, 5), [None]),
+    # (['svhn'], ['confidnet'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['svhn'], ['devries'], ['vit'], ['0.01'], ['128'], ['0'], ['2.2'], range(0, 5), [None]),
+    # (['svhn'], ['devries'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['svhn'], ['dg'], ['vit'], ['0.01'], ['128'], ['1'], ['4.5', '2.2', '6', '3', '10'], range(0, 5), [None]),
+    # (['svhn'], ['vit'], ['vit'], ['0.003', '0.001', '0.0001', '0.0003', '0.03', '0.01'], ['128'], ['0'], ['0'], range(0, 5), [None]),
+    # (['svhn'], ['vit'], ['vit'], ['0.03', '0.003', '0.01', '0.001'], ['128'], ['1'], ['0'], range(0, 5), [None]),
+    # (['svhn_openset'], ['confidnet'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['svhn_openset'], ['devries'], ['vit'], ['0.01'], ['128'], ['0'], ['2.2'], range(0, 5), [None]),
+    # (['svhn_openset'], ['devries'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['svhn_openset'], ['dg'], ['vit'], ['0.01'], ['128'], ['1'], ['4.5'], range(0, 5), [None]),
+    # (['svhn_openset'], ['vit'], ['vit'], ['0.01'], ['128'], ['0'], ['0'], range(0, 5), [None]),
+    # (['svhn_openset'], ['vit'], ['vit'], ['0.01'], ['128'], ['1'], ['0'], range(0, 5), [None]),
+    # (['wilds_animals'], ['confidnet'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['wilds_animals'], ['devries'], ['vit'], ['0.001'], ['128'], ['0'], ['2.2'], range(0, 5), [None]),
+    # (['wilds_animals'], ['devries'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['wilds_animals'], ['dg'], ['vit'], ['0.01'], ['128'], ['1'], ['3', '4.5', '2.2', '10'], range(0, 5), [None]),
+    # (['wilds_animals'], ['vit'], ['vit'], ['0.003', '0.001', '0.0001', '0.0003', '0.03', '0.01'], ['128'], ['0'], ['0'], range(0, 5), [None]),
+    # (['wilds_animals'], ['vit'], ['vit'], ['0.03', '0.003', '0.01', '0.001'], ['128'], ['1'], ['0'], range(0, 5), [None]),
+    # (['wilds_animals_openset'], ['confidnet'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['wilds_animals_openset'], ['devries'], ['vit'], ['0.001'], ['128'], ['0'], ['2.2'], range(0, 5), [None]),
+    # (['wilds_animals_openset'], ['devries'], ['vit'], ['0.01'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['wilds_animals_openset'], ['dg'], ['vit'], ['0.01'], ['128'], ['1'], ['10'], range(0, 5), [None]),
+    # (['wilds_animals_openset'], ['vit'], ['vit'], ['0.001'], ['128'], ['0'], ['0'], range(0, 5), [None]),
+    # (['wilds_animals_openset'], ['vit'], ['vit'], ['0.01'], ['128'], ['1'], ['0'], range(0, 5), [None]),
+    # (['wilds_camelyon'], ['confidnet'], ['vit'], ['0.003'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['wilds_camelyon'], ['devries'], ['vit'], ['0.001'], ['128'], ['0'], ['2.2'], range(0, 5), [None]),
+    # (['wilds_camelyon'], ['devries'], ['vit'], ['0.003'], ['128'], ['1'], ['2.2'], range(0, 5), [None]),
+    # (['wilds_camelyon'], ['dg'], ['vit'], ['0.003'], ['128'], ['1'], ['6', '3', '4.5', '2.2'], range(0, 5), [None]),
+    # (['wilds_camelyon'], ['vit'], ['vit'], ['0.003', '0.001', '0.0001', '0.0003', '0.03', '0.01'], ['128'], ['0'], ['0'], range(0, 5), [None]),
+    # (['wilds_camelyon'], ['vit'], ['vit'], ['0.003', '0.001'], ['128'], ['1'], ['0'], range(0, 5), [None]),
 ]
 
 for experiment in experiments:
     for dataset, model, bb, lr, bs, do, rew, run, stage in product(*experiment):
         exp_name = "{}_model{}_bb{}_lr{}_bs{}_run{}_do{}_rew{}".format(
-            dataset, model, bb, lr, bs, run, do, rew,
+            dataset,
+            model,
+            bb,
+            lr,
+            bs,
+            run,
+            do,
+            rew,
         )
 
         command_line_args = [
             "exp.mode={}".format("train"),
             "trainer.batch_size={}".format(bs),
-            "+trainer.accelerator=dp",
+            "+trainer.accelerator=None",
             "+model.dropout_rate={}".format(do),
             "study={}_vit_study".format(dataset),
             "exp.name={}".format(exp_name),
@@ -289,25 +307,29 @@ for experiment in experiments:
                 ]
             )
             if bb == "svhn_small_conv":
-                command_line_args.extend([
-                    "data={}".format("svhn_openset_data"),
-                    "++model.network.name={}".format("devries_and_enc"),
-                    "++trainer.num_epochs={}".format(100),
-                    "++trainer.optimizer.learning_rate={}".format(0.01),
-                    "++trainer.lr_scheduler.max_epochs=100",
-                ])
+                command_line_args.extend(
+                    [
+                        "data={}".format("svhn_openset_data"),
+                        "++model.network.name={}".format("devries_and_enc"),
+                        "++trainer.num_epochs={}".format(100),
+                        "++trainer.optimizer.learning_rate={}".format(0.01),
+                        "++trainer.lr_scheduler.max_epochs=100",
+                    ]
+                )
 
             if bb == "resnet50":
-                command_line_args.extend([
-                    "data={}".format("wilds_animals_openset_data"),
-                    "++model.network.name={}".format("devries_and_enc"),
-                    "++trainer.num_epochs={}".format(12),
-                    "++trainer.batch_size={} ".format(16),
-                    "++trainer.optimizer.learning_rate={}".format(0.001),
-                    "++trainer.lr_scheduler.max_epochs=12",
-                    "++trainer.optimizer.weight_decay=0",
-                    "++model.fc_dim={}".format(2048)
-                ])
+                command_line_args.extend(
+                    [
+                        "data={}".format("wilds_animals_openset_data"),
+                        "++model.network.name={}".format("devries_and_enc"),
+                        "++trainer.num_epochs={}".format(12),
+                        "++trainer.batch_size={} ".format(16),
+                        "++trainer.optimizer.learning_rate={}".format(0.001),
+                        "++trainer.lr_scheduler.max_epochs=12",
+                        "++trainer.optimizer.weight_decay=0",
+                        "++model.fc_dim={}".format(2048),
+                    ]
+                )
 
         if model == "dg":
             command_line_args.extend(
@@ -346,28 +368,32 @@ for experiment in experiments:
                 command_line_args.append("++model.avg_pool={}".format(False))
 
             if bb == "svhn_small_conv":
-                command_line_args.extend([
-                    "data={}".format("svhn_openset_data"),
-                    "++model.network.name={}".format(bb),
-                    "++trainer.num_epochs={}".format(150),
-                    "++trainer.dg_pretrain_epochs={}".format(50),
-                    "++trainer.optimizer.learning_rate={}".format(0.01),
-                    "++trainer.lr_scheduler.name=CosineAnnealing",
-                    "++trainer.lr_scheduler.max_epochs=150",
-                ])
+                command_line_args.extend(
+                    [
+                        "data={}".format("svhn_openset_data"),
+                        "++model.network.name={}".format(bb),
+                        "++trainer.num_epochs={}".format(150),
+                        "++trainer.dg_pretrain_epochs={}".format(50),
+                        "++trainer.optimizer.learning_rate={}".format(0.01),
+                        "++trainer.lr_scheduler.name=CosineAnnealing",
+                        "++trainer.lr_scheduler.max_epochs=150",
+                    ]
+                )
             if bb == "resnet50":
-                command_line_args.extend([
-                    "data={}".format("wilds_animals_openset_data"),
-                    "++model.network.name={}".format(bb),
-                    "++trainer.batch_size={} ".format(16),
-                    "++trainer.num_epochs={}".format(18),
-                    "++trainer.dg_pretrain_epochs={}".format(6),
-                    "++trainer.optimizer.learning_rate={}".format(0.001),
-                    "++trainer.lr_scheduler.name=CosineAnnealing",
-                    "++trainer.lr_scheduler.max_epochs=18",
-                    "++trainer.optimizer.weight_decay=0",
-                    "++model.fc_dim={}".format(2048)
-                ])
+                command_line_args.extend(
+                    [
+                        "data={}".format("wilds_animals_openset_data"),
+                        "++model.network.name={}".format(bb),
+                        "++trainer.batch_size={} ".format(16),
+                        "++trainer.num_epochs={}".format(18),
+                        "++trainer.dg_pretrain_epochs={}".format(6),
+                        "++trainer.optimizer.learning_rate={}".format(0.001),
+                        "++trainer.lr_scheduler.name=CosineAnnealing",
+                        "++trainer.lr_scheduler.max_epochs=18",
+                        "++trainer.optimizer.weight_decay=0",
+                        "++model.fc_dim={}".format(2048),
+                    ]
+                )
 
         if model == "confidnet":
             if dataset in cn_pretrained_bbs:
@@ -375,7 +401,9 @@ for experiment in experiments:
             else:
                 pretrained_path = "null"
             if stage == 1:
-                command_line_args.append("++trainer.num_epochs=220",)
+                command_line_args.append(
+                    "++trainer.num_epochs=220",
+                )
                 command_line_args.append(
                     '++trainer.callbacks.training_stages.milestones="[0, 200]"',
                 )
@@ -383,11 +411,15 @@ for experiment in experiments:
                 command_line_args.append("++trainer.resume_from_ckpt_confidnet=false")
                 command_line_args.append("++trainer.accumulate_grad_batches=1")
             elif stage == 2:
-                command_line_args.append("++trainer.num_epochs=20",)
+                command_line_args.append(
+                    "++trainer.num_epochs=20",
+                )
                 command_line_args.append(
                     '++trainer.callbacks.training_stages.milestones="[0, 0]"',
                 )
-                command_line_args.append("++trainer.batch_size=128",)
+                command_line_args.append(
+                    "++trainer.batch_size=128",
+                )
                 # command_line_args.append("++trainer.accumulate_grad_batches=2")
                 command_line_args.append("++trainer.resume_from_ckpt_confidnet=true")
             command_line_args.extend(
@@ -426,33 +458,43 @@ for experiment in experiments:
                 ]
             )
             if bb == "svhn_small_conv":
-                command_line_args.extend([
-                    "data={}".format("svhn_openset_data"),
-                    "++model.network.name={}".format("confidnet_and_enc"),
-                    "++model.network.backbone={}".format(bb),
-                    "++trainer.num_epochs={}".format(320),
-                    "++trainer.num_epochs_backbone={} ".format(100),
-                    "++trainer.callbacks.training_stages.milestones=\"{}\"".format([100, 300]),
-                    "++trainer.learning_rate={}".format(0.01),
-                ])
+                command_line_args.extend(
+                    [
+                        "data={}".format("svhn_openset_data"),
+                        "++model.network.name={}".format("confidnet_and_enc"),
+                        "++model.network.backbone={}".format(bb),
+                        "++trainer.num_epochs={}".format(320),
+                        "++trainer.num_epochs_backbone={} ".format(100),
+                        '++trainer.callbacks.training_stages.milestones="{}"'.format(
+                            [100, 300]
+                        ),
+                        "++trainer.learning_rate={}".format(0.01),
+                    ]
+                )
             if bb == "resnet50":
-                command_line_args.extend([
-                    "data={}".format("wilds_animals_openset_data"),
-                    "++model.network.name={}".format("confidnet_and_enc"),
-                    "++model.network.backbone={}".format(bb),
-                    "++trainer.batch_size={} ".format(16),
-                    "++trainer.num_epochs={}".format(20),
-                    "++trainer.num_epochs_backbone={} ".format(12),
-                    "++trainer.callbacks.training_stages.milestones=\"{}\"".format([12, 17]),
-                    "++trainer.learning_rate={}".format(0.001),
-                    "++trainer.optimizer.weight_decay=0",
-                    "++model.fc_dim={}".format(2048)
-                ])
+                command_line_args.extend(
+                    [
+                        "data={}".format("wilds_animals_openset_data"),
+                        "++model.network.name={}".format("confidnet_and_enc"),
+                        "++model.network.backbone={}".format(bb),
+                        "++trainer.batch_size={} ".format(16),
+                        "++trainer.num_epochs={}".format(20),
+                        "++trainer.num_epochs_backbone={} ".format(12),
+                        '++trainer.callbacks.training_stages.milestones="{}"'.format(
+                            [12, 17]
+                        ),
+                        "++trainer.learning_rate={}".format(0.001),
+                        "++trainer.optimizer.weight_decay=0",
+                        "++model.fc_dim={}".format(2048),
+                    ]
+                )
 
         base_command = get_base_command("train", model, dataset, stage, bb)
 
         launch_command = base_command.format(
-            exp_name=exp_name, cmd=exec_path, args=" ".join(command_line_args),
+            exp_name=exp_name,
+            cmd=exec_path,
+            args=" ".join(command_line_args),
         )
 
         if "train" in MODE:
@@ -467,27 +509,40 @@ for experiment in experiments:
 
         command_line_args[0] = "exp.mode={}".format("test")
         command_line_args.append("++trainer.batch_size=128")
-        command_line_args.append("++trainer.accelerator=ddp")
+        command_line_args.append("++data.num_workers={}".format(8))
+        command_line_args.append(
+            'eval.confidence_measures.test="{}"'.format(
+                [
+                    "det_mcp",
+                    "det_pe",
+                ]
+            )
+        )
+        # command_line_args.append("++trainer.accelerator=ddp")
         if bb == "svhn_small_conv":
-            command_line_args.extend([
-                "++eval.query_studies.iid_study=svhn_openset",
-                "~eval.query_studies.new_class_study",
-            ])
+            command_line_args.extend(
+                [
+                    "++eval.query_studies.iid_study=svhn_openset",
+                    "~eval.query_studies.new_class_study",
+                ]
+            )
         if bb == "resnet50":
-            command_line_args.extend([
-                "++eval.query_studies.iid_study=wilds_animals_openset",
-                "~eval.query_studies.new_class_study",
-                "~eval.query_studies.in_class_study",
-            ])
+            command_line_args.extend(
+                [
+                    "++eval.query_studies.iid_study=wilds_animals_openset",
+                    "~eval.query_studies.new_class_study",
+                    "~eval.query_studies.in_class_study",
+                ]
+            )
         if do == 1:
             command_line_args.append(
                 'eval.confidence_measures.test="{}"'.format(
                     [
                         "det_mcp",
                         "det_pe",
-                        "ext",
-                        "ext_mcd",
-                        "ext_waic",
+                        # "ext",
+                        # "ext_mcd",
+                        # "ext_waic",
                         "mcd_mcp",
                         "mcd_pe",
                         "mcd_ee",
@@ -510,7 +565,9 @@ for experiment in experiments:
             exp_name = exp_name + "_stage2"
 
         launch_command = base_command.format(
-            exp_name=exp_name, cmd=exec_path, args=" ".join(command_line_args),
+            exp_name=exp_name,
+            cmd=exec_path,
+            args=" ".join(command_line_args),
         )
 
         if "test" in MODE or "analysis" in MODE:

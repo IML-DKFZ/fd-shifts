@@ -61,6 +61,9 @@ class AbstractDataLoader(pl.LightningDataModule):
 
         self.train_dataset, self.val_dataset, self.test_datasets = None, None, None
 
+    def prepare_data(self, *args, **kwargs):
+        pass
+
     def add_augmentations(self, query_augs, no_norm_flag):
 
         if self.query_studies is not None and self.external_test_sets is not None:
@@ -309,15 +312,15 @@ class AbstractDataLoader(pl.LightningDataModule):
     ):  # todo missing val sampler for val_tuning in cv mode! only devries mode implemented for val tuning!
         test_loaders = []
         for ix, test_dataset in enumerate(self.test_datasets):
-            sampler = torch.utils.data.distributed.DistributedSampler(
-                test_dataset, shuffle=False
-            )
+            # sampler = torch.utils.data.distributed.DistributedSampler(
+            #     test_dataset, shuffle=False
+            # )
             test_loaders.append(
                 torch.utils.data.DataLoader(
                     test_dataset,
                     batch_size=self.batch_size,
                     shuffle=False,
-                    sampler=sampler,
+                    # sampler=sampler,
                     pin_memory=self.pin_memory,
                     num_workers=self.num_workers,
                 )

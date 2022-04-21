@@ -215,6 +215,7 @@ def test(cf):
         gpus=-1,
         logger=False,
         callbacks=[progress] + get_callbacks(cf),
+        precision=64,
         replace_sampler_ddp=False,
         # accelerator="ddp",
         accelerator=None,

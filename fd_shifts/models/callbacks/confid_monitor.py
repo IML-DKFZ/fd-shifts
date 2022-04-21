@@ -448,14 +448,14 @@ class ConfidMonitor(Callback):
         outputs = pl_module.test_results
 
         self.running_test_softmax.extend(
-            outputs["softmax"].to(dtype=torch.float16).cpu()
+            outputs["softmax"].to(dtype=torch.float64).cpu()
         )
         self.running_test_labels.extend(outputs["labels"].cpu())
         if "ext" in self.query_confids["test"]:
             self.running_test_external_confids.extend(outputs["confid"].cpu())
         if outputs.get("softmax_dist") is not None:
             self.running_test_softmax_dist.extend(
-                outputs["softmax_dist"].to(dtype=torch.float16).cpu()
+                outputs["softmax_dist"].to(dtype=torch.float64).cpu()
             )
         if outputs.get("confid_dist") is not None:
             self.running_test_external_confids_dist.extend(outputs["confid_dist"].cpu())
