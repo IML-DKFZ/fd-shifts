@@ -13,7 +13,7 @@ class net(pl.LightningModule):
     def __init__(self, cf):
         super().__init__()
 
-        self.hparams: AttributeDict = AttributeDict()
+        # self.hparams: AttributeDict = AttributeDict()
 
         self.save_hyperparameters()
         self.hparams.update(dict(cf))
@@ -143,6 +143,7 @@ class net(pl.LightningModule):
             z = self.model.forward_features(x)
             all_z.append(z.cpu())
             all_y.append(y.cpu())
+            break
 
         all_z = torch.cat(all_z, dim=0)
         all_y = torch.cat(all_y, dim=0)
@@ -162,11 +163,13 @@ class net(pl.LightningModule):
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
         z = self.model.forward_features(x)
-        zm = z[:, None, :] - self.mean
 
-        maha = -(torch.einsum("inj,jk,ink->in", zm, self.icov, zm))
-        maha = maha.max(dim=1)[0]
-        print(maha)
+        maha = None
+        if any("ext" in cfd for cfd in self.query_confids["test"]):
+            zm = z[:, None, :] - self.mean
+
+            maha = -(torch.einsum("inj,jk,ink->in", zm, self.icov, zm))
+            maha = maha.max(dim=1)[0].type_as(x)
 
         probs = self.model.head(z)
 
@@ -180,7 +183,7 @@ class net(pl.LightningModule):
         self.test_results = {
             "softmax": torch.softmax(probs, dim=1),
             "labels": y,
-            "confid": maha.type_as(x),
+            "confid": maha,
             "softmax_dist": softmax_dist,
             "confid_dist": confid_dist,
         }

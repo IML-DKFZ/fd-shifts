@@ -1,6 +1,10 @@
 **/__pycache__
 .DS_Store
 *.log
+*.csv
+*.dat
 build
+.ropeproject
 *.egg-info
 .ipynb_checkpoints
+.env

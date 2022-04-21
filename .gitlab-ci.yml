@@ -3,7 +3,7 @@ pytest-pip:
   image: "python:3.9"
   before_script:
   - python --version
-  - pip install -r requirements.txt
+  - pip install .[dev]
   script:
   - python -m pytest -W ignore
 
