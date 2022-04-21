@@ -1,17 +1,47 @@
-import pytorch_lightning as pl
-from pytorch_lightning.loggers import CSVLogger
-from pytorch_lightning.loggers import TensorBoardLogger
+import logging
+import os
+from pathlib import Path
+import random
+import sys
+
 import hydra
+import pytorch_lightning as pl
+import torch
+from loguru import logger
 from omegaconf import DictConfig, OmegaConf
+from pytorch_lightning.callbacks import RichProgressBar
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from rich.console import Console
+from torch import multiprocessing
+
+from fd_shifts import analysis
 from fd_shifts.loaders.abstract_loader import AbstractDataLoader
 from fd_shifts.models import get_model
 from fd_shifts.models.callbacks import get_callbacks
 from fd_shifts.utils import exp_utils
-from fd_shifts import analysis
-import os
-import torch
-import sys
-import random
+
+
+class InterceptHandler(logging.Handler):
+    def emit(self, record):
+        # Get corresponding Loguru level if it exists
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        # Find caller from where originated the logged message
+        frame: logging.FrameType = logging.currentframe()
+        depth: int = 2
+        while frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
+
+
+logging.basicConfig(handlers=[InterceptHandler()], level=logging.DEBUG)
 
 
 def train(cf, subsequent_testing=False):
@@ -19,14 +49,29 @@ def train(cf, subsequent_testing=False):
     perform the training routine for a given fold. saves plots and selected parameters to the experiment dir
     specified in the configs.
     """
-    print("CHECK CUDNN VERSION", torch.backends.cudnn.version())
+
+    console = Console(stderr=True, force_terminal=True)
+    progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
+    progress._console = console
+    logger.remove()  # Remove default 'stderr' handler
+
+    # We need to specify end=''" as log message already ends with \n (thus the lambda function)
+    # Also forcing 'colorize=True' otherwise Loguru won't recognize that the sink support colors
+    logger.add(
+        lambda m: progress._console.print(m, end="", markup=False, highlight=False),
+        colorize=True,
+        enqueue=True,
+        level="DEBUG",
+    )
+
+    logger.info("CHECK CUDNN VERSION", torch.backends.cudnn.version())
     train_deterministic_flag = False
     if cf.exp.global_seed is not False:
         # exp_utils.set_seed(cf.exp.global_seed)
         exp_utils.set_seed(cf.exp.global_seed)
         cf.trainer.benchmark = False
         train_deterministic_flag = True
-        print(
+        logger.info(
             "setting seed {}, benchmark to False for deterministic training.".format(
                 cf.exp.global_seed
             )
@@ -37,14 +82,14 @@ def train(cf, subsequent_testing=False):
     if cf.trainer.resume_from_ckpt:
         cf.exp.version -= 1
         resume_ckpt_path = exp_utils.get_resume_ckpt_path(cf)
-        print("resuming previous training:", resume_ckpt_path)
+        logger.info("resuming previous training:", resume_ckpt_path)
 
     if cf.trainer.resume_from_ckpt_confidnet:
         cf.exp.version -= 1
         cf.trainer.callbacks.training_stages.pretrained_confidnet_path = (
             exp_utils.get_resume_ckpt_path(cf)
         )
-        print("resuming previous training:", resume_ckpt_path)
+        logger.info("resuming previous training:", resume_ckpt_path)
 
     # TODO: Don't hard-code number of total classes and number of holdout classes
     if "openset" in cf.data.dataset:
@@ -77,7 +122,7 @@ def train(cf, subsequent_testing=False):
         logger=[tb_logger, csv_logger],
         max_epochs=cf.trainer.num_epochs,
         max_steps=max_steps,
-        callbacks=get_callbacks(cf),
+        callbacks=[progress] + get_callbacks(cf),
         resume_from_checkpoint=resume_ckpt_path,
         benchmark=cf.trainer.benchmark,
         check_val_every_n_epoch=cf.trainer.val_every_n_epoch,
@@ -93,7 +138,9 @@ def train(cf, subsequent_testing=False):
         accumulate_grad_batches=accumulate_grad_batches,
     )
 
-    print("logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version))
+    logger.info(
+        "logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version)
+    )
     trainer.fit(model=model, datamodule=datamodule)
     # analysis.main(in_path=cf.exp.version_dir,
     #               out_path=cf.exp.version_dir,
@@ -106,10 +153,10 @@ def train(cf, subsequent_testing=False):
 
         if cf.test.selection_criterion == "latest":
             ckpt_path = None
-            print("testing with latest model...")
+            logger.info("testing with latest model...")
         elif "best" in cf.test.selection_criterion:
             ckpt_path = cf.test.best_ckpt_path
-            print(
+            logger.info(
                 "testing with best model from {} and epoch {}".format(
                     cf.test.best_ckpt_path, torch.load(ckpt_path)["epoch"]
                 )
@@ -126,21 +173,35 @@ def train(cf, subsequent_testing=False):
 
 def test(cf):
 
+    console = Console(stderr=True, force_terminal=True)
+    progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
+    progress._console = console
+    logger.remove()  # Remove default 'stderr' handler
+
+    # We need to specify end=''" as log message already ends with \n (thus the lambda function)
+    # Also forcing 'colorize=True' otherwise Loguru won't recognize that the sink support colors
+    logger.add(
+        lambda m: progress._console.print(m, end="", markup=False, highlight=False),
+        colorize=True,
+        enqueue=True,
+        level="DEBUG",
+    )
+
     if "best" in cf.test.selection_criterion and cf.test.only_latest_version is False:
         ckpt_path = exp_utils.get_path_to_best_ckpt(
             cf.exp.dir, cf.test.selection_criterion, cf.test.selection_mode
         )
     else:
-        print("CHECK cf.exp.dir", cf.exp.dir)
+        logger.info("CHECK cf.exp.dir", cf.exp.dir)
         cf.exp.version = exp_utils.get_most_recent_version(cf.exp.dir)
         ckpt_path = exp_utils.get_resume_ckpt_path(cf)
 
-    print(
+    logger.info(
         "testing model from checkpoint: {} from model selection tpye {}".format(
             ckpt_path, cf.test.selection_criterion
         )
     )
-    print("logging testing to: {}".format(cf.test.dir))
+    logger.info("logging testing to: {}".format(cf.test.dir))
 
     module = get_model(cf.model.name)(cf)
     module.load_only_state_dict(ckpt_path)
@@ -153,11 +214,10 @@ def test(cf):
     trainer = pl.Trainer(
         gpus=-1,
         logger=False,
-        callbacks=get_callbacks(cf),
-        # precision=16,
-        # limit_test_batches=50
+        callbacks=[progress] + get_callbacks(cf),
         replace_sampler_ddp=False,
-        accelerator=accelerator,
+        # accelerator="ddp",
+        accelerator=None,
     )
     trainer.test(model=module, datamodule=datamodule)
     analysis.main(
@@ -176,10 +236,11 @@ def test(cf):
 
 @hydra.main(config_path="configs", config_name="config")
 def main(cf: DictConfig):
+    multiprocessing.set_start_method("spawn")
 
     sys.stdout = exp_utils.Logger(cf.exp.log_path)
     sys.stderr = exp_utils.Logger(cf.exp.log_path)
-    print(OmegaConf.to_yaml(cf))
+    logger.info(OmegaConf.to_yaml(cf))
     cf.data.num_workers = exp_utils.get_allowed_n_proc_DA(cf.data.num_workers)
 
     if cf.exp.mode == "train":

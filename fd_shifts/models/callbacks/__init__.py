@@ -1,8 +1,7 @@
-from fd_shifts.models.callbacks import confid_monitor
-from fd_shifts.models.callbacks import training_stages
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.callbacks import GPUStatsMonitor
+from pytorch_lightning.callbacks import (GPUStatsMonitor, LearningRateMonitor,
+                                         ModelCheckpoint, RichProgressBar)
+
+from fd_shifts.models.callbacks import confid_monitor, training_stages
 
 
 def get_callbacks(cf):
@@ -49,6 +48,8 @@ def get_callbacks(cf):
 
         if k == "learning_rate_monitor":
             out_cb_list.append(LearningRateMonitor(logging_interval="epoch"))
-            out_cb_list.append(GPUStatsMonitor())
+            # out_cb_list.append(GPUStatsMonitor())
+
+    # out_cb_list.append(RichProgressBar())
 
     return out_cb_list
