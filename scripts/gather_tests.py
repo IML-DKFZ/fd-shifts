@@ -113,6 +113,7 @@ def select_func(row, selection_df, selection_column):
 
 def main():
     pd.set_option("display.max_rows", None)
+    pd.set_option("display.max_colwidth", None)
 
     for dataset in datasets:
         print(f"[bold]Experiment: [/][bold red]{dataset.replace('_', '')}[/]")
@@ -234,37 +235,41 @@ def main():
 
         selected_df = selected_df[
             ~(
-                ((selected_df.confid.str.contains("det_mcp")) | (selected_df.confid.str.contains("det_pe")))
+                (
+                    (selected_df.confid.str.contains("det_mcp"))
+                    | (selected_df.confid.str.contains("det_pe"))
+                )
                 & ~(selected_df.model == "vit")
-            ) | (selected_df.bb != "vit")
-        ].reset_index(drop=True)
-            # selected_df = selected_df[~((selected_df.model == "devries") & (selected_df.do == "1"))]
-            # print(selected_df[selected_df.model.str.contains("devries")][["aurc", "model", "old_name", "do"]].sort_values("aurc"))
-        # selected_df = df[(df.select_lr == 1)]
-        if dataset == "svhn_openset":
-            print(selected_df[selected_df.study.str.startswith("iid") & selected_df.confid.str.startswith("mcd_pe") & selected_df.name.str.contains("bbvit")].sort_values("aurc")[["name", "aurc", "date"]])
-            selected_df = selected_df[~(selected_df.name.str.startswith("vit") & selected_df.confid.str.startswith("mcd_pe") & selected_df.name.str.contains("bbvit") & (selected_df.date > datetime(2022, 1, 22)))]
-
-        if dataset == "cifar10_":
-            print(selected_df[selected_df.study.str.startswith("iid") & selected_df.confid.str.startswith("det_pe")].sort_values("aurc")[["name", "aurc", "date"]])
-            # selected_df = selected_df[~(selected_df.name.str.startswith("vit") & selected_df.confid.str.startswith("mcd_pe") & selected_df.name.str.contains("bbvit") & (selected_df.date > datetime(2022, 1, 22)))]
-
-        potential_runs = (
-            selected_df[(selected_df.study == "iid_study")][
-                ["model", "lr", "run", "do", "rew",]
-            ]
-            .drop_duplicates()
-            .groupby(["model", "lr", "do", "rew",])
-            .max()
-            .reset_index()
-        )
-
-        # print(potential_runs)
-        for run in potential_runs.itertuples():
-            # print(run)
-            print(
-                f'(["{dataset}"], ["{run.model}"], ["vit"], [{run.lr}], [128], [{run.do}], [{run.rew}], range({int(run.run) + 1}, 5), [1, 2]),'
             )
+            | (selected_df.bb != "vit")
+        ].reset_index(drop=True)
+
+        if dataset == "svhn_openset":
+            print(
+                selected_df[
+                    selected_df.study.str.startswith("iid")
+                    & selected_df.confid.str.startswith("mcd_pe")
+                    & selected_df.name.str.contains("bbvit")
+                ].sort_values("aurc")[["name", "aurc", "date"]]
+            )
+            selected_df = selected_df[
+                ~(
+                    selected_df.name.str.startswith("vit")
+                    & selected_df.confid.str.startswith("mcd_pe")
+                    & selected_df.name.str.contains("bbvit")
+                    & (selected_df.date > datetime(2022, 1, 22))
+                )
+            ]
+
+        print(
+            selected_df[
+                selected_df.study.str.startswith("iid")
+                & (
+                    selected_df.confid.str.startswith("det_pe")
+                    | selected_df.confid.str.startswith("det_mcp")
+                )
+            ].sort_values(["name", "confid"])[["confid", "aurc", "date", "old_name"]]
+        )
 
         dataset = dataset.replace("wilds_", "")
         dataset = dataset.replace("cifar10_", "cifar10")

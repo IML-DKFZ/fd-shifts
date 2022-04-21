@@ -47,6 +47,18 @@ def main():
             df = df.drop(list(df[df.study.str.contains("iid") & df.confid.str.contains("mcd_pe") & df.model.str.contains("confidnet")].sort_values("aurc").index)[-1:])
             print(df[df.study.str.contains("iid") & df.confid.str.contains("mcd_pe")][["name", "model", "aurc"]].sort_values("aurc"))
 
+        if dataset == "camelyon":
+            print(
+                df[
+                    df.study.str.startswith("iid")
+                    & (
+                        df.confid.str.startswith("det_pe")
+                        | df.confid.str.startswith("det_mcp")
+                    )
+                    & df.name.str.startswith("confidnet")
+                ].sort_values(["name", "confid"])[["name", "confid", "failauc", "accuracy", "aurc"]]
+            )
+
 
         dataset = dataset.replace("wilds_", "")
         dataset = dataset.replace("cifar10_", "cifar10")
