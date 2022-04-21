@@ -23,13 +23,32 @@ cd failure-detection-benchmark
 pip install .
 ```
 
+If you have issues with cuda, install a recent PyTorch version according to their website.
+
 ## Usage
 
 To use `fd_shifts` you need to set the following environment variables
+
 ```bash
-export EXPERIMENT_ROOT_DIR=path/to/your/experiments
-export DATASET_ROOT_DIR=path/to/datasets
+export EXPERIMENT_ROOT_DIR=/absolute/path/to/your/experiments
+export DATASET_ROOT_DIR=/absolute/path/to/datasets
 ```
+
+Alternatively, you may write them to a file and source that before running
+`fd_shifts`, e.g.
+
+```bash
+mv example.env .env
+```
+
+Then edit `.env` to your needs and run
+
+```bash
+source .env
+```
+
+### Data Folder Requirements
+<!-- TODO: Copy over data folder structure -->
 
 ### Training
 
@@ -41,6 +60,7 @@ fd_shifts-<dataset>
 ```
 
 To train and run all ViT experiments run
+
 ```bash
 fd_shifts-vit
 ```
@@ -51,9 +71,11 @@ If you want to change values take a look at the study configurations in
 `fd_shifts/configs/study`. You might be interested in running a single study
 (either one of the available ones or one you added to the folder). For that you
 can run for example
+
 ```bash
 fd_shifts study=devries data=cifar10_data trainer.optimizer.learning_rate=1e-5
 ```
+
 and overwrite all config parameters via command-line parameters.
 
 ### Analysis
@@ -61,6 +83,7 @@ and overwrite all config parameters via command-line parameters.
 To run analysis over an already available set of model outputs the outputs have to be in the following format:
 
 For a classifier with `d` outputs and `N` samples in total (over all tested datasets)
+
 ```
 raw_output.npz
 
