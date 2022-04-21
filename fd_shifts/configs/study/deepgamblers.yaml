@@ -1,5 +1,12 @@
 # @package _global_
 
+defaults:
+  - override /data: cifar10_data
+
+exp:
+  group_name: vit
+  name: cifar10
+
 trainer:
   num_epochs: 300 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
   dg_pretrain_epochs: 100 # 100 and 300 total epochs
@@ -32,7 +39,7 @@ trainer:
     learning_rate_monitor:
 
 model:
-  name: devries_and_dg_model # det_mcd_model #
+  name: devries_model # det_mcd_model #
   fc_dim: 512
   dg_reward: 2.2
   avg_pool: True
@@ -101,6 +108,6 @@ eval:
     noise_study:
       - corrupt_cifar10
     new_class_study:
-      - tinyimagenet_resize
+      # - tinyimagenet_resize
       - cifar100
       - svhn

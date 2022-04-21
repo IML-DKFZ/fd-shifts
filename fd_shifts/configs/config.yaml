@@ -1,7 +1,7 @@
 defaults:
   - hydra/job_logging: disabled
-  - data: svhn_data.yaml
-  - study: deepgamblers.yaml
+  - data: svhn_data
+  - study: deepgamblers
 
 hydra:
   run:
@@ -9,8 +9,6 @@ hydra:
   output_subdir: hydra # needs to be null for manual testing!
 
 exp:
-  # group_name: checks
-  # name: check_risk_thresh # cifar10_run_0_sebastian
   version: None
   mode: train_test # train or test
   work_dir: ${hydra:runtime.cwd}
@@ -35,6 +33,8 @@ exp:
       raw_output_dist: ${test.dir}/raw_output_dist.npz
       external_confids: ${test.dir}/external_confids.npz
       external_confids_dist: ${test.dir}/external_confids_dist.npz
-  log_path: ${exp.dir}/log.txt
+  log_path: ./log.txt
   global_seed: False # set to False to disable deterministic training.
 
+trainer:
+  resume_from_ckpt_confidnet: False
