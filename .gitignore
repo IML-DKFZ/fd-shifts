@@ -8,3 +8,4 @@ build
 *.egg-info
 .ipynb_checkpoints
 .env
+results
