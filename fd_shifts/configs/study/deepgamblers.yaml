@@ -35,7 +35,7 @@ trainer:
     weight_decay: 0.0005
   callbacks:
     model_checkpoint:
-    monitor:
+    confid_monitor:
     learning_rate_monitor:
 
 model:

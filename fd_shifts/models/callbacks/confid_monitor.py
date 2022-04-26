@@ -6,6 +6,7 @@ import torch
 import numpy as np
 from fd_shifts.analysis import eval_utils
 from tqdm import tqdm
+from rich import print
 
 
 class ConfidMonitor(Callback):
@@ -67,10 +68,9 @@ class ConfidMonitor(Callback):
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
 
-        # outputs keys meta/extra/minimze
-        loss = outputs[0][0]["minimize"]
-        softmax = outputs[0][0]["extra"]["softmax"]
-        y = outputs[0][0]["extra"]["labels"]
+        loss = outputs["loss"]
+        softmax = outputs["softmax"]
+        y = outputs["labels"]
 
         tmp_correct = None
         if len(self.running_perf_stats["train"].keys()) > 0:
@@ -124,7 +124,7 @@ class ConfidMonitor(Callback):
                 )
 
             if "ext" in stat_keys:
-                tmp_confids = outputs[0][0]["extra"]["confid"]
+                tmp_confids = outputs["confid"]
                 if tmp_confids is not None:
                     self.running_confid_stats["train"]["ext"]["confids"].extend(
                         tmp_confids
@@ -133,14 +133,14 @@ class ConfidMonitor(Callback):
                         tmp_correct
                     )
 
-            if "imgs" in outputs[0][0]["extra"].keys():
+            if "imgs" in outputs.keys():
                 eval_utils.plot_input_imgs(
-                    outputs[0][0]["extra"]["imgs"],
+                    outputs["imgs"],
                     y,
                     self.output_paths.fit.input_imgs_plot,
                 )
 
-    def on_train_epoch_end(self, trainer, pl_module, outputs):
+    def on_train_epoch_end(self, trainer, pl_module):
 
         if (
             len(self.running_confid_stats["train"].keys()) > 0
