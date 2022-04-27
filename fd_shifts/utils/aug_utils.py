@@ -22,6 +22,8 @@ _transforms_collection: dict[str, type] = {
     ),
     "lighting": lambda x: Lighting(),
     "cutout": lambda x: Cutout(length=x),
+    "tothreechannel": lambda x: ToThreeChannel(),
+    "pad4": lambda x: transforms.Pad(4),
 }
 
 
@@ -43,6 +45,17 @@ def get_transform(name: str, *args, **kwargs):
         return _transforms_collection[name](*args, **kwargs)
     else:
         return instantiate_from_str(name, *args, **kwargs)
+
+
+class ToThreeChannel(object):
+    """Convert 1D greyscale to 3D greyscale by copying."""
+
+    def __call__(self, image):
+        image3 = torch.cat([image, image, image], dim=0)
+        return image3
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
 
 
 class Lighting(object):

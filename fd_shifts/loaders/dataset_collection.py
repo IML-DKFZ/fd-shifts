@@ -74,6 +74,13 @@ def get_dataset(
         "svhn_openset_384": SVHNOpenSet,
         "tinyimagenet_384": datasets.ImageFolder,
         "tinyimagenet_resize": datasets.ImageFolder,
+        "emnist_byclass": datasets.EMNIST,
+        "emnist_bymerge": datasets.EMNIST,
+        "emnist_balanced": datasets.EMNIST,
+        "emnist_letters": datasets.EMNIST,
+        "emnist_digits": datasets.EMNIST,
+        "emnist_mnist": datasets.EMNIST,
+        "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
         "cifar10_384": datasets.CIFAR10,
@@ -161,7 +168,21 @@ def get_dataset(
         return _dataset_factory[name](**pass_kwargs).get_subset(
             split, frac=1.0, transform=transform
         )
-
+    if "emnist" in name:
+        if name == "emnist_byclass":
+            split = "byclass"
+        elif name == "emnist_bymerge":
+            split = "bymerge"
+        elif name == "emnist_balanced":
+            split = "balanced"
+        elif name == "emnist_letters":
+            split = "letters"
+        elif name == "emnist_digits":
+            split = "digits"
+        elif name == "emnist_mnist":
+            split = "mnist"
+        dataset = dataset_factory[name](split=split, **pass_kwargs)
+        return dataset
     else:
         return _dataset_factory[name](**pass_kwargs)
 
