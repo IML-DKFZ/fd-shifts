@@ -147,28 +147,7 @@ def train(cf, subsequent_testing=False):
     #               query_studies={"iid_study": cf.data.dataset})
 
     if subsequent_testing:
-
-        if not os.path.exists(cf.test.dir):
-            os.makedirs(cf.test.dir)
-
-        if cf.test.selection_criterion == "latest":
-            ckpt_path = None
-            logger.info("testing with latest model...")
-        elif "best" in cf.test.selection_criterion:
-            ckpt_path = cf.test.best_ckpt_path
-            logger.info(
-                "testing with best model from {} and epoch {}".format(
-                    cf.test.best_ckpt_path, torch.load(ckpt_path)["epoch"]
-                )
-            )
-        trainer.test(ckpt_path=ckpt_path)
-        analysis.main(
-            in_path=cf.test.dir,
-            out_path=cf.test.dir,
-            query_studies=cf.eval.query_studies,
-            add_val_tuning=cf.eval.val_tuning,
-            cf=cf,
-        )
+        test(cf)
 
 
 def test(cf):
