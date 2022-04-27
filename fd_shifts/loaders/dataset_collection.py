@@ -1,3 +1,5 @@
+from calendar import day_abbr
+from email.mime import image
 from torchvision import datasets
 from torchvision.datasets.utils import check_integrity, download_and_extract_archive
 from typing import Any, Callable, Optional, Tuple
@@ -16,6 +18,7 @@ from PIL import Image
 import io
 import pickle
 import os
+import torch
 
 
 def get_dataset(name, root, train, download, transform, kwargs):
@@ -30,6 +33,12 @@ def get_dataset(name, root, train, download, transform, kwargs):
         "tinyimagenet": datasets.ImageFolder,
         "tinyimagenet_384": datasets.ImageFolder,
         "tinyimagenet_resize": datasets.ImageFolder,
+        "emnist_byclass": datasets.EMNIST,
+        "emnist_bymerge": datasets.EMNIST,
+        "emnist_balanced": datasets.EMNIST,
+        "emnist_letters": datasets.EMNIST,
+        "emnist_digits": datasets.EMNIST,
+        "emnist_mnist": datasets.EMNIST,
         "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
@@ -120,9 +129,50 @@ def get_dataset(name, root, train, download, transform, kwargs):
         return dataset_factory[name](**pass_kwargs).get_subset(
             split, frac=1.0, transform=transform
         )
-
+    if "emnist" in name:
+        if name == "emnist_byclass":
+            split = "byclass"
+        elif name == "emnist_bymerge":
+            split = "bymerge"
+        elif name == "emnist_balanced":
+            split = "balanced"
+        elif name == "emnist_letters":
+            split = "letters"
+        elif name == "emnist_digits":
+            split = "digits"
+        elif name == "emnist_mnist":
+            split = "mnist"
+        dataset = dataset_factory[name](split=split, **pass_kwargs)
+        return dataset
     else:
         return dataset_factory[name](**pass_kwargs)
+
+
+# class emnist(datasets.EMNIST):
+#     def __init__(self, root: str, split: str, **kwargs: Any) -> None:
+#         super().__init__(root=root, split=split)
+
+#     def __getitem__(self, index: int) -> Tuple[Any, Any]:
+#         """
+#         Args:
+#             index (int): Index
+
+#         Returns:
+#             tuple: (image, target) where target is index of the target class.
+#         """
+#         img, target = self.data[index], int(self.targets[index])
+
+#         # doing this so that it is consistent with all other datasets
+#         # to return a PIL Image
+#         img = Image.fromarray(img.numpy(), mode="L")
+#         # img = np.concatenate([img,img,img],dim=0)#additional line to convert images to 3 Channels
+#         if self.transform is not None:
+#             img = self.transform(img)
+
+#         if self.target_transform is not None:
+#             target = self.target_transform(target)
+
+#         return img, target
 
 
 class SuperCIFAR100(datasets.VisionDataset):

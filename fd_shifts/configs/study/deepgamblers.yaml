@@ -105,9 +105,9 @@ eval:
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
     iid_study: cifar10
-    noise_study:
-      - corrupt_cifar10
-    new_class_study:
-      # - tinyimagenet_resize
-      - cifar100
-      - svhn
+    # noise_study:
+    #   # - corrupt_cifar10ç
+    new_class_study: 
+      - tinyimagenet_resize
+    #   - cifar100
+    #   - svhn
