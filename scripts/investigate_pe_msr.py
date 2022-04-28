@@ -22,26 +22,10 @@ def predictive_entropy_log(softmax: npt.NDArray[Any]) -> npt.NDArray[Any]:
     return np.sum(np.exp(softmax) * (-softmax), axis=1)
 
 
-base_path = Path("~/Experiments/vit/").expanduser()
+base_path = Path("~/Experiments/").expanduser()
 runs = [
-    # "wilds_camelyon_lr0.001_run1_do0",
-    "wilds_camelyon_modelvit_bbvit_lr0.001_bs128_run1_do0_rew0",
-    "wilds_camelyon_modelvit_bbvit_lr0.001_bs128_run6_do0_rew0",
-    # "wilds_camelyon_lr0.003_run0_do1",
-    # "cifar10_lr0.0003_run1",
-    # "cifar10_lr0.01_run0_do1",
-    # "cifar100_lr0.01_run0_do1",
-    # "cifar100_lr0.03_run1_do0",
-    # "breeds_lr0.001_run0",
-    # "breeds_lr0.01_run1_do1",
-    # "svhn_lr0.01_run1_do0",
-    # "svhn_lr0.01_run0_do1",
-    # "wilds_animals_lr0.001_run1",
-    # "wilds_animals_lr0.01_run0_do1",
-    # "svhn_openset_modelvit_bbvit_lr0.01_bs128_run0_do0_rew0",
-    # "svhn_openset_modelvit_bbvit_lr0.01_bs128_run0_do1_rew0",
-    # "wilds_animals_openset_modelvit_bbvit_lr0.001_bs128_run3_do0_rew0",
-    # "wilds_animals_openset_modelvit_bbvit_lr0.01_bs128_run3_do1_rew0",
+    "vit_64/cifar100_modelvit_bbvit_lr0.03_bs128_run3_do0_rew0",
+    "vit_32/cifar100_modelvit_bbvit_lr0.03_bs128_run3_do0_rew0",
 ]
 
 # base_path = Path("~/Experiments/fd-shifts/camelyon_paper_sweep/").expanduser()
