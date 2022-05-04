@@ -83,7 +83,7 @@ def get_dataset(name, root, train, download, transform, kwargs):
         }
     if name.startswith("med_mnist"):
         pass_kwargs = {
-            "root": "/home/l049e/Data/",  # find a way to set this flexible!
+            "root": root,  # find a way to set this flexible!
             "split": "train" if train else "test",
             "download": download,
             "transform": transform,
