@@ -216,7 +216,7 @@ def test(cf):
 
 @hydra.main(config_path="configs", config_name="config")
 def main(cf: DictConfig):
-    multiprocessing.set_start_method("spawn")
+    # multiprocessing.set_start_method("spawn")
 
     sys.stdout = exp_utils.Logger(cf.exp.log_path)
     sys.stderr = exp_utils.Logger(cf.exp.log_path)

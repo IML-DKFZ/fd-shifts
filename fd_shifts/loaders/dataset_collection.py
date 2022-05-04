@@ -19,6 +19,7 @@ import io
 import pickle
 import os
 import torch
+import medmnist
 
 
 def get_dataset(name, root, train, download, transform, kwargs):
@@ -39,6 +40,7 @@ def get_dataset(name, root, train, download, transform, kwargs):
         "emnist_letters": datasets.EMNIST,
         "emnist_digits": datasets.EMNIST,
         "emnist_mnist": datasets.EMNIST,
+        "med_mnist_path": PathMNIST,
         "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
@@ -75,6 +77,13 @@ def get_dataset(name, root, train, download, transform, kwargs):
     if name.startswith("svhn"):
         pass_kwargs = {
             "root": root,
+            "split": "train" if train else "test",
+            "download": download,
+            "transform": transform,
+        }
+    if name.startswith("med_mnist"):
+        pass_kwargs = {
+            "root": "/home/l049e/Data/",  # find a way to set this flexible!
             "split": "train" if train else "test",
             "download": download,
             "transform": transform,
@@ -148,31 +157,183 @@ def get_dataset(name, root, train, download, transform, kwargs):
         return dataset_factory[name](**pass_kwargs)
 
 
-# class emnist(datasets.EMNIST):
-#     def __init__(self, root: str, split: str, **kwargs: Any) -> None:
-#         super().__init__(root=root, split=split)
+import os
+import numpy as np
+from PIL import Image
+from torch.utils.data import Dataset
+from medmnist.info import INFO, HOMEPAGE, DEFAULT_ROOT
 
-#     def __getitem__(self, index: int) -> Tuple[Any, Any]:
-#         """
-#         Args:
-#             index (int): Index
 
-#         Returns:
-#             tuple: (image, target) where target is index of the target class.
-#         """
-#         img, target = self.data[index], int(self.targets[index])
+class MedMNIST_mod(Dataset):
 
-#         # doing this so that it is consistent with all other datasets
-#         # to return a PIL Image
-#         img = Image.fromarray(img.numpy(), mode="L")
-#         # img = np.concatenate([img,img,img],dim=0)#additional line to convert images to 3 Channels
-#         if self.transform is not None:
-#             img = self.transform(img)
+    flag = ...
 
-#         if self.target_transform is not None:
-#             target = self.target_transform(target)
+    def __init__(
+        self,
+        split,
+        transform=None,
+        target_transform=None,
+        download=False,
+        as_rgb=False,
+        root=DEFAULT_ROOT,
+    ):
+        """dataset
+        :param split: 'train', 'val' or 'test', select subset
+        :param transform: data transformation
+        :param target_transform: target transformation
 
-#         return img, target
+        """
+
+        self.info = INFO[self.flag]
+        root = os.path.expanduser(root)  # recognize ~ as home directory
+        if root is not None and os.path.exists(root):
+            self.root = root
+        else:
+            raise RuntimeError(
+                "Failed to setup the default `root` directory. "
+                + "Please specify and create the `root` directory manually."
+            )
+
+        if download:
+            self.download()
+
+        if not os.path.exists(os.path.join(self.root, "{}.npz".format(self.flag))):
+            raise RuntimeError(
+                "Dataset not found. " + " You can set `download=True` to download it"
+            )
+
+        npz_file = np.load(os.path.join(self.root, "{}.npz".format(self.flag)))
+
+        self.split = split
+        self.transform = transform
+        self.target_transform = target_transform
+        self.as_rgb = as_rgb
+
+        self.data, self.targets = self._load_data()
+
+        if self.split == "train":
+            self.imgs = npz_file["train_images"]
+            self.labels = npz_file["train_labels"]
+        elif self.split == "val":
+            self.imgs = npz_file["val_images"]
+            self.labels = npz_file["val_labels"]
+        elif self.split == "test":
+            self.imgs = npz_file["test_images"]
+            self.labels = npz_file["test_labels"]
+        else:
+            raise ValueError
+
+    def _load_data(self):
+        npz_file = np.load(os.path.join(self.root, "{}.npz".format(self.flag)))
+        if self.split == "train":
+            self.imgs = npz_file["train_images"]
+            self.labels = npz_file["train_labels"]
+        elif self.split == "val":
+            self.imgs = npz_file["val_images"]
+            self.labels = npz_file["val_labels"]
+        elif self.split == "test":
+            self.imgs = npz_file["test_images"]
+            self.labels = npz_file["test_labels"]
+        else:
+            raise ValueError
+        return self.imgs, self.labels
+
+    def __len__(self):
+        return self.imgs.shape[0]
+
+    def __repr__(self):
+        """Adapted from torchvision.ss"""
+        _repr_indent = 4
+        head = f"Dataset {self.__class__.__name__} ({self.flag})"
+        body = [f"Number of datapoints: {self.__len__()}"]
+        body.append(f"Root location: {self.root}")
+        body.append(f"Split: {self.split}")
+        body.append(f"Task: {self.info['task']}")
+        body.append(f"Number of channels: {self.info['n_channels']}")
+        body.append(f"Meaning of labels: {self.info['label']}")
+        body.append(f"Number of samples: {self.info['n_samples']}")
+        body.append(f"Description: {self.info['description']}")
+        body.append(f"License: {self.info['license']}")
+
+        lines = [head] + [" " * _repr_indent + line for line in body]
+        return "\n".join(lines)
+
+    def download(self):
+        try:
+            from torchvision.datasets.utils import download_url
+
+            download_url(
+                url=self.info["url"],
+                root=self.root,
+                filename="{}.npz".format(self.flag),
+                md5=self.info["MD5"],
+            )
+        except:
+            raise RuntimeError(
+                "Something went wrong when downloading! "
+                + "Go to the homepage to download manually. "
+                + HOMEPAGE
+            )
+
+
+class MedMNIST2D(MedMNIST_mod):
+    def __getitem__(self, index):
+        """
+        return: (without transform/target_transofrm)
+            img: PIL.Image
+            target: np.array of `L` (L=1 for single-label)
+        """
+        img, target = self.imgs[index], self.labels[index].astype(int)
+        img = Image.fromarray(img)
+        if len(target) == 1:
+            target = target[
+                0
+            ]  # convert from array to value. Might cause errors with some medmnist datasets that are not only multiclass labels
+        # if self.as_rgb:
+        #    img = img.convert("RGB")
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+        return img, target
+
+    def save(self, folder, postfix="png", write_csv=True):
+
+        from medmnist.utils import save2d
+
+        save2d(
+            imgs=self.imgs,
+            labels=self.labels,
+            img_folder=os.path.join(folder, self.flag),
+            split=self.split,
+            postfix=postfix,
+            csv_path=os.path.join(folder, f"{self.flag}.csv") if write_csv else None,
+        )
+
+    def montage(self, length=20, replace=False, save_folder=None):
+        from medmnist.utils import montage2d
+
+        n_sel = length * length
+        sel = np.random.choice(self.__len__(), size=n_sel, replace=replace)
+
+        montage_img = montage2d(
+            imgs=self.imgs, n_channels=self.info["n_channels"], sel=sel
+        )
+
+        if save_folder is not None:
+            if not os.path.exists(save_folder):
+                os.makedirs(save_folder)
+            montage_img.save(
+                os.path.join(save_folder, f"{self.flag}_{self.split}_montage.jpg")
+            )
+
+        return montage_img
+
+
+class PathMNIST(MedMNIST2D):
+    flag = "pathmnist"
 
 
 class SuperCIFAR100(datasets.VisionDataset):

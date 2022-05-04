@@ -12,8 +12,19 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "data=emnist_data",
-                "trainer.resume_from_ckpt=True"
+                "data=med_mnist_path",
+                "exp.group_name=test_med_mnist",
+                "exp.name=med_mnist_path_lr_e1_drO_1",
+                // "data=emnist_data_balanced",
+                // "exp.group_name=test_emnist",
+                // "exp.name=test_lr_e1_drO_1",
+                "eval.query_studies.iid_study=med_mnist_path",
+                //"eval.query_studies.new_class_study=[emnist_balanced]",
+                "trainer.num_epochs=2",
+                "trainer.optimizer.learning_rate=.1",
+                "model.dropout_rate=1",
+                //"trainer.resume_from_ckpt=True",
+                "exp.mode=test"
             ],
             "env": {
                 "TEST_VAR": "foo",
