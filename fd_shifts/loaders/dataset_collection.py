@@ -123,7 +123,8 @@ def get_dataset(
         }
     if name.startswith("med_mnist"):
         pass_kwargs = {
-            "root": root,  # find a way to set this flexible!
+            # "root": "/home/l049e/Data",  # find a way to set this flexible!
+            "root": root,
             "split": "train" if train else "test",
             "download": download,
             "transform": transform,
@@ -201,12 +202,12 @@ class MedMNIST_mod(Dataset):
 
     def __init__(
         self,
+        root: str,
         split,
         transform=None,
         target_transform=None,
         download=False,
         as_rgb=False,
-        root=DEFAULT_ROOT,
     ):
         """dataset
         :param split: 'train', 'val' or 'test', select subset
@@ -216,14 +217,17 @@ class MedMNIST_mod(Dataset):
         """
 
         self.info = INFO[self.flag]
-        root = os.path.expanduser(root)  # recognize ~ as home directory
-        if root is not None and os.path.exists(root):
-            self.root = root
-        else:
-            raise RuntimeError(
-                "Failed to setup the default `root` directory. "
-                + "Please specify and create the `root` directory manually."
-            )
+        if isinstance(root, torch._six.string_classes):
+            root = os.path.expanduser(root)
+        self.root = root
+        # root = os.path.expanduser(root)  # recognize ~ as home directory
+        # if root is not None and os.path.exists(root):
+        #     self.root = root
+        # else:
+        #     raise RuntimeError(
+        #         "Failed to setup the default `root` directory. "
+        #         + "Please specify and create the `root` directory manually."
+        #     )
 
         if download:
             self.download()
