@@ -49,7 +49,7 @@ def mcd_maximum_softmax_probability(
 
 @register_confid_func("det_pe")
 def predictive_entropy(softmax: npt.NDArray[Any]) -> npt.NDArray[Any]:
-    return np.sum(softmax * (-np.log(softmax + 1e-7)), axis=1)
+    return np.sum(softmax * (-np.log(softmax)), axis=1)
 
 
 @register_confid_func("mcd_pe")
@@ -64,7 +64,7 @@ def expected_entropy(
     mcd_softmax_mean: npt.NDArray[Any], mcd_softmax_dist: npt.NDArray[Any]
 ) -> npt.NDArray[Any]:
     return np.mean(
-        np.sum(mcd_softmax_dist * (-np.log(mcd_softmax_dist + 1e-7)), axis=1), axis=1,
+        np.sum(mcd_softmax_dist * (-np.log(mcd_softmax_dist)), axis=1), axis=1,
     )
 
 

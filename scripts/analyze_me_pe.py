@@ -189,9 +189,17 @@ def predictive_entropy(softmax: npt.NDArray[Any]) -> npt.NDArray[Any]:
     return np.sum(softmax * (-np.log(softmax + 1e-7)), axis=1)
 
 
-def load_raw_outputs(experiment_name: str, base_path: Path) -> pd.DataFrame:
+def load_from_experiment(experiment_name: str, base_path: Path):
+    return load_raw_outputs(base_path / experiment_name / "test_results")
+
+
+def dataset_idx_to_name(idx: int, config: OmegaConf):
+    pass
+
+
+def load_raw_outputs(base_path: Path) -> pd.DataFrame:
     # Data format see readme
-    output = np.load(base_path / experiment_name / "test_results/raw_output.npz")[
+    output = np.load(base_path / "raw_output.npz")[
         "arr_0"
     ]
     data = pd.DataFrame(
@@ -205,9 +213,17 @@ def load_raw_outputs(experiment_name: str, base_path: Path) -> pd.DataFrame:
     )
     data.columns = pd.MultiIndex.from_tuples(data.columns)
 
+    if (base_path / "external_confids.npz").is_file():
+        ext = np.load(base_path / "external_confids.npz")[
+            "arr_0"
+        ]
+        data = data.assign(external_confids=ext)
+
+    # Filter dataset (1 is iid)
     data = data[data.dataset == 1].reset_index(drop=True)
 
     data = data.assign(dataset_idx=data.index)
+
 
     return data
 
@@ -409,7 +425,7 @@ pd.set_option("display.max_colwidth", None)
 
 base_path = Path("~/Experiments/vit_64/").expanduser()
 
-dataset = "svhn"
+dataset = "cifar10"
 
 metrics_data: pd.DataFrame = load_metrics_csvs(dataset, base_path).pipe(
     clean_metrics_data
@@ -418,10 +434,12 @@ metrics_data: pd.DataFrame = load_metrics_csvs(dataset, base_path).pipe(
 report = report_metrics(metrics_data)
 representative_run = find_representative_run(metrics_data)
 
+pprint(representative_run)
+
 dataset_cache = DatasetCache(load_config(representative_run, base_path))
 
 softmax_data = (
-    load_raw_outputs(representative_run, base_path)
+    load_from_experiment(representative_run, base_path)
     .pipe(add_confid_scores)
     .pipe(compute_comparisons)
     .pipe(report_top_ranked, dataset_cache=dataset_cache)
