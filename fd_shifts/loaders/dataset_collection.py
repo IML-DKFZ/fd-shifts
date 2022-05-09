@@ -82,6 +82,18 @@ def get_dataset(
         "emnist_digits": datasets.EMNIST,
         "emnist_mnist": datasets.EMNIST,
         "med_mnist_path": PathMNIST,
+        "med_mnist_oct": OCTMNIST,
+        "med_mnist_pneu": PneumoniaMNIST,
+        "med_mnist_chest": ChestMNIST,
+        "med_mnist_derma": DermaMNIST,
+        "med_mnist_retina": RetinaMNIST,
+        "med_mnist_breast": BreastMNIST,
+        "med_mnist_blood": BloodMNIST,
+        "med_mnist_tissue": TissueMNIST,
+        "med_mnist_organ_a": OrganAMNIST,
+
+
+        
         "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
@@ -123,9 +135,15 @@ def get_dataset(
         }
     if name.startswith("med_mnist"):
         pass_kwargs = {
-            # "root": "/home/l049e/Data",  # find a way to set this flexible!
             "root": root,
             "split": "train" if train else "test",
+            "download": download,
+            "transform": transform,
+        }
+    if "oct" in name:
+        pass_kwargs = {
+            "root": root,
+            "split": "train" if train else "val",#test set very small. Workaround
             "download": download,
             "transform": transform,
         }
@@ -368,6 +386,42 @@ class MedMNIST2D(MedMNIST_mod):
 
 class PathMNIST(MedMNIST2D):
     flag = "pathmnist"
+
+
+class OCTMNIST(MedMNIST2D):
+    flag = "octmnist"
+
+
+class PneumoniaMNIST(MedMNIST2D):
+    flag = "pneumoniamnist"
+
+
+class ChestMNIST(MedMNIST2D):
+    flag = "chestmnist"
+
+
+class DermaMNIST(MedMNIST2D):
+    flag = "dermamnist"
+
+
+class RetinaMNIST(MedMNIST2D):
+    flag = "retinamnist"
+
+
+class BreastMNIST(MedMNIST2D):
+    flag = "breastmnist"
+
+
+class BloodMNIST(MedMNIST2D):
+    flag = "bloodmnist"
+
+
+class TissueMNIST(MedMNIST2D):
+    flag = "tissuemnist"
+
+
+class OrganAMNIST(MedMNIST2D):
+    flag = "organamnist"
 
 
 class SuperCIFAR100(datasets.VisionDataset):

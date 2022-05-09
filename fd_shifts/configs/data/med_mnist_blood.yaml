@@ -1,12 +1,12 @@
 # @package _group_
 
 data:
-  dataset: med_mnist_path
+  dataset: med_mnist_blood
   data_dir: ${oc.env:DATASET_ROOT_DIR}/${data.dataset}
   pin_memory: True
   img_size: [28, 28, 3] 
   num_workers: 12
-  num_classes: 9
+  num_classes: 8
   reproduce_confidnet_splits: True
   augmentations:
     train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)

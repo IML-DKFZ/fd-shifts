@@ -1,27 +1,31 @@
 # @package _group_
 
 data:
-  dataset: med_mnist_path
+  dataset: med_mnist_breast
   data_dir: ${oc.env:DATASET_ROOT_DIR}/${data.dataset}
   pin_memory: True
   img_size: [28, 28, 3] 
   num_workers: 12
-  num_classes: 9
+  num_classes: 2
   reproduce_confidnet_splits: True
   augmentations:
     train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
+      
       to_tensor:
+      tothreechannel:
       normalize:
          [[0.4376821, 0.4437697, 0.4728044], [0.19803012, 0.20101562, 0.19703614]]
       pad4: #zero padding 4 pixels around edges
 
     val:
       to_tensor:
+      tothreechannel:
       normalize:
         [[0.4376821, 0.4437697, 0.47280442], [0.19803012, 0.20101562, 0.19703614]]
       pad4:
     test:
       to_tensor:
+      tothreechannel:
       normalize:
         [[0.4376821, 0.4437697, 0.47280442], [0.19803012, 0.20101562, 0.19703614]]
       pad4:
