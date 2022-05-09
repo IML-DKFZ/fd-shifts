@@ -19,12 +19,14 @@
                 // "exp.group_name=test_emnist",
                 // "exp.name=test_lr_e1_drO_1",
                 "eval.query_studies.iid_study=med_mnist_path",
-                //"eval.query_studies.new_class_study=[emnist_balanced]",
+                "eval.query_studies.new_class_study=[emnist_balanced]",
                 "trainer.num_epochs=2",
                 "trainer.optimizer.learning_rate=.1",
                 "model.dropout_rate=1",
                 //"trainer.resume_from_ckpt=True",
-                "exp.mode=test"
+                "exp.mode=test",
+                "model.network.name=resnet50",
+                "trainer.optimizer.name=Adam"
             ],
             "env": {
                 "TEST_VAR": "foo",
