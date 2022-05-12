@@ -46,6 +46,14 @@ def get_transform(name: str, *args, **kwargs):
     else:
         return instantiate_from_str(name, *args, **kwargs)
 
+target_transforms_collection = {
+    "extractZeroDim": lambda x: ExtractZeroDimension(),
+}
+
+class ExtractZeroDimension(object):
+    """ takes the Zero dimension of a array and returns it"""
+    def __call__(self, target):
+        return target[0]
 
 class ToThreeChannel(object):
     """Convert 1D greyscale to 3D greyscale by copying."""

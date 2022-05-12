@@ -14,6 +14,7 @@ import fd_shifts.configs.data as data_configs
 from fd_shifts import configs
 from fd_shifts.loaders.dataset_collection import get_dataset
 from fd_shifts.utils.aug_utils import get_transform
+from fd_shifts.utils.aug_utils import target_transforms_collection
 
 
 class FDShiftsDataLoader(pl.LightningDataModule):
@@ -57,6 +58,12 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                             "{}_data.yaml".format(ext_set),
                         )
                     ).data
+        # set up target transforms
+        self.target_transforms = {}
+        if cf.data.target_transforms:
+            self.add_target_transforms(
+                OmegaConf.to_container(cf.data.target_transforms, resolve=True), no_norm_flag
+            )
 
         # Set up augmentations
         self.augmentations = {}
@@ -67,6 +74,15 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             )
 
         self.train_dataset, self.val_dataset, self.test_datasets = None, None, None
+
+    def add_target_transforms(self, query_tt, no_norm_flag):
+        for datasplit_k, datasplit_v in query_tt.items():
+            target_transforms, target_transforms_after = [], []
+            if datasplit_v is not None:
+                for tt_key, tt_param in datasplit_v.items():
+                    target_transforms.append(target_transforms_collection[tt_key](tt_param))
+            self.target_transforms[datasplit_k] = target_transforms[0]
+        print("CHECK TARGET TRANSFORMS", self.assim_ood_norm_flag, self.target_transforms)
 
     def prepare_data(self, *args, **kwargs):
         pass
@@ -107,6 +123,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             root=self.data_dir,
             train=True,
             download=True,
+            target_transform=self.target_transforms["train"],
             transform=self.augmentations["train"],
             kwargs=self.dataset_kwargs,
         )
@@ -117,6 +134,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             root=self.data_dir,
             train=False,
             download=True,
+            target_transform=self.target_transforms["test"],
             transform=self.augmentations["test"],
             kwargs=self.dataset_kwargs,
         )
@@ -125,6 +143,11 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             if "wilds" in self.dataset_name:
                 self.iid_test_set.indices = self.iid_test_set.indices[1000:]
                 self.iid_test_set.__len__ = len(self.iid_test_set.indices)
+            if "med_mnist" in self.dataset_name:
+                    self.iid_test_set.imgs = self.iid_test_set.imgs[1000:]
+                    self.iid_test_set.targets = self.iid_test_set.targets[1000:]
+                    self.iid_test_set.labels = self.iid_test_set.labels[1000:]
+                    self.iid_test_set.__len__ = len(self.iid_test_set.imgs)
             else:
                 try:
                     self.iid_test_set.imgs = self.iid_test_set.imgs[1000:]
@@ -145,6 +168,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 root=self.data_dir,
                 train=False,
                 download=True,
+                target_transform=self.target_transforms["val"],
                 transform=self.augmentations["val"],
                 kwargs=self.dataset_kwargs,
             )
@@ -171,6 +195,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 root=self.data_dir,
                 train=True,
                 download=True,
+                target_transform=self.target_transforms["val"],
                 transform=self.augmentations["val"],
                 kwargs=self.dataset_kwargs,
             )
@@ -204,6 +229,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                     ),
                     train=False,
                     download=True,
+                    target_transform=self.target_transforms,
                     transform=self.augmentations["external_{}".format(ext_set)],
                     kwargs=self.dataset_kwargs,
                 )

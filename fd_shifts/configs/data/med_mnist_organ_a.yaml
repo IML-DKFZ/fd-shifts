@@ -8,6 +8,13 @@ data:
   num_workers: 12
   num_classes: 11
   reproduce_confidnet_splits: True
+  target_transforms:
+    train:
+      extractZeroDim:
+    val:
+      extractZeroDim:
+    test:
+      extractZeroDim:
   augmentations:
     train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
       to_tensor:
@@ -29,7 +36,7 @@ data:
         [[0.4376821, 0.4437697, 0.47280442], [0.19803012, 0.20101562, 0.19703614]]
       pad4:
 
-  kwargs:
+kwargs:
     
 
 eval:

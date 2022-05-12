@@ -53,6 +53,7 @@ def get_dataset(
     train: bool,
     download: bool,
     transform: Callable,
+    target_transform: Callable,
     kwargs: dict[str, Any],
 ) -> Any:
     """Return a new instance of a dataset
@@ -63,6 +64,7 @@ def get_dataset(
         train (bool): whether to load the train split
         download (bool): whether to attempt to download if it is not in root
         transform (Callable): transforms to apply to loaded data
+        target_transform (Callable): transforms to apply to loaded targets
         kwargs (dict[str, Any]): other kwargs to pass on
 
     Returns:
@@ -91,9 +93,6 @@ def get_dataset(
         "med_mnist_blood": BloodMNIST,
         "med_mnist_tissue": TissueMNIST,
         "med_mnist_organ_a": OrganAMNIST,
-
-
-        
         "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
@@ -139,11 +138,12 @@ def get_dataset(
             "split": "train" if train else "test",
             "download": download,
             "transform": transform,
+            "target_transform": target_transform
         }
     if "oct" in name:
         pass_kwargs = {
             "root": root,
-            "split": "train" if train else "val",#test set very small. Workaround
+            "split": "train" if train else "val",  # test set very small. Workaround
             "download": download,
             "transform": transform,
         }
@@ -338,10 +338,10 @@ class MedMNIST2D(MedMNIST_mod):
         """
         img, target = self.imgs[index], self.labels[index].astype(int)
         img = Image.fromarray(img)
-        if len(target) == 1:
-            target = target[
-                0
-            ]  # convert from array to value. Might cause errors with some medmnist datasets that are not only multiclass labels
+        # if len(target) == 1:
+        #     target = target[
+        #         0
+        #     ]  # convert from array to value. Might cause errors with some medmnist datasets that are not only multiclass labels
         # if self.as_rgb:
         #    img = img.convert("RGB")
 
