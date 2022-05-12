@@ -22,7 +22,7 @@ import torch
 import medmnist
 
 
-def get_dataset(name, root, train, download, transform, kwargs):
+def get_dataset(name, root, train, download, transform, target_transforms, kwargs):
     """
     Return a new instance of dataset loader
     """
@@ -50,9 +50,6 @@ def get_dataset(name, root, train, download, transform, kwargs):
         "med_mnist_blood": BloodMNIST,
         "med_mnist_tissue": TissueMNIST,
         "med_mnist_organ_a": OrganAMNIST,
-
-
-        
         "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
@@ -99,11 +96,12 @@ def get_dataset(name, root, train, download, transform, kwargs):
             "split": "train" if train else "test",
             "download": download,
             "transform": transform,
+            "target_transform": target_transforms
         }
     if "oct" in name:
         pass_kwargs = {
             "root": root,
-            "split": "train" if train else "val",#test set very small. Workaround
+            "split": "train" if train else "val",  # test set very small. Workaround
             "download": download,
             "transform": transform,
         }
@@ -307,10 +305,10 @@ class MedMNIST2D(MedMNIST_mod):
         """
         img, target = self.imgs[index], self.labels[index].astype(int)
         img = Image.fromarray(img)
-        if len(target) == 1:
-            target = target[
-                0
-            ]  # convert from array to value. Might cause errors with some medmnist datasets that are not only multiclass labels
+        # if len(target) == 1:
+        #     target = target[
+        #         0
+        #     ]  # convert from array to value. Might cause errors with some medmnist datasets that are not only multiclass labels
         # if self.as_rgb:
         #    img = img.convert("RGB")
 

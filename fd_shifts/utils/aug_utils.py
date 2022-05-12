@@ -4,7 +4,6 @@ from albumentations.pytorch import ToTensorV2
 import cv2
 import torch
 import numpy as np
-
 transforms_collection = {
     "compose": lambda x: transforms.Compose(x),
     "to_tensor": transforms.ToTensor(),
@@ -41,6 +40,14 @@ transforms_collection = {
 #     ),
 # }
 
+target_transforms_collection = {
+    "extractZeroDim": lambda x: ExtractZeroDimension(),
+}
+
+class ExtractZeroDimension(object):
+    """ takes the Zero dimension of a array and returns it"""
+    def __call__(self, target):
+        return target[0]
 
 class ToThreeChannel(object):
     """Convert 1D greyscale to 3D greyscale by copying."""
