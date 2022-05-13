@@ -6,6 +6,13 @@ img_size: [28, 28, 3]
 num_workers: 12
 num_classes: 7
 reproduce_confidnet_splits: True
+target_transforms:
+  train:
+    extractZeroDim:
+  val:
+    extractZeroDim:
+  test:
+    extractZeroDim:
 augmentations:
   train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
     to_tensor:
