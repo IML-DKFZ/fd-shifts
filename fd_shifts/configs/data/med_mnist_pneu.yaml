@@ -2,7 +2,7 @@
 dataset: med_mnist_pneu
 data_dir: ${env:DATASET_ROOT_DIR}/${data.dataset}
 pin_memory: True
-img_size: [28, 28, 3] 
+img_size: [28, 28, 1] 
 num_workers: 12
 num_classes: 2
 reproduce_confidnet_splits: True
@@ -15,17 +15,20 @@ target_transforms:
     extractZeroDim:
 augmentations:
   train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
+    tothreechannel:
     to_tensor:
     normalize:
        [[0.4376821, 0.4437697, 0.4728044], [0.19803012, 0.20101562, 0.19703614]]
     pad4: #zero padding 4 pixels around edges
 
   val:
+    tothreechannel:
     to_tensor:
     normalize:
       [[0.4376821, 0.4437697, 0.47280442], [0.19803012, 0.20101562, 0.19703614]]
     pad4:
   test:
+    tothreechannel:
     to_tensor:
     normalize:
       [[0.4376821, 0.4437697, 0.47280442], [0.19803012, 0.20101562, 0.19703614]]
