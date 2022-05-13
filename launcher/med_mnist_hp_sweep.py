@@ -2,9 +2,9 @@ import subprocess
 set = {"blood","breast","derma","oct","organ_a","path","pneu","tissue"}
 
 for name in set:
-    for lr in [1, 2, 3, 4]:
+    for lr in [1, 2, 3]:
         for dropout in [0, 1]:
-            for wd in [1,2,3,4]:
+            for wd in [2]:
                 # print(f"{lr} and {dropout}")
                 learning_rate = 10 ** (-lr)
                 weight_decay = 10 ** (-wd)
