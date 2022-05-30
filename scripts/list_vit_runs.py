@@ -13,11 +13,11 @@ class Experiment:
     dataset: str
     model: str
     bb: str
-    lr: str
-    bs: str
-    run: str
-    do: str
-    rew: str
+    lr: float
+    bs: int
+    run: int
+    do: int
+    rew: float
 
     @staticmethod
     def from_standardized_name(name: str) -> Experiment:
@@ -35,11 +35,11 @@ class Experiment:
             dataset=dataset,
             model=extract_hparam(name, r"model([a-z]+)", "vit"),
             bb=extract_hparam(name, r"bb([a-z0-9]+(_small_conv)?)", "vit"),
-            lr=extract_hparam(name, r"lr([0-9.]+)", None),
-            bs=extract_hparam(name, r"bs([0-9]+)", "128"),
-            run=extract_hparam(name, r"run([0-9]+)", "0"),
-            do=extract_hparam(name, r"do([01])", "0"),
-            rew=extract_hparam(name, r"rew([0-9.]+)", "0"),
+            lr=float(extract_hparam(name, r"lr([0-9.]+)", None)),
+            bs=int(extract_hparam(name, r"bs([0-9]+)", "128")),
+            run=int(extract_hparam(name, r"run([0-9]+)", "0")),
+            do=int(extract_hparam(name, r"do([01])", "0")),
+            rew=float(extract_hparam(name, r"rew([0-9.]+)", "0")),
         )
 
 
@@ -70,12 +70,12 @@ def to_experiment_definition(row):
 
 
 def main():
-    base_path = Path("~/Experiments/vit").expanduser()
+    base_path = Path("~/Experiments/vit_32").expanduser()
     paths = base_path.glob("**/test_results/raw_output.npz")
     paths = sorted(
         set(
             filter(
-                lambda x: "vit" in str(x.relative_to(base_path)),
+                lambda x: "openset" in str(x.relative_to(base_path)),
                 map(lambda p: p.parent.parent, paths),
             )
         )

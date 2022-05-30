@@ -63,8 +63,11 @@ def rename(row_match: re.Match) -> str:
     name = f"{name}_bb{bb}"
 
     run = re.search(r"run([0-9])", row)
-    assert run
-    run = run[1]
+    # assert run, f"{row}"
+    if run is None:
+        run = "0"
+    else:
+        run = run[1]
     name = f"{name}_run{run}"
 
     return name
@@ -77,7 +80,9 @@ def select_func(row, selection_df, selection_column):
     if "vit" not in row.bb:
         return 1
 
-    if "det" in row.confid:
+    if "det" in row.confid and not "maha" in row.confid:
+        row_confid = "det_"
+    elif "logits" in row.confid:
         row_confid = "det_"
     elif "mcd" in row.confid:
         row_confid = "mcd_"
@@ -98,16 +103,17 @@ def select_func(row, selection_df, selection_column):
     if selection_column == "rew":
         row_confid = "dg"
 
-    selection_df = selection_df[
+    selection_df_ = selection_df[
         (selection_df.confid == row_confid) & (selection_df.do == row.do)
     ]
 
     try:
-        if row[selection_column] == selection_df[selection_column].tolist()[0]:
+        if row[selection_column] == selection_df_[selection_column].tolist()[0]:
             return 1
         return 0
     except IndexError as error:
         print(f"{row_confid} {row}")
+        print(selection_df.confid)
         raise error
 
 
@@ -119,12 +125,12 @@ def main():
         print(f"[bold]Experiment: [/][bold red]{dataset.replace('_', '')}[/]")
         print("[bold]Looking for test results...")
 
-        base_path = Path("~/Experiments/vit").expanduser()
+        base_path = Path("~/Experiments/vit_32").expanduser()
 
-        paths = base_path.glob(f"{dataset}*_run*/test_results/*.csv")
+        paths = list(base_path.glob(f"{dataset}*run*/test_results/*.csv"))
 
         # TODO: Cannot filter based on csv age because of the new analysis
-        paths = filter(
+        paths = list(filter(
             lambda x: (
                 # (("modeldg" not in str(x)) and ("modeldevries" not in str(x)))
                 ("modeldg" not in str(x))
@@ -134,7 +140,9 @@ def main():
                 )
             ),
             paths,
-        )
+        ))
+        tmp = paths.copy()
+        paths = filter(lambda x: (x.parent / "analysis_metrics_val_tuning.csv") in tmp, paths)
 
         if "openset" not in dataset:
             paths = filter(lambda x: "openset" not in str(x), paths)
@@ -143,10 +151,48 @@ def main():
 
         df = [pd.read_csv(p).assign(date=datetime.fromtimestamp(d)) for p, d in paths]
 
+        if len(df) < 1:
+            continue
+
         print("[bold]Processing test results...")
 
         df = pd.concat(df)
         df = df[~df["study"].str.contains("224")]
+        df = df[~(df["confid"] == "det_pe")]
+        df = df[~(df["confid"] == "det_mcp")]
+
+        ###
+        base_path64 = Path("~/Experiments/vit_64").expanduser()
+
+        paths64 = base_path64.glob(f"{dataset}*run*/test_results/*.csv")
+
+        # TODO: Cannot filter based on csv age because of the new analysis
+        # paths64 = filter(
+        #     lambda x: (
+        #         # (("modeldg" not in str(x)) and ("modeldevries" not in str(x)))
+        #         ("modeldg" not in str(x))
+        #         or (
+        #             (x.parent / "raw_logits.npz").stat().st_mtime
+        #             > datetime(2022, 1, 10).timestamp()
+        #         )
+        #     ),
+        #     paths64,
+        # )
+
+        if "openset" not in dataset:
+            paths64 = filter(lambda x: "openset" not in str(x), paths64)
+
+        def to_equivalent_32_output(path: Path):
+            # return (base_path / path.parent.parent.parts[-1] / "test_results" / "raw_output.npz")   
+            return (base_path64 / path.parent.parent.parts[-1] / "test_results" / "raw_logits.npz")   
+
+        paths64 = map(lambda x: (x, to_equivalent_32_output(x).stat().st_mtime), filter(lambda x: to_equivalent_32_output(x).is_file(), paths64))
+
+        df64 = pd.concat([pd.read_csv(p).assign(date=datetime.fromtimestamp(d)) for p, d in paths64])
+        print(df.confid.unique())
+
+        df = pd.concat([df, df64])
+        ###
 
         df["old_name"] = df["name"]
         df["name"] = df["name"].str.replace(".+", rename, regex=True)
@@ -275,7 +321,8 @@ def main():
         dataset = dataset.replace("cifar10_", "cifar10")
         print(len(selected_df))
 
-        out_path = Path("~/Projects/failure-detection-benchmark/results").expanduser()
+        out_path = Path("~/Projects/failure-detection-benchmark/results64").expanduser()
+        out_path.mkdir(exist_ok=True)
         selected_df[selected_df.bb == "vit"].to_csv(out_path / f"{dataset}vit.csv")
         if "openset" in dataset:
             selected_df[selected_df.bb != "vit"].to_csv(out_path / f"{dataset}.csv")

@@ -28,6 +28,7 @@ def run_analysis(path: Path):
     analysis.logger = logger
     analysis.eval_utils.logger = logger
     analysis.studies.logger = logger
+    analysis.metrics.logger = logger
     try:
         logger.info("Started analysis in {}", path)
 
@@ -38,6 +39,11 @@ def run_analysis(path: Path):
             return 1
 
         config = OmegaConf.load(config_path)
+        config.exp.name = str(path.parts[-2])
+
+        if "fd-shifts_64" in str(path):
+            if hasattr(config.eval.query_studies, "noise_study"):
+                config.eval.query_studies.pop("noise_study")
 
         analysis.main(
             in_path=config.test.dir,
@@ -62,7 +68,9 @@ def run_analysis(path: Path):
 
 
 def get_all_experiments(path: Path):
+    # return filter(lambda x: "svhn" not in str(x), path.expanduser().glob("**/test_results"))
     return path.expanduser().glob("**/test_results")
+    # return path.expanduser().glob("svhn_openset*/test_results")
 
 
 def main():

@@ -6,15 +6,18 @@ from rich import print  # pylint: disable=redefined-builtin
 
 
 def main():
-    base_path = Path("~/results/vit").expanduser()
+    base_path = Path("~/Experiments/vit_64").expanduser()
+    base_path32 = Path("~/Experiments/vit_32/").expanduser()
 
     for path in base_path.glob("*openset*"):
-        versions = sorted(path.glob("*version*"))
+        print(f"[bold blue]{path}[/bold blue]")
+        versions = sorted((base_path32 / path.relative_to(base_path)).glob("*version*/last.ckpt"))
+        print(len(versions))
         if len(versions) == 0:
-            print(f"[bold red]{path}")
+            print(f"[bold red]{path}[/bold red]")
             continue
 
-        latest: Path = versions[-1]
+        latest: Path = base_path / versions[-1].parent.relative_to(base_path32)
 
         with open(latest / "hparams.yaml") as file:
             hparams = yaml.safe_load(file.read())

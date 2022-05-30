@@ -6,6 +6,9 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from rich import print
+from rich.markdown import Markdown
+
+from fd_shifts.analysis import metrics
 
 pd.set_option("display.precision", 12)
 
@@ -22,11 +25,16 @@ def predictive_entropy_log(softmax: npt.NDArray[Any]) -> npt.NDArray[Any]:
     return np.sum(np.exp(softmax) * (-softmax), axis=1)
 
 
-base_path = Path("~/Experiments/").expanduser()
+base_path = Path("~/Experiments").expanduser()
+# base_path = Path("~/Experiments/vit_64").expanduser()
+base_path32 = Path("~/Experiments/vit_32").expanduser()
 runs = [
-    "vit_64/cifar100_modelvit_bbvit_lr0.03_bs128_run3_do0_rew0",
-    "vit_32/cifar100_modelvit_bbvit_lr0.03_bs128_run3_do0_rew0",
+    "camelyon_precision_study/wilds_camelyon_modelvit_bbvit_lr0.0001_bs128_run0_do0_rew0_prec16",
+    "camelyon_precision_study/wilds_camelyon_modelvit_bbvit_lr0.0001_bs128_run0_do0_rew0_prec32",
+    "camelyon_precision_study/wilds_camelyon_modelvit_bbvit_lr0.0001_bs128_run0_do0_rew0_prec64",
 ]
+
+# runs = list(map(lambda path: path.parts[-1], base_path.glob("wilds_camelyon_modelvit_bbvit*")))
 
 # base_path = Path("~/Experiments/fd-shifts/camelyon_paper_sweep/").expanduser()
 # runs = [f"confidnet_bbresnet50_do0_run{i}_rew2.2" for i in range(1, 10)]
@@ -34,8 +42,12 @@ runs = [
 report = []
 
 for run in runs:
+    # if not (base_path32 / run / "test_results/raw_output.npz").is_file():
+    #     continue
+    # output = np.load(base_path32 / run / "test_results/raw_output.npz")["arr_0"]
     output = np.load(base_path / run / "test_results/raw_output.npz")["arr_0"]
-    print(output.dtype)
+    # print(Markdown(f"# {output.dtype}"))
+    print(Markdown(f"# {run}"))
 
     df = pd.DataFrame(
         output,
@@ -44,10 +56,19 @@ for run in runs:
             ("label", ""),
             ("dataset", ""),
         ],
-        dtype=np.float64
     )
     df.columns = pd.MultiIndex.from_tuples(df.columns)
     softmax = df.softmax.to_numpy(dtype=np.float64)[:10]
+    df = df.assign(
+        msr=maximum_softmax_probability(df.softmax),
+        pe=predictive_entropy(df.softmax),
+        correct=((df.softmax.idxmax(axis=1) == df.label) & (df.dataset.astype(int) < 2))
+    )
+
+    data = df[df.dataset == 1]
+    stats_cache = metrics.StatsCache(data.msr.values, data.correct.values, 20)
+    aurc = metrics.aurc(stats_cache)
+    print(f"IID AURC: {aurc}")
     # msr = maximum_softmax_probability(softmax)
     # pe = predictive_entropy(softmax)
     # print(np.argsort(msr))
@@ -67,7 +88,7 @@ for run in runs:
     test_data["msr_rank"] = idx_sorted_msr.sort_values().index
     idx_sorted_pe = np.argsort(-test_data.pe)
     test_data["pe_rank"] = idx_sorted_pe.sort_values().index
-    print(test_data)
+    # print(test_data)
 
     total = df.shape[0]
     error_df = df[
@@ -80,8 +101,8 @@ for run in runs:
         f"[red bold]{run + ':':70s}[/red bold][green italic]Error {error}/{total} or {error/total*100:.2f}%[/green italic]"
     )
 
-    report.append([run, error, total])
+    report.append([run, error, total, aurc])
 
-pd.DataFrame(report, columns=("run", "error", "total")).to_csv(
+pd.DataFrame(report, columns=("run", "error", "total", "aurc_iid")).to_csv(
     f"./{datetime.now().strftime('%Y-%m-%d_%H-%M-%S_%f')}-numerical_error_samples.csv"
 )
