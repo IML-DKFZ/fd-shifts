@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from functools import cached_property
+import logging
 from typing import Any, Callable, TypeVar, cast
 
 import numpy as np
@@ -13,6 +13,8 @@ from sklearn import preprocessing as skp
 from sklearn import utils as sku
 from typing_extensions import ParamSpec
 
+from . import logger
+
 AURC_DISPLAY_SCALE = 1000
 
 _metric_funcs = {}
@@ -20,23 +22,18 @@ _metric_funcs = {}
 T = TypeVar("T")
 P = ParamSpec("P")
 
-logger = logging.getLogger("fd_shifts")
-
 
 def may_raise_sklearn_exception(func: Callable[P, T]) -> Callable[P, T]:
+    @logger.catch(ValueError, level=logging.DEBUG, default=np.nan)
     def _inner_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        try:
-            return func(*args, **kwargs)
-        except ValueError:
-            logger.exception("exception in sklearn computation")
-            return cast(T, np.nan)
+        return func(*args, **kwargs)
 
     return _inner_wrapper
 
 
 @dataclass
 class StatsCache:
-    """ Cache for stats computed by scikit used by multiple metrics.
+    """Cache for stats computed by scikit used by multiple metrics.
 
     Attributes:
         confids (array_like): Confidence values
@@ -113,7 +110,7 @@ class StatsCache:
         if len(labels) > 2:
             raise ValueError(
                 "Only binary classification is supported. "
-                "Provided labels %s." % labels
+                f"Provided labels {labels}."
             )
         y_true = skp.label_binarize(y_true, classes=labels)[:, 0]
 
@@ -173,7 +170,9 @@ def failap_suc(stats_cache: StatsCache) -> float:
     return cast(
         float,
         skm.average_precision_score(
-            stats_cache.correct, stats_cache.confids, pos_label=1
+            stats_cache.correct,
+            stats_cache.confids,
+            pos_label=1,
         ),
     )
 
@@ -203,7 +202,7 @@ def aurc(stats_cache: StatsCache):
 @may_raise_sklearn_exception
 def eaurc(stats_cache: StatsCache):
     err = np.mean(stats_cache.residuals)
-    kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
+    kappa_star_aurc = err + (1 - err) * (np.log(1 - err + np.finfo(err.dtype).eps))
     return aurc(stats_cache) - kappa_star_aurc * AURC_DISPLAY_SCALE
 
 

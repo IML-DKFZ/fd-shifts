@@ -132,9 +132,11 @@ def filter_new_class_study_data(
 
     return data.__class__(
         softmax_output=data.softmax_output[select_ix_all],
+        logits=__filter_if_exists(data.logits, select_ix_all),
         labels=labels[select_ix_all],
         dataset_idx=data.dataset_idx[select_ix_all],
         mcd_softmax_dist=__filter_if_exists(data.mcd_softmax_dist, select_ix_all_mcd),
+        mcd_logits_dist=__filter_if_exists(data.mcd_logits_dist, select_ix_all_mcd),
         external_confids=__filter_if_exists(data.external_confids, select_ix_all),
         mcd_external_confids_dist=__filter_if_exists(
             data.mcd_external_confids_dist, select_ix_all_mcd
@@ -203,6 +205,9 @@ def filter_noise_study_data(
         softmax_output=__filter_intensity_2d(
             data.softmax_output, select_ix, noise_level
         ),
+        logits=__filter_intensity_2d(
+            data.logits, select_ix, noise_level
+        ),
         labels=__filter_intensity_1d(data.labels, select_ix, noise_level),
         dataset_idx=__filter_intensity_1d(data.dataset_idx, select_ix, noise_level),
         external_confids=__filter_intensity_1d(
@@ -213,6 +218,9 @@ def filter_noise_study_data(
         ),
         mcd_softmax_dist=__filter_intensity_3d(
             data.mcd_softmax_dist, select_ix, noise_level
+        ),
+        mcd_logits_dist=__filter_intensity_3d(
+            data.mcd_logits_dist, select_ix, noise_level
         ),
         config=data.config,
     )

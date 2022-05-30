@@ -119,8 +119,8 @@ def monitor_eval(
 
 class ConfidEvaluator:
     def __init__(self, confids, correct, query_metrics, query_plots, bins):
-        self.confids = confids
-        self.correct = correct
+        self.confids = confids[~ np.isnan(confids)]
+        self.correct = correct[~ np.isnan(confids)]
         self.query_metrics = query_metrics
         self.query_plots = query_plots
         self.bins = bins

@@ -1,21 +1,27 @@
 from __future__ import annotations
 
-from loguru import logger
 import os
 from dataclasses import dataclass, field
+from numbers import Number
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from loguru import logger
 from omegaconf import DictConfig, ListConfig, OmegaConf
+from scipy import special as scpspecial
+from sklearn.calibration import _sigmoid_calibration as calib
+import torch
+from rich import inspect
 
-from .confid_scores import ConfidScore, is_external_confid
+from .confid_scores import (ConfidScore, SecondaryConfidScore,
+                            is_external_confid)
 from .eval_utils import (ConfidEvaluator, ConfidPlotter, ThresholdPlot,
                          cifar100_classes, qual_plot)
 from .studies import get_study_iterator
-
+from . import metrics
 
 
 @dataclass
@@ -26,7 +32,10 @@ class ExperimentData:
 
     config: DictConfig | ListConfig
 
+    logits: npt.NDArray[Any] | None = None
+
     mcd_softmax_dist: npt.NDArray[Any] | None = None
+    mcd_logits_dist: npt.NDArray[Any] | None = None
 
     external_confids: npt.NDArray[Any] | None = None
     mcd_external_confids_dist: npt.NDArray[Any] | None = None
@@ -86,9 +95,11 @@ class ExperimentData:
 
         return ExperimentData(
             softmax_output=self.softmax_output[mask],
+            logits=_filter_if_exists(self.logits),
             labels=self.labels[mask],
             dataset_idx=self.dataset_idx[mask],
             mcd_softmax_dist=_filter_if_exists(self.mcd_softmax_dist),
+            mcd_logits_dist=_filter_if_exists(self.mcd_logits_dist),
             external_confids=_filter_if_exists(self.external_confids),
             mcd_external_confids_dist=_filter_if_exists(self.mcd_external_confids_dist),
             config=self.config,
@@ -111,38 +122,121 @@ class ExperimentData:
         if not isinstance(test_dir, Path):
             test_dir = Path(test_dir)
 
-        if not (test_dir / "raw_output.npz").is_file():
-            raise FileNotFoundError
+        if (test_dir / "raw_logits.npz").is_file():
+            with np.load(test_dir / "raw_logits.npz") as npz:
+                raw_output = npz.f.arr_0
 
-        with np.load(test_dir / "raw_output.npz") as npz:
-            raw_output = npz.f.arr_0
+            logits = raw_output[:, :-2]
+            softmax = scpspecial.softmax(logits, axis=1)
 
-        mcd_softmax_dist = ExperimentData.__load_npz_if_exists(
-            test_dir / "raw_output_dist.npz"
-        )
+            if (mcd_logits_dist := ExperimentData.__load_npz_if_exists(
+                test_dir / "raw_logits_dist.npz"
+            )) is not None:
+                mcd_softmax_dist = scpspecial.softmax(mcd_logits_dist, axis=1)
+            else:
+                mcd_softmax_dist = None
+
+        elif (test_dir / "raw_output.npz").is_file():
+            with np.load(test_dir / "raw_output.npz") as npz:
+                raw_output = npz.f.arr_0
+
+            logits = None
+            mcd_logits_dist = None
+            softmax = raw_output[:, :-2]
+            mcd_softmax_dist = ExperimentData.__load_npz_if_exists(
+                test_dir / "raw_output_dist.npz"
+            )
+        else:
+            raise FileNotFoundError("Could not find model output")
+
 
         if config is None:
             config = OmegaConf.load(test_dir.parent / "hydra/config.yaml")
 
         # HACK: OpenSet runs currently output all classes, but only train on in-classes
         if holdout_classes is not None:
-            raw_output[:, holdout_classes] = 0
+            softmax[:, holdout_classes] = 0
+
+            if logits is not None:
+                logits[:, holdout_classes] = -np.inf
+
+            if mcd_logits_dist is not None:
+                mcd_logits_dist[:, :, holdout_classes] = 0
 
             if mcd_softmax_dist is not None:
                 mcd_softmax_dist[:, :, holdout_classes] = 0
 
+        # TODO: remove ext from query confids if file doesn't exist
+        external_confids = ExperimentData.__load_npz_if_exists(
+            test_dir / "external_confids.npz"
+        )
+        mcd_external_confids_dist = ExperimentData.__load_npz_if_exists(
+            test_dir / "external_confids_dist.npz"
+        )
+
         return ExperimentData(
-            softmax_output=raw_output[:, :-2],
+            softmax_output=softmax,
+            logits=logits,
             labels=raw_output[:, -2],
             dataset_idx=raw_output[:, -1],
             mcd_softmax_dist=mcd_softmax_dist,
-            external_confids=ExperimentData.__load_npz_if_exists(
-                test_dir / "external_confids.npz"
-            ),
-            mcd_external_confids_dist=ExperimentData.__load_npz_if_exists(
-                test_dir / "external_confids_dist.npz"
-            ),
+            mcd_logits_dist=mcd_logits_dist,
+            external_confids=external_confids,
+            mcd_external_confids_dist=mcd_external_confids_dist,
             config=config,
+        )
+
+
+@dataclass
+class PlattScaling:
+    def __init__(self, val_confids: npt.NDArray[Any], val_correct: npt.NDArray[Any]):
+        self.a: Number
+        self.b: Number
+
+        confids = val_confids[~np.isnan(val_confids)]
+        correct = val_correct[~np.isnan(val_confids)]
+        if len(confids) == 0:
+            raise ValueError
+        self.a, self.b = calib(confids, correct)
+        assert self.a
+        assert self.b
+
+    def __call__(self, confids: npt.NDArray[Any]) -> npt.NDArray[Any]:
+        return 1 / (1 + np.exp(confids * self.a + self.b))
+
+
+@dataclass
+class QuantileScaling:
+    def __init__(self, val_confids: npt.NDArray[Any], quantile=0.01):
+        self.quantile = np.quantile(val_confids, quantile)
+
+    def __call__(self, confids: npt.NDArray[Any]) -> npt.NDArray[Any]:
+        return scpspecial.expit(-1 * (confids - self.quantile))
+
+
+@dataclass
+class TemperatureScaling:
+    def __init__(self, val_confids: npt.NDArray[Any], val_labels: npt.NDArray[Any]):
+        pass
+        # confids = torch.from_numpy(val_confids)
+        # labels = torch.from_numpy(val_labels).long()
+        # ce_loss = torch.nn.CrossEntropyLoss()
+        # temperature = torch.ones((1)) * 1.5
+        # temperature.requires_grad = True
+        # optimizer = torch.optim.LBFGS([temperature], lr=0.01, max_iter=50)
+        #
+        # def eval()
+        #     optimizer.zero_grad()
+        #     loss = ce_loss(confids / temperature, labels)
+        #     loss.backward()
+        #     return loss
+        #
+        # optimizer.step(eval)
+        # self.temperature = temperature.detach().numpy().astype("double")[0]
+
+    def __call__(self, logits: npt.NDArray[Any]):
+        return np.max(
+            logits, axis=1
         )
 
 
@@ -169,9 +263,9 @@ class Analysis:
         }
 
         # HACK: OpenSet runs currently output all classes, but only train on in-classes
-        holdout_classes: list | None = kwargs.get("out_classes") if (
-            kwargs := cf.data.get("kwargs")
-        ) else None
+        holdout_classes: list | None = (
+            kwargs.get("out_classes") if (kwargs := cf.data.get("kwargs")) else None
+        )
         self.experiment_data = ExperimentData.from_experiment(path, holdout_classes, cf)
 
         if self.method_dict["cfg"].data.num_classes is None:
@@ -181,6 +275,38 @@ class Analysis:
         self.method_dict["query_confids"] = self.method_dict[
             "cfg"
         ].eval.confidence_measures["test"]
+        if self.experiment_data.external_confids is None:
+            self.method_dict["query_confids"] = list(
+                filter(
+                    lambda confid: "ext" not in confid,
+                    self.method_dict["query_confids"],
+                )
+            )
+
+        if self.experiment_data.mcd_softmax_dist is None:
+            self.method_dict["query_confids"] = list(
+                filter(
+                    lambda confid: "mcd" not in confid,
+                    self.method_dict["query_confids"],
+                )
+            )
+
+        self.secondary_confids = []
+
+        if "ext" in self.method_dict["query_confids"] and self.method_dict["cfg"].eval.ext_confid_name == "maha":
+            self.method_dict["query_confids"].append("ext_qt")
+            self.secondary_confids.extend(
+                [
+                    "det_mcp-maha-average",
+                    "det_mcp-maha-product",
+                    "det_mcp-maha_qt-average",
+                ]
+            )
+            self.method_dict["query_confids"].extend(self.secondary_confids)
+
+        if self.experiment_data.logits is not None:
+            self.method_dict["query_confids"].append("det_mls")
+
         logger.debug("CHECK QUERY CONFIDS\n{}", self.method_dict["query_confids"])
 
         self.query_performance_metrics = query_performance_metrics
@@ -196,8 +322,13 @@ class Analysis:
         self.val_risk_scores = {}
         self.num_classes = self.method_dict["cfg"].data.num_classes
         self.add_val_tuning = add_val_tuning
+
+        if not add_val_tuning:
+            raise ValueError("Need val tuning to perform platt scaling")
+
         self.threshold_plot_confid = threshold_plot_confid
         self.qual_plot_confid = qual_plot_confid
+        self.normalization_functions = {}
 
     def register_and_perform_studies(self):
 
@@ -225,7 +356,7 @@ class Analysis:
         self.get_confidence_scores(study_data)
         self.compute_confid_metrics()
         self.create_results_csv(study_data)
-        self.create_master_plot()
+        # self.create_master_plot()
 
     def _fix_external_confid_name(self, name: str):
         if not is_external_confid(name):
@@ -245,12 +376,50 @@ class Analysis:
 
     def get_confidence_scores(self, study_data: ExperimentData):
         for query_confid in self.method_dict["query_confids"]:
+            if query_confid in self.secondary_confids:
+                continue
+
             confid_score = ConfidScore(
-                study_data=study_data, query_confid=query_confid, analysis=self,
+                study_data=study_data,
+                query_confid=query_confid,
+                analysis=self,
             )
 
             query_confid = self._fix_external_confid_name(query_confid)
 
+            confids = confid_score.confids
+
+            if self.study_name == "val_tuning":
+                if query_confid == "maha_qt":
+                    self.normalization_functions[query_confid] = QuantileScaling(confids)
+                elif query_confid == "temp_logits":
+                    self.normalization_functions[query_confid] = TemperatureScaling(confids, study_data.labels)
+                elif any(
+                    cfd in query_confid
+                    for cfd in ["_pe", "_ee", "_mi", "_sv", "bpd", "maha", "_mls"]
+                ):
+                    self.normalization_functions[query_confid] = PlattScaling(
+                        confids, confid_score.correct
+                    )
+                else:
+                    self.normalization_functions[query_confid] = lambda confids: confids
+
+            assert not np.all(np.isnan(confids)), f"Nan in {query_confid} in {self.study_name} before normalization"
+            confids = self.normalization_functions[query_confid](confids)
+            assert not np.all(np.isnan(confids)), f"Nan in {query_confid} in {self.study_name} after normalization {inspect(self.normalization_functions[query_confid])}"
+
+            self.method_dict[query_confid] = {}
+            self.method_dict[query_confid]["confids"] = confids
+            self.method_dict[query_confid]["correct"] = confid_score.correct
+            self.method_dict[query_confid]["metrics"] = confid_score.metrics
+            self.method_dict[query_confid]["predict"] = confid_score.predict
+
+        for query_confid in self.secondary_confids:
+            confid_score = SecondaryConfidScore(
+                study_data=study_data,
+                query_confid=query_confid,
+                analysis=self,
+            )
             self.method_dict[query_confid] = {}
             self.method_dict[query_confid]["confids"] = confid_score.confids
             self.method_dict[query_confid]["correct"] = confid_score.correct
@@ -294,20 +463,41 @@ class Analysis:
                     "CHECK BEFORE NORM VALUES INCORRECT\n{}",
                     np.median(confid_dict["confids"][confid_dict["correct"] == 0]),
                 )
-            if any(cfd in confid_key for cfd in ["_pe", "_ee", "_mi", "_sv", "bpd"]):
-                unnomred_confids = confid_dict["confids"].astype(np.float64)
-                min_confid = np.min(unnomred_confids)
-                max_confid = np.max(unnomred_confids)
-                confid_dict["confids"] = 1 - (
-                    (unnomred_confids - min_confid) / (max_confid - min_confid + 1e-9)
-                )
-            if "maha" in confid_key:
-                unnomred_confids = confid_dict["confids"].astype(np.float64)
-                min_confid = np.min(unnomred_confids)
-                max_confid = np.max(unnomred_confids)
-                confid_dict["confids"] = (unnomred_confids - min_confid) / np.abs(
-                    max_confid - min_confid + 1e-9
-                )
+            # if any(
+            #     cfd in confid_key for cfd in ["_pe", "_ee", "_mi", "_sv", "bpd", "maha"]
+            # ):
+            #     unnormed_confids = confid_dict["confids"].astype(np.float64)
+            #     if self.study_name == "val_tuning":
+            #         # self.platt_a[confid_key], self.platt_b[confid_key] = calib(
+            #         #     unnormed_confids, confid_dict["correct"]
+            #         # )
+            #         self.normalization_functions[confid_key] = PlattScaling(
+            #             *calib(unnormed_confids, confid_dict["correct"])
+            #         )
+            #
+            #     confid_dict["confids"] = self.normalization_functions[confid_key](
+            #         unnormed_confids
+            #     )
+                # 1 / (
+                #     1
+                #     + np.exp(
+                #         unnormed_confids * self.platt_a[confid_key]
+                #         + self.platt_b[confid_key]
+                #     )
+                # )
+                # unnomred_confids = confid_dict["confids"].astype(np.float64)
+                # min_confid = np.min(unnomred_confids)
+                # max_confid = np.max(unnomred_confids)
+                # confid_dict["confids"] = 1 - (
+                #     (unnomred_confids - min_confid) / (max_confid - min_confid + 1e-9)
+                # )
+            # if "maha" in confid_key:
+            #     unnomred_confids = confid_dict["confids"].astype(np.float64)
+            #     min_confid = np.min(unnomred_confids)
+            #     max_confid = np.max(unnomred_confids)
+            #     confid_dict["confids"] = (unnomred_confids - min_confid) / np.abs(
+            #         max_confid - min_confid + 1e-9
+            #     )
 
             if confid_key == "bpd" or confid_key == "maha":
                 logger.debug(
@@ -699,12 +889,12 @@ def main(
     ]
 
     query_plots = [
-        "calibration",
-        "overconfidence",
-        "roc_curve",
-        "prc_curve",
-        "rc_curve",
-        "hist_per_confid",
+        # "calibration",
+        # "overconfidence",
+        # "roc_curve",
+        # "prc_curve",
+        # "rc_curve",
+        # "hist_per_confid",
     ]
 
     if not os.path.exists(analysis_out_dir):
