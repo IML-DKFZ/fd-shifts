@@ -134,6 +134,8 @@ class net(pl.LightningModule):
         return batch_parts
 
     def on_test_start(self, *args):
+        if not any("ext" in cfd for cfd in self.query_confids["test"]):
+            return
         tqdm.write("Calculating trainset mean and cov")
         all_z = []
         all_y = []
