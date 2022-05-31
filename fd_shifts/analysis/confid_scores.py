@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 EXTERNAL_CONFIDS = ["ext", "bpd", "maha", "tcp", "dg", "devries"]
 
+# TODO: Add better error handling/reporting
 
 def is_external_confid(name: str):
     return name.split("_")[0] in EXTERNAL_CONFIDS

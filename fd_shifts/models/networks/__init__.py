@@ -11,6 +11,8 @@ from fd_shifts.models.networks import vgg_devries
 from fd_shifts.models.networks import dgvgg
 from fd_shifts.models.networks import vit
 
+# TODO: Error handling
+# TODO: Make explicit arguments
 
 def get_network(network_name):
     """

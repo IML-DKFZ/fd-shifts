@@ -15,6 +15,8 @@ from typing_extensions import ParamSpec
 
 from . import logger
 
+# TODO: Better error handling
+
 AURC_DISPLAY_SCALE = 1000
 
 _metric_funcs = {}

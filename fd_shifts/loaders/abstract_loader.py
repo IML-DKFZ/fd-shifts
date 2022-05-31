@@ -12,6 +12,7 @@ import numpy as np
 from copy import deepcopy
 import logging
 
+# TODO: Go over this and make it less presumptuous
 
 class AbstractDataLoader(pl.LightningDataModule):
     def __init__(self, cf, no_norm_flag=False):

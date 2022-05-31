@@ -17,6 +17,8 @@ import io
 import pickle
 import os
 
+# TODO: Handle configs better
+# TODO: Refactor a bit
 
 def get_dataset(name, root, train, download, transform, kwargs):
     """

@@ -23,6 +23,10 @@ from .eval_utils import (ConfidEvaluator, ConfidPlotter, ThresholdPlot,
 from .studies import get_study_iterator
 from . import metrics
 
+# TODO: Finish cleaning this up
+# FIX: Add error checking
+# FIX: Remove too specific assumptions
+
 
 @dataclass
 class ExperimentData:

@@ -1,5 +1,7 @@
 # FD-Shifts
 
+<!-- TODO: Final pass over readme -->
+
 ![overview](./docs/new_overview.png)
 
 If you use fd-shifts please cite our [paper]()

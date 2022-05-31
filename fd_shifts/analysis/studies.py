@@ -8,6 +8,9 @@ import numpy.typing as npt
 
 from . import logger
 
+# TODO: Better error handling
+# FIX: Move noise study destructuring to the dataset
+
 if TYPE_CHECKING:
     from fd_shifts.analysis import Analysis, ExperimentData
 

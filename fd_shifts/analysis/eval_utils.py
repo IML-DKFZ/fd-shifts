@@ -16,6 +16,8 @@ from . import logger
 
 # BUG: Replace -1 as a failure marker
 # NOTE: Use NaN? Explicitly error? Clearer warning?
+# TODO: Better error handling in general
+# TODO: Clean this up
 
 
 def get_tb_hparams(cf):

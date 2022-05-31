@@ -4,6 +4,8 @@ from fd_shifts.models import zhang_model
 from fd_shifts.models import devries_model
 from fd_shifts.models import vit_model
 
+# TODO: Make all models work the same
+# TODO: Add some validation
 
 def get_model(model_name):
     """

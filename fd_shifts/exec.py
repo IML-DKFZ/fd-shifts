@@ -20,6 +20,10 @@ from fd_shifts.models import get_model
 from fd_shifts.models.callbacks import get_callbacks
 from fd_shifts.utils import exp_utils
 
+# TODO: Handle better configs
+# TODO: Handle mode better
+# TODO: Log git commit
+
 
 class InterceptHandler(logging.Handler):
     def emit(self, record):

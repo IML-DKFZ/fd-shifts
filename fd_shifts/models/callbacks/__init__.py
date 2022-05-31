@@ -3,6 +3,9 @@ from pytorch_lightning.callbacks import (GPUStatsMonitor, LearningRateMonitor,
 
 from fd_shifts.models.callbacks import confid_monitor, training_stages
 
+# TODO: Add error handling
+# TODO: Handle configs better
+
 
 def get_callbacks(cf):
     """
