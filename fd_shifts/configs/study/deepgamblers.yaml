@@ -107,7 +107,7 @@ eval:
     iid_study: cifar10
     # noise_study:
     #   # - corrupt_cifar10ç
-    new_class_study: 
-      - tinyimagenet_resize
+    #new_class_study: 
+    #  - tinyimagenet_resize
     #   - cifar100
     #   - svhn
