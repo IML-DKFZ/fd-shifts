@@ -3,6 +3,7 @@ import random
 from typing import cast
 
 import hydra
+import omegaconf
 import pytorch_lightning as pl
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -178,6 +179,57 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
         threshold_plot_confid=None,
         cf=cf,
     )
+
+
+def vgg_encoding(cf: DictConfig):
+    if "best" in cf.test.selection_criterion and cf.test.only_latest_version is False:
+        ckpt_path = exp_utils.get_path_to_best_ckpt(
+            cf.exp.dir, cf.test.selection_criterion, cf.test.selection_mode
+        )
+    else:
+        logger.info("CHECK cf.exp.dir", cf.exp.dir)
+        cf.exp.version = exp_utils.get_most_recent_version(cf.exp.dir)
+        ckpt_path = exp_utils.get_resume_ckpt_path(cf)
+    module = get_model(cf.model.name)(cf)
+    module.load_only_state_dict(ckpt_path)
+    datamodule = AbstractDataLoader(cf)
+    datamodule.setup()
+    train_ids = datamodule.train_dataset.train_df["isic_id"]
+    test_ids = datamodule.train_dataset.test_df["isic_id"]
+    import pandas as pd
+
+    df = pd.DataFrame(pd.concat([train_ids, test_ids]))
+    traindataset = datamodule.train_dataset
+    traindataset1 = datamodule.test_datasets[0]
+    traindataset2 = datamodule.test_datasets[1]
+
+    train_encoded = []
+    test_encoded = []
+    for index in range(len(traindataset)):
+        img, _ = traindataset[index]
+        img4D = torch.unsqueeze(img, 0)
+        encoded = module.model.encoder(img4D)
+        train_encoded.append(encoded)
+        print(index)
+
+    for index in range(len(testdataset1)):
+        img, _ = testdataset1[index]
+        img4D = torch.unsqueeze(img, 0)
+        encoded = module.model.encoder(img4D)
+        test_encoded.append(encoded)
+
+    for index in range(len(testdataset2)):
+        img, _ = testdataset2[index]
+        img4D = torch.unsqueeze(img, 0)
+        encoded = module.model.encoder(img4D)
+        test_encoded.append(encoded)
+    train_encoded.append(test_encoded)
+    df["encoded"] = train_encoded
+    df.to_csv(cf.test.dir + "/encoded_data")
+
+    # fix str bug
+    # test resuming by testing a second time in the same dir
+    # how to print the tested epoch into csv log?
 
 
 @hydra.main(config_path="configs", config_name="config", version_base="1.1")

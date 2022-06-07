@@ -6,7 +6,7 @@ from typing import Any, Callable, Optional, Tuple, TypeVar
 import numpy as np
 import torchvision
 from medmnist.info import DEFAULT_ROOT, HOMEPAGE, INFO
-from PIL import Image
+from PIL import Image, ImageFile
 from robustness.tools.breeds_helpers import (
     ClassHierarchy,
     make_entity13,
@@ -93,6 +93,8 @@ def get_dataset(
         "med_mnist_blood": BloodMNIST,
         "med_mnist_tissue": TissueMNIST,
         "med_mnist_organ_a": OrganAMNIST,
+        "isic_v01": Isicv01,
+        "isic_v01_cr": Isicv01,
         "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
@@ -138,7 +140,7 @@ def get_dataset(
             "split": "train" if train else "test",
             "download": download,
             "transform": transform,
-            "target_transform": target_transform
+            "target_transform": target_transform,
         }
     if "oct" in name:
         pass_kwargs = {
@@ -211,8 +213,109 @@ def get_dataset(
             split = "mnist"
         dataset = _dataset_factory[name](split=split, **pass_kwargs)
         return dataset
+
+    elif name == "isicv01":
+        pass_kwargs = {
+            "root": root,
+            "train": train,
+            "download": download,
+            "transform": transform,
+            "csv_file": "/home/l049e/Projects/ISIC/isic_v01_dataframe.csv",
+        }
+        return dataset_factory[name](**pass_kwargs)
+    elif name == "isic_v01_cr":
+        pass_kwargs = {
+            "root": root,
+            "train": train,
+            "download": download,
+            "transform": transform,
+            "csv_file": "/home/l049e/Projects/ISIC/isic_v01_dataframe.csv",
+        }
+        return dataset_factory[name](**pass_kwargs)
     else:
         return _dataset_factory[name](**pass_kwargs)
+
+
+class Isicv01(Dataset):
+    "Class with binary classification benign vs malignant of skin cancer and control"
+
+    def __init__(
+        self,
+        csv_file: str,
+        root: str,
+        transform: Optional[callable] = None,
+        target_transforms: Optional[callable] = None,
+        train: bool = True,
+        download: bool = False,
+    ):
+        """
+        Args:
+            csv_file (string): Path to csv with metadata and images
+            root_dir (string): Directory with the images
+            transforms (callable, optional): Torchvision transforms to apply
+            target_transforms (callable): target transforms to apply
+            train (bool): If true traindata if false test data
+            download (bool): toDo
+        """
+        self.isicv01_df = pd.read_csv(csv_file)
+
+        if isinstance(root, torch._six.string_classes):
+            root = os.path.expanduser(root)
+        self.root = root
+        self.download = download
+
+        self.target_transforms = target_transforms
+        self.transforms = transform
+        self.train = train
+        # self.resample_malignant: int = 0
+        self.data, self.targets = self._load_data()
+        self.classes = {"bening": 0, "malignant": 1}
+
+    def __len__(self):
+        return len(self.targets)
+
+    def _load_data(self) -> Tuple[Any, Any]:
+        self.train_df = self.isicv01_df.sample(frac=0.8, random_state=200)
+        self.test_df = self.isicv01_df.drop(self.train_df.index)
+        # if self.resample_malignant > 0:
+        #    mal = self.train_df["class"] == 1
+        #    mal_df = self.train_df[mal]
+        #    self.train_df = self.train_df.append(
+        #        [mal_df] * self.resample_malignant, ignore_index=True
+        #    )
+        if self.train:
+            image_files = self.train_df["isic_id"]
+            target_series = self.train_df["class"]
+        elif not self.train:
+            image_files = self.test_df["isic_id"]
+            target_series = self.test_df["class"]
+        img_path = self.root + image_files + ".jpg"
+        data = []
+        target = []
+        for x in range(len(image_files)):
+            target.append(target_series.iloc[x])
+            image = cv2.imread(img_path.iloc[x])
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            data.append(image)
+            # data.append(Image.open(img_path.iloc[x]))
+        return data, target
+
+    def __getitem__(self, index: int) -> Tuple[Any, Any]:
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+        """
+        Args:
+            index (int): image and label index in the dataframe to return
+        Returns:
+            tupel (image, target): where target is the label of the target class
+        """
+        img, target = self.data[index], int(self.targets[index])
+        if self.transforms is not None:
+            img = self.transforms(img)
+        if self.target_transforms is not None:
+            target = self.target_transforms(target)
+
+        return img, target
 
 
 class MedMNIST_mod(Dataset):

@@ -76,6 +76,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
         self.train_dataset, self.val_dataset, self.test_datasets = None, None, None
 
     def add_target_transforms(self, query_tt, no_norm_flag):
+        #add if for empty target transform. currently bug for no tt
         for datasplit_k, datasplit_v in query_tt.items():
             target_transforms, target_transforms_after = [], []
             if datasplit_v is not None:
