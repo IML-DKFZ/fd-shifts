@@ -236,7 +236,7 @@ class Isicv01(Dataset):
         self.target_transforms = target_transforms
         self.transforms = transform
         self.train = train
-        # self.resample_malignant: int = 0
+        self.resample_malignant: int = 4
         self.data, self.targets = self._load_data()
         self.classes = {"bening": 0, "malignant": 1}
 
@@ -246,12 +246,12 @@ class Isicv01(Dataset):
     def _load_data(self) -> Tuple[Any, Any]:
         self.train_df = self.isicv01_df.sample(frac=0.8, random_state=200)
         self.test_df = self.isicv01_df.drop(self.train_df.index)
-        # if self.resample_malignant > 0:
-        #    mal = self.train_df["class"] == 1
-        #    mal_df = self.train_df[mal]
-        #    self.train_df = self.train_df.append(
-        #        [mal_df] * self.resample_malignant, ignore_index=True
-        #    )
+        if self.resample_malignant > 0:
+            mal = self.train_df["class"] == 1
+            mal_df = self.train_df[mal]
+            self.train_df = self.train_df.append(
+                [mal_df] * self.resample_malignant, ignore_index=True
+            )
         if self.train:
             image_files = self.train_df["isic_id"]
             target_series = self.train_df["class"]
