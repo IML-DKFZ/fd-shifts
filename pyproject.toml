@@ -9,3 +9,6 @@ reportOptionalCall = "warning"
 reportOptionalIterable = "warning"
 reportOptionalContextManager = "warning"
 reportOptionalOperand = "warning"
+
+[tool.pytest.ini_options]
+xfail_strict = true
