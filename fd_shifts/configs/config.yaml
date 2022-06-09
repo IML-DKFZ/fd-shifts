@@ -1,7 +1,9 @@
 defaults:
-  - hydra/job_logging: disabled
+  - config_schema
+  # - hydra/job_logging: disabled
   - data: svhn_data
   - study: deepgamblers
+  - _self_
 
 hydra:
   run:
@@ -9,13 +11,13 @@ hydra:
   output_subdir: hydra # needs to be null for manual testing!
 
 exp:
-  version: None
+  version: null
   mode: train_test # train or test
   work_dir: ${hydra:runtime.cwd}
   fold_dir: exp/${exp.fold}
-  root_dir: ${env:EXPERIMENT_ROOT_DIR}
-  data_root_dir: ${env:DATASET_ROOT_DIR}
-  group_dir: ${env:EXPERIMENT_ROOT_DIR}/${exp.group_name}
+  root_dir: ${oc.env:EXPERIMENT_ROOT_DIR}
+  data_root_dir: ${oc.env:DATASET_ROOT_DIR}
+  group_dir: ${oc.env:EXPERIMENT_ROOT_DIR}/${exp.group_name}
   dir: ${exp.group_dir}/${exp.name}
   version_dir: ${exp.dir}/version_${exp.version}
   fold: 0
@@ -34,7 +36,7 @@ exp:
       external_confids: ${test.dir}/external_confids.npz
       external_confids_dist: ${test.dir}/external_confids_dist.npz
   log_path: ./log.txt
-  global_seed: False # set to False to disable deterministic training.
+  global_seed: null # set to False to disable deterministic training.
 
 trainer:
   resume_from_ckpt_confidnet: False

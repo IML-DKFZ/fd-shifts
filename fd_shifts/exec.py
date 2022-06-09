@@ -70,7 +70,7 @@ def train(cf, subsequent_testing=False):
 
     logger.info("CHECK CUDNN VERSION", torch.backends.cudnn.version())
     train_deterministic_flag = False
-    if cf.exp.global_seed is not False:
+    if cf.exp.global_seed is not None:
         # exp_utils.set_seed(cf.exp.global_seed)
         exp_utils.set_seed(cf.exp.global_seed)
         cf.trainer.benchmark = False
