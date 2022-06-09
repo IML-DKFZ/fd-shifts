@@ -1,4 +1,3 @@
-# @package _group_
 dataset: super_cifar100
 data_dir: ${env:DATASET_ROOT_DIR}/cifar100
 pin_memory: True

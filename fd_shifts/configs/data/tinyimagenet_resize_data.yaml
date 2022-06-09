@@ -1,4 +1,3 @@
-# @package _group_
 dataset: tinyimagenet_resize
 data_dir: ${env:DATASET_ROOT_DIR}/${data.dataset}
 pin_memory: True

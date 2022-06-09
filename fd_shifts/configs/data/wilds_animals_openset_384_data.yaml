@@ -1,4 +1,3 @@
-# @package _group_
 dataset: wilds_animals_openset
 data_dir: ${env:DATASET_ROOT_DIR}/wilds_animals
 pin_memory: True

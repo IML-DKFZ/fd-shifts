@@ -1,4 +1,3 @@
-# @package _group_
 dataset: breeds
 data_dir: /gpu/data/OE0612/jaegerp/${data.dataset}
 pin_memory: True
