@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import field
 from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Optional
@@ -7,6 +7,10 @@ import hydra
 from hydra.core.config_store import ConfigStore
 from hydra.core.hydra_config import HydraConfig
 from omegaconf.omegaconf import MISSING
+from pydantic import validator
+from pydantic.dataclasses import dataclass
+
+from ..models import networks
 
 # TODO: Clean up data configs (-> instantiation? enum?)
 # TODO: Clean up model configs (-> instantiation? enum?)
@@ -21,6 +25,7 @@ class Mode(Enum):
 class ValSplit(Enum):
     devries = auto()
     repro_confidnet = auto()
+    cv = auto()
 
 
 @dataclass
@@ -68,20 +73,15 @@ class ExperimentConfig:
 @dataclass
 class TrainerConfig:
     resume_from_ckpt_confidnet: bool = False
-    num_epochs: int =  300 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
-    dg_pretrain_epochs: int = 100 # 100 and 300 total epochs
-    val_every_n_epoch: int = 1 #has to be 1 because of schedulers
-    # val splits:
-    # - null: no validation set is created
-    # - "devries": split the first 1000 cases of the iid test set as validation set
-    # - cv: split 10% of the training set as validation set
-    # - repro_confidnet: use the same cv split as Corbiere et al. 2020 (ConfidNet)
-    val_split: ValSplit = ValSplit.devries
+    num_epochs: int = 300  # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
+    dg_pretrain_epochs: int = 100  # 100 and 300 total epochs
+    val_every_n_epoch: int = 1  # has to be 1 because of schedulers
+    val_split: Optional[ValSplit] = ValSplit.devries
     do_val: bool = False
     batch_size: int = 128
     resume_from_ckpt: bool = False
-    benchmark: bool = True # set to false if input size varies during training!
-    fast_dev_run: bool = False # True/Fals
+    benchmark: bool = True  # set to false if input size varies during training!
+    fast_dev_run: bool = False  # True/Fals
     lr_scheduler: Any = MISSING
     #     name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
     #     milestones: [25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
@@ -98,22 +98,36 @@ class TrainerConfig:
     #     confid_monitor:
     #     learning_rate_monitor:
 
-# @dataclass
-# class ModelConfig:
-#   name: devries_model # det_mcd_model #
-#   fc_dim: 512
-#   dg_reward: 2.2
-#   avg_pool: True
-#   dropout_rate: 0 # 0 sets dropout to false
-#   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
-#   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
-#   budget: 0.3
-#   network:
-#     name: vgg13 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
-#     imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
-#     load_dg_backbone_path: #${exp.dir}/dg_backbone_2.ckpt  # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
-#     save_dg_backbone_path: ${exp.dir}/dg_backbone.ckpt # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
-#
+
+@dataclass
+class NetworkConfig:
+    name: str = "vgg13"
+    imagenet_weights_path: Optional[Path] = None
+    load_dg_backbone_path: Optional[Path] = None
+    save_dg_backbone_path: Path = Path("${exp.dir}/dg_backbone.ckpt")
+
+    @validator("name")
+    def validate_network_name(cls, name: str):
+        if not networks.network_exists(name):
+            raise ValueError(f'Network "{name}" does not exist.')
+        return name
+
+
+@dataclass
+class ModelConfig:
+    name: str = "devries_model"  # TODO: make this an enum to check existance
+    fc_dim: int = 512
+    dg_reward: float = 2.2
+    avg_pool: bool = True
+    dropout_rate: int = 0  # TODO: this should really be a boolean
+    monitor_mcd_samples: int = (
+        50  # only activated if "mcd" substring in train or val monitor confids.
+    )
+    test_mcd_samples: int = 50  # only activated if "mcd" substring in test confids.
+    budget: float = 0.3
+    network: NetworkConfig = NetworkConfig()
+
+
 # @dataclass
 # class EvalConfig:
 #   performance_metrics:
@@ -185,11 +199,16 @@ class DataConfig:
 class Config:
     # data: DataConfig = DataConfig()
     data: Any = MISSING
-    study: Any = MISSING
 
     trainer: TrainerConfig = TrainerConfig()
 
     exp: ExperimentConfig = ExperimentConfig()
-    model: Any = MISSING
+    model: ModelConfig = ModelConfig()
     eval: Any = MISSING
     test: Any = MISSING
+
+
+def init():
+    store = ConfigStore.instance()
+    store.store(name="config_schema", node=Config)
+    store.store(group="data", name="data_schema", node=DataConfig)
