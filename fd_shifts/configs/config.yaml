@@ -1,9 +1,9 @@
 defaults:
   - config_schema
-  # - hydra/job_logging: disabled
   - data: svhn_data
   - study: deepgamblers
   - _self_
+  - override hydra/job_logging: disabled
 
 hydra:
   run:
