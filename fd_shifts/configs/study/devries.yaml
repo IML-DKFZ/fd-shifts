@@ -1,4 +1,10 @@
 # @package _global_
+defaults:
+  - override /data: cifar10_data
+
+exp:
+  group_name: devries
+  name: cifar10
 
 trainer:
   num_epochs: 250 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test

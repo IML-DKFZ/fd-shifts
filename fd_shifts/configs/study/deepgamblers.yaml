@@ -4,7 +4,7 @@ defaults:
   - override /data: cifar10_data
 
 exp:
-  group_name: vit
+  group_name: deepgamblers
   name: cifar10
 
 trainer:

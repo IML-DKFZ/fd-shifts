@@ -1,4 +1,10 @@
 # @package _global_
+defaults:
+  - override /data: cifar10_data
+
+exp:
+  group_name: confidnet
+  name: cifar10
 
 trainer:
   num_epochs: 470
