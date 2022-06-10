@@ -73,7 +73,13 @@ class ExperimentConfig:
 @dataclass
 class TrainerConfig:
     resume_from_ckpt_confidnet: bool = False
-    num_epochs: int = 300  # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
+    num_epochs: Optional[
+        int
+    ] = 300  # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
+    num_steps: Optional[
+        int
+    ] = 300  # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
+    num_epochs_backbone: Optional[int] = None
     dg_pretrain_epochs: int = 100  # 100 and 300 total epochs
     val_every_n_epoch: int = 1  # has to be 1 because of schedulers
     val_split: Optional[ValSplit] = ValSplit.devries
@@ -98,17 +104,27 @@ class TrainerConfig:
     #     confid_monitor:
     #     learning_rate_monitor:
 
+    @validator("num_epochs")
+    def validate_steps(cls, num_epochs: Optional[int], values: dict[str, Any], **kwargs):
+        if (
+            (num_epochs is None and values["num_steps"] is None)
+            or (num_epochs == 0 and values["num_steps"] == 0)
+        ):
+            raise ValueError("Must specify either num_steps or num_epochs")
+        return num_epochs
+
 
 @dataclass
 class NetworkConfig:
     name: str = "vgg13"
+    backbone: Optional[str] = None
     imagenet_weights_path: Optional[Path] = None
     load_dg_backbone_path: Optional[Path] = None
-    save_dg_backbone_path: Path = Path("${exp.dir}/dg_backbone.ckpt")
+    save_dg_backbone_path: Optional[Path] = Path("${exp.dir}/dg_backbone.ckpt")
 
-    @validator("name")
+    @validator("name", "backbone")
     def validate_network_name(cls, name: str):
-        if not networks.network_exists(name):
+        if name is not None and not networks.network_exists(name):
             raise ValueError(f'Network "{name}" does not exist.')
         return name
 
