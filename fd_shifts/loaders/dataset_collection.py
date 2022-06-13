@@ -22,6 +22,13 @@ import os
 import torch
 import medmnist
 import pandas as pd
+import os
+import numpy as np
+from PIL import Image
+from torch.utils.data import Dataset
+from medmnist.info import INFO, HOMEPAGE, DEFAULT_ROOT
+import cv2
+import albumentations
 
 
 def get_dataset(name, root, train, download, transform, target_transforms, kwargs):
@@ -54,6 +61,7 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         "med_mnist_organ_a": OrganAMNIST,
         "isic_v01": Isicv01,
         "isic_v01_cr": Isicv01,
+        "isic_winner": MelanomaDataset,
         "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
@@ -193,16 +201,226 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
             "csv_file": "/home/l049e/Projects/ISIC/isic_v01_dataframe.csv",
         }
         return dataset_factory[name](**pass_kwargs)
+
+    elif name == "isic_winner":
+        out_dim = 9
+        data_dir = root
+        data_folder = "512"  # input image size
+        df_train, df_test, meta_features, n_meta_features, mel_idx = get_df(
+            out_dim, data_dir, data_folder
+        )
+        transforms_train, transforms_val = get_transforms(512)
+        if train:
+            transforms = transforms_train
+        else:
+            transforms = transforms_val
+        pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
+        return dataset_factory[name](**pass_kwargs)
+
     else:
         return dataset_factory[name](**pass_kwargs)
 
 
-import os
-import numpy as np
-from PIL import Image
-from torch.utils.data import Dataset
-from medmnist.info import INFO, HOMEPAGE, DEFAULT_ROOT
-import cv2
+def get_df(out_dim, data_dir, data_folder):
+
+    # 2020 data
+    df_train = pd.read_csv(
+        os.path.join(
+            data_dir, f"jpeg-melanoma-{data_folder}x{data_folder}", "train.csv"
+        )
+    )
+    df_train = df_train[df_train["tfrecord"] != -1].reset_index(drop=True)
+    df_train["filepath"] = df_train["image_name"].apply(
+        lambda x: os.path.join(
+            data_dir, f"jpeg-melanoma-{data_folder}x{data_folder}/train", f"{x}.jpg"
+        )
+    )
+
+    df_train["is_ext"] = 0
+
+    # 2018, 2019 data (external data)
+    df_train2 = pd.read_csv(
+        os.path.join(
+            data_dir, f"jpeg-isic2019-{data_folder}x{data_folder}", "train.csv"
+        )
+    )
+    df_train2 = df_train2[df_train2["tfrecord"] >= 0].reset_index(drop=True)
+    df_train2["filepath"] = df_train2["image_name"].apply(
+        lambda x: os.path.join(
+            data_dir, f"jpeg-isic2019-{data_folder}x{data_folder}/train", f"{x}.jpg"
+        )
+    )
+
+    df_train2["fold"] = df_train2["tfrecord"] % 5
+    df_train2["is_ext"] = 1
+
+    # Preprocess Target
+    df_train["diagnosis"] = df_train["diagnosis"].apply(
+        lambda x: x.replace("seborrheic keratosis", "BKL")
+    )
+    df_train["diagnosis"] = df_train["diagnosis"].apply(
+        lambda x: x.replace("lichenoid keratosis", "BKL")
+    )
+    df_train["diagnosis"] = df_train["diagnosis"].apply(
+        lambda x: x.replace("solar lentigo", "BKL")
+    )
+    df_train["diagnosis"] = df_train["diagnosis"].apply(
+        lambda x: x.replace("lentigo NOS", "BKL")
+    )
+    df_train["diagnosis"] = df_train["diagnosis"].apply(
+        lambda x: x.replace("cafe-au-lait macule", "unknown")
+    )
+    df_train["diagnosis"] = df_train["diagnosis"].apply(
+        lambda x: x.replace("atypical melanocytic proliferation", "unknown")
+    )
+
+    if out_dim == 9:
+        df_train2["diagnosis"] = df_train2["diagnosis"].apply(
+            lambda x: x.replace("NV", "nevus")
+        )
+        df_train2["diagnosis"] = df_train2["diagnosis"].apply(
+            lambda x: x.replace("MEL", "melanoma")
+        )
+    elif out_dim == 4:
+        df_train2["diagnosis"] = df_train2["diagnosis"].apply(
+            lambda x: x.replace("NV", "nevus")
+        )
+        df_train2["diagnosis"] = df_train2["diagnosis"].apply(
+            lambda x: x.replace("MEL", "melanoma")
+        )
+        df_train2["diagnosis"] = df_train2["diagnosis"].apply(
+            lambda x: x.replace("DF", "unknown")
+        )
+        df_train2["diagnosis"] = df_train2["diagnosis"].apply(
+            lambda x: x.replace("AK", "unknown")
+        )
+        df_train2["diagnosis"] = df_train2["diagnosis"].apply(
+            lambda x: x.replace("SCC", "unknown")
+        )
+        df_train2["diagnosis"] = df_train2["diagnosis"].apply(
+            lambda x: x.replace("VASC", "unknown")
+        )
+        df_train2["diagnosis"] = df_train2["diagnosis"].apply(
+            lambda x: x.replace("BCC", "unknown")
+        )
+    else:
+        raise NotImplementedError()
+
+    # concat train data
+    df_train = pd.concat([df_train, df_train2]).reset_index(drop=True)
+
+    # test data
+    df_test = pd.read_csv(
+        os.path.join(data_dir, f"jpeg-melanoma-{data_folder}x{data_folder}", "test.csv")
+    )
+    df_test["filepath"] = df_test["image_name"].apply(
+        lambda x: os.path.join(
+            data_dir, f"jpeg-melanoma-{data_folder}x{data_folder}/test", f"{x}.jpg"
+        )
+    )
+
+    meta_features = None
+    n_meta_features = 0
+
+    # class mapping
+    diagnosis2idx = {
+        d: idx for idx, d in enumerate(sorted(df_train.benign_malignant.unique()))
+    }
+    df_train["target"] = df_train["benign_malignant"].map(diagnosis2idx)
+    mel_idx = diagnosis2idx["malignant"]
+
+    return df_train, df_test, meta_features, n_meta_features, mel_idx
+
+
+def get_transforms(image_size):
+
+    transforms_train = albumentations.Compose(
+        [
+            albumentations.Transpose(p=0.5),
+            albumentations.VerticalFlip(p=0.5),
+            albumentations.HorizontalFlip(p=0.5),
+            albumentations.RandomBrightness(limit=0.2, p=0.75),
+            albumentations.RandomContrast(limit=0.2, p=0.75),
+            albumentations.OneOf(
+                [
+                    albumentations.MotionBlur(blur_limit=5),
+                    albumentations.MedianBlur(blur_limit=5),
+                    albumentations.GaussianBlur(blur_limit=5),
+                    albumentations.GaussNoise(var_limit=(5.0, 30.0)),
+                ],
+                p=0.7,
+            ),
+            albumentations.OneOf(
+                [
+                    albumentations.OpticalDistortion(distort_limit=1.0),
+                    albumentations.GridDistortion(num_steps=5, distort_limit=1.0),
+                    albumentations.ElasticTransform(alpha=3),
+                ],
+                p=0.7,
+            ),
+            albumentations.CLAHE(clip_limit=4.0, p=0.7),
+            albumentations.HueSaturationValue(
+                hue_shift_limit=10, sat_shift_limit=20, val_shift_limit=10, p=0.5
+            ),
+            albumentations.ShiftScaleRotate(
+                shift_limit=0.1, scale_limit=0.1, rotate_limit=15, border_mode=0, p=0.85
+            ),
+            albumentations.Resize(image_size, image_size),
+            albumentations.Cutout(
+                max_h_size=int(image_size * 0.375),
+                max_w_size=int(image_size * 0.375),
+                num_holes=1,
+                p=0.7,
+            ),
+            albumentations.Normalize(),
+        ]
+    )
+
+    transforms_val = albumentations.Compose(
+        [albumentations.Resize(image_size, image_size), albumentations.Normalize()]
+    )
+
+    return transforms_train, transforms_val
+
+
+class MelanomaDataset(Dataset):
+    def __init__(self, csv: pd.core.frame.DataFrame, train: bool, transform=None):
+
+        self.csv = csv.reset_index(drop=True)
+        self.train = train
+        self.transform = transform
+        self.train_df = self.csv.sample(frac=0.8, random_state=200)
+        self.test_df = self.csv.drop(self.train_df.index)
+        if self.train:
+            self.csv = self.train_df
+        elif not self.train:
+            self.csv = self.test_df
+        self.targets = self.csv.target
+
+        self.imgs = self.csv["filepath"]
+        self.samples = self.imgs
+
+    def __len__(self):
+        return self.csv.shape[0]
+
+    def __getitem__(self, index):
+
+        row = self.csv.iloc[index]
+
+        image = cv2.imread(row.filepath)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        if self.transform is not None:
+            res = self.transform(image=image)
+            image = res["image"].astype(np.float32)
+        else:
+            image = image.astype(np.float32)
+
+        image = image.transpose(2, 0, 1)
+
+        data = torch.tensor(image).float()
+
+        return data, torch.tensor(self.csv.iloc[index].target).long()
 
 
 class Isicv01(Dataset):

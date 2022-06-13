@@ -3,6 +3,7 @@ from fd_shifts.models import confidnet_model
 from fd_shifts.models import zhang_model
 from fd_shifts.models import devries_model
 from fd_shifts.models import vit_model
+from fd_shifts.models import isic_model
 
 
 def get_model(model_name):
@@ -17,6 +18,7 @@ def get_model(model_name):
         "zhang_model": zhang_model.net,
         "devries_model": devries_model.net,
         "vit_model": vit_model.net,
+        "isic_model": isic_model.net,
     }
 
     return model_factory[model_name]

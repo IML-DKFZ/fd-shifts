@@ -10,6 +10,7 @@ from fd_shifts.models.networks import resnet50_imagenet
 from fd_shifts.models.networks import vgg_devries
 from fd_shifts.models.networks import dgvgg
 from fd_shifts.models.networks import vit
+from fd_shifts.models.networks import efficientnetb4
 
 
 def get_network(network_name):
@@ -34,6 +35,7 @@ def get_network(network_name):
         "resnet50": resnet50_imagenet.resnet50,  # todo make explciit arguments!!
         "dgvgg": dgvgg.VGG,  # todo make explciit arguments!!
         "vit": vit.ViT,
+        "efficientnetb4": efficientnetb4.EfficientNetb4,
     }
 
     return network_factory[network_name]
