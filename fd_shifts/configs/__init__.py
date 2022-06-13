@@ -1,14 +1,22 @@
 from dataclasses import field
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import hydra
+import pl_bolts
+import torch
 from hydra.core.config_store import ConfigStore
 from hydra.core.hydra_config import HydraConfig
+from hydra_zen import ZenField, builds
+from omegaconf import DictConfig
 from omegaconf.omegaconf import MISSING
 from pydantic import validator
 from pydantic.dataclasses import dataclass
+
+from fd_shifts import models
+from fd_shifts.analysis import confid_scores, metrics
+from fd_shifts.loaders import dataset_collection
 
 from ..models import networks
 
@@ -26,6 +34,7 @@ class ValSplit(Enum):
     devries = auto()
     repro_confidnet = auto()
     cv = auto()
+    zhang = auto()  # TODO: Should this still be here?
 
 
 @dataclass
@@ -71,6 +80,45 @@ class ExperimentConfig:
 
 
 @dataclass
+class LRSchedulerConfig:
+    _target_: str = MISSING
+
+
+CosineAnnealingLR = builds(
+    torch.optim.lr_scheduler.CosineAnnealingLR,
+    builds_bases=(LRSchedulerConfig,),
+    zen_partial=True,
+    populate_full_signature=True,
+    T_max="${trainer.num_steps}",
+)
+
+LinearWarmupCosineAnnealingLR = builds(
+    pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR,
+    builds_bases=(LRSchedulerConfig,),
+    zen_partial=True,
+    populate_full_signature=True,
+    max_epochs="${trainer.num_steps}",
+    warmup_epochs=500,
+)
+
+
+@dataclass
+class OptimizerConfig:
+    _target_: str = MISSING
+
+
+SGD = builds(
+    torch.optim.SGD,
+    lr=0.003,
+    momentum=0.9,
+    weight_decay=0.0,
+    builds_bases=(OptimizerConfig,),
+    zen_partial=True,
+    populate_full_signature=True,
+)
+
+
+@dataclass
 class TrainerConfig:
     resume_from_ckpt_confidnet: bool = False
     num_epochs: Optional[
@@ -88,30 +136,19 @@ class TrainerConfig:
     resume_from_ckpt: bool = False
     benchmark: bool = True  # set to false if input size varies during training!
     fast_dev_run: bool = False  # True/Fals
-    lr_scheduler: Any = MISSING
-    #     name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
-    #     milestones: [25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
-    #     max_epochs: ${trainer.num_epochs}
-    #     gamma: 0.5
-    optimizer: Any = MISSING
-    #     name: SGD
-    #     learning_rate: 1e-1
-    #     momentum: 0.9
-    #     nesterov: False
-    #     weight_decay: 0.0005
-    callbacks: Any = MISSING
-    #     model_checkpoint:
-    #     confid_monitor:
-    #     learning_rate_monitor:
+    lr_scheduler: LRSchedulerConfig = LRSchedulerConfig()
+    optimizer: OptimizerConfig = OptimizerConfig()
+    callbacks: dict[Any, Any] = field(
+        default_factory=lambda: {}
+    )  # TODO: validate existence
 
-    @validator("num_epochs")
-    def validate_steps(cls, num_epochs: Optional[int], values: dict[str, Any], **kwargs):
-        if (
-            (num_epochs is None and values["num_steps"] is None)
-            or (num_epochs == 0 and values["num_steps"] == 0)
+    @validator("num_steps")
+    def validate_steps(cls, num_steps: Optional[int], values: dict[str, Any]):
+        if (num_steps is None and values["num_epochs"] is None) or (
+            num_steps == 0 and values["num_epochs"] == 0
         ):
             raise ValueError("Must specify either num_steps or num_epochs")
-        return num_epochs
+        return num_steps
 
 
 @dataclass
@@ -131,7 +168,7 @@ class NetworkConfig:
 
 @dataclass
 class ModelConfig:
-    name: str = "devries_model"  # TODO: make this an enum to check existance
+    name: str = "devries_model"
     fc_dim: int = 512
     dg_reward: float = 2.2
     avg_pool: bool = True
@@ -143,88 +180,204 @@ class ModelConfig:
     budget: float = 0.3
     network: NetworkConfig = NetworkConfig()
 
+    @validator("name")
+    def validate_network_name(cls, name: str):
+        if name is not None and not models.model_exists(name):
+            raise ValueError(f'Model "{name}" does not exist.')
+        return name
 
-# @dataclass
-# class EvalConfig:
-#   performance_metrics:
-#     train: ["loss", "nll", "accuracy"] # train brier_score logging costs around 5% performance
-#     val: ["loss", "nll", "accuracy", "brier_score"]
-#     test: ["nll", "accuracy", "brier_score"]
-#   confid_metrics:
-#     train:
-#       ["failauc", "failap_suc", "failap_err", "fpr@95tpr", "e-aurc", "aurc"]
-#     val: ["failauc", "failap_suc", "failap_err", "fpr@95tpr", "e-aurc", "aurc"]
-#     test:
-#       [
-#         "failauc",
-#         "failap_suc",
-#         "failap_err",
-#         "mce",
-#         "ece",
-#         "e-aurc",
-#         "aurc",
-#         "fpr@95tpr",
-#       ]
-#   confidence_measures: # ["det_mcp" , "det_pe", "tcp" , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
-#     train: ["det_mcp"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
-#     val: ["det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
-#     test: ["det_mcp", "det_pe", "ext"]
-#
-#   monitor_plots: #"calibration",
-#     [
-#       #"overconfidence",
-#       "hist_per_confid",
-#     ]
-#
-#   tb_hparams: ["fold"]
-#   ext_confid_name: "dg"
-#   test_conf_scaling: False
-#   val_tuning: True
-#   r_star: 0.25
-#   r_delta: 0.05
-#
-#   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
-#     iid_study: cifar10
-#     noise_study:
-#       - corrupt_cifar10
-#     new_class_study:
-#       # - tinyimagenet_resize
-#       - cifar100
-#       - svhn
-#
-# @dataclass
-# class TestConfig:
-#   name: test_results
-#   dir: ${exp.dir}/${test.name}
-#   cf_path: ${exp.dir}/hydra/config.yaml
-#   selection_criterion: "latest" #"best_valacc" #best_valacc # model selection criterion or "latest"
-#   #  selection_mode: "l#max # model selection criterion or "latest"
-#   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
-#   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
-#   devries_repro_ood_split: False
-#   assim_ood_norm_flag: False
-#   iid_set_split: "devries" # all, devries
+
+@dataclass
+class PerfMetricsConfig:
+    # TODO: Validate Perf metrics
+    train: list[str] = field(
+        default_factory=lambda: [
+            "loss",
+            "nll",
+            "accuracy",
+        ]
+    )  # train brier_score logging costs around 5% performance
+    val: list[str] = field(
+        default_factory=lambda: ["loss", "nll", "accuracy", "brier_score"]
+    )
+    test: list[str] = field(default_factory=lambda: ["nll", "accuracy", "brier_score"])
+
+
+@dataclass
+class ConfidMetricsConfig:
+    train: list[str] = field(
+        default_factory=lambda: [
+            "failauc",
+            "failap_suc",
+            "failap_err",
+            "fpr@95tpr",
+            "e-aurc",
+            "aurc",
+        ]
+    )
+    val: list[str] = field(
+        default_factory=lambda: [
+            "failauc",
+            "failap_suc",
+            "failap_err",
+            "fpr@95tpr",
+            "e-aurc",
+            "aurc",
+        ]
+    )
+    test: list[str] = field(
+        default_factory=lambda: [
+            "failauc",
+            "failap_suc",
+            "failap_err",
+            "mce",
+            "ece",
+            "e-aurc",
+            "aurc",
+            "fpr@95tpr",
+        ]
+    )
+
+    @validator("train", "val", "test", each_item=True)
+    def validate(cls, name: str):
+        if not metrics.metric_function_exists(name):
+            raise ValueError(f'Confid metric function "{name}" does not exist.')
+        return name
+
+
+@dataclass
+class ConfidMeasuresConfig:
+    train: list[str] = field(
+        default_factory=lambda: ["det_mcp"]
+    )  # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
+    val: list[str] = field(
+        default_factory=lambda: ["det_mcp"]
+    )  # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
+    test: list[str] = field(default_factory=lambda: ["det_mcp", "det_pe", "ext"])
+
+    @validator("train", "val", "test", each_item=True)
+    def validate(cls, name: str):
+        if not confid_scores.confid_function_exists(name):
+            raise ValueError(f'Confid function "{name}" does not exist.')
+        return name
+
+
+@dataclass
+class QueryStudiesConfig:
+    iid_study: str = "cifar10"
+    noise_study: list[str] = field(default_factory=lambda: ["corrupt_cifar10"])
+    new_class_study: list[str] = field(
+        default_factory=lambda: [
+            "tinyimagenet_resize",
+            "cifar100",
+            "svhn",
+        ]
+    )
+
+    @validator("iid_study", "noise_study", "new_class_study", each_item=True)
+    def validate(cls, name: str):
+        if not dataset_collection.dataset_exists(name):
+            raise ValueError(f'Dataset "{name}" does not exist.')
+        return name
+
+
+@dataclass
+class EvalConfig:
+    performance_metrics: PerfMetricsConfig = PerfMetricsConfig()
+    confid_metrics: ConfidMetricsConfig = ConfidMetricsConfig()
+    confidence_measures: ConfidMeasuresConfig = ConfidMeasuresConfig()
+
+    monitor_plots: list[str] = field(
+        default_factory=lambda: [
+            # "overconfidence",
+            "hist_per_confid",
+        ]
+    )
+
+    tb_hparams: list[str] = field(default_factory=lambda: ["fold"])
+    ext_confid_name: str = "dg"
+    test_conf_scaling: bool = False
+    val_tuning: bool = True
+    r_star: float = 0.25
+    r_delta: float = 0.05
+
+    query_studies: QueryStudiesConfig = QueryStudiesConfig()
+
+
+@dataclass
+class TestConfig:
+    name: str = "test_results"
+    dir: Path = Path("${exp.dir}/${test.name}")
+    cf_path: Path = Path("${exp.dir}/hydra/config.yaml")
+    selection_criterion: str = "latest"
+    best_ckpt_path: Path = Path("${exp.version_dir}/${test.selection_criterion}.ckpt")
+    only_latest_version: bool = True  # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
+    devries_repro_ood_split: bool = False
+    assim_ood_norm_flag: bool = False
+    iid_set_split: str = "devries"  # all, devries
+    raw_output_path: str = "raw_output.npz"
+    external_confids_output_path: str = "external_confids.npz"
+    selection_mode: str = "max" # model selection criterion or "latest"
 
 
 @dataclass
 class DataConfig:
-    pass
+    dataset: str = "cifar10"
+    data_dir: Path = Path("${oc.env:DATASET_ROOT_DIR}/${data.dataset}")
+    pin_memory: bool = True
+    img_size: tuple[int, int, int] = (32, 32, 3)
+    num_workers: int = 12
+    num_classes: int = 10
+    reproduce_confidnet_splits: bool = True
+    augmentations: Any = MISSING
+    # train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
+    #   random_crop: [32, 4] # size, padding
+    #   hflip: True
+    #   #      rotate: 15
+    #   to_tensor:
+    #   normalize: [[0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]]
+    #   cutout: 16
+    # val:
+    #   to_tensor:
+    #   normalize: [[0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]]
+    # test:
+    #   to_tensor:
+    #   normalize: [[0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]]
+    kwargs: Optional[dict[Any, Any]] = None
 
 
 @dataclass
 class Config:
-    # data: DataConfig = DataConfig()
-    data: Any = MISSING
+    data: DataConfig = DataConfig()
 
     trainer: TrainerConfig = TrainerConfig()
 
     exp: ExperimentConfig = ExperimentConfig()
     model: ModelConfig = ModelConfig()
-    eval: Any = MISSING
-    test: Any = MISSING
+
+    eval: EvalConfig = EvalConfig()
+    test: TestConfig = TestConfig()
 
 
 def init():
     store = ConfigStore.instance()
     store.store(name="config_schema", node=Config)
     store.store(group="data", name="data_schema", node=DataConfig)
+
+    store.store(
+        group="trainer/lr_scheduler",
+        name="LinearWarmupCosineAnnealingLR",
+        node=LinearWarmupCosineAnnealingLR,
+    )
+
+    store.store(
+        group="trainer/lr_scheduler",
+        name="CosineAnnealingLR",
+        node=CosineAnnealingLR,
+    )
+
+    store.store(
+        group="trainer/optimizer",
+        name="SGD",
+        node=SGD,
+    )

@@ -1,6 +1,7 @@
 # @package _global_
 
 defaults:
+  - override /trainer/lr_scheduler: CosineAnnealingLR
   - override /data: cifar10_data
 
 exp:
@@ -22,14 +23,8 @@ trainer:
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
-  lr_scheduler:
-    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
-    milestones: [25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
-    max_epochs: ${trainer.num_epochs}
-    gamma: 0.5
   optimizer:
-    name: SGD
-    learning_rate: 1e-1
+    lr: 1e-1
     momentum: 0.9
     nesterov: False
     weight_decay: 0.0005
@@ -49,9 +44,9 @@ model:
   budget: 0.3
   network:
     name: vgg13 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
-    imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
-    load_dg_backbone_path: #${exp.dir}/dg_backbone_2.ckpt  # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
-    save_dg_backbone_path: ${exp.dir}/dg_backbone.ckpt # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
+    imagenet_weights_path: # ${oc.env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
+    load_dg_backbone_path: #${exp.dir}/dg_backbone_2.ckpt  # ${oc.env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
+    save_dg_backbone_path: ${exp.dir}/dg_backbone.ckpt # ${oc.env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 test:
   name: test_results

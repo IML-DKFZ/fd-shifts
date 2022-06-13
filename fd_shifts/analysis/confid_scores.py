@@ -31,8 +31,12 @@ def register_confid_func(name: str) -> Callable:
     return _inner_wrapper
 
 
+def confid_function_exists(confid_name):
+    return confid_name in _confid_funcs
+
+
 def get_confid_function(confid_name):
-    if confid_name not in _confid_funcs:
+    if not confid_function_exists(confid_name):
         raise NotImplementedError(f"Function for {confid_name} not implemented.")
 
     return _confid_funcs[confid_name]

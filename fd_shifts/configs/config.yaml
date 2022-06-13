@@ -1,6 +1,8 @@
 defaults:
   - config_schema
   - data: svhn_data
+  - /trainer/lr_scheduler: LinearWarmupCosineAnnealingLR
+  - /trainer/optimizer: SGD
   - study: deepgamblers
   - _self_
   - override hydra/job_logging: disabled

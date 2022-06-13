@@ -145,8 +145,12 @@ def register_metric_func(name: str) -> Callable:
     return _inner_wrapper
 
 
+def metric_function_exists(metric_name: str):
+    return metric_name in _metric_funcs
+
+
 def get_metric_function(metric_name: str) -> Callable[[StatsCache], float]:
-    if metric_name not in _metric_funcs:
+    if not metric_function_exists(metric_name):
         return _metric_funcs["*"]
 
     return _metric_funcs[metric_name]

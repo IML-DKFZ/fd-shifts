@@ -56,7 +56,7 @@ model:
   network:
     name: confidnet_and_enc # confidnet_small_conv_and_enc / small_conv
     backbone: vgg13
-    imagenet_weights_path: #${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
+    imagenet_weights_path: #${oc.env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 test:
   name: test_results

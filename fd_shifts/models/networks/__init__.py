@@ -46,4 +46,4 @@ def network_exists(network_name):
     """
     Return a new instance of a backbone
     """
-    return _network_factory[network_name]
+    return network_name in _network_factory
