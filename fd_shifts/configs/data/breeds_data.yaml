@@ -1,5 +1,5 @@
 dataset: breeds
-data_dir: ${env:DATASET_ROOT_DIR}/${data.dataset}
+data_dir: ${oc.env:DATASET_ROOT_DIR}/${data.dataset}
 pin_memory: True
 img_size: [224, 224, 3]
 num_workers: 12

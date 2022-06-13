@@ -1,5 +1,5 @@
 dataset: wilds_animals_openset
-data_dir: ${env:DATASET_ROOT_DIR}/wilds_animals
+data_dir: ${oc.env:DATASET_ROOT_DIR}/wilds_animals
 pin_memory: True
 img_size: [448, 448, 3]
 num_workers: 12

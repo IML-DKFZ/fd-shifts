@@ -1,5 +1,5 @@
 dataset: cifar10
-data_dir: ${env:DATASET_ROOT_DIR}/${data.dataset}
+data_dir: ${oc.env:DATASET_ROOT_DIR}/${data.dataset}
 pin_memory: True
 img_size: [384, 384, 3]
 num_workers: 24
