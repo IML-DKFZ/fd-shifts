@@ -1,5 +1,7 @@
 # @package _global_
 defaults:
+  - override /trainer/lr_scheduler: LinearWarmupCosineAnnealingLR
+  - override /trainer/optimizer: SGD
   - override /data: wilds_animals_384_data
 
 exp:
@@ -11,15 +13,10 @@ trainer:
   num_steps: 40000
   val_every_n_epoch: 10
   val_split: zhang
-  learning_rate: 0.003
-  lr_scheduler:
-    name: "LinearWarmupCosineAnnealing" # "MultiStep" "CosineAnnealing"
-    warmup_epochs: 500
-    warmup_start_lr: 0
-    eta_min: 0
-    max_epochs: 40000
-  momentum: 0.9
-  weight_decay: 0.0
+  optimizer:
+    lr: 0.003
+    momentum: 0.9
+    weight_decay: 0.0
   batch_size: 128
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
@@ -31,7 +28,6 @@ trainer:
 
 model:
   name: vit_model
-  network: null
 
 test:
   name: test_results

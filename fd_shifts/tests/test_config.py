@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 import hydra
 import pytest
@@ -39,6 +39,11 @@ def initialize_hydra(overrides: list[str]) -> DictConfig:
             ["trainer.val_split=foo"],
             marks=pytest.mark.xfail(reason="foo is not a valid val_split"),
         ),
+        ["eval.query_studies.iid_study=svhn"],
+        pytest.param(
+            ["eval.query_studies.iid_study=doesnt_exist_dataset"],
+            marks=pytest.mark.xfail(reason="dataset does not exist"),
+        ),
     ],
 )
 def test_validation(overrides: list[str]):
@@ -55,21 +60,21 @@ def test_validation(overrides: list[str]):
 @pytest.mark.parametrize(
     ("study",),
     [
-        # ("breeds_vit_study",),
-        # ("cifar100_vit_study",),
+        ("breeds_vit_study",),
+        ("cifar100_vit_study",),
         ("cifar10_vit_study",),
-        # ("confidnet",),
+        ("confidnet",),
         ("deepgamblers",),
         ("devries",),
-        # ("super_cifar100_vit_study",),
-        # ("svhn_openset_vit_study",),
-        # ("svhn_vit_study",),
-        # ("wilds_animals_openset_vit_study",),
-        # ("wilds_animals_vit_study",),
-        # ("wilds_camelyon_vit_study",),
+        ("super_cifar100_vit_study",),
+        ("svhn_openset_vit_study",),
+        ("svhn_vit_study",),
+        ("wilds_animals_openset_vit_study",),
+        ("wilds_animals_vit_study",),
+        ("wilds_camelyon_vit_study",),
     ],
 )
-def test_existing_yamls(study: str):
+def test_existing_studies(study: str):
     configs.init()
     overrides = [f"study={study}"]
 
@@ -79,3 +84,57 @@ def test_existing_yamls(study: str):
     cfg = OmegaConf.to_object(cfg)
     pprint(OmegaConf.to_yaml(cfg, resolve=False))
     print(type(cfg))
+
+
+def _normalize_dataset_name(dataset: str):
+    return dataset.replace("_data", "").replace("_384", "").replace("_ood_test", "")
+
+
+@pytest.mark.parametrize(
+    ("dataset",),
+    [
+        ("breeds_384_data",),
+        ("breeds_data",),
+        ("breeds_ood_test_384_data",),
+        ("breeds_ood_test_data",),
+        ("cifar100_384_data",),
+        ("cifar100_data",),
+        ("cifar10_384_data",),
+        ("cifar10_data",),
+        ("corrupt_cifar100_384_data",),
+        ("corrupt_cifar100_data",),
+        ("corrupt_cifar10_384_data",),
+        ("corrupt_cifar10_data",),
+        ("super_cifar100_384_data",),
+        ("super_cifar100_data",),
+        ("svhn_384_data",),
+        ("svhn_data",),
+        ("svhn_openset_384_data",),
+        ("svhn_openset_data",),
+        ("tinyimagenet_384_data",),
+        ("tinyimagenet_resize_data",),
+        ("wilds_animals_384_data",),
+        ("wilds_animals_data",),
+        ("wilds_animals_ood_test_384_data",),
+        ("wilds_animals_ood_test_data",),
+        ("wilds_animals_openset_384_data",),
+        ("wilds_animals_openset_data",),
+        ("wilds_camelyon_384_data",),
+        ("wilds_camelyon_data",),
+        ("wilds_camelyon_ood_test_384_data",),
+        ("wilds_camelyon_ood_test_data",),
+    ],
+)
+def test_existing_datasets(dataset: str):
+    configs.init()
+    overrides = [f"data={dataset}"]
+
+    dcfg = initialize_hydra(overrides)
+
+    print(type(dcfg))
+    cfg: configs.Config = cast(
+        configs.Config, OmegaConf.to_object(dcfg)
+    )  # only affects the linter
+    pprint(OmegaConf.to_yaml(cfg, resolve=False))
+    assert isinstance(cfg, configs.Config)  # runtime type check
+    assert cfg.data.dataset == _normalize_dataset_name(dataset)

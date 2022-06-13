@@ -142,6 +142,9 @@ class TrainerConfig:
         default_factory=lambda: {}
     )  # TODO: validate existence
 
+    learning_rate_confidnet: Optional[float] = None
+    learning_rate_confidnet_finetune: Optional[float] = None
+
     @validator("num_steps")
     def validate_steps(cls, num_steps: Optional[int], values: dict[str, Any]):
         if (num_steps is None and values["num_epochs"] is None) or (
@@ -170,6 +173,7 @@ class NetworkConfig:
 class ModelConfig:
     name: str = "devries_model"
     fc_dim: int = 512
+    confidnet_fc_dim: Optional[int] = None
     dg_reward: float = 2.2
     avg_pool: bool = True
     dropout_rate: int = 0  # TODO: this should really be a boolean
@@ -266,6 +270,7 @@ class ConfidMeasuresConfig:
 class QueryStudiesConfig:
     iid_study: str = "cifar10"
     noise_study: list[str] = field(default_factory=lambda: ["corrupt_cifar10"])
+    in_class_study: list[str] = field(default_factory=lambda: [])
     new_class_study: list[str] = field(
         default_factory=lambda: [
             "tinyimagenet_resize",
@@ -274,7 +279,7 @@ class QueryStudiesConfig:
         ]
     )
 
-    @validator("iid_study", "noise_study", "new_class_study", each_item=True)
+    @validator("iid_study", "in_class_study", "noise_study", "new_class_study", each_item=True)
     def validate(cls, name: str):
         if not dataset_collection.dataset_exists(name):
             raise ValueError(f'Dataset "{name}" does not exist.')
@@ -317,7 +322,7 @@ class TestConfig:
     iid_set_split: str = "devries"  # all, devries
     raw_output_path: str = "raw_output.npz"
     external_confids_output_path: str = "external_confids.npz"
-    selection_mode: str = "max" # model selection criterion or "latest"
+    selection_mode: Optional[str] = "max" # model selection criterion or "latest"
 
 
 @dataclass

@@ -12,6 +12,7 @@ EXTERNAL_CONFIDS = ["ext", "bpd", "maha", "tcp", "dg", "devries"]
 
 # TODO: Add better error handling/reporting
 
+
 def is_external_confid(name: str):
     return name.split("_")[0] in EXTERNAL_CONFIDS
 
@@ -72,7 +73,11 @@ def expected_entropy(
     mcd_softmax_mean: npt.NDArray[Any], mcd_softmax_dist: npt.NDArray[Any]
 ) -> npt.NDArray[Any]:
     return np.mean(
-        np.sum(mcd_softmax_dist * (-np.log(mcd_softmax_dist + np.finfo(mcd_softmax_dist.dtype).eps)), axis=1),
+        np.sum(
+            mcd_softmax_dist
+            * (-np.log(mcd_softmax_dist + np.finfo(mcd_softmax_dist.dtype).eps)),
+            axis=1,
+        ),
         axis=1,
     )
 
