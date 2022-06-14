@@ -1,7 +1,7 @@
 from dataclasses import field
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, Iterator, Optional, cast
 
 import hydra
 import pl_bolts
@@ -10,7 +10,7 @@ from hydra.core.config_store import ConfigStore
 from hydra.core.hydra_config import HydraConfig
 from hydra_zen import ZenField, builds
 from omegaconf import DictConfig
-from omegaconf.omegaconf import MISSING
+from omegaconf.omegaconf import MISSING, OmegaConf
 from pydantic import validator
 from pydantic.dataclasses import dataclass
 
@@ -37,8 +37,13 @@ class ValSplit(Enum):
     zhang = auto()  # TODO: Should this still be here?
 
 
+class IterableMixin:
+    def __iter__(self) -> Iterator[tuple[str, Any]]:
+        return filter(lambda item: item[0] != "__initialised__", self.__dict__.items()).__iter__()
+
+
 @dataclass
-class OutputPathsConfig:
+class OutputPathsConfig(IterableMixin):
     input_imgs_plot: Optional[Path] = Path("${exp.dir}/input_imgs.png")
     raw_output: Path = Path("${exp.version_dir}/raw_output.npz")
     raw_output_dist: Path = Path("${exp.version_dir}/raw_output_dist.npz")
@@ -47,7 +52,7 @@ class OutputPathsConfig:
 
 
 @dataclass
-class OutputPathsPerMode:
+class OutputPathsPerMode(IterableMixin):
     fit: OutputPathsConfig = OutputPathsConfig()
     test: OutputPathsConfig = OutputPathsConfig(
         input_imgs_plot=None,
@@ -59,7 +64,7 @@ class OutputPathsPerMode:
 
 
 @dataclass
-class ExperimentConfig:
+class ExperimentConfig(IterableMixin):
     group_name: str = MISSING
     name: str = MISSING
     version: Optional[int] = None
@@ -119,7 +124,7 @@ SGD = builds(
 
 
 @dataclass
-class TrainerConfig:
+class TrainerConfig(IterableMixin):
     resume_from_ckpt_confidnet: bool = False
     num_epochs: Optional[
         int
@@ -138,7 +143,7 @@ class TrainerConfig:
     fast_dev_run: bool = False  # True/Fals
     lr_scheduler: LRSchedulerConfig = LRSchedulerConfig()
     optimizer: OptimizerConfig = OptimizerConfig()
-    callbacks: dict[Any, Any] = field(
+    callbacks: dict[str, Optional[dict[Any, Any]]] = field(
         default_factory=lambda: {}
     )  # TODO: validate existence
 
@@ -155,7 +160,7 @@ class TrainerConfig:
 
 
 @dataclass
-class NetworkConfig:
+class NetworkConfig(IterableMixin):
     name: str = "vgg13"
     backbone: Optional[str] = None
     imagenet_weights_path: Optional[Path] = None
@@ -170,7 +175,7 @@ class NetworkConfig:
 
 
 @dataclass
-class ModelConfig:
+class ModelConfig(IterableMixin):
     name: str = "devries_model"
     fc_dim: int = 512
     confidnet_fc_dim: Optional[int] = None
@@ -192,7 +197,7 @@ class ModelConfig:
 
 
 @dataclass
-class PerfMetricsConfig:
+class PerfMetricsConfig(IterableMixin):
     # TODO: Validate Perf metrics
     train: list[str] = field(
         default_factory=lambda: [
@@ -208,7 +213,7 @@ class PerfMetricsConfig:
 
 
 @dataclass
-class ConfidMetricsConfig:
+class ConfidMetricsConfig(IterableMixin):
     train: list[str] = field(
         default_factory=lambda: [
             "failauc",
@@ -250,7 +255,7 @@ class ConfidMetricsConfig:
 
 
 @dataclass
-class ConfidMeasuresConfig:
+class ConfidMeasuresConfig(IterableMixin):
     train: list[str] = field(
         default_factory=lambda: ["det_mcp"]
     )  # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
@@ -267,7 +272,7 @@ class ConfidMeasuresConfig:
 
 
 @dataclass
-class QueryStudiesConfig:
+class QueryStudiesConfig(IterableMixin):
     iid_study: str = "cifar10"
     noise_study: list[str] = field(default_factory=lambda: ["corrupt_cifar10"])
     in_class_study: list[str] = field(default_factory=lambda: [])
@@ -287,7 +292,7 @@ class QueryStudiesConfig:
 
 
 @dataclass
-class EvalConfig:
+class EvalConfig(IterableMixin):
     performance_metrics: PerfMetricsConfig = PerfMetricsConfig()
     confid_metrics: ConfidMetricsConfig = ConfidMetricsConfig()
     confidence_measures: ConfidMeasuresConfig = ConfidMeasuresConfig()
@@ -310,7 +315,7 @@ class EvalConfig:
 
 
 @dataclass
-class TestConfig:
+class TestConfig(IterableMixin):
     name: str = "test_results"
     dir: Path = Path("${exp.dir}/${test.name}")
     cf_path: Path = Path("${exp.dir}/hydra/config.yaml")
@@ -326,7 +331,7 @@ class TestConfig:
 
 
 @dataclass
-class DataConfig:
+class DataConfig(IterableMixin):
     dataset: str = "cifar10"
     data_dir: Path = Path("${oc.env:DATASET_ROOT_DIR}/${data.dataset}")
     pin_memory: bool = True
@@ -352,7 +357,7 @@ class DataConfig:
 
 
 @dataclass
-class Config:
+class Config(IterableMixin):
     data: DataConfig = DataConfig()
 
     trainer: TrainerConfig = TrainerConfig()
@@ -386,3 +391,9 @@ def init():
         name="SGD",
         node=SGD,
     )
+
+def dictconfig_to_object(dcfg: DictConfig) -> Config:
+    cfg: Config = cast(
+        Config, OmegaConf.to_object(dcfg)
+    )  # only affects the linter
+    return cfg
