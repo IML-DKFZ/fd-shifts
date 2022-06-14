@@ -1,44 +1,50 @@
-import pytorch_lightning as pl
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import hydra
+import numpy as np
 import pl_bolts
+import pytorch_lightning as pl
 import timm
 import torch
 import torch.nn as nn
-import hydra
-import numpy as np
 from pytorch_lightning.utilities.parsing import AttributeDict
 from tqdm import tqdm
 
+if TYPE_CHECKING:
+    from fd_shifts import configs
+
 
 class net(pl.LightningModule):
-    def __init__(self, cf):
+    def __init__(self, cfg: configs.Config):
         super().__init__()
 
-        # self.hparams: AttributeDict = AttributeDict()
-
         self.save_hyperparameters()
-        self.hparams.update(dict(cf))
+        # self.config.update(cfg.__dict__)
 
+        self.config = cfg
+
+        # TODO: Should use network
         self.model = timm.create_model(
             "vit_base_patch16_224_in21k",
             pretrained=True,
-            img_size=self.hparams.data.img_size[0],
-            num_classes=self.hparams.data.num_classes,
-            drop_rate=self.hparams.model.dropout_rate * 0.1,
+            img_size=self.config.data.img_size[0],
+            num_classes=self.config.data.num_classes,
+            drop_rate=self.config.model.dropout_rate * 0.1,
         )
-        self.model.reset_classifier(self.hparams.data.num_classes)
+        self.model.reset_classifier(self.config.data.num_classes)
         self.model.head.weight.tensor = torch.zeros_like(self.model.head.weight)
         self.model.head.bias.tensor = torch.zeros_like(self.model.head.bias)
 
-        self.mean = torch.zeros(
-            (self.hparams.data.num_classes, self.model.num_features)
-        )
+        self.mean = torch.zeros((self.config.data.num_classes, self.model.num_features))
         self.icov = torch.eye(self.model.num_features)
 
-        self.ext_confid_name = self.hparams.eval.ext_confid_name
+        self.ext_confid_name = self.config.eval.ext_confid_name
         self.latent = []
         self.labels = []
 
-        self.query_confids = cf.eval.confidence_measures
+        self.query_confids = cfg.eval.confidence_measures
         self.test_mcd_samples = 50
 
     def disable_dropout(self):
@@ -72,6 +78,9 @@ class net(pl.LightningModule):
         self.disable_dropout()
 
         return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
+
+    def forward(self, x):
+        return self.model(x)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -134,7 +143,7 @@ class net(pl.LightningModule):
         return batch_parts
 
     def on_test_start(self, *args):
-        if not any("ext" in cfd for cfd in self.query_confids["test"]):
+        if not any("ext" in cfd for cfd in self.query_confids.test):
             return
         tqdm.write("Calculating trainset mean and cov")
         all_z = []
@@ -167,7 +176,7 @@ class net(pl.LightningModule):
         z = self.model.forward_features(x)
 
         maha = None
-        if any("ext" in cfd for cfd in self.query_confids["test"]):
+        if any("ext" in cfd for cfd in self.query_confids.test):
             zm = z[:, None, :] - self.mean
 
             maha = -(torch.einsum("inj,jk,ink->in", zm, self.icov, zm))
@@ -177,7 +186,7 @@ class net(pl.LightningModule):
 
         softmax_dist = None
         confid_dist = None
-        if any("mcd" in cfd for cfd in self.query_confids["test"]):
+        if any("mcd" in cfd for cfd in self.query_confids.test):
             softmax_dist, confid_dist = self.mcd_eval_forward(
                 x=x, n_samples=self.test_mcd_samples
             )
@@ -191,21 +200,14 @@ class net(pl.LightningModule):
         }
 
     def configure_optimizers(self):
-        optim = torch.optim.SGD(
-            self.model.parameters(),
-            lr=self.hparams.trainer.learning_rate,
-            momentum=self.hparams.trainer.momentum,
-            weight_decay=self.hparams.trainer.weight_decay,
+        optim = hydra.utils.instantiate(self.config.trainer.optimizer)(
+            self.model.parameters()
         )
 
         lr_sched = {
-            "scheduler": pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR(
-                optimizer=optim,
-                max_epochs=self.hparams.trainer.num_steps,
-                warmup_start_lr=self.hparams.trainer.lr_scheduler.warmup_start_lr,
-                warmup_epochs=self.hparams.trainer.lr_scheduler.warmup_epochs,
-                eta_min=self.hparams.trainer.lr_scheduler.eta_min,
-            ),
+            "scheduler": hydra.utils.instantiate(
+                self.config.trainer.lr_scheduler
+            )(optimizer=optim),
             "interval": "step",
         }
 

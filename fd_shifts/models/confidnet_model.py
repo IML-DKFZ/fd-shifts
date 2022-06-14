@@ -1,53 +1,63 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import hydra
+import pytorch_lightning as pl
 import torch
 from torch import nn
 from torch.nn import functional as F
-import pytorch_lightning as pl
-from fd_shifts.models.networks import get_network
 from tqdm import tqdm
+
+from fd_shifts.models.networks import get_network
+
+if TYPE_CHECKING:
+    from fd_shifts import configs
 
 
 class net(pl.LightningModule):
-    def __init__(self, cf):
+    def __init__(self, cf: configs.Config):
         super(net, self).__init__()
 
         self.save_hyperparameters()
+        self.cf = cf
 
         self.test_mcd_samples = cf.model.test_mcd_samples
         self.monitor_mcd_samples = cf.model.monitor_mcd_samples
-        self.learning_rate = cf.trainer.learning_rate
+        self.learning_rate = cf.trainer.optimizer.lr
         self.learning_rate_confidnet = cf.trainer.learning_rate_confidnet
         self.learning_rate_confidnet_finetune = (
             cf.trainer.learning_rate_confidnet_finetune
         )
         self.lr_scheduler = cf.trainer.lr_scheduler
-        self.momentum = cf.trainer.momentum
-        self.weight_decay = cf.trainer.weight_decay
+        self.momentum = cf.trainer.optimizer.momentum
+        self.weight_decay = cf.trainer.optimizer.weight_decay
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
-        if cf.trainer.callbacks.model_checkpoint is not None:
+        if cf.trainer.callbacks["model_checkpoint"] is not None:
             print(
                 "Initializing custom Model Selector.",
-                cf.trainer.callbacks.model_checkpoint,
+                cf.trainer.callbacks["model_checkpoint"],
             )
             self.selection_metrics = (
-                cf.trainer.callbacks.model_checkpoint.selection_metric
+                cf.trainer.callbacks["model_checkpoint"]["selection_metric"]
             )
-            self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
+            self.selection_modes = cf.trainer.callbacks["model_checkpoint"]["mode"]
             self.test_selection_criterion = cf.test.selection_criterion
         self.pretrained_backbone_path = (
-            cf.trainer.callbacks.training_stages.pretrained_backbone_path
+            cf.trainer.callbacks["training_stages"]["pretrained_backbone_path"]
         )
         self.pretrained_confidnet_path = (
-            cf.trainer.callbacks.training_stages.pretrained_confidnet_path
+            cf.trainer.callbacks["training_stages"]["pretrained_confidnet_path"]
         )
         self.confidnet_lr_scheduler = (
-            cf.trainer.callbacks.training_stages.confidnet_lr_scheduler
+            cf.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"]
         )
-        self.imagenet_weights_path = dict(cf.model.network).get("imagenet_weights_path")
+        self.imagenet_weights_path = cf.model.network.imagenet_weights_path
 
         self.loss_ce = nn.CrossEntropyLoss()
         self.loss_mse = nn.MSELoss(reduction="sum")
-        self.ext_confid_name = dict(cf.eval).get("ext_confid_name")
+        self.ext_confid_name = cf.eval.ext_confid_name
 
         self.network = get_network(cf.model.network.name)(
             cf
@@ -220,7 +230,7 @@ class net(pl.LightningModule):
         softmax_dist = None
         pred_confid_dist = None
 
-        if any("mcd" in cfd for cfd in self.query_confids["test"]):
+        if any("mcd" in cfd for cfd in self.query_confids.test):
             softmax_dist, pred_confid_dist = self.mcd_eval_forward(
                 x=x, n_samples=self.test_mcd_samples
             )
@@ -236,47 +246,56 @@ class net(pl.LightningModule):
         # print("CHECK Monitor Accuracy", (softmax.argmax(1) == y).sum()/y.numel())
 
     def configure_optimizers(self):
+        # optimizers = [
+        #     torch.optim.SGD(
+        #         self.backbone.parameters(),
+        #         lr=self.learning_rate,
+        #         momentum=self.momentum,
+        #         weight_decay=self.weight_decay,
+        #     )
+        # ]
+        # schedulers = []
+        # if self.lr_scheduler is not None:
+        #     if self.lr_scheduler.name == "MultiStep":
+        #         print("initializing MultiStep scheduler...")
+        #         # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
+        #         normed_milestones = [
+        #             m / self.trainer.check_val_every_n_epoch
+        #             for m in self.lr_scheduler.milestones
+        #         ]
+        #         schedulers.append(
+        #             torch.optim.lr_scheduler.MultiStepLR(
+        #                 optimizer=optimizers[0],
+        #                 milestones=normed_milestones,
+        #                 verbose=True,
+        #             )
+        #         )
+        #
+        #     if self.lr_scheduler.name == "CosineAnnealing":
+        #         # only works with check_val_every_n_epoch = 1
+        #         print(
+        #             "initializing COsineAnnealing scheduler...",
+        #             self.lr_scheduler.max_epochs,
+        #         )
+        #         schedulers.append(
+        #             {
+        #                 "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
+        #                     optimizer=optimizers[0],
+        #                     T_max=self.lr_scheduler.max_epochs,
+        #                     verbose=True,
+        #                 ),
+        #                 "name": "backbone_sgd",
+        #             }
+        #         )
         optimizers = [
-            torch.optim.SGD(
-                self.backbone.parameters(),
-                lr=self.learning_rate,
-                momentum=self.momentum,
-                weight_decay=self.weight_decay,
+            hydra.utils.instantiate(self.cf.trainer.optimizer)(
+                self.backbone.parameters()
             )
         ]
-        schedulers = []
-        if self.lr_scheduler is not None:
-            if self.lr_scheduler.name == "MultiStep":
-                print("initializing MultiStep scheduler...")
-                # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
-                normed_milestones = [
-                    m / self.trainer.check_val_every_n_epoch
-                    for m in self.lr_scheduler.milestones
-                ]
-                schedulers.append(
-                    torch.optim.lr_scheduler.MultiStepLR(
-                        optimizer=optimizers[0],
-                        milestones=normed_milestones,
-                        verbose=True,
-                    )
-                )
 
-            if self.lr_scheduler.name == "CosineAnnealing":
-                # only works with check_val_every_n_epoch = 1
-                print(
-                    "initializing COsineAnnealing scheduler...",
-                    self.lr_scheduler.max_epochs,
-                )
-                schedulers.append(
-                    {
-                        "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
-                            optimizer=optimizers[0],
-                            T_max=self.lr_scheduler.max_epochs,
-                            verbose=True,
-                        ),
-                        "name": "backbone_sgd",
-                    }
-                )
+        schedulers = [
+            hydra.utils.instantiate(self.cf.trainer.lr_scheduler)(optimizer=optimizers[0])
+        ]
 
         return optimizers, schedulers
 

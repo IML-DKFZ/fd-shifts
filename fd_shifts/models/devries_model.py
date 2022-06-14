@@ -1,14 +1,23 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import hydra
+import pl_bolts
+import pytorch_lightning as pl
 import torch
 from torch import nn
 from torch.nn import functional as F
-import pytorch_lightning as pl
-import pl_bolts
-from fd_shifts.models.networks import get_network
 from tqdm import tqdm
+
+from fd_shifts.models.networks import get_network
+
+if TYPE_CHECKING:
+    from fd_shifts import configs
 
 
 class net(pl.LightningModule):
-    def __init__(self, cf):
+    def __init__(self, cf: configs.Config):
         super(net, self).__init__()
 
         self.save_hyperparameters()
@@ -16,15 +25,15 @@ class net(pl.LightningModule):
         self.optimizer_cfgs = cf.trainer.optimizer
         self.lr_scheduler_cfgs = cf.trainer.lr_scheduler
 
-        if cf.trainer.callbacks.model_checkpoint is not None:
+        if cf.trainer.callbacks["model_checkpoint"] is not None:
             print(
                 "Initializing custom Model Selector.",
                 cf.trainer.callbacks.model_checkpoint,
             )
-            self.selection_metrics = (
-                cf.trainer.callbacks.model_checkpoint.selection_metric
-            )
-            self.selection_modes = cf.trainer.callbacks.model_checkpoint.mode
+            self.selection_metrics = cf.trainer.callbacks["model_checkpoint"][
+                "selection_metric"
+            ]
+            self.selection_modes = cf.trainer.callbacks["model_checkpoint"]["mode"]
 
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
@@ -35,15 +44,17 @@ class net(pl.LightningModule):
         self.budget = cf.model.budget
         self.test_conf_scaling = cf.eval.test_conf_scaling
         self.ext_confid_name = cf.eval.ext_confid_name
-        self.imagenet_weights_path = dict(cf.model.network).get("imagenet_weights_path")
+        self.imagenet_weights_path = cf.model.network.__dict__.get(
+            "imagenet_weights_path"
+        )
 
         if self.ext_confid_name == "dg":
             self.reward = cf.model.dg_reward
             self.pretrain_epochs = cf.trainer.dg_pretrain_epochs
-            self.load_dg_backbone_path = dict(cf.model.network).get(
+            self.load_dg_backbone_path = cf.model.network.__dict__.get(
                 "load_dg_backbone_path"
             )
-            self.save_dg_backbone_path = dict(cf.model.network).get(
+            self.save_dg_backbone_path = cf.model.network.__dict__.get(
                 "save_dg_backbone_path"
             )
 
@@ -136,7 +147,7 @@ class net(pl.LightningModule):
             confidence = torch.clamp(confidence, 0.0 + eps, 1.0 - eps)
 
             # Randomly set half of the confidences to 1 (i.e. no hints)
-            b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).cuda()
+            b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).to(self.device)
             conf = confidence * b + (1 - b)
             pred_new = pred_original * conf.expand_as(pred_original) + labels_onehot * (
                 1 - conf.expand_as(labels_onehot)
@@ -199,7 +210,7 @@ class net(pl.LightningModule):
             confidence = torch.clamp(confidence, 0.0 + eps, 1.0 - eps)
 
             # Randomly set half of the confidences to 1 (i.e. no hints)
-            b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).cuda()
+            b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).to(self.device)
             conf = confidence * b + (1 - b)
             pred_new = pred_original * conf.expand_as(pred_original) + labels_onehot * (
                 1 - conf.expand_as(labels_onehot)
@@ -251,7 +262,7 @@ class net(pl.LightningModule):
 
         softmax_dist = None
         confid_dist = None
-        if any("mcd" in cfd for cfd in self.query_confids["test"]):
+        if any("mcd" in cfd for cfd in self.query_confids.test):
             softmax_dist, confid_dist = self.mcd_eval_forward(
                 x=x, n_samples=self.test_mcd_samples
             )
@@ -266,46 +277,55 @@ class net(pl.LightningModule):
         }
 
     def configure_optimizers(self):
+        # optimizers = [
+        #     torch.optim.SGD(
+        #         self.model.parameters(),
+        #         lr=self.optimizer_cfgs.lr,
+        #         momentum=self.optimizer_cfgs.momentum,
+        #         nesterov=self.optimizer_cfgs.nesterov,
+        #         weight_decay=self.optimizer_cfgs.weight_decay,
+        #     )
+        # ]
+        #
+        # schedulers = []
+        # if self.lr_scheduler_cfgs.name == "MultiStep":
+        #     schedulers = [
+        #         torch.optim.lr_scheduler.MultiStepLR(
+        #             optimizers[0],
+        #             milestones=self.lr_scheduler_cfgs.milestones,
+        #             gamma=self.lr_scheduler_cfgs.gamma,
+        #             verbose=True,
+        #         )
+        #     ]
+        # elif self.lr_scheduler_cfgs.name == "CosineAnnealing":
+        #     schedulers = [
+        #         torch.optim.lr_scheduler.CosineAnnealingLR(
+        #             optimizers[0], T_max=self.lr_scheduler_cfgs.max_epochs, verbose=True
+        #         )
+        #     ]
+        # elif self.lr_scheduler_cfgs.name == "LinearWarmupCosineAnnealing":
+        #     num_batches = (
+        #         len(self.train_dataloader()) / self.trainer.accumulate_grad_batches
+        #     )
+        #     schedulers = [
+        #         {
+        #             "scheduler": pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR(
+        #                 optimizer=optimizers[0],
+        #                 max_epochs=self.lr_scheduler_cfgs.max_epochs * num_batches,
+        #                 warmup_epochs=self.lr_scheduler_cfgs.warmup_epochs,
+        #             ),
+        #             "interval": "step",
+        #         }
+        #     ]
         optimizers = [
-            torch.optim.SGD(
-                self.model.parameters(),
-                lr=self.optimizer_cfgs.learning_rate,
-                momentum=self.optimizer_cfgs.momentum,
-                nesterov=self.optimizer_cfgs.nesterov,
-                weight_decay=self.optimizer_cfgs.weight_decay,
+            hydra.utils.instantiate(self.optimizer_cfgs)(
+                self.model.parameters()
             )
         ]
 
-        schedulers = []
-        if self.lr_scheduler_cfgs.name == "MultiStep":
-            schedulers = [
-                torch.optim.lr_scheduler.MultiStepLR(
-                    optimizers[0],
-                    milestones=self.lr_scheduler_cfgs.milestones,
-                    gamma=self.lr_scheduler_cfgs.gamma,
-                    verbose=True,
-                )
-            ]
-        elif self.lr_scheduler_cfgs.name == "CosineAnnealing":
-            schedulers = [
-                torch.optim.lr_scheduler.CosineAnnealingLR(
-                    optimizers[0], T_max=self.lr_scheduler_cfgs.max_epochs, verbose=True
-                )
-            ]
-        elif self.lr_scheduler_cfgs.name == "LinearWarmupCosineAnnealing":
-            num_batches = (
-                len(self.train_dataloader()) / self.trainer.accumulate_grad_batches
-            )
-            schedulers = [
-                {
-                    "scheduler": pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR(
-                        optimizer=optimizers[0],
-                        max_epochs=self.lr_scheduler_cfgs.max_epochs * num_batches,
-                        warmup_epochs=self.lr_scheduler_cfgs.warmup_epochs,
-                    ),
-                    "interval": "step",
-                }
-            ]
+        schedulers = [
+            hydra.utils.instantiate(self.lr_scheduler_cfgs)(optimizer=optimizers[0])
+        ]
 
         return optimizers, schedulers
 
