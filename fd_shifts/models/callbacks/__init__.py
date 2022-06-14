@@ -1,5 +1,6 @@
 from pytorch_lightning.callbacks import (GPUStatsMonitor, LearningRateMonitor,
                                          ModelCheckpoint, RichProgressBar)
+from fd_shifts import configs
 
 from fd_shifts.models.callbacks import confid_monitor, training_stages
 
@@ -7,19 +8,19 @@ from fd_shifts.models.callbacks import confid_monitor, training_stages
 # TODO: Handle configs better
 
 
-def get_callbacks(cf):
+def get_callbacks(cfg: configs.Config):
     """
     Return all queried callbacks
     """
 
     out_cb_list = []
-    for k, v in cf.trainer.callbacks.items():
+    for k, v in cfg.trainer.callbacks.items():
         if k == "model_checkpoint":
             if hasattr(v, "n"):
                 for n_mc in range(v.n):
                     out_cb_list.append(
                         ModelCheckpoint(
-                            dirpath=cf.exp.version_dir,
+                            dirpath=cfg.exp.version_dir,
                             filename=v.filename[n_mc],
                             monitor=v.selection_metric[n_mc],
                             mode=v.mode[n_mc],
@@ -31,21 +32,21 @@ def get_callbacks(cf):
             else:
                 out_cb_list.append(
                     ModelCheckpoint(
-                        dirpath=cf.exp.version_dir,
+                        dirpath=cfg.exp.version_dir,
                         save_last=True,
                     )
                 )
 
         if k == "confid_monitor":
             out_cb_list.append(
-                confid_monitor.ConfidMonitor(cf)
+                confid_monitor.ConfidMonitor(cfg)
             )  # todo explciit arguments!!!
 
         if k == "training_stages":
             out_cb_list.append(
                 training_stages.TrainingStages(
-                    milestones=cf.trainer.callbacks.training_stages.milestones,
-                    disable_dropout_at_finetuning=cf.trainer.callbacks.training_stages.disable_dropout_at_finetuning,
+                    milestones=cfg.trainer.callbacks.training_stages.milestones,
+                    disable_dropout_at_finetuning=cfg.trainer.callbacks.training_stages.disable_dropout_at_finetuning,
                 )
             )
 

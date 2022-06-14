@@ -2,6 +2,7 @@ import torch
 from torch.utils.data.sampler import SubsetRandomSampler
 import pytorch_lightning as pl
 from omegaconf import OmegaConf
+from fd_shifts import configs
 from fd_shifts.utils.aug_utils import transforms_collection
 from fd_shifts.loaders.dataset_collection import get_dataset
 from sklearn.model_selection import KFold
@@ -15,7 +16,7 @@ import logging
 # TODO: Go over this and make it less presumptuous
 
 class AbstractDataLoader(pl.LightningDataModule):
-    def __init__(self, cf, no_norm_flag=False):
+    def __init__(self, cf: configs.Config, no_norm_flag=False):
 
         super().__init__()
         self.crossval_ids_path = cf.exp.crossval_ids_path
@@ -28,20 +29,20 @@ class AbstractDataLoader(pl.LightningDataModule):
         self.pin_memory = cf.data.pin_memory
         self.num_workers = cf.data.num_workers
         self.reproduce_confidnet_splits = cf.data.reproduce_confidnet_splits
-        self.dataset_kwargs = dict(cf.data).get("kwargs")
+        self.dataset_kwargs = cf.data.kwargs
         self.devries_repro_ood_split = cf.test.devries_repro_ood_split
-        self.val_split = cf.trainer.val_split
+        self.val_split = cf.trainer.val_split.name
         self.test_iid_split = cf.test.iid_set_split
-        self.assim_ood_norm_flag = cf.test.get("assim_ood_norm_flag")
+        self.assim_ood_norm_flag = cf.test.assim_ood_norm_flag
 
-        self.add_val_tuning = dict(cf.eval).get("val_tuning")
-        self.query_studies = dict(cf.eval).get("query_studies")
+        self.add_val_tuning = cf.eval.val_tuning
+        self.query_studies = dict(cf.eval.query_studies)
         if self.query_studies is not None:
             self.external_test_sets = []
-            for k in self.query_studies.keys():
-                if k != "iid_study" and self.query_studies[k] is not None:
-                    self.external_test_sets.extend([v for v in self.query_studies[k]])
-            logging.debug("CHECK flat list of external datasets", self.external_test_sets)
+            for key, values in self.query_studies.items():
+                if key != "iid_study" and values is not None:
+                    self.external_test_sets.extend(list(values))
+            logging.debug("CHECK flat list of external datasets %s", self.external_test_sets)
 
             if len(self.external_test_sets) > 0:
                 self.external_test_configs = {}
@@ -57,7 +58,7 @@ class AbstractDataLoader(pl.LightningDataModule):
         self.augmentations = {}
         if cf.data.augmentations:
             self.add_augmentations(
-                OmegaConf.to_container(cf.data.augmentations, resolve=True),
+                cf.data.augmentations,
                 no_norm_flag,
             )
 
