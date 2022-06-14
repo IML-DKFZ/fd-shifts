@@ -12,3 +12,14 @@ reportOptionalOperand = "warning"
 
 [tool.pytest.ini_options]
 xfail_strict = true
+filterwarnings = [
+    'ignore:fields may not start with an underscore:RuntimeWarning',
+    # Ignore tensorboard deprecation warnings
+    'ignore:distutils:DeprecationWarning',
+    'ignore:Call to deprecated create function:DeprecationWarning',
+    # Ignore timm deprecation warnings
+    'ignore:.*is deprecated and will be removed in Pillow 10:DeprecationWarning',
+    'ignore:torch.distributed._sharded_tensor will be deprecated, use torch.distributed._shard.sharded_tensor instead:DeprecationWarning',
+    # Ignore lightning_bolts optional dependencies warnings
+    'ignore:You want to use:UserWarning',
+]
