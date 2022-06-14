@@ -280,7 +280,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             shuffle=True if self.train_sampler is None else False,
             pin_memory=self.pin_memory,
             num_workers=self.num_workers,
-            persistent_workers=True,
+            persistent_workers=(self.num_workers > 0),
         )
 
     def val_dataloader(self):
