@@ -28,7 +28,7 @@ class ConfidMonitor(Callback):
         self.output_paths = cf.exp.output_paths
         self.version_dir = cf.exp.version_dir
         self.val_every_n_epoch = cf.trainer.val_every_n_epoch
-
+        self.running_test_encoded = []
         self.running_test_softmax = []
         self.running_test_softmax_dist = []
         self.running_test_labels = []
@@ -446,7 +446,9 @@ class ConfidMonitor(Callback):
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
         outputs = pl_module.test_results
-
+        self.running_test_encoded.extend(
+            outputs["encoded"].to(dtype=torch.float16).cpu()
+        )
         self.running_test_softmax.extend(
             outputs["softmax"].to(dtype=torch.float64).cpu()
         )
@@ -465,6 +467,7 @@ class ConfidMonitor(Callback):
         )
 
     def on_test_end(self, trainer, pl_module):
+        stacked_encoded = torch.stack(self.running_test_encoded, dim=0)
 
         stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
         stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
@@ -480,6 +483,9 @@ class ConfidMonitor(Callback):
             dim=1,
         )
 
+        np.savez_compressed(
+            self.output_paths.test.encoded_output, stacked_encoded.cpu().data.numpy()
+        )
         np.savez_compressed(
             self.output_paths.test.raw_output, raw_output.cpu().data.numpy()
         )

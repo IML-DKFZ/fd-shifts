@@ -8,6 +8,7 @@ import numpy as np
 from pytorch_lightning.utilities.parsing import AttributeDict
 from tqdm import tqdm
 from fd_shifts.models.networks import get_network
+from fd_shifts.utils.exp_utils import GradualWarmupSchedulerV2
 
 
 class net(pl.LightningModule):
@@ -21,7 +22,7 @@ class net(pl.LightningModule):
 
         self.model = get_network(cf.model.network.name)(cf)
         self.mean = torch.zeros(
-           (self.hparams.data.num_classes, self.model.num_features)
+            (self.hparams.data.num_classes, self.model.num_features)
         )
         self.icov = torch.eye(self.model.num_features)
 
@@ -147,7 +148,7 @@ class net(pl.LightningModule):
         self.mean = mean.type_as(self.model.encoder.model.get_classifier().weight)
         self.icov = torch.inverse(
             torch.tensor(np.cov(all_z.numpy(), rowvar=False)).type_as(
-            self.model.encoder.model.get_classifier().weight
+                self.model.encoder.model.get_classifier().weight
             )
         )
 
@@ -177,6 +178,7 @@ class net(pl.LightningModule):
             "confid": maha,
             "softmax_dist": softmax_dist,
             "confid_dist": confid_dist,
+            "encoded": z,
         }
 
     def configure_optimizers(self):
@@ -190,15 +192,15 @@ class net(pl.LightningModule):
         # num_batches = (
         #    len(self.train_dataloader()) / self.trainer.accumulate_grad_batches
         # )
+        scheduler_cosine = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optim, self.hparams.trainer.max_epochs - 1
+        )
+        scheduler_warmup = GradualWarmupSchedulerV2(
+            optim, multiplier=10, total_epoch=1, after_scheduler=scheduler_cosine
+        )
 
         lr_sched = {
-            "scheduler": pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR(
-                optimizer=optim,
-                max_epochs=self.hparams.trainer.max_epochs,
-                warmup_start_lr=self.hparams.trainer.lr_scheduler.warmup_start_lr,
-                warmup_epochs=self.hparams.trainer.lr_scheduler.warmup_epochs,
-                eta_min=self.hparams.trainer.lr_scheduler.eta_min,
-            ),
+            "scheduler": scheduler_warmup,
             "interval": "step",
         }
 
