@@ -60,6 +60,7 @@ exp:
       input_imgs_plot: null
       raw_output: ${test.dir}/raw_logits.npz
       raw_output_dist: ${test.dir}/raw_logits_dist.npz
+      encoded_output: ${test.dir}/encoded_output.npz
       external_confids: ${test.dir}/external_confids.npz
       external_confids_dist: ${test.dir}/external_confids_dist.npz
   log_path: log.txt
