@@ -729,11 +729,11 @@ class BrierScore(Metric):
 
 def clean_logging(log_dir):
     try:
-        df = pd.read_csv(os.path.join(log_dir, "metrics.csv"))
+        df = pd.read_csv(log_dir / "metrics.csv")
         df = df.groupby("step").max().round(3)
-        df.to_csv(os.path.join(log_dir, "metrics.csv"))
+        df.to_csv(log_dir / "metrics.csv")
     except:
-        logger.exception("no metrics.csv found in clean logging!")
+        logger.warning("no metrics.csv found in clean logging!")
 
 
 def plot_input_imgs(x, y, out_path):
