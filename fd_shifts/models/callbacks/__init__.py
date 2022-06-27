@@ -45,8 +45,8 @@ def get_callbacks(cfg: configs.Config):
         if k == "training_stages":
             out_cb_list.append(
                 training_stages.TrainingStages(
-                    milestones=cfg.trainer.callbacks.training_stages.milestones,
-                    disable_dropout_at_finetuning=cfg.trainer.callbacks.training_stages.disable_dropout_at_finetuning,
+                    milestones=v["milestones"],
+                    disable_dropout_at_finetuning=v["disable_dropout_at_finetuning"],
                 )
             )
 

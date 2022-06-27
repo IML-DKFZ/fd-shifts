@@ -1,16 +1,17 @@
-from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.trainer.connectors.logger_connector.logger_connector import (
-    LoggerConnector,
-)
-import torch
 import numpy as np
-from fd_shifts.analysis import eval_utils
-from tqdm import tqdm
+import torch
+from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.trainer.connectors.logger_connector.logger_connector import \
+    LoggerConnector
 from rich import print
+from tqdm import tqdm
+
+from fd_shifts import configs
+from fd_shifts.analysis import eval_utils
 
 
 class ConfidMonitor(Callback):
-    def __init__(self, cf):
+    def __init__(self, cf: configs.Config):
         self.sync_dist = True if torch.cuda.device_count() > 1 else False
 
         self.num_epochs = cf.trainer.num_epochs
@@ -38,18 +39,18 @@ class ConfidMonitor(Callback):
         self.running_confid_stats = {}
         self.running_perf_stats = {}
         self.running_confid_stats["train"] = {
-            k: {"confids": [], "correct": []} for k in self.query_confids["train"]
+            k: {"confids": [], "correct": []} for k in self.query_confids.train
         }
         self.running_confid_stats["val"] = {
-            k: {"confids": [], "correct": []} for k in self.query_confids["val"]
+            k: {"confids": [], "correct": []} for k in self.query_confids.val
         }
         self.running_train_correct_sum_sanity = 0
         self.running_val_correct_sum_sanity = 0
         self.running_perf_stats["train"] = {
-            k: [] for k in self.query_performance_metrics["train"]
+            k: [] for k in self.query_performance_metrics.train
         }
         self.running_perf_stats["val"] = {
-            k: [] for k in self.query_performance_metrics["val"]
+            k: [] for k in self.query_performance_metrics.val
         }
 
     def on_train_start(self, trainer, pl_module):
@@ -84,9 +85,7 @@ class ConfidMonitor(Callback):
                     torch.sum(-torch.log(softmax + 1e-7) * y_one_hot, dim=1).mean()
                 )
             if "accuracy" in stat_keys:
-                tmp_correct = (torch.argmax(softmax, dim=1) == y).type(
-                    torch.cuda.ByteTensor
-                )
+                tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.ByteTensor)
                 self.running_perf_stats["train"]["accuracy"].append(
                     tmp_correct.sum() / tmp_correct.numel()
                 )
@@ -103,9 +102,7 @@ class ConfidMonitor(Callback):
             self.running_train_correct_sum_sanity += tmp_correct.sum()
             stat_keys = self.running_confid_stats["train"].keys()
             if tmp_correct is None:
-                tmp_correct = (torch.argmax(softmax, dim=1) == y).type(
-                    torch.cuda.ByteTensor
-                )
+                tmp_correct = (torch.argmax(softmax, dim=1) == y).type(torch.ByteTensor)
             if "det_mcp" in stat_keys:
                 tmp_confids = torch.max(softmax, dim=1)[0]
                 self.running_confid_stats["train"]["det_mcp"]["confids"].extend(
@@ -149,14 +146,14 @@ class ConfidMonitor(Callback):
             do_plot = (
                 True
                 if (pl_module.current_epoch + 1) % self.val_every_n_epoch == 0
-                and len(self.query_confids["train"]) > 0
+                and len(self.query_confids.train) > 0
                 and len(self.query_monitor_plots) > 0
                 else False
             )
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(
                 self.running_confid_stats["train"],
                 self.running_perf_stats["train"],
-                self.query_confid_metrics["train"],
+                self.query_confid_metrics.train,
                 self.query_monitor_plots,
                 do_plot=do_plot,
                 ext_confid_name=pl_module.ext_confid_name,
@@ -177,10 +174,10 @@ class ConfidMonitor(Callback):
                     )
 
         self.running_confid_stats["train"] = {
-            k: {"confids": [], "correct": []} for k in self.query_confids["train"]
+            k: {"confids": [], "correct": []} for k in self.query_confids.train
         }
         self.running_perf_stats["train"] = {
-            k: [] for k in self.query_performance_metrics["train"]
+            k: [] for k in self.query_performance_metrics.train
         }
         self.running_train_correct_sum_sanity = 0
 
@@ -211,7 +208,7 @@ class ConfidMonitor(Callback):
                     )
                 if "accuracy" in perf_keys:
                     tmp_correct = (torch.argmax(softmax, dim=1) == y).type(
-                        torch.cuda.ByteTensor
+                        torch.ByteTensor
                     )
                     # print(tmp_correct.sum())
                     self.running_perf_stats["val"]["accuracy"].append(
@@ -230,7 +227,7 @@ class ConfidMonitor(Callback):
 
                 if tmp_correct is None:
                     tmp_correct = (torch.argmax(softmax, dim=1) == y).type(
-                        torch.cuda.ByteTensor
+                        torch.ByteTensor
                     )
                 self.running_val_correct_sum_sanity += tmp_correct.sum()
                 if "det_mcp" in confid_keys:
@@ -266,7 +263,7 @@ class ConfidMonitor(Callback):
 
                 mean_softmax = torch.mean(softmax_dist, dim=2)
                 tmp_mcd_correct = (torch.argmax(mean_softmax, dim=1) == y).type(
-                    torch.cuda.ByteTensor
+                    torch.ByteTensor
                 )
 
                 if "mcd_mcp" in confid_keys:
@@ -348,8 +345,7 @@ class ConfidMonitor(Callback):
         ) and (self.running_val_correct_sum_sanity > 0):
             do_plot = (
                 True
-                if len(self.query_confids["val"]) > 0
-                and len(self.query_monitor_plots) > 0
+                if len(self.query_confids.val) > 0 and len(self.query_monitor_plots) > 0
                 else False
             )
             tqdm.write(
@@ -358,7 +354,7 @@ class ConfidMonitor(Callback):
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(
                 self.running_confid_stats["val"],
                 self.running_perf_stats["val"],
-                self.query_confid_metrics["val"],
+                self.query_confid_metrics.val,
                 self.query_monitor_plots,
                 do_plot=do_plot,
                 ext_confid_name=pl_module.ext_confid_name,
@@ -395,10 +391,10 @@ class ConfidMonitor(Callback):
                     pl_module.log("{}".format(metric), dummy, sync_dist=self.sync_dist)
 
         self.running_confid_stats["val"] = {
-            k: {"confids": [], "correct": []} for k in self.query_confids["val"]
+            k: {"confids": [], "correct": []} for k in self.query_confids.val
         }
         self.running_perf_stats["val"] = {
-            k: [] for k in self.query_performance_metrics["val"]
+            k: [] for k in self.query_performance_metrics.val
         }
         self.running_val_correct_sum_sanity = 0
 
@@ -451,7 +447,7 @@ class ConfidMonitor(Callback):
             outputs["softmax"].to(dtype=torch.float64).cpu()
         )
         self.running_test_labels.extend(outputs["labels"].cpu())
-        if "ext" in self.query_confids["test"]:
+        if "ext" in self.query_confids.test:
             self.running_test_external_confids.extend(outputs["confid"].cpu())
         if outputs.get("softmax_dist") is not None:
             self.running_test_softmax_dist.extend(
