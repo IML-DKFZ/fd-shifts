@@ -12,6 +12,7 @@ from rich import print as pprint
 
 from fd_shifts import configs, models
 from fd_shifts.loaders.abstract_loader import AbstractDataLoader
+from fd_shifts.models.callbacks import get_callbacks
 from fd_shifts.utils import exp_utils
 
 
@@ -92,6 +93,8 @@ def test_model_creation(study: str, snapshot: Any):
     ],
 )
 def test_model_training(study: str, snapshot: Any, tmp_path: Path, mock_env: None):
+    assert str(tmp_path) == os.environ["EXPERIMENT_ROOT_DIR"]
+
     exp_utils.set_seed(1234)
 
     configs.init()
@@ -102,8 +105,13 @@ def test_model_training(study: str, snapshot: Any, tmp_path: Path, mock_env: Non
     cfg: configs.Config = cast(
         configs.Config, OmegaConf.to_object(dcfg)
     )  # only affects the linter
+
     cfg.trainer.batch_size = 4
     cfg.data.num_workers = 0
+    cfg.exp.group_dir.mkdir()
+    cfg.exp.dir.mkdir()
+    cfg.exp.version_dir.mkdir()
+    cfg.test.dir.mkdir()
 
     datamodule = AbstractDataLoader(cfg)
     model = models.get_model(cfg.model.name)(cfg)
@@ -111,13 +119,17 @@ def test_model_training(study: str, snapshot: Any, tmp_path: Path, mock_env: Non
         max_epochs=cfg.trainer.num_epochs,
         max_steps=cfg.trainer.num_steps,
         fast_dev_run=5,
+        callbacks=get_callbacks(cfg),
         deterministic=True,
         gradient_clip_val=1,
     )
     trainer.fit(model=model, datamodule=datamodule)
     trainer.test(model=model, datamodule=datamodule)
 
-    assert str(tmp_path) == os.environ["EXPERIMENT_ROOT_DIR"]
+    test_results = list(map(lambda p: p.relative_to(tmp_path),tmp_path.rglob("*")))
+    assert test_results == snapshot(name="test_results_file_list")
+    for file in filter(lambda p: p.is_file(), test_results):
+        assert file.stat().st_size > 0
 
     test_image = torch.ones(16, *cfg.data.img_size[::-1])
     output: torch.Tensor | tuple[torch.Tensor, torch.Tensor] = model(test_image)
