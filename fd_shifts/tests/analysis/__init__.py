@@ -3,9 +3,9 @@ import filecmp
 import shutil
 from pathlib import Path
 
-from PIL import Image
 import pytest
 from omegaconf import OmegaConf
+from PIL import Image
 
 from fd_shifts import analysis
 from fd_shifts.utils import exp_utils
@@ -87,7 +87,3 @@ def test_analysis_blackbox(tmp_test_dir, data_dir, snapshot, mock_env):
     )
 
     _check_dir_content(tmp_test_dir, data_dir, snapshot)
-
-
-def test_ece():
-    pass
