@@ -7,6 +7,9 @@ import scipy.special as sp
 
 from fd_shifts.analysis import confid_scores
 
+ArrayType = npt.NDArray[np.floating]
+ExpectedType = float | ArrayType | type[BaseException]
+
 N_SAMPLES = 100
 N_CLASSES = 10
 N_MCD_SAMPLES = 3
@@ -77,18 +80,26 @@ assert _mcd_softmax_somenan64.shape == (N_SAMPLES, N_CLASSES, N_MCD_SAMPLES)
 
 # Some variance
 # TODO: Maybe create something more different
-_mcd_softmax_variant64 = (1 - (np.arange(N_MCD_SAMPLES, dtype=np.float64) % 3)) * np.array(
+_mcd_softmax_variant64 = (
+    1 - (np.arange(N_MCD_SAMPLES, dtype=np.float64) % 3)
+) * np.array(
     [[[*([1e-4] * (N_CLASSES - 1)), -(N_CLASSES - 1) * 1e-4]] * N_MCD_SAMPLES]
     * N_SAMPLES,
     dtype=np.float64,
-).transpose(0, 2, 1) + _mcd_softmax_const64
+).transpose(
+    0, 2, 1
+) + _mcd_softmax_const64
 np.testing.assert_array_equal(_mcd_softmax_variant64.mean(axis=2), _softmax_const64)
 
-_mcd_softmax_variant16 = (1 - (np.arange(N_MCD_SAMPLES, dtype=np.float16) % 3)) * np.array(
+_mcd_softmax_variant16 = (
+    1 - (np.arange(N_MCD_SAMPLES, dtype=np.float16) % 3)
+) * np.array(
     [[[*([1e-4] * (N_CLASSES - 1)), -(N_CLASSES - 1) * 1e-4]] * N_MCD_SAMPLES]
     * N_SAMPLES,
     dtype=np.float16,
-).transpose(0, 2, 1) + _mcd_softmax_const16
+).transpose(
+    0, 2, 1
+) + _mcd_softmax_const16
 np.testing.assert_array_equal(_mcd_softmax_variant16.mean(axis=2), _softmax_const16)
 
 
@@ -105,9 +116,7 @@ np.testing.assert_array_equal(_mcd_softmax_variant16.mean(axis=2), _softmax_cons
         (_softmax_allnan64, AssertionError),
     ],
 )
-def test_maximum_softmax_probability(
-    data: npt.NDArray[Any], expected: float | npt.NDArray[Any] | type[BaseException]
-):
+def test_maximum_softmax_probability(data: ArrayType, expected: ExpectedType):
     # return np.max(softmax, axis=1)
     if isinstance(expected, type):
         with pytest.raises(expected):
@@ -132,9 +141,7 @@ def test_maximum_softmax_probability(
         (_softmax_allnan64, AssertionError),
     ],
 )
-def test_predictive_entropy(
-    data: npt.NDArray[Any], expected: float | npt.NDArray[Any] | type[BaseException]
-):
+def test_predictive_entropy(data: ArrayType, expected: ExpectedType):
     # return np.sum(softmax * (-np.log(softmax + np.finfo(softmax.dtype).eps)), axis=1)
     if isinstance(expected, type):
         with pytest.raises(expected):
@@ -151,25 +158,21 @@ def test_predictive_entropy(
     [
         (_mcd_softmax_const16, _softmax_const16, 2.293),
         (_mcd_softmax_const64, _softmax_const64, 2.30258509),
-
         (_mcd_softmax_extreme16, _softmax_extreme16, AssertionError),
         (_mcd_softmax_extreme64, _softmax_extreme64, 1.70181e-05),
-
         (_mcd_softmax_somenan16, _softmax_somenan16, AssertionError),
         (_mcd_softmax_somenan64, _softmax_somenan64, AssertionError),
-
         (_mcd_softmax_allnan16, _softmax_allnan16, AssertionError),
         (_mcd_softmax_allnan64, _softmax_allnan64, AssertionError),
-
         # NOTE: Did not know this would fail too, don't use half precision kids!
         (_mcd_softmax_variant16, _softmax_const16, AssertionError),
         (_mcd_softmax_variant64, _softmax_const64, 2.302582),
     ],
 )
 def test_expected_entropy(
-    mcd_softmax_mean: npt.NDArray[Any],
-    mcd_softmax_dist: npt.NDArray[Any],
-    expected: float | npt.NDArray[Any] | type[BaseException],
+    mcd_softmax_mean: ArrayType,
+    mcd_softmax_dist: ArrayType,
+    expected: ExpectedType,
 ):
     if isinstance(expected, type):
         with pytest.raises(expected):
@@ -186,24 +189,20 @@ def test_expected_entropy(
     [
         (_mcd_softmax_const16, _softmax_const16, 0),
         (_mcd_softmax_const64, _softmax_const64, 0),
-
         (_mcd_softmax_extreme16, _softmax_extreme16, AssertionError),
         (_mcd_softmax_extreme64, _softmax_extreme64, 0),
-
         (_mcd_softmax_somenan16, _softmax_somenan16, AssertionError),
         (_mcd_softmax_somenan64, _softmax_somenan64, AssertionError),
-
         (_mcd_softmax_allnan16, _softmax_allnan16, AssertionError),
         (_mcd_softmax_allnan64, _softmax_allnan64, AssertionError),
-
         (_mcd_softmax_variant16, _softmax_const16, AssertionError),
         (_mcd_softmax_variant64, _softmax_const64, 3.000037e-06),
     ],
 )
 def test_mutual_information(
-    mcd_softmax_mean: npt.NDArray[Any],
-    mcd_softmax_dist: npt.NDArray[Any],
-    expected: float | npt.NDArray[Any] | type[BaseException],
+    mcd_softmax_mean: ArrayType,
+    mcd_softmax_dist: ArrayType,
+    expected: ExpectedType,
 ):
     if isinstance(expected, type):
         with pytest.raises(expected):
@@ -220,24 +219,20 @@ def test_mutual_information(
     [
         (_mcd_softmax_const16, _softmax_const16, 0),
         (_mcd_softmax_const64, _softmax_const64, 0),
-
         (_mcd_softmax_extreme16, _softmax_extreme16, AssertionError),
         (_mcd_softmax_extreme64, _softmax_extreme64, 0),
-
         (_mcd_softmax_somenan16, _softmax_somenan16, AssertionError),
         (_mcd_softmax_somenan64, _softmax_somenan64, AssertionError),
-
         (_mcd_softmax_allnan16, _softmax_allnan16, AssertionError),
         (_mcd_softmax_allnan64, _softmax_allnan64, AssertionError),
-
         (_mcd_softmax_variant16, _softmax_const16, AssertionError),
         (_mcd_softmax_variant64, _softmax_const64, 0.000147),
     ],
 )
 def test_softmax_variance(
-    mcd_softmax_mean: npt.NDArray[Any],
-    mcd_softmax_dist: npt.NDArray[Any],
-    expected: float | npt.NDArray[Any] | type[BaseException],
+    mcd_softmax_mean: ArrayType,
+    mcd_softmax_dist: ArrayType,
+    expected: ExpectedType,
 ):
     if isinstance(expected, type):
         with pytest.raises(expected):

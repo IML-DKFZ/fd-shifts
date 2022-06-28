@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -12,24 +12,33 @@ EXTERNAL_CONFIDS = ["ext", "bpd", "maha", "tcp", "dg", "devries"]
 
 # TODO: Add better error handling/reporting
 
-
-def _check_shape_det(softmax: npt.NDArray[np.number]):
-    assert len(softmax.shape) == 2
-
-
-def _check_shape_mcd(softmax: npt.NDArray[np.number]):
-    assert len(softmax.shape) == 3
+ArrayType = npt.NDArray[np.floating]
+T = TypeVar(
+    "T", Callable[[ArrayType], ArrayType], Callable[[ArrayType, ArrayType], ArrayType]
+)
 
 
-def _assert_valid_softmax(softmax: npt.NDArray[np.number]):
+def _assert_softmax_finite(softmax: npt.NDArray[np.number]):
     # TODO: Decide whether this should assert or propagate nan
     assert np.isfinite(softmax).all(), "NaN or INF in softmax output"
-    np.testing.assert_array_almost_equal(softmax.sum(axis=1), 1.0)
 
-    msr = softmax.max(axis=1)
-    errors = ((msr == 1) & ((softmax > 0) & (softmax < 1)).any(axis=1))
+
+def _assert_softmax_numerically_stable(softmax: ArrayType):
     # TODO: Assert on acceptable error rate?
+    np.testing.assert_array_almost_equal(softmax.sum(axis=1), 1.0)
+    msr = softmax.max(axis=1)
+    errors = (msr == 1) & ((softmax > 0) & (softmax < 1)).any(axis=1)
     assert not errors.any(), f"Numerical errors in softmax: {errors.mean() * 100:.2f}%"
+
+
+def validate_softmax(func: T) -> T:
+    def _inner_wrapper(*args: ArrayType) -> ArrayType:
+        for arg in args:
+            _assert_softmax_finite(arg)
+            _assert_softmax_numerically_stable(arg)
+        return func(*args)
+
+    return cast(T, _inner_wrapper)
 
 
 def is_external_confid(name: str):
@@ -64,37 +73,36 @@ def get_confid_function(confid_name):
 
 @register_confid_func("det_mcp")
 @register_confid_func("det_mls")
-def maximum_softmax_probability(softmax: npt.NDArray[np.number]) -> npt.NDArray[np.number]:
-    _assert_valid_softmax(softmax)
+@validate_softmax
+def maximum_softmax_probability(
+    softmax: ArrayType,
+) -> ArrayType:
     return np.max(softmax, axis=1)
 
 
 @register_confid_func("mcd_mcp")
+@validate_softmax
 def mcd_maximum_softmax_probability(
-    mcd_softmax_mean: npt.NDArray[np.number], mcd_softmax_dist: npt.NDArray[np.number]
-) -> npt.NDArray[np.number]:
+    mcd_softmax_mean: ArrayType, _: ArrayType
+) -> ArrayType:
     return maximum_softmax_probability(mcd_softmax_mean)
 
 
 @register_confid_func("det_pe")
-def predictive_entropy(softmax: npt.NDArray[np.number]) -> npt.NDArray[np.number]:
-    _assert_valid_softmax(softmax)
+@validate_softmax
+def predictive_entropy(softmax: ArrayType) -> ArrayType:
     return np.sum(softmax * (-np.log(softmax + np.finfo(softmax.dtype).eps)), axis=1)
 
 
 @register_confid_func("mcd_pe")
-def mcd_predictive_entropy(
-    mcd_softmax_mean: npt.NDArray[np.number], mcd_softmax_dist: npt.NDArray[np.number]
-) -> npt.NDArray[np.number]:
+@validate_softmax
+def mcd_predictive_entropy(mcd_softmax_mean: ArrayType, _: ArrayType) -> ArrayType:
     return predictive_entropy(mcd_softmax_mean)
 
 
 @register_confid_func("mcd_ee")
-def expected_entropy(
-    mcd_softmax_mean: npt.NDArray[np.number], mcd_softmax_dist: npt.NDArray[np.number]
-) -> npt.NDArray[np.number]:
-    _assert_valid_softmax(mcd_softmax_mean)
-    _assert_valid_softmax(mcd_softmax_dist)
+@validate_softmax
+def expected_entropy(_: ArrayType, mcd_softmax_dist: ArrayType) -> ArrayType:
     return np.mean(
         np.sum(
             mcd_softmax_dist
@@ -107,28 +115,21 @@ def expected_entropy(
 
 @register_confid_func("mcd_mi")
 def mutual_information(
-    mcd_softmax_mean: npt.NDArray[np.number], mcd_softmax_dist: npt.NDArray[np.number]
-) -> npt.NDArray[np.number]:
+    mcd_softmax_mean: ArrayType, mcd_softmax_dist: ArrayType
+) -> ArrayType:
     return predictive_entropy(mcd_softmax_mean) - expected_entropy(
         mcd_softmax_mean, mcd_softmax_dist
     )
 
 
 @register_confid_func("mcd_sv")
-def softmax_variance(
-    mcd_softmax_mean: npt.NDArray[np.number], mcd_softmax_dist: npt.NDArray[np.number]
-) -> npt.NDArray[np.number]:
-    _assert_valid_softmax(mcd_softmax_mean)
-    _assert_valid_softmax(mcd_softmax_dist)
+@validate_softmax
+def softmax_variance(_: ArrayType, mcd_softmax_dist: ArrayType) -> ArrayType:
     return np.mean(np.std(mcd_softmax_dist, axis=2), axis=(1))
 
 
 @register_confid_func("mcd_waic")
-def mcd_waic(
-    mcd_softmax_mean: npt.NDArray[np.number], mcd_softmax_dist: npt.NDArray[np.number]
-) -> npt.NDArray[np.number]:
-    _assert_valid_softmax(mcd_softmax_mean)
-    _assert_valid_softmax(mcd_softmax_dist)
+def mcd_waic(mcd_softmax_mean: ArrayType, mcd_softmax_dist: ArrayType) -> ArrayType:
     return np.max(mcd_softmax_mean, axis=1) - np.take(
         np.std(mcd_softmax_dist, axis=2),
         np.argmax(mcd_softmax_mean, axis=1),
@@ -141,11 +142,7 @@ def mcd_waic(
 @register_confid_func("tcp_waic")
 @register_confid_func("dg_waic")
 @register_confid_func("devries_waic")
-def ext_waic(
-    mcd_softmax_mean: npt.NDArray[np.number], mcd_softmax_dist: npt.NDArray[np.number]
-) -> npt.NDArray[np.number]:
-    _assert_valid_softmax(mcd_softmax_mean)
-    _assert_valid_softmax(mcd_softmax_dist)
+def ext_waic(mcd_softmax_mean: ArrayType, mcd_softmax_dist: ArrayType) -> ArrayType:
     return mcd_softmax_mean - np.std(mcd_softmax_dist, axis=1)
 
 
@@ -155,10 +152,7 @@ def ext_waic(
 @register_confid_func("tcp_mcd")
 @register_confid_func("dg_mcd")
 @register_confid_func("devries_mcd")
-def mcd_ext(
-    mcd_softmax_mean: npt.NDArray[np.number], mcd_softmax_dist: npt.NDArray[np.number]
-) -> npt.NDArray[np.number]:
-    _assert_valid_softmax(mcd_softmax_mean)
+def mcd_ext(mcd_softmax_mean: ArrayType, _: ArrayType) -> ArrayType:
     return mcd_softmax_mean
 
 
@@ -171,7 +165,7 @@ def mcd_ext(
 @register_confid_func("tcp")
 @register_confid_func("dg")
 @register_confid_func("devries")
-def ext_confid(softmax: npt.NDArray[np.number]) -> npt.NDArray[np.number]:
+def ext_confid(softmax: ArrayType) -> ArrayType:
     return softmax
 
 
@@ -226,11 +220,11 @@ class ConfidScore:
         self.analysis = analysis
 
     @property
-    def confids(self) -> npt.NDArray[np.number]:
+    def confids(self) -> ArrayType:
         return self.confid_func(*self.confid_args)
 
     @property
-    def predict(self) -> npt.NDArray[np.number]:
+    def predict(self) -> ArrayType:
         return np.argmax(self.softmax, axis=1)
 
     @property
@@ -275,11 +269,11 @@ class SecondaryConfidScore:
         self.analysis = analysis
 
     @property
-    def confids(self) -> npt.NDArray[np.number]:
+    def confids(self) -> ArrayType:
         return self.confid_func(*self.confid_args)
 
     @property
-    def predict(self) -> npt.NDArray[np.number]:
+    def predict(self) -> ArrayType:
         return np.argmax(self.softmax, axis=1)
 
     @property
