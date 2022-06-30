@@ -1,8 +1,8 @@
 pytest:
   stage: test
-  image: "python:3.9"
+  image: "python:3.10"
   before_script:
   - python --version
   - pip install .[dev]
   script:
-  - python -m pytest -W ignore
+  - python -m pytest -W ignore -m "not memory_heavy and not requires_data"

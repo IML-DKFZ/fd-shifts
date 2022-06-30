@@ -22,6 +22,16 @@ def mock_env(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("DATASET_ROOT_DIR", str(Path("~/Data").expanduser()))
 
 
+@pytest.fixture
+def mock_env_if_missing(monkeypatch) -> None:
+    monkeypatch.setenv(
+        "EXPERIMENT_ROOT_DIR", os.getenv("EXPERIMENT_ROOT_DIR", default="./experiments")
+    )
+    monkeypatch.setenv(
+        "DATASET_ROOT_DIR", os.getenv("DATASET_ROOT_DIR", default="./data")
+    )
+
+
 def initialize_hydra(overrides: list[str]) -> DictConfig:
     """Takes the place of hydra.main"""
     default_overrides = [
@@ -40,6 +50,7 @@ def initialize_hydra(overrides: list[str]) -> DictConfig:
     return cfg
 
 
+@pytest.mark.memory_heavy
 @pytest.mark.parametrize(
     ("study",),
     [
@@ -57,7 +68,7 @@ def initialize_hydra(overrides: list[str]) -> DictConfig:
         # ("wilds_camelyon_vit_study",),
     ],
 )
-def test_model_creation(study: str, snapshot: Any):
+def test_model_creation(study: str, snapshot: Any, mock_env_if_missing: Any):
     exp_utils.set_seed(1234)
 
     configs.init()
@@ -75,6 +86,8 @@ def test_model_creation(study: str, snapshot: Any):
 
 
 @pytest.mark.slow
+@pytest.mark.requires_data
+@pytest.mark.memory_heavy
 @pytest.mark.parametrize(
     ("study",),
     [
@@ -126,7 +139,7 @@ def test_model_training(study: str, snapshot: Any, tmp_path: Path, mock_env: Non
     trainer.fit(model=model, datamodule=datamodule)
     trainer.test(model=model, datamodule=datamodule)
 
-    test_results = list(map(lambda p: p.relative_to(tmp_path),tmp_path.rglob("*")))
+    test_results = list(map(lambda p: p.relative_to(tmp_path), tmp_path.rglob("*")))
     assert test_results == snapshot(name="test_results_file_list")
     for file in filter(lambda p: p.is_file(), test_results):
         assert file.stat().st_size > 0
@@ -140,6 +153,7 @@ def test_model_training(study: str, snapshot: Any, tmp_path: Path, mock_env: Non
     assert not torch.isnan(output).any()
     assert not (output == 0).all()
     assert output == snapshot
+
 
 # TODO: Test checkpointing and loading
 # TODO: Check output files

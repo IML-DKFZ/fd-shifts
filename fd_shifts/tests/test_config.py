@@ -1,15 +1,28 @@
+import os
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from pathlib import Path
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 import hydra
 import pytest
 from hydra import compose, initialize_config_module
 from hydra.core.config_store import ConfigStore
 from hydra.core.hydra_config import HydraConfig
+from hydra.errors import ConfigCompositionException
 from omegaconf import DictConfig, OmegaConf
 from rich import print as pprint
 
 from fd_shifts import configs
+
+
+@pytest.fixture
+def mock_env_if_missing(monkeypatch) -> None:
+    monkeypatch.setenv(
+        "EXPERIMENT_ROOT_DIR", os.getenv("EXPERIMENT_ROOT_DIR", default="./experiments")
+    )
+    monkeypatch.setenv(
+        "DATASET_ROOT_DIR", os.getenv("DATASET_ROOT_DIR", default="./data")
+    )
 
 
 def initialize_hydra(overrides: list[str]) -> DictConfig:
@@ -31,30 +44,30 @@ def initialize_hydra(overrides: list[str]) -> DictConfig:
 
 
 @pytest.mark.parametrize(
-    "overrides",
+    ("overrides", "expected"),
     [
-        [],
-        ["exp.log_path=test"],
-        pytest.param(
-            ["trainer.val_split=foo"],
-            marks=pytest.mark.xfail(reason="foo is not a valid val_split"),
-        ),
-        ["eval.query_studies.iid_study=svhn"],
-        pytest.param(
+        ([], nullcontext()),
+        (["exp.log_path=test"], nullcontext()),
+        (["trainer.val_split=foo"], pytest.raises(ConfigCompositionException)),
+        (["eval.query_studies.iid_study=svhn"], nullcontext()),
+        (
             ["eval.query_studies.iid_study=doesnt_exist_dataset"],
-            marks=pytest.mark.xfail(reason="dataset does not exist"),
+            pytest.raises(ValueError),
         ),
     ],
 )
-def test_validation(overrides: list[str]):
-    configs.init()
+def test_validation(
+    overrides: list[str], expected: AbstractContextManager, mock_env_if_missing: Any
+):
+    with expected:
+        configs.init()
 
-    cfg = initialize_hydra(overrides)
+        cfg = initialize_hydra(overrides)
 
-    print(type(cfg))
-    cfg = OmegaConf.to_object(cfg)
-    pprint(OmegaConf.to_yaml(cfg, resolve=False))
-    print(type(cfg))
+        print(type(cfg))
+        cfg = OmegaConf.to_object(cfg)
+        pprint(OmegaConf.to_yaml(cfg, resolve=False))
+        print(type(cfg))
 
 
 @pytest.mark.parametrize(
@@ -74,7 +87,7 @@ def test_validation(overrides: list[str]):
         ("wilds_camelyon_vit_study",),
     ],
 )
-def test_existing_studies(study: str):
+def test_existing_studies(study: str, mock_env_if_missing: Any):
     configs.init()
     overrides = [f"study={study}"]
 
@@ -125,7 +138,7 @@ def _normalize_dataset_name(dataset: str):
         ("wilds_camelyon_ood_test_data",),
     ],
 )
-def test_existing_datasets(dataset: str):
+def test_existing_datasets(dataset: str, mock_env_if_missing: Any):
     configs.init()
     overrides = [f"data={dataset}"]
 
