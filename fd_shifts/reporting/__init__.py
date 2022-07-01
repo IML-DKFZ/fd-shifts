@@ -72,14 +72,20 @@ def load_data(data_dir: Path):
         study=data.study.mask(
             data.experiment == "super_cifar100",
             "cifar100_in_class_study_superclasses",
-        )
+        ),
+        experiment=data.experiment.mask(
+            data.experiment == "super_cifar100", "cifar100"
+        ),
     )
 
     data = data.assign(
         study=data.study.mask(
             data.experiment == "super_cifar100vit",
             "cifar100vit_in_class_study_superclasses",
-        )
+        ),
+        experiment=data.experiment.mask(
+            data.experiment == "super_cifar100vit", "cifar100vit"
+        ),
     )
 
     data = data.assign(
@@ -145,6 +151,8 @@ def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
         dropout=lambda data: extract_hparam(data.name, r"do([01])"),
         rew=lambda data: extract_hparam(data.name, r"rew([0-9.]+)"),
         # Encode every detail into confid name
+        # TODO: Should probably not be needed
+        _confid=data.confid,
         confid=lambda data: data.model
         + "_"
         + data.confid
@@ -154,8 +162,63 @@ def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
         + data.rew,
     )
 
-    # Drop intermediate columns
-    data = data.drop("model", axis=1).drop("dropout", axis=1).drop("backbone", axis=1)
+    return data
+
+
+def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFrame:
+    """
+    for every study (which encodes dataset) and confidence (which encodes other stuff)
+    select all runs with the best avg combo of reward and dropout
+    (maybe learning rate? should actually have been selected before)
+    """
+
+    def filter_row(row, selection_df, optimization_columns, fixed_columns):
+        if "openset" in row["study"]:
+            return True
+        temp = selection_df[
+            (row.experiment == selection_df.experiment)
+            & (row._confid == selection_df._confid)
+            & (row.model == selection_df.model)
+        ]
+
+        result = row[optimization_columns] == temp[optimization_columns]
+        if result.all(axis=1).any().item():
+            return True
+
+        return False
+
+    fixed_columns = [
+        "study",
+        "experiment",
+        "_confid",
+        "model",
+    ]  # TODO: Merge these as soon as the first tuple doesn't encode everything anymore
+    optimization_columns = ["rew", "dropout"]
+    aggregation_columns = ["run", metric]
+
+    # Only look at validation data and the relevant columns
+    selection_df = data[data.study.str.contains("val_tuning")][
+        fixed_columns + optimization_columns + aggregation_columns
+    ]
+
+    # compute aggregation column means
+    selection_df = (
+        selection_df.groupby(fixed_columns + optimization_columns).mean().reset_index()
+    )
+
+    # select best optimization columns combo
+    selection_df = selection_df.iloc[
+        selection_df.groupby(fixed_columns)[metric].idxmin()
+    ]
+
+    data = data[
+        data.apply(
+            lambda row: filter_row(
+                row, selection_df, optimization_columns, fixed_columns
+            ),
+            axis=1,
+        )
+    ]
 
     return data
 
@@ -168,95 +231,11 @@ def main(base_path: str | Path):
 
     data_dir: Path = Path(base_path).expanduser().resolve()
 
-    df, exp_names = load_data(data_dir)
+    data, exp_names = load_data(data_dir)
 
-    df = assign_hparams_from_names(df)
+    data = assign_hparams_from_names(data)
 
-    # MODEL SELECTION
-    def select_models(df):
-        def select_func(row, selection_df, selection_column):
-            if "openset" in row["study"]:
-                return 1
-            name_splitter = -1 if selection_column == "rew" else -2
-            row_exp = row["study"].split("_")[0] + "_"
-            row_confid = "_".join(row["confid"].split("_")[:name_splitter])
-            selection_df = selection_df[
-                (selection_df.study.str.contains(row_exp))
-                & (selection_df.confid == row_confid)
-            ]
-            try:
-                if row[selection_column] == selection_df[selection_column].tolist()[0]:
-                    return 1
-                else:
-                    return 0
-            except IndexError as e:
-                print(row_exp, row_confid, len(selection_df))
-                raise e
-
-        ms_metric = "aurc"  # Careful, when changing consider changing idxmin -> idxmax
-
-        # REWARD
-        non_agg_columns = ["study", "confid", "rew"]
-        ms_filter_metrics_df = df[["study", "confid", "run", "rew", ms_metric]]
-        df_ms = ms_filter_metrics_df.groupby(by=non_agg_columns).mean().reset_index()
-        #     print(len(df_ms), len(ms_filter_metrics_df))
-        df_ms = df_ms[df_ms.study.str.contains("val_tuning")]
-        df_ms["confid"] = df_ms.apply(
-            lambda row: "_".join(row["confid"].split("_")[:-1]), axis=1
-        )
-        df_ms = df_ms.loc[
-            df_ms.groupby(["study", "confid"])[ms_metric]
-            .idxmin()
-            .reset_index()[ms_metric]
-        ]
-        #     print(len(df), len(df_ms))
-        df["select_rew"] = df.apply(lambda row: select_func(row, df_ms, "rew"), axis=1)
-        selected_df = df[df.select_rew == 1]
-
-        # DROPOUT
-        non_agg_columns = ["study", "confid", "dropout"]
-        selected_df["dropout"] = selected_df.apply(
-            lambda row: row["name"].split("do")[1].split("_")[0], axis=1
-        )
-        do_filter_metrics_df = selected_df[
-            ["study", "confid", "run", "dropout", ms_metric]
-        ]
-        df_do = do_filter_metrics_df.groupby(by=non_agg_columns).mean().reset_index()
-        #     print(len(df_do), len(do_filter_metrics_df))
-        df_do = df_do[df_do.study.str.contains("val_tuning")]
-        df_do["confid"] = df_do.apply(
-            lambda row: "_".join(row["confid"].split("_")[:-2]), axis=1
-        )
-        df_do = df_do.loc[
-            df_do.groupby(["study", "confid"])[ms_metric]
-            .idxmin()
-            .reset_index()[ms_metric]
-        ]
-        #     print(len(df), len(selected_df), len(df_do))
-        selected_df["select_do"] = selected_df.apply(
-            lambda row: select_func(row, df_do, "dropout"), axis=1
-        )
-        all_selected_df = selected_df[selected_df.select_do == 1]
-        return all_selected_df
-
-    all_selected_df = select_models(df)
-    del df
-    gc.collect()
-    # print(all_selected_df[all_selected_df.study == "cifar100vit_in_class_study_superclasses"])
-
-    # %% jupyter={"outputs_hidden": false} pycharm={"name": "#%%\n"}
-    pd.set_option("display.max_rows", 3000)
-    pd.set_option("display.max_columns", 200)
-    # print(len(df), len(selected_df), len(all_selected_df), type)
-    all_selected_df[
-        (
-            all_selected_df.study.str.contains("iid_study")
-            | all_selected_df.study.str.contains("val_tuning")
-        )
-        & (all_selected_df.run == "1")
-        # & (all_selected_df.dropout == "0")
-        & (all_selected_df.study.str.startswith("breedsvit"))
-    ][["study", "confid", "rew", "dropout", "aurc"]].sort_values("dropout")
+    data = filter_best_hparams(data)
 
     # %% jupyter={"outputs_hidden": false} pycharm={"name": "#%%\n"}
     def clean_df(all_selected_df):
@@ -311,9 +290,8 @@ def main(base_path: str | Path):
         #     print(df.study.unique())
         return df
 
-    df = clean_df(all_selected_df)
-    del all_selected_df
-    print(df[df.study.str.startswith("cifar10_") & df.confid.str.contains("VIT-PE")])
+    data = clean_df(data)
+    print(data[data.study.str.startswith("cifar10_") & data.confid.str.contains("VIT-PE")])
     gc.collect()
 
     # %% jupyter={"outputs_hidden": false} pycharm={"name": "#%%\n"}
@@ -354,7 +332,7 @@ def main(base_path: str | Path):
 
         return dff
 
-    dff = aggregate_over_runs(df)
+    dff = aggregate_over_runs(data)
     gc.collect()
 
     # %% jupyter={"outputs_hidden": false} pycharm={"name": "#%%\n"}
@@ -456,7 +434,7 @@ def main(base_path: str | Path):
 
         return tripple_dff
 
-    tripple_dff = tripple_results(df)
+    tripple_dff = tripple_results(data)
     # print(tripple_dff)
     gc.collect()
 
@@ -821,10 +799,10 @@ def main(base_path: str | Path):
         with open(data_dir / f"paper_results_{metric}.tex", "w") as f:
             f.write(ltex)
 
-    paper_results(df, "aurc", False)
-    paper_results(df, "ece", False)
-    paper_results(df, "failauc", True)
-    paper_results(df, "accuracy", True)
-    paper_results(df, "fail-NLL", False)
+    paper_results(data, "aurc", False)
+    paper_results(data, "ece", False)
+    paper_results(data, "failauc", True)
+    paper_results(data, "accuracy", True)
+    paper_results(data, "fail-NLL", False)
     # print(paper_dff)
     gc.collect()
