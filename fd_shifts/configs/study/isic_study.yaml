@@ -11,6 +11,8 @@ trainer:
   num_steps: 
   max_epochs: 15
   val_every_n_epoch: 1
+  accumulate_grad_batches: 1
+  accelerator: 
   do_val: False
   val_split: devries
   learning_rate: 0.00003
