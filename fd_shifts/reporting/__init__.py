@@ -1,4 +1,5 @@
 import gc
+import re
 from itertools import zip_longest
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from rich import print
 # TODO: Add error handling
 # TODO: Implement sanity checks on final result table
 
+# TODO: Take this from config
 DATASETS = (
     "svhn",
     "cifar10",
@@ -33,6 +35,9 @@ def load_file(path: Path) -> pd.DataFrame:
         .drop_duplicates(subset=["name", "study", "model", "network", "confid"])
     )
 
+    if not isinstance(result, pd.DataFrame):
+        raise RuntimeError
+
     return result
 
 
@@ -51,11 +56,14 @@ def load_data(data_dir: Path):
     data = data.loc[~data["study"].str.contains("tinyimagenet_proposed")]
 
     data = data.query(
-        'not (experiment in ["cifar10", "cifar100", "super_cifar100"] and not name.str.contains("vgg13"))'
+        'not (experiment in ["cifar10", "cifar100", "super_cifar100"]'
+        'and not name.str.contains("vgg13"))'
     )
 
     data = data.query(
-        'not ((experiment.str.contains("super_cifar100") or experiment.str.contains("openset")) and not (study == "iid_study"))'
+        'not ((experiment.str.contains("super_cifar100")'
+        'or experiment.str.contains("openset"))'
+        'and not (study == "iid_study"))'
     )
 
     data = data.assign(study=data.experiment + "_" + data.study)
@@ -113,20 +121,41 @@ def load_data(data_dir: Path):
 
     return data, exp_names
 
-def extract_hparam(name: pd.Series, regex: str) -> pd.Series:
-    return name.str.replace(".*" + regex + ".*", "\\1", regex=True)
+
+def extract_hparam(
+    name: pd.Series, regex: str, default: str | None = None
+) -> pd.Series:
+
+    result: pd.Series = name.str.replace(".*" + regex + ".*", "\\1", regex=True)
+    return result
 
 
-def load_metrics_csvs(data: pd.DataFrame) -> pd.DataFrame:
+def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
     data = data.assign(
-        backbone=lambda row: extract_hparam(row.name, r"bb([a-z0-9]+(_small_conv)?)"),
-        model=lambda row: extract_hparam(row.name, r"model([a-z]+)"),
-        # lr=lambda row: extract_hparam(row.name, r"lr([0-9.]+)"),
-        # bs=lambda row: extract_hparam(row.name, r"bs([0-9]+)"),
-        run=lambda row: extract_hparam(row.name, r"run([0-9]+)"),
-        dropout=lambda row: extract_hparam(row.name, r"do([01])"),
-        rew=lambda row: extract_hparam(row.name, r"rew([0-9.]+)"),
+        backbone=lambda data: extract_hparam(data.name, r"bb([a-z0-9]+)(_small_conv)?"),
+        # Prefix model name with vit_ if it is a vit model
+        # If it isn't a vit model, model is the first part of the name
+        model=lambda data: data["backbone"]
+        .mask(data["backbone"] != "vit", "")
+        .mask(data["backbone"] == "vit", "vit_")
+        + data.model.where(
+            data.backbone == "vit", data.name.str.split("_", expand=True)[0]
+        ),
+        run=lambda data: extract_hparam(data.name, r"run([0-9]+)"),
+        dropout=lambda data: extract_hparam(data.name, r"do([01])"),
+        rew=lambda data: extract_hparam(data.name, r"rew([0-9.]+)"),
+        # Encode every detail into confid name
+        confid=lambda data: data.model
+        + "_"
+        + data.confid
+        + "_"
+        + data.dropout
+        + "_"
+        + data.rew,
     )
+
+    # Drop intermediate columns
+    data = data.drop("model", axis=1).drop("dropout", axis=1).drop("backbone", axis=1)
 
     return data
 
@@ -140,55 +169,9 @@ def main(base_path: str | Path):
     data_dir: Path = Path(base_path).expanduser().resolve()
 
     df, exp_names = load_data(data_dir)
-    gc.collect()
 
-    def parse_dataframe(df: pd.DataFrame):
-        data = df.copy()
-        df["backbone"] = df.apply(
-            lambda row: row["name"].split("bb")[1].split("_")[0], axis=1
-        )
-        df["dropout"] = df.apply(
-            lambda row: row["name"].split("do")[1].split("_")[0], axis=1
-        )
-        df["model"] = df.apply(
-            lambda row: row["name"].split("_")[0]
-            if row["backbone"] != "vit"
-            else row["model"],
-            axis=1,
-        )
-        df["model"] = df.apply(
-            lambda row: "vit_" + row["model"]
-            if row["backbone"] == "vit"
-            else row["model"],
-            axis=1,
-        )
-        df["run"] = df.apply(
-            lambda row: row["name"].split("run")[1].split("_")[0], axis=1
-        )
-        df["rew"] = df.apply(
-            lambda row: row["name"].split("_rew")[1].split("_")[0], axis=1
-        )
-        df["confid"] = df.apply(
-            lambda row: row["model"]
-            + "_"
-            + row["confid"]
-            + "_"
-            + row["dropout"]
-            + "_"
-            + row["rew"],
-            axis=1,
-        )
-        df = df.drop("model", axis=1)
-        df = df.drop("dropout", axis=1)
+    df = assign_hparams_from_names(df)
 
-        df = df.drop("backbone", axis=1)
-
-        return df
-
-    df = parse_dataframe(df)
-    gc.collect()
-
-    # %% jupyter={"outputs_hidden": false} pycharm={"name": "#%%\n"}
     # MODEL SELECTION
     def select_models(df):
         def select_func(row, selection_df, selection_column):
