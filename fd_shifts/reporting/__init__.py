@@ -2,7 +2,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from .tables import paper_results
+from fd_shifts.reporting.plots import plot_rank_style, plot_sum_ranking
+from fd_shifts.reporting.tables import paper_results
 
 # TODO: Refactor the rest
 # TODO: Add error handling
@@ -277,7 +278,10 @@ def aggregate_over_runs(data: pd.DataFrame) -> pd.DataFrame:
         .sort_values("confid")
         .reset_index()
     )
+    return data
 
+
+def str_format_metrics(data: pd.DataFrame) -> pd.DataFrame:
     data = data.rename(columns={"fail-NLL": "failNLL"})
 
     data = data.assign(
@@ -312,7 +316,11 @@ def main(base_path: str | Path):
     data = rename_confids(data)
     data = rename_studies(data)
 
+    plot_rank_style(data, "cifar10", "aurc", data_dir)
+    plot_sum_ranking(data, data_dir)
+
     data = aggregate_over_runs(data)
+    data = str_format_metrics(data)
 
     paper_results(data, "aurc", False, data_dir)
     paper_results(data, "ece", False, data_dir)
