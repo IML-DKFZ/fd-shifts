@@ -223,6 +223,52 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
     return data
 
 
+def _confid_string_to_name(confid: pd.Series) -> pd.Series:
+    confid = (
+        confid.str.replace("confidnet_", "")
+        .str.replace("_dg", "_res")
+        .str.replace("_det", "")
+        .str.replace("det_", "")
+        .str.replace("tcp", "confidnet")
+        .str.upper()
+        .str.replace("DEVRIES_DEVRIES", "DEVRIES")
+        .str.replace("VIT_VIT", "VIT")
+        .str.replace("DEVRIES", "Devries et al.")
+        .str.replace("CONFIDNET", "ConfidNet")
+        .str.replace("RES", "Res")
+        .str.replace("_", "-")
+        .str.replace("MCP", "MSR")
+        .str.replace("VIT-Res", "VIT-DG-Res")
+        .str.replace("VIT-DG-Res-", "VIT-DG-")
+    )
+    return confid
+
+
+def rename_confids(data: pd.DataFrame) -> pd.DataFrame:
+    data = data.assign(confid=_confid_string_to_name(data.model + "_" + data._confid))
+    return data
+
+
+def rename_studies(data: pd.DataFrame) -> pd.DataFrame:
+    data = data.assign(
+        study=data.study.str.replace("tinyimagenet_384", "tinyimagenet_resize")
+        .str.replace("vit", "")
+        .str.replace("_384", "")
+    )
+    return data
+
+
+def filter_unused(data: pd.DataFrame) -> pd.DataFrame:
+    data = data[
+        (~data.confid.str.contains("waic"))
+        & (~data.confid.str.contains("devries_mcd"))
+        & (~data.confid.str.contains("devries_det"))
+        & (~data.confid.str.contains("_sv"))
+        & (~data.confid.str.contains("_mi"))
+    ]
+    return data
+
+
 def main(base_path: str | Path):
     pd.set_option("display.max_rows", 100)
     pd.set_option("display.max_columns", None)
@@ -237,62 +283,9 @@ def main(base_path: str | Path):
 
     data = filter_best_hparams(data)
 
-    # %% jupyter={"outputs_hidden": false} pycharm={"name": "#%%\n"}
-    def clean_df(all_selected_df):
-        def rename_confids(in_confid):
-            confid = in_confid.replace("confidnet_", "")
-            confid = confid.replace("_dg", "_res")
-            # confid = confid.replace("dg_", "deepgamblers_")
-            confid = confid.replace("_det", "")
-            confid = confid.replace("det_", "")
-            #     confid = confid.replace("_devries", "")
-            confid = confid.replace("tcp", "confidnet")
-            confid = confid.upper()
-            confid = confid.replace("DEVRIES_DEVRIES", "DEVRIES")
-            confid = confid.replace("VIT_VIT", "VIT")
-            confid = confid.replace("DEVRIES", "Devries et al.")
-            confid = confid.replace("CONFIDNET", "ConfidNet")
-            confid = confid.replace("RES", "Res")
-            confid = confid.replace("_", "-")
-            confid = confid.replace("MCP", "MSR")
-            confid = confid.replace("VIT-Res", "VIT-DG-Res")
-            confid = confid.replace("VIT-DG-Res-", "VIT-DG-")
-            return confid
-
-        # FINAL CLEANING AND ASSIGNING OF DF
-        clean_df = all_selected_df.drop("dropout", axis=1)
-        # print(clean_df.confid.unique())
-
-        # clean_df = clean_df.drop("rew", axis=1)
-        clean_df = clean_df[~clean_df.confid.str.contains("waic")]
-        clean_df["confid"] = clean_df.apply(
-            lambda row: "_".join(row["confid"].split("_")[:-2]), axis=1
-        )
-        clean_df = clean_df[~clean_df.confid.str.contains("devries_mcd")]
-        clean_df = clean_df[~clean_df.confid.str.contains("devries_det")]
-        clean_df = clean_df[~clean_df.confid.str.contains("_sv")]
-        clean_df = clean_df[~clean_df.confid.str.contains("_mi")]
-        clean_df["confid"][clean_df["network"] == "vit"] = clean_df["confid"][
-            clean_df["network"] == "vit"
-        ].apply(lambda row: "vit_" + row)
-        #     print(clean_df.confid.unique())
-        clean_df["confid"] = clean_df.apply(
-            lambda row: rename_confids(row["confid"]), axis=1
-        )
-        clean_df["study"] = clean_df.study.str.replace(
-            "tinyimagenet_384", "tinyimagenet_resize"
-        )
-        clean_df["study"] = clean_df.study.str.replace("vit", "").str.replace(
-            "_384", ""
-        )
-        df = clean_df
-        #     print(df.confid.unique())
-        #     print(df.study.unique())
-        return df
-
-    data = clean_df(data)
-    print(data[data.study.str.startswith("cifar10_") & data.confid.str.contains("VIT-PE")])
-    gc.collect()
+    data = filter_unused(data)
+    data = rename_confids(data)
+    data = rename_studies(data)
 
     # %% jupyter={"outputs_hidden": false} pycharm={"name": "#%%\n"}
     # Agregate over runs. Number TABLES. TODO GET RID OF REWARD FOR PROPER RANKING ACROSS STUDIES!
