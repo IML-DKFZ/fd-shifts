@@ -6,6 +6,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("agg")
 from matplotlib.testing.decorators import image_comparison
+from matplotlib import testing as mpltesting
 import pytest
 
 from fd_shifts import reporting
@@ -30,7 +31,8 @@ def _check_dir_content(test_dir: Path, expected_dir: Path, snapshot):
         assert (test_dir / file).read_text() == snapshot(name=file)
 
 
-@image_comparison(baseline_images=["main_plot", "vit_v_cnn"], extensions=["png"])
+@image_comparison(baseline_images=["main_plot", "vit_v_cnn"], extensions=["png"], remove_text=True)
 def test_reporting_blackbox(tmp_test_dir, snapshot):
+    mpltesting.setup()
     reporting.main(tmp_test_dir)
     _check_dir_content(tmp_test_dir, DATA_DIR, snapshot)
