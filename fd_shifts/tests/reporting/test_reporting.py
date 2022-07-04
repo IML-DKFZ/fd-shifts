@@ -22,7 +22,7 @@ def _check_dir_content(test_dir: Path, expected_dir: Path, snapshot):
     dcmp = filecmp.dircmp(test_dir, expected_dir, [".pytest_cache"])
 
     for file in dcmp.left_only:
-        assert (test_dir / file).read_text() == snapshot
+        assert (test_dir / file).read_text() == snapshot(name=file)
 
 
 def test_reporting_blackbox(tmp_test_dir, snapshot):
