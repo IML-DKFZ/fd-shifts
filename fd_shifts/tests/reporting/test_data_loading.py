@@ -141,13 +141,5 @@ def test_filter_best_hparams(capsys):
     selected_new = filter_best_hparams(data)
     selected_old = select_models(data).drop(["select_rew", "select_do"], axis=1)
 
-    with capsys.disabled():
-        print()
-        print(
-            expected.merge(selected_new, indicator=True, how="outer")
-            .loc[lambda x: x["_merge"] != "both"]
-            .sort_values(list(expected.columns) + ["_merge"])
-        )
-
     pd.testing.assert_frame_equal(selected_old, expected)
     pd.testing.assert_frame_equal(selected_new, expected)
