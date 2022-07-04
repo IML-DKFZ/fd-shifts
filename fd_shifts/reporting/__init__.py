@@ -287,19 +287,14 @@ def main(base_path: str | Path):
     data = rename_confids(data)
     data = rename_studies(data)
 
-    # %% jupyter={"outputs_hidden": false} pycharm={"name": "#%%\n"}
-    # Agregate over runs. Number TABLES. TODO GET RID OF REWARD FOR PROPER RANKING ACROSS STUDIES!
     metric = "aurc"
-
-    def aggregate_over_runs(df):
+    def _aggregate_over_runs(df):
         non_agg_columns = ["study", "confid"]  # might need rew if no model selection
         filter_metrics_df = df[non_agg_columns + ["run", metric]]
         df_mean = (
             filter_metrics_df.groupby(by=non_agg_columns).mean().reset_index().round(2)
         )
-        df_std = (
-            filter_metrics_df.groupby(by=non_agg_columns).std().reset_index().round(2)
-        )
+        df_std = filter_metrics_df.groupby(by=non_agg_columns).std().reset_index().round(2)
 
         studies = df_mean.study.unique().tolist()
         dff = pd.DataFrame({"confid": df.confid.unique()})
@@ -324,185 +319,8 @@ def main(base_path: str | Path):
                 # print("DFF", dff.columns.tolist())
 
         return dff
+    # dff = _aggregate_over_runs(data)
 
-    dff = aggregate_over_runs(data)
-    gc.collect()
-
-    # %% jupyter={"outputs_hidden": false} pycharm={"name": "#%%\n"}
-    # Tripple results
-
-    def tripple_results(df):
-        non_agg_columns = ["study", "confid"]  # might need rew if no model selection
-        df_acc = (
-            df[non_agg_columns + ["run", "accuracy"]]
-            .groupby(by=non_agg_columns)
-            .mean()
-            .sort_values("confid")
-            .reset_index()
-            .round(2)
-        )
-        df_aurc = (
-            df[non_agg_columns + ["run", "aurc"]]
-            .groupby(by=non_agg_columns)
-            .mean()
-            .sort_values("confid")
-            .reset_index()
-        )
-        df_auc = (
-            df[non_agg_columns + ["run", "failauc"]]
-            .groupby(by=non_agg_columns)
-            .mean()
-            .sort_values("confid")
-            .reset_index()
-        )
-        df_ece = (
-            df[non_agg_columns + ["run", "ece"]]
-            .groupby(by=non_agg_columns)
-            .mean()
-            .sort_values("confid")
-            .reset_index()
-        )
-        df_nll = (
-            df[non_agg_columns + ["run", "fail-NLL"]]
-            .groupby(by=non_agg_columns)
-            .mean()
-            .sort_values("confid")
-            .reset_index()
-        )
-        df_acc["accuracy"] = df_acc["accuracy"] * 100
-        df_acc["accuracy"] = df_acc["accuracy"].map("{:>2.2f}".format)
-
-        df_aurc["accuracy"] = df_aurc["aurc"]
-        df_aurc = df_aurc.round(2)
-        df_aurc["aurc"] = df_aurc["aurc"].map("{:>3.2f}".format)
-        df_aurc["accuracy"] = df_aurc["accuracy"].map("{:>3.2f}".format)
-
-        df_auc["accuracy"] = df_auc["failauc"] * 100
-        df_auc = df_auc.round(2)
-        df_auc["failauc"] = df_auc["failauc"].map("{:>2.2f}".format)
-        df_auc["accuracy"] = df_auc["accuracy"].map("{:>2.2f}".format)
-
-        df_ece["accuracy"] = df_ece["ece"]
-        df_ece = df_ece.round(2)
-        df_ece["ece"] = df_ece["ece"].map("{:>2.2f}".format)
-        df_ece["accuracy"] = df_ece["accuracy"].map("{:>2.2f}".format)
-
-        df_nll["accuracy"] = df_nll["fail-NLL"]
-        df_nll = df_nll.round(2)
-        df_nll["fail-NLL"] = df_nll["fail-NLL"].map("{:>2.2f}".format)
-        df_nll["accuracy"] = df_nll["accuracy"].map("{:>2.2f}".format)
-
-        studies = df_acc.study.unique().tolist()
-        #     tripple_dff = df_acc[df_acc.study == "cifar100_iid_study"][["confid"]]
-
-        #     agg_mean_std = (
-        #         lambda s1, s2: s1
-        #         if (s1.name == "confid" or s1.name == "study" or s1.name == "rew")
-        #         else s1.astype(str) + " / " + s2.astype(str)
-        #     )
-        #     df_acc = df_acc.combine(df_aurc, agg_mean_std)
-        #     df_acc = df_acc.combine(df_auc, agg_mean_std)
-        #     df_acc = df_acc.combine(df_ece, agg_mean_std)
-        #     df_acc = df_acc.combine(df_nll, agg_mean_std)
-        #     for s in studies:
-        #         sdf = df_acc[df_acc.study == s]
-        #         tripple_dff[s] = tripple_dff["confid"].map(sdf.set_index("confid")["accuracy"])
-
-        tripple_dff = pd.concat(
-            [
-                df_acc[["confid", "study", "accuracy"]],
-                df_aurc["aurc"],
-                df_auc["failauc"],
-                df_ece["ece"],
-                df_nll["fail-NLL"],
-            ],
-            axis=1,
-        )
-        tripple_dff = (
-            pd.pivot(tripple_dff, index="confid", columns="study")
-            .swaplevel(0, 1, 1)
-            .sort_index(axis=1, level=0)
-            .reset_index()
-        )
-
-        return tripple_dff
-
-    tripple_dff = tripple_results(data)
-    # print(tripple_dff)
-    gc.collect()
-
-    # %% pycharm={"name": "#%%\n"} tags=[]
-    # PLOT METRICS SELECTION
-    exps = [
-        "cifar10",
-        "cifar100",
-        "svhn",
-        "breeds",
-        "animals",
-        "camelyon",
-    ]
-
-    for exp in exps:
-        plot_dff = tripple_dff[
-            ["confid"] + [c for c in dff.columns if c.startswith(f"{exp}_")]
-        ]
-        #     print(plot_dff.columns.get_level_values(0).unique())
-
-        columns = list(
-            (
-                ["confid"]
-                + [
-                    c
-                    for c in plot_dff.columns.get_level_values(0).unique()
-                    if "iid" in c
-                ]
-                + [
-                    c
-                    for c in plot_dff.columns.get_level_values(0).unique()
-                    if "super" in c
-                ]
-                + [
-                    c
-                    for c in plot_dff.columns.get_level_values(0).unique()
-                    if "noise" in c
-                ]
-                + [
-                    c
-                    for c in plot_dff.columns.get_level_values(0).unique()
-                    if "openset" in c
-                ]
-                + [
-                    c
-                    for c in plot_dff.columns.get_level_values(0).unique()
-                    if "ood" in c
-                ]
-                + [
-                    c
-                    for c in plot_dff.columns.get_level_values(0).unique()
-                    if "proposed" in c
-                ]
-            )
-        )
-        #     print(columns, plot_dff.columns)
-        # columns = ["confid"]+ [c for c in plot_dff.columns if "noise" in c]
-        #     print(plot_dff.columns)
-        #     print(plot_dff[columns].set_index("confid"))
-        plot_dff[columns].set_index("confid").to_latex(data_dir / f"{exp}.tex")
-        for i, c in enumerate(
-            zip_longest([columns[0]] * len(columns[1::2]), columns[1::2], columns[2::2])
-        ):
-            filter_c = [a for a in c if a]
-            print(filter_c)
-            plot_dff[filter_c].set_index("confid").to_latex(
-                data_dir / f"{exp}_{i}.tex", column_format="l|rrrrr|rrrrr"
-            )
-    # print(tripple_dff)
-    # print(len(df_aurc), len(df_auc), len(df_acc))
-    # df_acc
-    # dff[["confid", "dropout"] + [c for c in dff.columns if "original" in c]]
-
-    # %% pycharm={"name": "#%%\n"} tags=[]
-    # Paper results
 
     def paper_results(df, metric, invert):
         non_agg_columns = ["study", "confid"]  # might need rew if no model selection
