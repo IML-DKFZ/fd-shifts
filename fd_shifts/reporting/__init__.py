@@ -1,11 +1,8 @@
-import gc
-import re
-from itertools import zip_longest
 from pathlib import Path
 
 import pandas as pd
-from IPython.display import HTML, display
-from rich import print
+
+from .tables import paper_results
 
 # TODO: Refactor the rest
 # TODO: Add error handling
@@ -269,6 +266,34 @@ def filter_unused(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
+def aggregate_over_runs(data: pd.DataFrame) -> pd.DataFrame:
+    fixed_columns = ["study", "confid"]
+    metrics_columns = ["accuracy", "aurc", "ece", "failauc", "fail-NLL"]
+
+    data = (
+        data[fixed_columns + metrics_columns]
+        .groupby(by=fixed_columns)
+        .mean()
+        .sort_values("confid")
+        .reset_index()
+    )
+
+    data = data.rename(columns={"fail-NLL": "failNLL"})
+
+    data = data.assign(
+        accuracy=(data.accuracy * 100).map("{:>2.2f}".format),
+        aurc=data.aurc.map("{:>3.2f}".format).map(
+            lambda x: x[:4] if "." in x[:3] else x[:3]
+        ),
+        failauc=(data.failauc * 100).map("{:>3.2f}".format),
+        ece=data.ece.map("{:>2.2f}".format),
+        failNLL=data.failNLL.map("{:>2.2f}".format),
+    )
+    data = data.rename(columns={"failNLL": "fail-NLL"})
+
+    return data
+
+
 def main(base_path: str | Path):
     pd.set_option("display.max_rows", 100)
     pd.set_option("display.max_columns", None)
@@ -287,333 +312,10 @@ def main(base_path: str | Path):
     data = rename_confids(data)
     data = rename_studies(data)
 
-    metric = "aurc"
-    def _aggregate_over_runs(df):
-        non_agg_columns = ["study", "confid"]  # might need rew if no model selection
-        filter_metrics_df = df[non_agg_columns + ["run", metric]]
-        df_mean = (
-            filter_metrics_df.groupby(by=non_agg_columns).mean().reset_index().round(2)
-        )
-        df_std = filter_metrics_df.groupby(by=non_agg_columns).std().reset_index().round(2)
+    data = aggregate_over_runs(data)
 
-        studies = df_mean.study.unique().tolist()
-        dff = pd.DataFrame({"confid": df.confid.unique()})
-        #     print(dff)
-        #     print("CHECK LEN DFF", len(dff), len(df_mean))
-        combine_and_str = False
-        if combine_and_str:
-            agg_mean_std = (
-                lambda s1, s2: s1
-                if (s1.name == "confid" or s1.name == "study" or s1.name == "rew")
-                else s1.astype(str) + " ± " + s2.astype(str)
-            )
-            df_mean = df_mean.combine(df_std, agg_mean_std)
-            for s in studies:
-                sdf = df_mean[df_mean.study == s]
-                dff[s] = dff["confid"].map(sdf.set_index("confid")[metric])
-
-        else:
-            for s in studies:
-                sdf = df_mean[df_mean.study == s]
-                dff[s] = dff["confid"].map(sdf.set_index("confid")[metric])
-                # print("DFF", dff.columns.tolist())
-
-        return dff
-    # dff = _aggregate_over_runs(data)
-
-
-    def paper_results(df, metric, invert):
-        non_agg_columns = ["study", "confid"]  # might need rew if no model selection
-        df_acc = (
-            df[non_agg_columns + ["run", "accuracy"]]
-            .groupby(by=non_agg_columns)
-            .mean()
-            .sort_values("confid")
-            .reset_index()
-            #         .round(2)
-        )
-        df_aurc = (
-            df[non_agg_columns + ["run", "aurc"]]
-            .groupby(by=non_agg_columns)
-            .mean()
-            .sort_values("confid")
-            .reset_index()
-        )
-        df_auc = (
-            df[non_agg_columns + ["run", "failauc"]]
-            .groupby(by=non_agg_columns)
-            .mean()
-            .sort_values("confid")
-            .reset_index()
-        )
-        df_ece = (
-            df[non_agg_columns + ["run", "ece"]]
-            .groupby(by=non_agg_columns)
-            .mean()
-            .sort_values("confid")
-            .reset_index()
-        )
-        df_nll = (
-            df[non_agg_columns + ["run", "fail-NLL"]]
-            .groupby(by=non_agg_columns)
-            .mean()
-            .sort_values("confid")
-            .reset_index()
-        )
-        df_acc["accuracy"] = df_acc["accuracy"] * 100
-        df_acc["accuracy"] = df_acc["accuracy"].map("{:>2.2f}".format)
-
-        df_aurc["accuracy"] = df_aurc["aurc"]
-        #     df_aurc = df_aurc.round(2)
-        df_acc["aurc"] = (
-            df_aurc["aurc"]
-            .map("{:>3.2f}".format)
-            .map(lambda x: x[:4] if "." in x[:3] else x[:3])
-        )
-        df_aurc["accuracy"] = df_aurc["accuracy"].map("{:>3.2f}".format)
-
-        df_auc["accuracy"] = df_auc["failauc"] * 100
-        #     df_auc = df_auc.round(2)
-        df_acc["failauc"] = (df_auc["failauc"] * 100).map("{:>3.2f}".format)
-        df_auc["accuracy"] = df_auc["accuracy"].map("{:>2.2f}".format)
-
-        df_ece["accuracy"] = df_ece["ece"]
-        #     df_ece = df_ece.round(2)
-        df_acc["ece"] = df_ece["ece"].map("{:>2.2f}".format)
-        df_ece["accuracy"] = df_ece["accuracy"].map("{:>2.2f}".format)
-
-        df_nll["accuracy"] = df_nll["fail-NLL"]
-        #     df_nll = df_nll.round(2)
-        df_acc["fail-NLL"] = df_nll["fail-NLL"].map("{:>2.2f}".format)
-        df_nll["accuracy"] = df_nll["accuracy"].map("{:>2.2f}".format)
-
-        studies = df_acc.study.unique().tolist()
-
-        paper_dff = df_acc[["confid", "study", metric]]
-        paper_dff = paper_dff[~paper_dff.study.str.contains("val_tuning")]
-        paper_dff = paper_dff[~paper_dff.study.str.contains("original")]
-        paper_dff = (
-            pd.pivot(paper_dff, index="confid", columns="study")
-            .swaplevel(0, 1, 1)
-            .sort_index(axis=1, level=0)
-            .reset_index()
-            .assign(
-                classifier=lambda row: row.confid.where(
-                    row.confid.str.contains("VIT"), "CNN"
-                )
-            )
-        )
-        paper_dff.loc[paper_dff.classifier.str.contains("VIT"), "classifier"] = "ViT"
-        #     print(paper_dff.columns)
-        paper_dff[("cifar10_noise_study", metric)] = (
-            paper_dff[
-                paper_dff.columns[
-                    paper_dff.columns.get_level_values(0).str.startswith("cifar10_")
-                    & paper_dff.columns.get_level_values(0).str.contains("noise")
-                ]
-            ]
-            .astype(float)
-            .mean(axis=1)
-            .reindex(paper_dff.index)
-        )
-        paper_dff[("cifar100_noise_study", metric)] = (
-            paper_dff[
-                paper_dff.columns[
-                    paper_dff.columns.get_level_values(0).str.startswith("cifar100_")
-                    & paper_dff.columns.get_level_values(0).str.contains("noise")
-                ]
-            ]
-            .astype(float)
-            .mean(axis=1)
-            .reindex(paper_dff.index)
-        )
-
-        paper_dff = paper_dff[
-            paper_dff.columns[
-                ~paper_dff.columns.get_level_values(0).str.contains("noise_study_")
-            ]
-        ].sort_index(axis=1, level=0)
-
-        def rename_study(s):
-            if s in ["confid", "classifier"]:
-                return (s, "", "")
-
-            return (
-                s.split("_")[0],
-                s.split("_")[1]
-                .replace("in", "sub")
-                .replace(
-                    "new",
-                    "s-ncs"
-                    if "cifar" in s.split("_")[0]
-                    and "cifar" in "".join(s.split("_")[1:])
-                    else "ns-ncs",
-                )
-                .replace("openset", "s-ncs")
-                .replace("noise", "cor"),
-                s.split("_")[4].replace("tinyimagenet", "ti").replace("cifar", "c")
-                if "new" in s
-                else "",
-            )
-
-        paper_dff.columns = paper_dff.columns.get_level_values(0).map(rename_study)
-        paper_dff.confid = paper_dff.confid.str.replace("VIT-", "")
-
-        paper_dff = paper_dff[
-            paper_dff.confid.isin(
-                [
-                    "ConfidNet",
-                    "DG-MCD-EE",
-                    "DG-Res",
-                    "Devries et al.",
-                    "MCD-EE",
-                    "MCD-MSR",
-                    "MCD-PE",
-                    "MSR",
-                    "PE",
-                    "MAHA",
-                ]
-            )
-        ]
-        # paper_dff = paper_dff[~(paper_dff.confid.isin(["ConfidNet", "Devries et al.", "DG-MCD-EE", "DG-Res",]) & paper_dff.classifier.str.contains("ViT"))]
-        paper_dff = paper_dff.sort_values(["classifier", "confid"]).set_index(
-            ["confid", "classifier"]
-        )
-
-        paper_dff.index = paper_dff.index.set_names([None, None])
-        paper_dff.columns = paper_dff.columns.set_names(["", "study", "ncs-data set"])
-
-        columns = [
-            ("animals", "iid", ""),
-            ("animals", "sub", ""),
-            ("animals", "s-ncs", ""),
-            ("breeds", "iid", ""),
-            ("breeds", "sub", ""),
-        ]
-        paper_dff = paper_dff[
-            [
-                ("animals", "iid", ""),
-                ("animals", "sub", ""),
-                ("animals", "s-ncs", ""),
-                ("breeds", "iid", ""),
-                ("breeds", "sub", ""),
-                ("camelyon", "iid", ""),
-                ("camelyon", "sub", ""),
-                ("cifar100", "iid", ""),
-                ("cifar100", "sub", ""),
-                ("cifar100", "cor", ""),
-                ("cifar100", "s-ncs", "c10"),
-                ("cifar100", "ns-ncs", "svhn"),
-                ("cifar100", "ns-ncs", "ti"),
-                ("cifar10", "iid", ""),
-                ("cifar10", "cor", ""),
-                ("cifar10", "s-ncs", "c100"),
-                ("cifar10", "ns-ncs", "svhn"),
-                ("cifar10", "ns-ncs", "ti"),
-                ("svhn", "iid", ""),
-                ("svhn", "s-ncs", ""),
-                ("svhn", "ns-ncs", "c10"),
-                ("svhn", "ns-ncs", "c100"),
-                ("svhn", "ns-ncs", "ti"),
-            ]
-        ].rename(
-            columns={
-                "animals": "iWildCam",
-                "breeds": "BREEDS",
-                "camelyon": "CAMELYON",
-                "cifar10": "CIFAR-10",
-                "cifar100": "CIFAR-100",
-                "svhn": "SVHN",
-            },
-            level=0,
-        )
-
-        #     paper_dff.loc[("DG-MCD-EE", "VIT"), ("breeds", "iid", "")] = np.nan
-        #     paper_dff.loc[("DG-Res", "VIT"), ("breeds", "iid", "")] = np.nan
-        #     paper_dff.loc[("DG-MCD-EE", "VIT"), ("breeds", "sub", "")] = np.nan
-        #     paper_dff.loc[("DG-Res", "VIT"), ("breeds", "sub", "")] = np.nan
-
-        #     paper_dff.loc[("DG-MCD-EE", "VIT"), ("camelyon", "iid", "")] = np.nan
-        #     paper_dff.loc[("DG-Res", "VIT"), ("camelyon", "iid", "")] = np.nan
-        #     paper_dff.loc[("DG-MCD-EE", "VIT"), ("camelyon", "sub", "")] = np.nan
-        #     paper_dff.loc[("DG-Res", "VIT"), ("camelyon", "sub", "")] = np.nan
-
-        #     paper_dff.loc[("DG-MCD-EE", "VIT"), ("animals", "iid", "")] = np.nan
-        #     paper_dff.loc[("DG-Res", "VIT"), ("animals", "iid", "")] = np.nan
-        #     paper_dff.loc[("DG-MCD-EE", "VIT"), ("animals", "sub", "")] = np.nan
-        #     paper_dff.loc[("DG-Res", "VIT"), ("animals", "sub", "")] = np.nan
-        #     paper_dff.loc[("DG-MCD-EE", "VIT"), ("animals", "s-ncs", "")] = np.nan
-        #     paper_dff.loc[("DG-Res", "VIT"), ("animals", "s-ncs", "")] = np.nan
-        cmap = "Oranges_r" if invert else "Oranges"
-
-        ltex = (
-            paper_dff.astype(float)
-            .style.background_gradient(
-                cmap,
-                subset=(
-                    paper_dff.index[
-                        paper_dff.index.get_level_values(1).str.contains("ViT")
-                    ],
-                    paper_dff.columns,
-                ),
-            )
-            .background_gradient(
-                cmap,
-                subset=(
-                    paper_dff.index[
-                        ~paper_dff.index.get_level_values(1).str.contains("ViT")
-                    ],
-                    paper_dff.columns,
-                ),
-            )
-            .highlight_null(props="background-color: white;color: black")
-            .format(
-                lambda x: f"{x:>3.2f}"[:4]
-                if "." in f"{x:>3.2f}"[:3]
-                else f"{x:>3.2f}"[:3],
-                na_rep="*",
-            )
-        )
-
-        display(HTML(f"<h2>{metric}</h2>"))
-        display(HTML(ltex.to_html()))
-
-        with open(data_dir / f"{metric}_now.csv", "w") as f:
-            # f.write(ltex.data[((~ltex.data.index.get_level_values(0).str.contains("DG")) & (~ltex.data.index.get_level_values(0).str.contains("Devries"))) | (~ltex.data.index.get_level_values(1).str.contains("ViT"))].applymap(lambda x: f"{x:>3.2f}"[:4] if "." in f"{x:>3.2f}"[:3] else f"{x:>3.2f}"[:3]).to_csv())
-            f.write(
-                ltex.data.applymap(
-                    lambda x: f"{x:>3.2f}"[:4]
-                    if "." in f"{x:>3.2f}"[:3]
-                    else f"{x:>3.2f}"[:3]
-                ).to_csv()
-            )
-
-        ltex.data.columns = ltex.data.columns.set_names(
-            ["\\multicolumn{1}{c}{}", "study", "ncs-data set"]
-        )
-        ltex = ltex.to_latex(
-            convert_css=True,
-            hrules=True,
-            multicol_align="c?",
-            column_format="ll?rrr?rr?rr?rrrrrr?rrrrr?rrrrr",
-        )
-
-        ltex = ltex.split("\n")
-        del ltex[1]
-        # del ltex[4]
-        ltex[1] = ltex[1].replace("?", "")
-        ltex[2] = ltex[2][: ltex[2].rfind("?")] + ltex[2][ltex[2].rfind("?") + 1 :]
-        i = ltex.index(next((x for x in ltex if "ViT" in x)))
-        ltex.insert(i, "\\midrule \\\\")
-        ltex = "\n".join(ltex)
-
-        with open(data_dir / f"paper_results_{metric}.tex", "w") as f:
-            f.write(ltex)
-
-    paper_results(data, "aurc", False)
-    paper_results(data, "ece", False)
-    paper_results(data, "failauc", True)
-    paper_results(data, "accuracy", True)
-    paper_results(data, "fail-NLL", False)
-    # print(paper_dff)
-    gc.collect()
+    paper_results(data, "aurc", False, data_dir)
+    paper_results(data, "ece", False, data_dir)
+    paper_results(data, "failauc", True, data_dir)
+    paper_results(data, "accuracy", True, data_dir)
+    paper_results(data, "fail-NLL", False, data_dir)
