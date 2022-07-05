@@ -72,7 +72,7 @@ def test_validation(
         print(cfg.exp.global_seed)
         pprint(OmegaConf.to_yaml(cfg, resolve=True))
         print(type(cfg))
-        assert str(cfg.exp.root_dir) == os.getenv("EXPERIMENT_ROOT_DIR")
+        assert cfg.exp.root_dir == Path(os.getenv("EXPERIMENT_ROOT_DIR"))
 
 
 @pytest.mark.parametrize(
