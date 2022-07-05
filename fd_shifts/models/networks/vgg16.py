@@ -3,6 +3,8 @@ import torch.nn.functional as F
 from torchvision import models
 import torch
 
+from fd_shifts import logger
+
 
 class Conv2dSame(nn.Module):
     def __init__(
@@ -48,7 +50,7 @@ class Encoder(nn.Module):
         self.fc_dim = cf.model.fc_dim
         self.eval_mcdropout = False
         self.dropout_flag = True  # cf.model.dropout_flag
-        print("CHECK DROPOUT IN VGG", self.dropout_flag)
+        logger.info("CHECK DROPOUT IN VGG {}", self.dropout_flag)
 
         self.conv1 = Conv2dSame(self.img_size[-1], 64, 3)
         self.conv1_bn = nn.BatchNorm2d(64)
@@ -183,7 +185,7 @@ class Encoder(nn.Module):
         return out
 
     def load_pretrained_imagenet_params(self, imagenet_weights_path):
-        print("loading imagenet parameters into vgg16")
+        logger.info("loading imagenet parameters into vgg16")
         pretrained_model = models.vgg16(pretrained=False).cuda()
         pretrained_model.load_state_dict(torch.load(imagenet_weights_path))
 

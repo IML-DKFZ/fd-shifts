@@ -3,6 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 import pytorch_lightning as pl
 from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
+from fd_shifts import logger
 from fd_shifts.models.networks import get_network
 
 
@@ -20,8 +21,8 @@ class net(pl.LightningModule):
         self.num_epochs = cf.trainer.num_epochs
 
         if cf.trainer.callbacks.model_checkpoint is not None:
-            print(
-                "Initializing custom Model Selector.",
+            logger.info(
+                "Initializing custom Model Selector. {}",
                 cf.trainer.callbacks.model_checkpoint,
             )
             self.selection_metrics = (
@@ -214,4 +215,4 @@ class net(pl.LightningModule):
 
     def on_load_checkpoint(self, checkpoint):
         self.loaded_epoch = checkpoint["epoch"]
-        print("loading checkpoint at epoch {}".format(self.loaded_epoch))
+        logger.info("loading checkpoint at epoch {}".format(self.loaded_epoch))

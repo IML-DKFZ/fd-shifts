@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch
 from torch.autograd import Variable
 
+from fd_shifts import logger
+
 
 cfg = {
     "vgg11": [64, "M", 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
@@ -78,7 +80,7 @@ class Encoder(nn.Module):
             if "vgg" in cf.model.network.name
             else cf.model.network.backbone
         )
-        print("Init VGG type:{}".format(name))
+        logger.info("Init VGG type:{}".format(name))
         self.dropout_rate = cf.model.dropout_rate
         self.fc_dim = cf.model.fc_dim
         self.avg_pool = cf.model.avg_pool

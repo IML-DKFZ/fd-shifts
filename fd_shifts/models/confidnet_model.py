@@ -9,6 +9,7 @@ from torch import nn
 from torch.nn import functional as F
 from tqdm import tqdm
 
+from fd_shifts import logger
 from fd_shifts.models.networks import get_network
 
 if TYPE_CHECKING:
@@ -35,8 +36,8 @@ class net(pl.LightningModule):
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
         if cf.trainer.callbacks["model_checkpoint"] is not None:
-            print(
-                "Initializing custom Model Selector.",
+            logger.info(
+                "Initializing custom Model Selector. {}",
                 cf.trainer.callbacks["model_checkpoint"],
             )
             self.selection_metrics = (
@@ -301,9 +302,9 @@ class net(pl.LightningModule):
 
     def on_load_checkpoint(self, checkpoint):
         self.loaded_epoch = checkpoint["epoch"]
-        print("loading checkpoint at epoch {}".format(self.loaded_epoch))
+        logger.info("loading checkpoint at epoch {}".format(self.loaded_epoch))
 
     def load_only_state_dict(self, path):
         ckpt = torch.load(path)
-        print("loading checkpoint from epoch {}".format(ckpt["epoch"]))
+        logger.info("loading checkpoint from epoch {}".format(ckpt["epoch"]))
         self.load_state_dict(ckpt["state_dict"], strict=True)

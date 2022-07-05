@@ -16,6 +16,7 @@ from wilds.datasets.camelyon17_dataset import Camelyon17Dataset
 from wilds.datasets.iwildcam_dataset import IWildCamDataset
 from wilds.datasets.wilds_dataset import WILDSSubset
 
+from fd_shifts import logger
 from fd_shifts.analysis import eval_utils
 from fd_shifts.loaders import breeds_hierarchies
 
@@ -159,7 +160,7 @@ class SuperCIFAR100(datasets.VisionDataset):
             self.data = self.data[holdout_data_ix]
 
         num_classes = len(np.unique(self.targets))
-        print(
+        logger.info(
             "SuperCIFAR check num_classes in data {}. Training {}".format(
                 num_classes, self.train
             )
@@ -215,7 +216,7 @@ class SuperCIFAR100(datasets.VisionDataset):
 
     def download(self) -> None:
         if self._check_integrity():
-            print("Files already downloaded and verified")
+            logger.info("Files already downloaded and verified")
             return
         download_and_extract_archive(
             self.url, self.root, filename=self.filename, md5=self.tgz_md5
@@ -426,7 +427,7 @@ class WILDSAnimals(IWildCamDataset):
             version=None, root_dir=root, download=False, split_scheme="official"
         )
 
-        print("CHECK ROOT !!!", root)
+        logger.debug("CHECK ROOT !!! {}", root)
 
     def get_subset(self, split, frac=1.0, transform=None):
         """
@@ -506,7 +507,7 @@ class WILDSAnimalsOpenSet(IWildCamDataset):
         )
         self.out_classes = out_classes
 
-        print("CHECK ROOT !!!", root)
+        logger.debug("CHECK ROOT !!! {}", root)
 
     def get_subset(self, split, frac=1.0, transform=None):
         """
@@ -554,7 +555,7 @@ class SVHNOpenSet(datasets.SVHN):
         )
 
         self.out_classes = out_classes
-        print("SVHN holdout classes ", self.out_classes)
+        logger.info("SVHN holdout classes {}", self.out_classes)
 
         if split == "train":
             self.data = self.data[~np.isin(self.labels, self.out_classes)]
@@ -574,10 +575,8 @@ _dataset_factory = {
     "svhn_384": datasets.SVHN,
     "svhn_openset": SVHNOpenSet,
     "svhn_openset_384": SVHNOpenSet,
-    # "tinyimagenet": datasets.ImageFolder,
     "tinyimagenet_384": datasets.ImageFolder,
     "tinyimagenet_resize": datasets.ImageFolder,
-    # "mnist": datasets.MNIST,
     "cifar10": datasets.CIFAR10,
     "cifar100": datasets.CIFAR100,
     "cifar10_384": datasets.CIFAR10,
@@ -642,7 +641,7 @@ def get_dataset(name, root, train, download, transform, kwargs):
             split = "train" if train else "id_test"
         elif name == "breeds_ood_test_384":
             split = "ood_test"
-        print("CHECK SPLIT", name, split)
+        logger.debug("CHECK SPLIT {} {}", name, split)
         pass_kwargs = {
             "root": root,
             "split": split,

@@ -5,6 +5,8 @@ from torch.hub import load_state_dict_from_url
 from typing import Type, Any, Callable, Union, List, Optional
 import torch.nn.functional as F
 
+from fd_shifts import logger
+
 
 def conv3x3(
     in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1
@@ -376,9 +378,7 @@ class ResNetEncoder(nn.Module):
         return self._forward_impl(x)
 
     def load_pretrained_imagenet_params(self, pretrained_path):
-        print()
-        print("loading pretrained imagenet weights into encoder from ", pretrained_path)
-        print()
+        logger.info("loading pretrained imagenet weights into encoder from ", pretrained_path)
         self.load_state_dict(torch.load(pretrained_path), strict=False)
 
     def disable_dropout(self):

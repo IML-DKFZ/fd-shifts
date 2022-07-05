@@ -7,9 +7,11 @@ import pytorch_lightning as pl
 import subprocess
 from pathlib import Path
 
+from fd_shifts import logger
+
 
 def set_seed(seed):
-    print("SETTING GLOBAL SEED")
+    logger.warning("SETTING GLOBAL SEED")
     pl.seed_everything(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -34,7 +36,7 @@ def get_most_recent_version(exp_dir):
     # get best.ckpt of experiment. if split over multiple runs (e.g. due to resuming), still find the best.ckpt.
     # if there are multiple overall runs in the folder select the latest.
     ver_list = [int(x.split("_")[1]) for x in os.listdir(exp_dir) if "version_" in x]
-    print(ver_list)
+    logger.debug(ver_list)
     if len(ver_list) == 0:
         RuntimeError("No checkpoints exist in this experiment dir!")
     max_ver = max(ver_list)
@@ -81,31 +83,31 @@ def get_path_to_best_ckpt(exp_dir, selection_criterion, selection_mode):
 def get_allowed_n_proc_DA(default_value):
     hostname = subprocess.getoutput(["hostname"])
     if hostname in ["hdf19-gpu16", "hdf19-gpu17", "e230-AMDworkstation"]:
-        print("SETTING N WORKERS TO 16")
+        logger.info("SETTING N WORKERS TO 16")
         return 16
     if hostname in [
         "mbi112",
     ]:
-        print("SETTING N WORKERS TO 12")
+        logger.info("SETTING N WORKERS TO 12")
         return 12
     if hostname.startswith("hdf19-gpu") or hostname.startswith("e071-gpu"):
-        print("SETTING N WORKERS TO 12")
+        logger.info("SETTING N WORKERS TO 12")
         return 12
     elif hostname.startswith("e230-dgx1"):
-        print("SETTING N WORKERS TO 10")
+        logger.info("SETTING N WORKERS TO 10")
         return 10
     elif hostname.startswith("hdf18-gpu") or hostname.startswith("e132-comp"):
-        print("SETTING N WORKERS TO 16")
+        logger.info("SETTING N WORKERS TO 16")
         return 16
     elif hostname.startswith("e230-dgx2"):
-        print("SETTING N WORKERS TO 6")
+        logger.info("SETTING N WORKERS TO 6")
         return 6
     elif hostname.startswith("e230-dgxa100-"):
-        print("SETTING N WORKERS TO 32")
+        logger.info("SETTING N WORKERS TO 32")
         return 32
 
     else:
-        print("HOSTNAME COULD NOT BE IDENTIFIED. LEAVING N_WORKERS AT DEFAULT VALUE")
+        logger.info("HOSTNAME COULD NOT BE IDENTIFIED. LEAVING N_WORKERS AT DEFAULT VALUE")
         return default_value
 
 

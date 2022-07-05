@@ -12,6 +12,8 @@ import torch.nn as nn
 from pytorch_lightning.utilities.parsing import AttributeDict
 from tqdm import tqdm
 
+from fd_shifts import logging
+
 if TYPE_CHECKING:
     from fd_shifts import configs
 
@@ -221,5 +223,5 @@ class net(pl.LightningModule):
 
     def load_only_state_dict(self, path):
         ckpt = torch.load(path)
-        print("loading checkpoint from epoch {}".format(ckpt["epoch"]))
+        logger.info("loading checkpoint from epoch {}".format(ckpt["epoch"]))
         self.load_state_dict(ckpt["state_dict"], strict=True)

@@ -366,7 +366,6 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
     dff = tables.build_results_table(dff, "aurc")
     rank_df = make_rank_df(dff)
     color_dict = make_color_dict(rank_df)
-    print(data.columns)
 
     meanprops = dict(linestyle="-", linewidth=6, color="k", alpha=1, zorder=99)
     whiskerprops = dict(linestyle="-", linewidth=0)

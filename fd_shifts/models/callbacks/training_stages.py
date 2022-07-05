@@ -3,6 +3,8 @@ import torch
 from collections import OrderedDict
 from copy import deepcopy
 
+from fd_shifts import logger
+
 
 class TrainingStages(Callback):
     def __init__(self, milestones, disable_dropout_at_finetuning):
@@ -21,7 +23,7 @@ class TrainingStages(Callback):
         if (
             pl_module.current_epoch == self.milestones[0]
         ):  # this is the end before the queried epoch
-            print("Starting Training ConfidNet")
+            logger.info("Starting Training ConfidNet")
             pl_module.training_stage = 1
             if (
                 pl_module.pretrained_backbone_path is None
@@ -29,7 +31,7 @@ class TrainingStages(Callback):
                 best_ckpt_path = trainer.checkpoint_callbacks[
                     0
                 ].last_model_path  # No backbone model selection!!
-                print("Check last backbone path", best_ckpt_path)
+                logger.info("Check last backbone path {}", best_ckpt_path)
             else:
                 best_ckpt_path = pl_module.pretrained_backbone_path
 
@@ -62,7 +64,7 @@ class TrainingStages(Callback):
                 backbone_classifier_state_dict, strict=True
             )
 
-            print(
+            logger.info(
                 "loaded checkpoint {} from epoch {} into backbone and network.".format(
                     best_ckpt_path, loaded_ckpt["epoch"]
                 )
@@ -71,7 +73,7 @@ class TrainingStages(Callback):
             pl_module.network.encoder = deepcopy(pl_module.backbone.encoder)
             pl_module.network.classifier = deepcopy(pl_module.backbone.classifier)
 
-            print("freezing backbone and enabling confidnet")
+            logger.info("freezing backbone and enabling confidnet")
             self.freeze_layers(pl_module.backbone.encoder)
             self.freeze_layers(pl_module.backbone.classifier)
             self.freeze_layers(pl_module.network.encoder)
@@ -86,7 +88,7 @@ class TrainingStages(Callback):
             trainer.lr_schedulers = []
             new_schedulers = []
             if pl_module.confidnet_lr_scheduler:
-                print("initializing new scheduler for confidnet...")
+                logger.info("initializing new scheduler for confidnet...")
                 new_schedulers.append(
                     {
                         "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
@@ -113,10 +115,10 @@ class TrainingStages(Callback):
             self.disable_bn(pl_module.backbone.encoder)
             self.disable_bn(pl_module.network.encoder)
             for param_group in trainer.optimizers[0].param_groups:
-                print("CHECK ConfidNet RATE", param_group["lr"])
+                logger.info("CHECK ConfidNet RATE {}", param_group["lr"])
 
         if pl_module.current_epoch == self.milestones[1]:
-            print(
+            logger.info(
                 "Starting Training Fine Tuning ConfidNet"
             )  # new optimizer or add param groups? both adam according to paper!
             pl_module.training_stage = 2
@@ -127,11 +129,11 @@ class TrainingStages(Callback):
                 and "latest" not in pl_module.test_selection_criterion
             ):
                 best_ckpt_path = trainer.checkpoint_callbacks[1].best_model_path
-                print("Test selection criterion", pl_module.test_selection_criterion)
-                print("Check BEST confidnet path", best_ckpt_path)
+                logger.info("Test selection criterion {}", pl_module.test_selection_criterion)
+                logger.info("Check BEST confidnet path {}", best_ckpt_path)
             else:
                 best_ckpt_path = None
-                print("going with latest confidnet")
+                logger.info("going with latest confidnet")
             if best_ckpt_path is not None:
                 loaded_ckpt = torch.load(best_ckpt_path)
                 loaded_state_dict = loaded_ckpt["state_dict"]
@@ -143,7 +145,7 @@ class TrainingStages(Callback):
                 pl_module.network.confid_net.load_state_dict(
                     loaded_state_dict, strict=True
                 )
-                print(
+                logger.info(
                     "loaded checkpoint {} from epoch {} into new encoder".format(
                         best_ckpt_path, loaded_ckpt["epoch"]
                     )
@@ -209,16 +211,16 @@ class TrainingStages(Callback):
 
         for ix, x in enumerate(pl_module.backbone.named_parameters()):
             if ix == 0:
-                print("BACKBONE", x[0], x[1].mean().item())
+                logger.debug("BACKBONE {} {}", x[0], x[1].mean().item())
 
         for ix, x in enumerate(pl_module.network.encoder.named_parameters()):
             if ix == 0:
-                print("CONFID ENCODER", x[0], x[1].mean().item())
+                logger.debug("CONFID ENCODER {} {}", x[0], x[1].mean().item())
 
         for ix, x in enumerate(pl_module.network.confid_net.named_parameters()):
             if ix == 0:
-                print("CONFIDNET", x[0], x[1].mean().item())
+                logger.debug("CONFIDNET {} {}", x[0], x[1].mean().item())
 
         for ix, x in enumerate(pl_module.network.classifier.named_parameters()):
             if ix == 0:
-                print("CONFID CLassifier", x[0], x[1].mean().item())
+                logger.debug("CONFID CLassifier {} {}", x[0], x[1].mean().item())
