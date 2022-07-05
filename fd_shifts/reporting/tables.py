@@ -16,6 +16,13 @@ def register_sanity_check(metric: str):
     return _inner_func
 
 
+def str_to_float(x: str):
+    try:
+        return float(x)
+    except:
+        return None
+
+
 # @register_sanity_check("aurc")
 def check_binary_class_msr_pe_equal(table: pd.DataFrame):
     # TODO: Broken for current test data
@@ -26,6 +33,24 @@ def check_binary_class_msr_pe_equal(table: pd.DataFrame):
         table.loc[("MSR", "ViT"), ("CAMELYON", "iid", "")]
         == table.loc[("PE", "ViT"), ("CAMELYON", "iid", "")]
     )
+
+
+# @register_sanity_check("accuracy")
+def check_accuracy_valid_range(table: pd.DataFrame):
+    tmp = table.applymap(str_to_float)
+    return ((tmp > 0) & (tmp < 100)).all()
+
+
+# @register_sanity_check("aurc")
+def check_aurc_valid_range(table: pd.DataFrame):
+    tmp = table.applymap(str_to_float)
+    return ((tmp > 0) & (tmp < 1000)).all()
+
+
+# @register_sanity_check("ece")
+def check_ece_valid_range(table: pd.DataFrame):
+    tmp = table.applymap(str_to_float)
+    return ((tmp > 0) & (tmp < 1)).all()
 
 
 def sanity_check(table: pd.DataFrame, metric: str):
