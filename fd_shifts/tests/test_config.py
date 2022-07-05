@@ -48,6 +48,7 @@ def initialize_hydra(overrides: list[str]) -> DictConfig:
     [
         ([], nullcontext()),
         (["exp.log_path=test"], nullcontext()),
+        (["pkgversion=0.0.1+aefe5c8"], pytest.raises(ValueError)),
         (["trainer.val_split=foo"], pytest.raises(ConfigCompositionException)),
         (["eval.query_studies.iid_study=svhn"], nullcontext()),
         (

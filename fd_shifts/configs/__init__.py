@@ -14,6 +14,7 @@ from omegaconf.omegaconf import MISSING, OmegaConf
 from pydantic import validator
 from pydantic.dataclasses import dataclass
 
+import fd_shifts
 from fd_shifts import models
 from fd_shifts.analysis import confid_scores, metrics
 from fd_shifts.loaders import dataset_collection
@@ -39,7 +40,9 @@ class ValSplit(Enum):
 
 class IterableMixin:
     def __iter__(self) -> Iterator[tuple[str, Any]]:
-        return filter(lambda item: item[0] != "__initialised__", self.__dict__.items()).__iter__()
+        return filter(
+            lambda item: item[0] != "__initialised__", self.__dict__.items()
+        ).__iter__()
 
 
 @dataclass
@@ -284,7 +287,9 @@ class QueryStudiesConfig(IterableMixin):
         ]
     )
 
-    @validator("iid_study", "in_class_study", "noise_study", "new_class_study", each_item=True)
+    @validator(
+        "iid_study", "in_class_study", "noise_study", "new_class_study", each_item=True
+    )
     def validate(cls, name: str):
         if not dataset_collection.dataset_exists(name):
             raise ValueError(f'Dataset "{name}" does not exist.')
@@ -327,7 +332,7 @@ class TestConfig(IterableMixin):
     iid_set_split: str = "devries"  # all, devries
     raw_output_path: str = "raw_output.npz"
     external_confids_output_path: str = "external_confids.npz"
-    selection_mode: Optional[str] = "max" # model selection criterion or "latest"
+    selection_mode: Optional[str] = "max"  # model selection criterion or "latest"
 
 
 @dataclass
@@ -358,6 +363,7 @@ class DataConfig(IterableMixin):
 
 @dataclass
 class Config(IterableMixin):
+    pkgversion: Optional[str] = None
     data: DataConfig = DataConfig()
 
     trainer: TrainerConfig = TrainerConfig()
@@ -367,6 +373,11 @@ class Config(IterableMixin):
 
     eval: EvalConfig = EvalConfig()
     test: TestConfig = TestConfig()
+
+    @validator("pkgversion")
+    def validate_version(cls, version: str):
+        if version != fd_shifts.version():
+            raise ValueError(f"This config was created with version {version} of fd-shifts. You are on {fd_shifts.version()}.")
 
 
 def init():
@@ -392,8 +403,7 @@ def init():
         node=SGD,
     )
 
+
 def dictconfig_to_object(dcfg: DictConfig) -> Config:
-    cfg: Config = cast(
-        Config, OmegaConf.to_object(dcfg)
-    )  # only affects the linter
+    cfg: Config = cast(Config, OmegaConf.to_object(dcfg))  # only affects the linter
     return cfg
