@@ -1,4 +1,4 @@
-# name: test_reporting_blackbox[png][accuracy_now.csv]
+# name: test_reporting_blackbox[accuracy_now.csv]
   '''
   ,,iWildCam,iWildCam,iWildCam,BREEDS,BREEDS,CAMELYON,CAMELYON,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-10,CIFAR-10,CIFAR-10,CIFAR-10,CIFAR-10,SVHN,SVHN,SVHN,SVHN,SVHN
   study,,iid,sub,s-ncs,iid,sub,iid,sub,iid,sub,cor,s-ncs,ns-ncs,ns-ncs,iid,cor,s-ncs,ns-ncs,ns-ncs,iid,s-ncs,ns-ncs,ns-ncs,ns-ncs
@@ -25,7 +25,7 @@
   
   '''
 # ---
-# name: test_reporting_blackbox[png][aurc_now.csv]
+# name: test_reporting_blackbox[aurc_now.csv]
   '''
   ,,iWildCam,iWildCam,iWildCam,BREEDS,BREEDS,CAMELYON,CAMELYON,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-10,CIFAR-10,CIFAR-10,CIFAR-10,CIFAR-10,SVHN,SVHN,SVHN,SVHN,SVHN
   study,,iid,sub,s-ncs,iid,sub,iid,sub,iid,sub,cor,s-ncs,ns-ncs,ns-ncs,iid,cor,s-ncs,ns-ncs,ns-ncs,iid,s-ncs,ns-ncs,ns-ncs,ns-ncs
@@ -52,7 +52,7 @@
   
   '''
 # ---
-# name: test_reporting_blackbox[png][ece_now.csv]
+# name: test_reporting_blackbox[ece_now.csv]
   '''
   ,,iWildCam,iWildCam,iWildCam,BREEDS,BREEDS,CAMELYON,CAMELYON,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-10,CIFAR-10,CIFAR-10,CIFAR-10,CIFAR-10,SVHN,SVHN,SVHN,SVHN,SVHN
   study,,iid,sub,s-ncs,iid,sub,iid,sub,iid,sub,cor,s-ncs,ns-ncs,ns-ncs,iid,cor,s-ncs,ns-ncs,ns-ncs,iid,s-ncs,ns-ncs,ns-ncs,ns-ncs
@@ -79,7 +79,7 @@
   
   '''
 # ---
-# name: test_reporting_blackbox[png][fail-NLL_now.csv]
+# name: test_reporting_blackbox[fail-NLL_now.csv]
   '''
   ,,iWildCam,iWildCam,iWildCam,BREEDS,BREEDS,CAMELYON,CAMELYON,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-10,CIFAR-10,CIFAR-10,CIFAR-10,CIFAR-10,SVHN,SVHN,SVHN,SVHN,SVHN
   study,,iid,sub,s-ncs,iid,sub,iid,sub,iid,sub,cor,s-ncs,ns-ncs,ns-ncs,iid,cor,s-ncs,ns-ncs,ns-ncs,iid,s-ncs,ns-ncs,ns-ncs,ns-ncs
@@ -106,7 +106,7 @@
   
   '''
 # ---
-# name: test_reporting_blackbox[png][failauc_now.csv]
+# name: test_reporting_blackbox[failauc_now.csv]
   '''
   ,,iWildCam,iWildCam,iWildCam,BREEDS,BREEDS,CAMELYON,CAMELYON,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-100,CIFAR-10,CIFAR-10,CIFAR-10,CIFAR-10,CIFAR-10,SVHN,SVHN,SVHN,SVHN,SVHN
   study,,iid,sub,s-ncs,iid,sub,iid,sub,iid,sub,cor,s-ncs,ns-ncs,ns-ncs,iid,cor,s-ncs,ns-ncs,ns-ncs,iid,s-ncs,ns-ncs,ns-ncs,ns-ncs
@@ -133,7 +133,7 @@
   
   '''
 # ---
-# name: test_reporting_blackbox[png][paper_results_accuracy.tex]
+# name: test_reporting_blackbox[paper_results_accuracy.tex]
   '''
   \begin{tabular}{ll?rrr?rr?rr?rrrrrr?rrrrr?rrrrr}
    & \multicolumn{1}{c}{} & \multicolumn{3}{c}{iWildCam} & \multicolumn{2}{c}{BREEDS} & \multicolumn{2}{c}{CAMELYON} & \multicolumn{6}{c}{CIFAR-100} & \multicolumn{5}{c}{CIFAR-10} & \multicolumn{5}{c}{SVHN} \\
@@ -165,7 +165,7 @@
   
   '''
 # ---
-# name: test_reporting_blackbox[png][paper_results_aurc.tex]
+# name: test_reporting_blackbox[paper_results_aurc.tex]
   '''
   \begin{tabular}{ll?rrr?rr?rr?rrrrrr?rrrrr?rrrrr}
    & \multicolumn{1}{c}{} & \multicolumn{3}{c}{iWildCam} & \multicolumn{2}{c}{BREEDS} & \multicolumn{2}{c}{CAMELYON} & \multicolumn{6}{c}{CIFAR-100} & \multicolumn{5}{c}{CIFAR-10} & \multicolumn{5}{c}{SVHN} \\
@@ -197,7 +197,7 @@
   
   '''
 # ---
-# name: test_reporting_blackbox[png][paper_results_ece.tex]
+# name: test_reporting_blackbox[paper_results_ece.tex]
   '''
   \begin{tabular}{ll?rrr?rr?rr?rrrrrr?rrrrr?rrrrr}
    & \multicolumn{1}{c}{} & \multicolumn{3}{c}{iWildCam} & \multicolumn{2}{c}{BREEDS} & \multicolumn{2}{c}{CAMELYON} & \multicolumn{6}{c}{CIFAR-100} & \multicolumn{5}{c}{CIFAR-10} & \multicolumn{5}{c}{SVHN} \\
@@ -229,7 +229,7 @@
   
   '''
 # ---
-# name: test_reporting_blackbox[png][paper_results_fail-NLL.tex]
+# name: test_reporting_blackbox[paper_results_fail-NLL.tex]
   '''
   \begin{tabular}{ll?rrr?rr?rr?rrrrrr?rrrrr?rrrrr}
    & \multicolumn{1}{c}{} & \multicolumn{3}{c}{iWildCam} & \multicolumn{2}{c}{BREEDS} & \multicolumn{2}{c}{CAMELYON} & \multicolumn{6}{c}{CIFAR-100} & \multicolumn{5}{c}{CIFAR-10} & \multicolumn{5}{c}{SVHN} \\
@@ -261,7 +261,7 @@
   
   '''
 # ---
-# name: test_reporting_blackbox[png][paper_results_failauc.tex]
+# name: test_reporting_blackbox[paper_results_failauc.tex]
   '''
   \begin{tabular}{ll?rrr?rr?rr?rrrrrr?rrrrr?rrrrr}
    & \multicolumn{1}{c}{} & \multicolumn{3}{c}{iWildCam} & \multicolumn{2}{c}{BREEDS} & \multicolumn{2}{c}{CAMELYON} & \multicolumn{6}{c}{CIFAR-100} & \multicolumn{5}{c}{CIFAR-10} & \multicolumn{5}{c}{SVHN} \\
