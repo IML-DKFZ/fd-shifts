@@ -40,7 +40,7 @@ exp:
       external_confids: ${test.dir}/external_confids.npz
       external_confids_dist: ${test.dir}/external_confids_dist.npz
   log_path: ./log.txt
-  global_seed: null # set to False to disable deterministic training.
+  global_seed: ${fd_shifts.random_seed:} # set to False to disable deterministic training.
 
 trainer:
   resume_from_ckpt_confidnet: False

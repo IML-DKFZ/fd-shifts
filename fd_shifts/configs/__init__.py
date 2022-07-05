@@ -1,6 +1,7 @@
 from dataclasses import field
 from enum import Enum, auto
 from pathlib import Path
+from random import randint, random
 from typing import Any, Iterator, Optional, cast
 
 import hydra
@@ -84,7 +85,7 @@ class ExperimentConfig(IterableMixin):
     crossval_ids_path: Path = Path("${exp.dir}/crossval_ids.pickle")
     output_paths: OutputPathsPerMode = OutputPathsPerMode()
     log_path: Path = Path("./log.txt")
-    global_seed: Optional[int] = None
+    global_seed: int = randint(0, 1_000_000)
 
 
 @dataclass

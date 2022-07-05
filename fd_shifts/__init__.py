@@ -1,4 +1,5 @@
 import logging
+from random import randint
 
 from loguru import logger
 from omegaconf import OmegaConf
@@ -29,3 +30,4 @@ class InterceptHandler(logging.Handler):
 logging.basicConfig(handlers=[InterceptHandler()], level=logging.DEBUG)
 
 OmegaConf.register_new_resolver("fd_shifts.version", version)
+OmegaConf.register_new_resolver("fd_shifts.random_seed", lambda: randint(0, 1_000_000))

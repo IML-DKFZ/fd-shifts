@@ -48,6 +48,7 @@ def initialize_hydra(overrides: list[str]) -> DictConfig:
     [
         ([], nullcontext()),
         (["exp.log_path=test"], nullcontext()),
+        (["exp.global_seed=1234"], nullcontext()),
         (["pkgversion=0.0.1+aefe5c8"], pytest.raises(ValueError)),
         (["trainer.val_split=foo"], pytest.raises(ConfigCompositionException)),
         (["eval.query_studies.iid_study=svhn"], nullcontext()),
@@ -67,8 +68,11 @@ def test_validation(
 
         print(type(cfg))
         cfg = OmegaConf.to_object(cfg)
-        pprint(OmegaConf.to_yaml(cfg, resolve=False))
+        print(cfg.pkgversion)
+        print(cfg.exp.global_seed)
+        pprint(OmegaConf.to_yaml(cfg, resolve=True))
         print(type(cfg))
+        assert str(cfg.exp.root_dir) == os.getenv("EXPERIMENT_ROOT_DIR")
 
 
 @pytest.mark.parametrize(
