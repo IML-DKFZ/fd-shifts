@@ -31,7 +31,7 @@ def _check_dir_content(test_dir: Path, expected_dir: Path, snapshot):
         assert (test_dir / file).read_text() == snapshot(name=file)
 
 
-@image_comparison(baseline_images=["main_plot", "vit_v_cnn"], extensions=["png"], remove_text=True, tol=40)
+@image_comparison(baseline_images=["main_plot", "vit_v_cnn"], extensions=["png"], remove_text=True, tol=50)
 def test_reporting_blackbox(tmp_test_dir, snapshot):
     mpltest.setup()
     reporting.main(tmp_test_dir)
