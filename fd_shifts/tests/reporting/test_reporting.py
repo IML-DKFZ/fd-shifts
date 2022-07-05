@@ -28,10 +28,10 @@ def _check_dir_content(test_dir: Path, expected_dir: Path, snapshot):
     for file in dcmp.left_only:
         if ".png" in file:
             continue
-        # assert (test_dir / file).read_text() == snapshot(name=file)
+        assert (test_dir / file).read_text() == snapshot(name=file)
 
 
-@image_comparison(baseline_images=["main_plot", "vit_v_cnn"], extensions=["svg"], remove_text=True)
+@image_comparison(baseline_images=["main_plot", "vit_v_cnn"], extensions=["png"], remove_text=True)
 def test_reporting_blackbox(tmp_test_dir, snapshot):
     mpltesting.setup()
     reporting.main(tmp_test_dir)
