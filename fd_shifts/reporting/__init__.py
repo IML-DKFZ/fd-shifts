@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 from fd_shifts.reporting import tables
-from fd_shifts.reporting.plots import plot_rank_style, plot_sum_ranking
+from fd_shifts.reporting.plots import plot_rank_style, vit_v_cnn_box
 from fd_shifts.reporting.tables import paper_results
 
 # TODO: Refactor the rest
@@ -304,7 +304,7 @@ def main(base_path: str | Path):
     data = rename_studies(data)
 
     plot_rank_style(data, "cifar10", "aurc", data_dir)
-    plot_sum_ranking(data, data_dir)
+    vit_v_cnn_box(data, data_dir)
 
     data = tables.aggregate_over_runs(data)
     data = str_format_metrics(data)

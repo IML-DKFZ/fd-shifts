@@ -361,178 +361,216 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
     # plt.close(f)
 
 
-def plot_sum_ranking(data: pd.DataFrame, out_dir: Path):
+def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
     dff = tables.aggregate_over_runs(data)
     dff = tables.build_results_table(dff, "aurc")
     rank_df = make_rank_df(dff)
-    print(rank_df.columns)
     color_dict = make_color_dict(rank_df)
+    print(data.columns)
 
-    select_columns = [c for c in rank_df.columns]
-    iid_columns = [c for c in select_columns if "iid" in c]
-    # print("IID", iid_columns)
-    in_class_columns = [c for c in select_columns if "sub" in c]
-    # print("SUB CLASS", in_class_columns)
-    # new_class_columns = [
-    #     c for c in select_columns if "new_class" in c and "proposed" in c)
-    # ]
-    sem_new_class_columns = [
-        c for c in select_columns if "s-ncs" in c
-    ]
-    # print("SEMANTIC NEW CLASS", sem_new_class_columns)
-    nonsem_new_class_columns = [
-        c for c in select_columns if "ns-ncs" in c
-    ]
-    # print("NON-SEMANTIC NEW CLASS", nonsem_new_class_columns)
-    noise_columns = [c for c in select_columns if "noise" in c]
-    # print("NOISE", noise_columns)
-    sum_rank_df = rank_df[["confid"]]
-    sum_rank_df.loc[rank_df.confid.str.startswith("VIT"), "confid"] = "VIT"
-    sum_rank_df.loc[~rank_df.confid.str.startswith("VIT"), "confid"] = "CNN"
-    # logger.info(sum_rank_df)
-    # print(rank_df[rank_df.isna()])
-    skipna = False
-    sum_rank_df["iid"] = rank_df[iid_columns].sum(
-        axis=1, numeric_only=True, skipna=skipna
-    )
-    sum_rank_df["corruption-shift"] = rank_df[noise_columns].sum(
-        axis=1, numeric_only=True, skipna=skipna
-    )
-    if len(in_class_columns) > 0:
-        sum_rank_df["sub-class-shift"] = rank_df[in_class_columns].sum(
-            axis=1, numeric_only=True, skipna=skipna
-        )
-    sum_rank_df["sem.-new-class-shift"] = rank_df[sem_new_class_columns].sum(
-        axis=1, numeric_only=True, skipna=skipna
-    )
-    sum_rank_df["non-sem.-new-class-shift"] = rank_df[nonsem_new_class_columns].sum(
-        axis=1, numeric_only=True, skipna=skipna
-    )
-    sum_rank_df = sum_rank_df.groupby("confid").sum()
-    sum_rank_df = sum_rank_df.reset_index(drop=False)
-    confids = sum_rank_df.confid
-    sum_rank_df = sum_rank_df.rank(na_option="keep", numeric_only=True, ascending=True)
-    sum_rank_df["confid"] = confids
-    sum_rank_df["aggregated"] = sum_rank_df.sum(
-        axis=1, numeric_only=True, skipna=skipna
-    ).rank(na_option="keep", ascending=True)
+    meanprops = dict(linestyle="-", linewidth=6, color="k", alpha=1, zorder=99)
+    whiskerprops = dict(linestyle="-", linewidth=0)
 
-    # sum_rank_df["iid"] = sum_rank_df.apply(lambda row: row["iid"] + 0.5 if row["confid"] == "confidnet_mcd" else row["iid"], axis=1)
-    # sum_rank_df["iid"] = sum_rank_df.apply(lambda row: row["iid"] - 0.5 if row["confid"] == "deepgamblers_mcd_mi" else row["iid"], axis=1)
-
-    scale = 10
+    plot_exps = [
+        "cifar10",
+        "cifar100",
+        "svhn",
+        "breeds",
+        "animals",
+        "camelyon",
+    ]  # exp_names
+    cross_mode = False
+    scale = 15
     sns.set_style("whitegrid")
-    sns.set_context("paper", font_scale=scale * 0.50)
-    f, axs = plt.subplots(nrows=1, ncols=1, figsize=(4 * scale, 1.5 * scale * 1.2))
-    # todo ! supercifar has to be a part of cifar100 exp. check also weird observation regarding val_tuning
+    sns.set_context("paper", font_scale=scale * 0.35)
+    dim = "confid"
 
-    show_columns = [
-        "iid",
-        "corruption-shift",
-        "sub-class-shift",
-        "sem.-new-class-shift",
-        "non-sem.-new-class-shift",
-        "aggregated",
+    metric_dict = {
+        "aurc": "AURC",
+        "failauc": "AUROC",
+        "ece": "ECE",
+        "accuracy": "accuracy",
+    }
+
+    dataset_dict = {
+        "cifar10": "CIFAR-10",
+        "cifar100": "CIFAR-100",
+        "animals": "iWildCam",
+        "breeds": "BREEDS",
+        "camelyon": "CAMELYON",
+        "svhn": "SVHN",
+    }
+
+    studies = [
+        "iid-study",
+        # 'sub-class-shift',
+        # 'corruption-shift-1',
+        # 'corruption-shift-2',
+        # 'corruption-shift-3',
+        # 'corruption-shift-4',
+        # 'corruption-shift-5',
+        # 'new-class-shift-cifar10',
+        # 'new-class-shift-cifar10-original-mode',
+        # 'new-class-shift-cifar100',
+        # 'new-class-shift-cifar100-original-mode',
+        # 'new-class-shift-svhn',
+        # 'new-class-shift-svhn-original-mode',
+        # 'new-class-shift-tinyimagenet',
+        # 'new-class-shift-tinyimagenet-original-mode'
     ]
-    cols = show_columns  # [c for c in sum_rank_df.columns if c.startswith("sum")]
-    numeric_exp_df = sum_rank_df[cols]
-    # todo DROPNAN?
-    confids_list = sum_rank_df.confid.tolist()
-    x = range(len(numeric_exp_df.columns))
-    ranked_confs = sum_rank_df.sort_values(by=numeric_exp_df.columns[0]).confid.tolist()
-    # print(numeric_exp_df)
-    # print(confids_list)
-    import numpy as np
 
-    seen = [{} for _ in x]
-    for ix in range(len(numeric_exp_df)):
-        y = numeric_exp_df.iloc[ix].values
-        #     axs.plot(x, y, linewidth=3.1, marker=".", ms=18, color=color_dict[sum_rank_df.confid.tolist()[ix]])
-        xprev = x[0]
-        yprev = y[0]
-        textprev = None
-        for i, (x_, y_) in enumerate(zip(x, y)):
-            if np.isnan(y_):
-                continue
+    # print(df)
 
-            if y_ in seen[x_].keys():
-                text = seen[x_][y_]
-                text.set_text(text.get_text() + "\n" + confids_list[ix])
-            else:
-                text = axs.text(
-                    x_,
-                    y_,
-                    confids_list[ix],
-                    fontsize=16,
-                    horizontalalignment="center",
-                    verticalalignment="center",
+    def fix_studies(n):
+        n = n.replace("^.*?_", "")
+        n = n.replace("_proposed_mode", "")
+        n = n.replace("_", "-")
+        n = n.replace("-study-", "-shift-")
+        n = n.replace("in-class", "sub-class")
+        n = n.replace("noise", "corruption")
+        n = n.replace("-resize", "")
+        n = n.replace("-wilds-ood-test", "")
+        n = n.replace("-ood-test", "")
+        n = n.replace("-superclasses", "")
+        return n
+
+    f, axes = plt.subplots(
+        nrows=4, ncols=1, figsize=(4 * scale * 1.2, 4 * scale * 1.2), squeeze=True
+    )
+    for axs, metric in zip(axes, ["aurc", "ece", "failauc", "accuracy"]):
+        plot_data = data[["study", "confid", "run", metric]][
+            (data.study.str.contains("iid"))
+        ]  # & (~df.confid.str.contains("DG"))]
+
+        y = metric
+        tmp_data = plot_data.assign(
+            dataset=lambda row: row.study.str.split("_", 1, expand=True)[0]
+        )
+        tmp_data["backbone"] = tmp_data[dim]
+        tmp_data.loc[~tmp_data[dim].str.startswith("VIT"), "backbone"] = "CNN"
+        tmp_data.loc[tmp_data[dim].str.startswith("VIT"), "backbone"] = "VIT"
+        confids = [
+            "ConfidNet",
+            "DG-MCD-EE",
+            "DG-Res",
+            "Devries et al.",
+            "MCD-EE",
+            "MCD-MSR",
+            "MCD-PE",
+            "MSR",
+            "PE",
+            "MAHA",
+        ]
+        #     print(data.confid)
+        tmp_data = tmp_data[plot_data.confid.str.replace("VIT-", "").isin(confids)]
+        tmp_data = tmp_data[
+            ~(
+                tmp_data.confid.isin(
+                    ["VIT-Devries et al.", "VIT-ConfidNet", "VIT-DG-Res", "VIT-DG-Res"]
                 )
-                seen[x_][y_] = text
-
-            if i == 0:
-                arrowprops = None
-                xycoords = "data"
-                xy = (0, 0)
-            else:
-                arrowprops = dict(
-                    arrowstyle="-",
-                    linewidth=3.1,
-                    color=list(color_dict.values())[ix],
-                    relpos=(0, 0.5),
-                    alpha=0.4,
-                )
-                xycoords = textprev
-                xy = (1, 0.5)
-
-            axs.annotate(
-                text="",
-                xy=xy,
-                xytext=(0, 0.5),
-                xycoords=xycoords,
-                textcoords=text,
-                fontsize=16,
-                horizontalalignment="center",
-                verticalalignment="center",
-                arrowprops=arrowprops,
             )
-            xprev = x_
-            yprev = y_
-            textprev = text
-    #     break
-    axs.set_yticks(range(1, len(numeric_exp_df) + 1))
-    axs.set_yticks([])
-    # axs.set_yticklabels(ranked_confs)
-    axs.set_xticks(x)
-    axs.set_xticklabels([c[:5] for c in numeric_exp_df.columns], rotation=90)
-    axs.set_xlim(0, len(numeric_exp_df.columns) - 1)
-    axs.set_ylim(0.5, 2.5)
-    #     print(axs.get_facecolor())
-    axs.annotate(
-        "",
-        xy=(1.05, 0),
-        xytext=(1.05, 1),
-        arrowprops=dict(width=3, headwidth=8, headlength=8, color="grey"),
-        xycoords="axes fraction",
-    )
-    axs.annotate(
-        "best\nrank",
-        xy=(1.054, 1),
-        xytext=(1.054, 1),
-        xycoords="axes fraction",
-        fontsize=16,
-        horizontalalignment="left",
-        verticalalignment="top",
-    )
-    axs.annotate(
-        "worst\nrank",
-        xy=(1.054, 0),
-        xytext=(1.054, 0),
-        xycoords="axes fraction",
-        fontsize=16,
-        horizontalalignment="left",
-        verticalalignment="bottom",
-    )
+        ]
+        #     logger.info(data.dataset)
+        plot_colors = [color_dict[conf] for conf in tmp_data.confid.unique().tolist()]
+        # print(plot_colors)
+        palette = sns.color_palette(plot_colors)
+        # print(plot_colors)
+        # print(data.confid.unique().tolist())
+        sns.set_palette(palette)
+
+        # print(data[~data[dim].str.startswith("VIT")])
+
+        # order = data[dim].str.replace("VIT-", "").sort_values().unique()
+
+        # if not "noise" in study or "noise_study_3" in study:
+        # print(study)
+        # sns.stripplot(
+        #     ax=saxs[yix],
+        #     x=data[~data[dim].str.startswith("VIT")][dim],
+        #     y=metric,
+        #     data=data[~data[dim].str.startswith("VIT")],
+        #     s=scale * 1.6,
+        #     label=dim,
+        #     order=order,
+        # )
+        # sns.stripplot(
+        #     ax=saxs[yix],
+        #     x=data[data[dim].str.startswith("VIT")][dim].str.replace("VIT-", ""),
+        #     y=metric,
+        #     data=data[data[dim].str.startswith("VIT")],
+        #     s=scale * 1.6,
+        #     label=dim,
+        #     marker='X',
+        #     order=order,
+        # )
+        for i, exp in enumerate(plot_exps):
+            axs_ = axs.twinx()
+            axs_.yaxis.tick_left()
+            axs_.spines["left"].set_position(("data", i - 0.5))
+            sns.boxplot(
+                ax=axs_,
+                x="dataset",
+                y=metric,
+                hue="backbone",
+                data=tmp_data[tmp_data.dataset == exp],
+                # medianprops=dict(alpha=0),
+                medianprops=meanprops,
+                saturation=1,
+                showbox=True,
+                showcaps=False,
+                showfliers=False,
+                whiskerprops=whiskerprops,
+                showmeans=True,
+                meanprops=dict(alpha=0),
+                # meanprops=meanprops,
+                # meanline=True,
+                order=plot_exps,
+                boxprops=dict(alpha=0.5),
+            )
+
+            for label in axs_.get_xticklabels() + axs_.get_yticklabels():
+                label.set_fontsize(28)
+                label.set_bbox(dict(facecolor="white", edgecolor="None", alpha=0.75))
+
+            axs_.grid(False)
+            if i != (len(plot_exps) - 1) or metric != "aurc":
+                axs_.legend().remove()
+            else:
+                handles, labels = axs_.get_legend_handles_labels()
+                axs_.legend(handles, ["CNN", "ViT"], title="classifier")
+
+            if i != 0:
+                axs_.set_ylabel("")
+            else:
+                axs_.yaxis.set_label_position("left")
+                axs_.set_ylabel(metric_dict[metric])
+        # axs[yix].set_xticklabels("")
+        axs.set_xticklabels([dataset_dict[exp] for exp in plot_exps])
+
+        # axs.set_title(fix_studies(study), pad=35)
+        axs.set_ylabel(metric_dict[metric])
+        axs.set_xlabel("")
+        axs.yaxis.set_visible(False)
+        axs.grid(False)
+
+    # lim0 = data[metric].mean() - data[metric].std()
+    # lim1 = data[metric].mean() + data[metric].std()
+    # saxs[yix].set_ylim(lim0, lim1)
+    # if yix == 0:
+    #     saxs[yix].set_ylabel(metric)
+
+    # if yix == 5:
+    #     axs[yix].axis("off")
+    #     axs[yix-1].legend()
+
+    # if "iid" in study and metric == "aurc":
+    #     axs[xix, yix].set_ylim(4, 8)
+    # if "iid" in study and metric == "failauc":
+    #     axs[xix, yix].set_ylim(0.90, 0.96)
     plt.tight_layout()
-    # plt.savefig("/Users/Paul/research/files/analysis/paper_plots/ranking.png")
-    # plt.savefig("/home/tillb/Projects/failure-detection-benchmark/results/ranking.png")
-    plt.savefig(out_dir / "vit_v_cnn.png")
+    # plt.savefig(
+    #     "/home/tillb/Projects/failure-detection-benchmark/results/final_paper_{}_single_column_box.png".format(
+    #         exp
+    #     )
+    # )
+    plt.savefig(out_dir / f"vit_v_cnn.png")
