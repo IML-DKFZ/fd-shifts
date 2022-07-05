@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from fd_shifts.reporting import tables
 from fd_shifts.reporting.plots import plot_rank_style, plot_sum_ranking
 from fd_shifts.reporting.tables import paper_results
 
@@ -267,20 +268,6 @@ def filter_unused(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def aggregate_over_runs(data: pd.DataFrame) -> pd.DataFrame:
-    fixed_columns = ["study", "confid"]
-    metrics_columns = ["accuracy", "aurc", "ece", "failauc", "fail-NLL"]
-
-    data = (
-        data[fixed_columns + metrics_columns]
-        .groupby(by=fixed_columns)
-        .mean()
-        .sort_values("confid")
-        .reset_index()
-    )
-    return data
-
-
 def str_format_metrics(data: pd.DataFrame) -> pd.DataFrame:
     data = data.rename(columns={"fail-NLL": "failNLL"})
 
@@ -319,7 +306,7 @@ def main(base_path: str | Path):
     plot_rank_style(data, "cifar10", "aurc", data_dir)
     plot_sum_ranking(data, data_dir)
 
-    data = aggregate_over_runs(data)
+    data = tables.aggregate_over_runs(data)
     data = str_format_metrics(data)
 
     paper_results(data, "aurc", False, data_dir)

@@ -36,6 +36,20 @@ def sanity_check(table: pd.DataFrame, metric: str):
         assert check(table)
 
 
+def aggregate_over_runs(data: pd.DataFrame) -> pd.DataFrame:
+    fixed_columns = ["study", "confid"]
+    metrics_columns = ["accuracy", "aurc", "ece", "failauc", "fail-NLL"]
+
+    data = (
+        data[fixed_columns + metrics_columns]
+        .groupby(by=fixed_columns)
+        .mean()
+        .sort_values("confid")
+        .reset_index()
+    )
+    return data
+
+
 def _create_results_pivot(data: pd.DataFrame, metric: str):
     results_table = data[["confid", "study", metric]]
 
@@ -187,12 +201,17 @@ def _build_multilabel(table: pd.DataFrame) -> pd.DataFrame:
     return table
 
 
-def paper_results(data: pd.DataFrame, metric: str, invert: bool, out_dir: Path):
+def build_results_table(data: pd.DataFrame, metric: str) -> pd.DataFrame:
     results_table = _create_results_pivot(data, metric)
     results_table = _aggregate_noise_studies(results_table, metric)
 
     results_table = _build_multilabel(results_table)
     results_table = _reorder_studies(results_table)
+    return results_table
+
+
+def paper_results(data: pd.DataFrame, metric: str, invert: bool, out_dir: Path):
+    results_table = build_results_table(data, metric)
 
     results_table = results_table.rename(
         columns=_dataset_to_display_name,

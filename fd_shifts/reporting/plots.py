@@ -6,50 +6,21 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-metric = "aurc"
+from fd_shifts.reporting import tables
 
 
-def aggregate_over_runs(df):
-    non_agg_columns = ["study", "confid"]  # might need rew if no model selection
-    filter_metrics_df = df[non_agg_columns + ["run", metric]]
-    df_mean = (
-        filter_metrics_df.groupby(by=non_agg_columns).mean().reset_index().round(2)
-    )
-    df_std = filter_metrics_df.groupby(by=non_agg_columns).std().reset_index().round(2)
-
-    studies = df_mean.study.unique().tolist()
-    dff = pd.DataFrame({"confid": df.confid.unique()})
-    #     print(dff)
-    #     print("CHECK LEN DFF", len(dff), len(df_mean))
-    combine_and_str = False
-    if combine_and_str:
-        agg_mean_std = (
-            lambda s1, s2: s1
-            if (s1.name == "confid" or s1.name == "study" or s1.name == "rew")
-            else s1.astype(str) + " ± " + s2.astype(str)
-        )
-        df_mean = df_mean.combine(df_std, agg_mean_std)
-        for s in studies:
-            sdf = df_mean[df_mean.study == s]
-            dff[s] = dff["confid"].map(sdf.set_index("confid")[metric])
-
-    else:
-        for s in studies:
-            sdf = df_mean[df_mean.study == s]
-            dff[s] = dff["confid"].map(sdf.set_index("confid")[metric])
-            # print("DFF", dff.columns.tolist())
-
-    return dff
-
-
-def make_rank_df(dff):
+def make_rank_df(dff: pd.DataFrame):
     select_df = dff  # [~dff.confid.str.startswith("VIT")]
     rank_df = select_df.rank(na_option="keep", numeric_only=True, ascending=False)
-    # actually aurc should be ranked ascedingly, but we want the lowest rank to show on top on the y axis
-    # so careful when using this df for other things than this plot!
 
-    rank_df["confid"] = dff.confid
-    #     print(select_df)
+    confid = dff.index.get_level_values(0)
+    classifier = dff.index.get_level_values(1)
+
+    rank_df["confid"] = (
+        classifier.where(classifier == "ViT", "").where(classifier != "ViT", "VIT-")
+        + confid
+    )
+
     return rank_df
 
 
@@ -94,7 +65,9 @@ def make_color_dict(rank_df: pd.DataFrame):
 
 
 def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
-    dff = aggregate_over_runs(data)
+    # dff = _aggregate_over_runs(data)
+    dff = tables.aggregate_over_runs(data)
+    dff = tables.build_results_table(dff, metric)
     rank_df = make_rank_df(dff)
     color_dict = make_color_dict(rank_df)
 
@@ -327,7 +300,7 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
 
         ylim0[0] -= 0.07 * (ylim0[1] - ylim0[0])
         ylim0[1] += 0.07 * (ylim0[1] - ylim0[0])
-        print(ylim0)
+        # print(ylim0)
         axs.set_ylim(ylim0)
         axs.set_ylabel(metric_dict[metric], fontsize=1.6 * fontsize)
         axs.yaxis.set_label_position("right")
@@ -389,28 +362,30 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
 
 
 def plot_sum_ranking(data: pd.DataFrame, out_dir: Path):
-    dff = aggregate_over_runs(data)
+    dff = tables.aggregate_over_runs(data)
+    dff = tables.build_results_table(dff, "aurc")
     rank_df = make_rank_df(dff)
+    print(rank_df.columns)
     color_dict = make_color_dict(rank_df)
 
     select_columns = [c for c in rank_df.columns]
     iid_columns = [c for c in select_columns if "iid" in c]
-    print("IID", iid_columns)
-    in_class_columns = [c for c in select_columns if "in_class" in c]
-    print("SUB CLASS", in_class_columns)
-    new_class_columns = [
-        c for c in select_columns if ("new_class" in c and "proposed" in c)
-    ]
+    # print("IID", iid_columns)
+    in_class_columns = [c for c in select_columns if "sub" in c]
+    # print("SUB CLASS", in_class_columns)
+    # new_class_columns = [
+    #     c for c in select_columns if "new_class" in c and "proposed" in c)
+    # ]
     sem_new_class_columns = [
-        c for c in new_class_columns if ("cifar10_" in c and "cifar100_" in c)
+        c for c in select_columns if "s-ncs" in c
     ]
-    print("SEMANTIC NEW CLASS", sem_new_class_columns)
+    # print("SEMANTIC NEW CLASS", sem_new_class_columns)
     nonsem_new_class_columns = [
-        c for c in new_class_columns if c not in sem_new_class_columns
+        c for c in select_columns if "ns-ncs" in c
     ]
-    print("NON-SEMANTIC NEW CLASS", nonsem_new_class_columns)
+    # print("NON-SEMANTIC NEW CLASS", nonsem_new_class_columns)
     noise_columns = [c for c in select_columns if "noise" in c]
-    print("NOISE", noise_columns)
+    # print("NOISE", noise_columns)
     sum_rank_df = rank_df[["confid"]]
     sum_rank_df.loc[rank_df.confid.str.startswith("VIT"), "confid"] = "VIT"
     sum_rank_df.loc[~rank_df.confid.str.startswith("VIT"), "confid"] = "CNN"
