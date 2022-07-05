@@ -363,7 +363,7 @@ class DataConfig(IterableMixin):
 
 @dataclass
 class Config(IterableMixin):
-    pkgversion: Optional[str] = None
+    pkgversion: str = fd_shifts.version()
     data: DataConfig = DataConfig()
 
     trainer: TrainerConfig = TrainerConfig()
@@ -377,7 +377,12 @@ class Config(IterableMixin):
     @validator("pkgversion")
     def validate_version(cls, version: str):
         if version != fd_shifts.version():
-            raise ValueError(f"This config was created with version {version} of fd-shifts. You are on {fd_shifts.version()}.")
+            raise ValueError(
+                f"This config was created with version {version} of fd-shifts. "
+                f"You are on {fd_shifts.version()}."
+            )
+
+        return version
 
 
 def init():
