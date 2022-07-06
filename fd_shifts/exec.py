@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import random
 import sys
+from typing import cast
 
 import hydra
 import pytorch_lightning as pl
@@ -12,7 +13,7 @@ from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from rich.console import Console
 from torch import multiprocessing
 
-from fd_shifts import analysis, logger
+from fd_shifts import analysis, configs, logger
 from fd_shifts.loaders.abstract_loader import AbstractDataLoader
 from fd_shifts.models import get_model
 from fd_shifts.models.callbacks import get_callbacks
@@ -23,25 +24,11 @@ from fd_shifts.utils import exp_utils
 # TODO: Log git commit
 
 
-def train(cf, subsequent_testing=False):
+def train(cf: configs.Config, progress: RichProgressBar, subsequent_testing=False):
     """
     perform the training routine for a given fold. saves plots and selected parameters to the experiment dir
     specified in the configs.
     """
-
-    console = Console(stderr=True, force_terminal=True)
-    progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
-    progress._console = console
-    logger.remove()  # Remove default 'stderr' handler
-
-    # We need to specify end=''" as log message already ends with \n (thus the lambda function)
-    # Also forcing 'colorize=True' otherwise Loguru won't recognize that the sink support colors
-    logger.add(
-        lambda m: progress._console.print(m, end="", markup=False, highlight=False),
-        colorize=True,
-        enqueue=True,
-        level="DEBUG",
-    )
 
     logger.info("CHECK CUDNN VERSION", torch.backends.cudnn.version())
     train_deterministic_flag = False
@@ -126,25 +113,10 @@ def train(cf, subsequent_testing=False):
     #               query_studies={"iid_study": cf.data.dataset})
 
     if subsequent_testing:
-        test(cf)
+        test(cf, progress)
 
 
-def test(cf):
-
-    console = Console(stderr=True, force_terminal=True)
-    progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
-    progress._console = console
-    logger.remove()  # Remove default 'stderr' handler
-
-    # We need to specify end=''" as log message already ends with \n (thus the lambda function)
-    # Also forcing 'colorize=True' otherwise Loguru won't recognize that the sink support colors
-    logger.add(
-        lambda m: progress._console.print(m, end="", markup=False, highlight=False),
-        colorize=True,
-        enqueue=True,
-        level="DEBUG",
-    )
-
+def test(cf: configs.Config, progress: RichProgressBar):
     if "best" in cf.test.selection_criterion and cf.test.only_latest_version is False:
         ckpt_path = exp_utils.get_path_to_best_ckpt(
             cf.exp.dir, cf.test.selection_criterion, cf.test.selection_mode
@@ -194,33 +166,50 @@ def test(cf):
 
 
 @hydra.main(config_path="configs", config_name="config")
-def main(cf: DictConfig):
+def main(dconf: DictConfig):
     multiprocessing.set_start_method("spawn")
 
-    sys.stdout = exp_utils.Logger(cf.exp.log_path)
-    sys.stderr = exp_utils.Logger(cf.exp.log_path)
-    logger.info(OmegaConf.to_yaml(cf))
-    cf.data.num_workers = exp_utils.get_allowed_n_proc_DA(cf.data.num_workers)
+    console = Console(stderr=True, force_terminal=True)
+    progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
+    progress._console = console
+    logger.remove()  # Remove default 'stderr' handler
 
-    if cf.exp.mode == "train":
-        train(cf)
+    # We need to specify end=''" as log message already ends with \n (thus the lambda function)
+    # Also forcing 'colorize=True' otherwise Loguru won't recognize that the sink support colors
+    logger.add(
+        lambda m: progress._console.print(m, end="", markup=False, highlight=False),
+        colorize=True,
+        enqueue=True,
+        level="DEBUG",
+    )
 
-    if cf.exp.mode == "train_test":
-        train(cf, subsequent_testing=True)
 
-    if cf.exp.mode == "test":
-        test(cf)
+    conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
+    # sys.stdout = exp_utils.Logger(conf.exp.log_path)
+    # sys.stderr = exp_utils.Logger(conf.exp.log_path)
+    logger.info(OmegaConf.to_yaml(conf))
+    conf.data.num_workers = exp_utils.get_allowed_n_proc_DA(conf.data.num_workers)
 
-    if cf.exp.mode == "analysis":
+    if conf.exp.mode == "train":
+        train(conf, progress)
+
+    if conf.exp.mode == "train_test":
+        train(conf, progress, subsequent_testing=True)
+
+    if conf.exp.mode == "test":
+        test(conf, progress)
+
+    if conf.exp.mode == "analysis":
         analysis.main(
-            in_path=cf.test.dir,
-            out_path=cf.test.dir,
-            query_studies=cf.eval.query_studies,
-            add_val_tuning=cf.eval.val_tuning,
+            in_path=conf.test.dir,
+            out_path=conf.test.dir,
+            query_studies=conf.eval.query_studies,
+            add_val_tuning=conf.eval.val_tuning,
             threshold_plot_confid=None,
-            cf=cf,
+            cf=conf,
         )
 
 
 if __name__ == "__main__":
+    configs.init()
     main()

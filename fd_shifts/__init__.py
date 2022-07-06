@@ -7,6 +7,7 @@ from omegaconf import OmegaConf
 from .version import version
 
 
+# Replace python logging everywhere
 class InterceptHandler(logging.Handler):
     def emit(self, record):
         # Get corresponding Loguru level if it exists
