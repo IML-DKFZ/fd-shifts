@@ -254,6 +254,9 @@
     PosixPath('confidnet/cifar10'),
     PosixPath('confidnet/cifar10/version_None'),
     PosixPath('confidnet/cifar10/test_results'),
+    PosixPath('confidnet/cifar10/test_results/raw_output.npz'),
+    PosixPath('confidnet/cifar10/test_results/raw_output_dist.npz'),
+    PosixPath('confidnet/cifar10/test_results/external_confids_dist.npz'),
   ])
 # ---
 # name: test_model_training[deepgamblers].1
@@ -340,5 +343,7 @@
     PosixPath('devries/cifar10'),
     PosixPath('devries/cifar10/version_None'),
     PosixPath('devries/cifar10/test_results'),
+    PosixPath('devries/cifar10/test_results/raw_output.npz'),
+    PosixPath('devries/cifar10/test_results/external_confids.npz'),
   ])
 # ---

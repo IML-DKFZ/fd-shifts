@@ -37,7 +37,7 @@ trainer:
     #      mode: ["max", "max"]
     #      filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
     #      save_top_k: [1, 1]
-    monitor:
+    confid_monitor:
     training_stages:
       milestones: [250, 450]
       pretrained_backbone_path: #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!

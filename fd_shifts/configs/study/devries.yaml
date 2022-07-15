@@ -28,7 +28,7 @@ trainer:
     weight_decay: 0.0005
   callbacks:
     model_checkpoint:
-    monitor:
+    confid_monitor:
     learning_rate_monitor:
 
 model:
@@ -52,7 +52,7 @@ test:
   dir: ${exp.dir}/${test.name}
   cf_path: ${exp.dir}/hydra/config.yaml
   selection_criterion: "latest" #"best_valacc" #best_valacc # model selection criterion or "latest"
-  selection_mode: #"l#max # model selection criterion or "latest"
+  # selection_mode: #"l#max # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
   devries_repro_ood_split: False
@@ -102,6 +102,6 @@ eval:
     noise_study:
       - corrupt_cifar10
     new_class_study:
-      - tinyimagenet_resize
+      # - tinyimagenet_resize
       - cifar100
       - svhn
