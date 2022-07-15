@@ -2,6 +2,75 @@
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "fd_shifts"
+dynamic = ["version"]
+dependencies = [
+    "albumentations>=1.0.3",
+    "hydra-colorlog>=1.1.0",
+    "hydra-core>=1.1.1",
+    "hydra-zen",
+    "imageio>=2.9.0",
+    "ipython",
+    "loguru",
+    "matplotlib>=3.3.4",
+    "numpy>=1.22.2",
+    "ogb>=1.3.1",
+    "omegaconf>=2.1.1",
+    "pandas>=1.2.3",
+    "protobuf<=3.20.0",
+    "pydantic",
+    "pytorch-lightning-bolts>=0.3.2",
+    "pytorch-lightning>=1.2.4",
+    "rich>=10.7.0",
+    "robustness @ https://github.com/MadryLab/robustness/archive/master.tar.gz",
+    "scikit-image>=0.18.2",
+    "scikit-learn>=0.24.2",
+    "scipy>=1.6.1",
+    "seaborn>=0.11.1",
+    "tensorboard>=2.4.1",
+    "timm>=0.4.12",
+    "toml>=0.10.2",
+    "torch>=1.8.0",
+    "torchmetrics>=0.2.0",
+    "torchvision>=0.9.0",
+    "tqdm>=4.62.0",
+    "typing_extensions>=4.1.1",
+    "wilds>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "syrupy",
+    "nbdime",
+    "pylint",
+    "black",
+    "debugpy",
+]
+
+[project.scripts]
+# TODO: Check entry points
+fd_shifts = "fd_shifts.exec:main"
+fd_shifts-breeds = "launcher.breeds_paper_sweep:main"
+fd_shifts-camelyon = "launcher.camelyon_paper_sweep:main"
+fd_shifts-cifar100 = "launcher.cifar100_paper_sweep:main"
+fd_shifts-cifar10 = "launcher.cifar10_paper_sweep:main"
+fd_shifts-supercifar = "launcher.supercifar_paper_sweep:main"
+fd_shifts-svhn = "launcher.svhn_paper_sweep:main"
+fd_shifts-wilds_animals = "launcher.wilds_animals_paper_sweep:main"
+fd_shifts-vit = "launcher.vit_paper_sweep:main"
+
+
+[tool.setuptools.dynamic]
+version = {attr = "fd_shifts.version.version"}
+
+[tool.setuptools.packages]
+find = {}
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml"]
+
 [tool.pyright]
 reportOptionalSubscript = "warning"
 reportOptionalMemberAccess = "warning"
