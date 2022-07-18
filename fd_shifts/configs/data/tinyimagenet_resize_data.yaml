@@ -1,22 +1,25 @@
-dataset: tinyimagenet_resize
-data_dir: ${oc.env:DATASET_ROOT_DIR}/${data.dataset}
-pin_memory: True
-img_size: [64, 64, 3]
-num_workers: 12
-num_classes: 200
-reproduce_confidnet_splits: False
-augmentations:
-  train:
-    to_tensor:
-    normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
-  val:
-    to_tensor:
-    normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
-  test:
-    #      center_crop: [32, 32] # OoD for Cifar
-    #      resize: 32
-    to_tensor:
-    #      normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
-    normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
+# @package _global_
 
-    # iamgent values
+data:
+  dataset: tinyimagenet_resize
+  data_dir: ${oc.env:DATASET_ROOT_DIR}/${data.dataset}
+  pin_memory: True
+  img_size: [64, 64, 3]
+  num_workers: 12
+  num_classes: 200
+  reproduce_confidnet_splits: False
+  augmentations:
+    train:
+      to_tensor:
+      normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
+    val:
+      to_tensor:
+      normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
+    test:
+      #      center_crop: [32, 32] # OoD for Cifar
+      #      resize: 32
+      to_tensor:
+      #      normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
+      normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
+
+  kwargs:

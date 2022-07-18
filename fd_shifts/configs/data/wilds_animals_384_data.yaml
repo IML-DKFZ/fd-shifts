@@ -1,50 +1,58 @@
-dataset: wilds_animals
-data_dir: ${oc.env:DATASET_ROOT_DIR}/${data.dataset}
-pin_memory: True
-img_size: [384, 384, 3]
-num_workers: 24
-num_classes: 182
-reproduce_confidnet_splits: False
-augmentations:
-  train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
-    to_tensor:
-    resize: 384
-    center_crop: 384
-    normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
-  val:
-    to_tensor:
-    resize: 384
-    center_crop: 384
-    normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
-  test:
-    to_tensor:
-    resize: 384
-    center_crop: 384
-    normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
-kwargs:
-# not doing group sampling because I am not interested in their subpopulation shift or "worst group accuracy" and improving those.
-#
-#    'iwildcam': {
-#        'loss_function': 'cross_entropy',
-#        'val_metric': 'F1-macro_all',
-#        'model_kwargs': {'pretrained': True},
-#        'train_transform': 'image_base',
-#        'eval_transform': 'image_base',
-#        'target_resolution': (448, 448),
-#        'val_metric_decreasing': False,
-#        'algo_log_metric': 'accuracy',
-#        'model': 'resnet50',
-#        'lr': 3e-5,
-#        'weight_decay': 0.0,
-#        'batch_size': 16,
-#        'n_epochs': 12,
-#        'optimizer': 'Adam',
-#        'split_scheme': 'official',
-#        'scheduler': None,
-#        'groupby_fields': ['location',],
-#        'n_groups_per_batch': 2,
-#        'irm_lambda': 1.,
-#        'coral_penalty_weight': 10.,
-#        'no_group_logging': True,
-#        'process_outputs_function': 'multiclass_logits_to_pred'
-#    },
+# @package _global_
+
+data:
+  dataset: wilds_animals
+  data_dir: ${oc.env:DATASET_ROOT_DIR}/${data.dataset}
+  pin_memory: True
+  img_size: [384, 384, 3]
+  num_workers: 24
+  num_classes: 182
+  reproduce_confidnet_splits: False
+  augmentations:
+    train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
+      to_tensor:
+      resize: 384
+      center_crop: 384
+      normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
+    val:
+      to_tensor:
+      resize: 384
+      center_crop: 384
+      normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
+    test:
+      to_tensor:
+      resize: 384
+      center_crop: 384
+      normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
+  kwargs:
+  # not doing group sampling because I am not interested in their subpopulation shift or "worst group accuracy" and improving those.
+  #
+  #    'iwildcam': {
+  #        'loss_function': 'cross_entropy',
+  #        'val_metric': 'F1-macro_all',
+  #        'model_kwargs': {'pretrained': True},
+  #        'train_transform': 'image_base',
+  #        'eval_transform': 'image_base',
+  #        'target_resolution': (448, 448),
+  #        'val_metric_decreasing': False,
+  #        'algo_log_metric': 'accuracy',
+  #        'model': 'resnet50',
+  #        'lr': 3e-5,
+  #        'weight_decay': 0.0,
+  #        'batch_size': 16,
+  #        'n_epochs': 12,
+  #        'optimizer': 'Adam',
+  #        'split_scheme': 'official',
+  #        'scheduler': None,
+  #        'groupby_fields': ['location',],
+  #        'n_groups_per_batch': 2,
+  #        'irm_lambda': 1.,
+  #        'coral_penalty_weight': 10.,
+  #        'no_group_logging': True,
+  #        'process_outputs_function': 'multiclass_logits_to_pred'
+  #    },
+
+eval:
+  query_studies:
+    iid_study: wilds_animals_384
+    in_class_study: [wilds_animals_ood_test_384]
