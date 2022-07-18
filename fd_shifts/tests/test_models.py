@@ -56,7 +56,7 @@ def initialize_hydra(overrides: list[str]) -> DictConfig:
     [
         # ("breeds_vit_study",),
         # ("cifar100_vit_study",),
-        ("cifar10_vit_study",),
+        ("vit",),
         ("confidnet",),
         ("deepgamblers",),
         ("devries",),
@@ -80,6 +80,8 @@ def test_model_creation(study: str, snapshot: Any, mock_env_if_missing: Any):
         configs.Config, OmegaConf.to_object(dcfg)
     )  # only affects the linter
 
+    cfg.exp.global_seed = 1234
+
     model = models.get_model(cfg.model.name)(cfg)
     test_image = torch.ones(16, *cfg.data.img_size[::-1])
     assert model(test_image) == snapshot
@@ -93,7 +95,7 @@ def test_model_creation(study: str, snapshot: Any, mock_env_if_missing: Any):
     [
         # ("breeds_vit_study",),
         # ("cifar100_vit_study",),
-        ("cifar10_vit_study",),
+        ("vit",),
         ("confidnet",),
         ("deepgamblers",),
         ("devries",),
@@ -118,6 +120,7 @@ def test_model_training(study: str, snapshot: Any, tmp_path: Path, mock_env: Non
     cfg: configs.Config = cast(
         configs.Config, OmegaConf.to_object(dcfg)
     )  # only affects the linter
+    pprint(OmegaConf.to_yaml(cfg))
 
     cfg.trainer.batch_size = 4
     cfg.data.num_workers = 0

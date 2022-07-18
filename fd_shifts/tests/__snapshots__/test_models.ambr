@@ -1,37 +1,3 @@
-# name: test_model_creation[cifar10_vit_study]
-  tensor([[-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449],
-          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
-           -0.3762, -0.8449]], grad_fn=<AddmmBackward0>)
-# ---
 # name: test_model_creation[confidnet]
   tuple(
     tensor([[-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
@@ -170,502 +136,39 @@
           [-0.4296]], grad_fn=<AddmmBackward0>),
   )
 # ---
-# name: test_model_training[cifar10_vit_study].1
-  tensor([[-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434]], grad_fn=<AddmmBackward0>)
-# ---
-# name: test_model_training[cifar10_vit_study].2
-  tensor([[-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434],
-          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
-           -0.3771, -0.8434]], grad_fn=<AddmmBackward0>)
-# ---
-# name: test_model_training[cifar10_vit_study][config]
-  '''
-  data:
-    dataset: cifar10
-    data_dir: !!python/object/apply:pathlib.PosixPath
-    - /
-    - Users
-    - tillb
-    - Data
-    - cifar10
-    pin_memory: true
-    img_size:
-    - 384
-    - 384
-    - 3
-    num_workers: 0
-    num_classes: 10
-    reproduce_confidnet_splits: true
-    augmentations:
-      train:
-        to_tensor: null
-        resize: 384
-        normalize:
-        - - 0.4914
-          - 0.4822
-          - 0.4465
-        - - 0.2023
-          - 0.1994
-          - 0.201
-      val:
-        to_tensor: null
-        resize: 384
-        normalize:
-        - - 0.4914
-          - 0.4822
-          - 0.4465
-        - - 0.2023
-          - 0.1994
-          - 0.201
-      test:
-        to_tensor: null
-        resize: 384
-        normalize:
-        - - 0.4914
-          - 0.4822
-          - 0.4465
-        - - 0.2023
-          - 0.1994
-          - 0.201
-    kwargs: null
-  trainer:
-    resume_from_ckpt_confidnet: false
-    num_epochs: null
-    num_steps: 40000
-    num_epochs_backbone: null
-    dg_pretrain_epochs: 100
-    val_every_n_epoch: 10
-    val_split: zhang
-    do_val: false
-    batch_size: 4
-    resume_from_ckpt: false
-    benchmark: true
-    fast_dev_run: false
-    lr_scheduler:
-      _target_: pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR
-      _partial_: true
-      warmup_epochs: 500
-      max_epochs: 40000
-      warmup_start_lr: 0.0
-      eta_min: 0.0
-      last_epoch: -1
-    optimizer:
-      _target_: torch.optim.sgd.SGD
-      _partial_: true
-      lr: 0.003
-      momentum: 0.9
-      dampening: 0
-      weight_decay: 0.0
-      nesterov: false
-      maximize: false
-    callbacks:
-      model_checkpoint: null
-      confid_monitor: null
-      learning_rate_monitor: null
-    learning_rate_confidnet: null
-    learning_rate_confidnet_finetune: null
-  exp:
-    group_name: vit
-    name: cifar10
-    version: null
-    mode: train_test
-    work_dir: !!python/object/apply:pathlib.PosixPath
-    - /
-    - Users
-    - tillb
-    - Projects
-    - failure-detection-benchmark
-    - the-great-fixup
-    fold_dir: !!python/object/apply:pathlib.PosixPath
-    - exp
-    - '0'
-    root_dir: !!python/object/apply:pathlib.PosixPath
-    - /
-    - private
-    - var
-    - folders
-    - b2
-    - 72t1cfqx03x417_8kl9tqctw0000gq
-    - T
-    - test_model_training_cifar10_vi0
-    data_root_dir: !!python/object/apply:pathlib.PosixPath
-    - /
-    - Users
-    - tillb
-    - Data
-    group_dir: !!python/object/apply:pathlib.PosixPath
-    - /
-    - private
-    - var
-    - folders
-    - b2
-    - 72t1cfqx03x417_8kl9tqctw0000gq
-    - T
-    - test_model_training_cifar10_vi0
-    - vit
-    dir: !!python/object/apply:pathlib.PosixPath
-    - /
-    - private
-    - var
-    - folders
-    - b2
-    - 72t1cfqx03x417_8kl9tqctw0000gq
-    - T
-    - test_model_training_cifar10_vi0
-    - vit
-    - cifar10
-    version_dir: !!python/object/apply:pathlib.PosixPath
-    - /
-    - private
-    - var
-    - folders
-    - b2
-    - 72t1cfqx03x417_8kl9tqctw0000gq
-    - T
-    - test_model_training_cifar10_vi0
-    - vit
-    - cifar10
-    - version_None
-    fold: 0
-    crossval_n_folds: 10
-    crossval_ids_path: !!python/object/apply:pathlib.PosixPath
-    - /
-    - private
-    - var
-    - folders
-    - b2
-    - 72t1cfqx03x417_8kl9tqctw0000gq
-    - T
-    - test_model_training_cifar10_vi0
-    - vit
-    - cifar10
-    - crossval_ids.pickle
-    output_paths:
-      fit:
-        input_imgs_plot: !!python/object/apply:pathlib.PosixPath
-        - /
-        - private
-        - var
-        - folders
-        - b2
-        - 72t1cfqx03x417_8kl9tqctw0000gq
-        - T
-        - test_model_training_cifar10_vi0
-        - vit
-        - cifar10
-        - input_imgs.png
-        raw_output: !!python/object/apply:pathlib.PosixPath
-        - /
-        - private
-        - var
-        - folders
-        - b2
-        - 72t1cfqx03x417_8kl9tqctw0000gq
-        - T
-        - test_model_training_cifar10_vi0
-        - vit
-        - cifar10
-        - version_None
-        - raw_output.npz
-        raw_output_dist: !!python/object/apply:pathlib.PosixPath
-        - /
-        - private
-        - var
-        - folders
-        - b2
-        - 72t1cfqx03x417_8kl9tqctw0000gq
-        - T
-        - test_model_training_cifar10_vi0
-        - vit
-        - cifar10
-        - version_None
-        - raw_output_dist.npz
-        external_confids: !!python/object/apply:pathlib.PosixPath
-        - /
-        - private
-        - var
-        - folders
-        - b2
-        - 72t1cfqx03x417_8kl9tqctw0000gq
-        - T
-        - test_model_training_cifar10_vi0
-        - vit
-        - cifar10
-        - version_None
-        - external_confids.npz
-        external_confids_dist: !!python/object/apply:pathlib.PosixPath
-        - /
-        - private
-        - var
-        - folders
-        - b2
-        - 72t1cfqx03x417_8kl9tqctw0000gq
-        - T
-        - test_model_training_cifar10_vi0
-        - vit
-        - cifar10
-        - version_None
-        - external_confids_dist.npz
-      test:
-        input_imgs_plot: null
-        raw_output: !!python/object/apply:pathlib.PosixPath
-        - /
-        - private
-        - var
-        - folders
-        - b2
-        - 72t1cfqx03x417_8kl9tqctw0000gq
-        - T
-        - test_model_training_cifar10_vi0
-        - vit
-        - cifar10
-        - test_results
-        - raw_output.npz
-        raw_output_dist: !!python/object/apply:pathlib.PosixPath
-        - /
-        - private
-        - var
-        - folders
-        - b2
-        - 72t1cfqx03x417_8kl9tqctw0000gq
-        - T
-        - test_model_training_cifar10_vi0
-        - vit
-        - cifar10
-        - test_results
-        - raw_output_dist.npz
-        external_confids: !!python/object/apply:pathlib.PosixPath
-        - /
-        - private
-        - var
-        - folders
-        - b2
-        - 72t1cfqx03x417_8kl9tqctw0000gq
-        - T
-        - test_model_training_cifar10_vi0
-        - vit
-        - cifar10
-        - test_results
-        - external_confids.npz
-        external_confids_dist: !!python/object/apply:pathlib.PosixPath
-        - /
-        - private
-        - var
-        - folders
-        - b2
-        - 72t1cfqx03x417_8kl9tqctw0000gq
-        - T
-        - test_model_training_cifar10_vi0
-        - vit
-        - cifar10
-        - test_results
-        - external_confids_dist.npz
-    log_path: !!python/object/apply:pathlib.PosixPath
-    - log.txt
-    global_seed: 815965
-  model:
-    name: vit_model
-    fc_dim: 512
-    confidnet_fc_dim: null
-    dg_reward: 2.2
-    avg_pool: true
-    dropout_rate: 0
-    monitor_mcd_samples: 50
-    test_mcd_samples: 50
-    budget: 0.3
-    network:
-      name: vgg13
-      backbone: null
-      imagenet_weights_path: null
-      load_dg_backbone_path: null
-      save_dg_backbone_path: !!python/object/apply:pathlib.PosixPath
-      - ${exp.dir}
-      - dg_backbone.ckpt
-  eval:
-    performance_metrics:
-      train:
-      - loss
-      - nll
-      - accuracy
-      val:
-      - loss
-      - nll
-      - accuracy
-      - brier_score
-      test:
-      - nll
-      - accuracy
-      - brier_score
-    confid_metrics:
-      train:
-      - failauc
-      - failap_suc
-      - failap_err
-      - fpr@95tpr
-      val:
-      - failauc
-      - failap_suc
-      - failap_err
-      - fpr@95tpr
-      - e-aurc
-      - aurc
-      test:
-      - failauc
-      - failap_suc
-      - failap_err
-      - mce
-      - ece
-      - e-aurc
-      - aurc
-      - fpr@95tpr
-    confidence_measures:
-      train:
-      - det_mcp
-      val:
-      - det_mcp
-      - ext
-      test:
-      - det_mcp
-      - det_pe
-      - ext
-    monitor_plots:
-    - hist_per_confid
-    tb_hparams:
-    - fold
-    ext_confid_name: maha
-    test_conf_scaling: false
-    val_tuning: true
-    r_star: 0.25
-    r_delta: 0.05
-    query_studies:
-      iid_study: cifar10_384
-      noise_study:
-      - corrupt_cifar10_384
-      in_class_study: []
-      new_class_study:
-      - cifar100_384
-      - svhn_384
-      - tinyimagenet_384
-  test:
-    name: test_results
-    dir: !!python/object/apply:pathlib.PosixPath
-    - /
-    - private
-    - var
-    - folders
-    - b2
-    - 72t1cfqx03x417_8kl9tqctw0000gq
-    - T
-    - test_model_training_cifar10_vi0
-    - vit
-    - cifar10
-    - test_results
-    cf_path: !!python/object/apply:pathlib.PosixPath
-    - /
-    - private
-    - var
-    - folders
-    - b2
-    - 72t1cfqx03x417_8kl9tqctw0000gq
-    - T
-    - test_model_training_cifar10_vi0
-    - vit
-    - cifar10
-    - hydra
-    - config.yaml
-    selection_criterion: latest
-    best_ckpt_path: !!python/object/apply:pathlib.PosixPath
-    - /
-    - private
-    - var
-    - folders
-    - b2
-    - 72t1cfqx03x417_8kl9tqctw0000gq
-    - T
-    - test_model_training_cifar10_vi0
-    - vit
-    - cifar10
-    - version_None
-    - latest.ckpt
-    only_latest_version: true
-    devries_repro_ood_split: false
-    assim_ood_norm_flag: false
-    iid_set_split: all
-    raw_output_path: /private/var/folders/b2/72t1cfqx03x417_8kl9tqctw0000gq/T/pytest-of-tillb/pytest-295/test_model_training_cifar10_vi0/vit/cifar10/test_results/raw_output.npy
-    external_confids_output_path: /private/var/folders/b2/72t1cfqx03x417_8kl9tqctw0000gq/T/pytest-of-tillb/pytest-295/test_model_training_cifar10_vi0/vit/cifar10/test_results/external_confids.npy
-    selection_mode: max
-  
-  '''
-# ---
-# name: test_model_training[cifar10_vit_study][test_results_file_list]
-  list([
-    PosixPath('vit'),
-    PosixPath('vit/cifar10'),
-    PosixPath('vit/cifar10/version_None'),
-    PosixPath('vit/cifar10/test_results'),
-    PosixPath('vit/cifar10/test_results/raw_output.npz'),
-    PosixPath('vit/cifar10/test_results/external_confids.npz'),
-  ])
+# name: test_model_creation[vit]
+  tensor([[-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449],
+          [-0.8126,  0.7047,  0.1040,  1.1272, -0.0269, -0.4608,  0.8306, -0.4877,
+           -0.3762, -0.8449]], grad_fn=<AddmmBackward0>)
 # ---
 # name: test_model_training[confidnet].1
   tensor([[-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
@@ -702,38 +205,38 @@
             0.5543,  0.5259]], grad_fn=<AddmmBackward0>)
 # ---
 # name: test_model_training[confidnet].2
-  tensor([[-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259],
-          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
-            0.5543,  0.5259]], grad_fn=<AddmmBackward0>)
+  tensor([[ 0.2178,  1.6979, -0.9725, -0.6232,  0.3638,  0.0417, -0.2041, -0.0898,
+            0.6076, -0.0122],
+          [-0.5181,  0.5516, -1.3424, -0.2953,  0.3657, -0.3911, -0.8831, -0.0875,
+            0.2269,  0.9032],
+          [ 0.1592,  0.4968, -1.0137,  0.2056, -0.6306,  0.3825, -1.1937, -0.4275,
+            0.2362,  0.4401],
+          [ 0.2067,  0.6395, -0.4093, -0.8139, -0.3349,  0.1940, -0.7126, -0.0798,
+            0.7505,  0.6211],
+          [-0.2876,  0.7032, -0.9423, -0.3350,  0.6233, -0.0380, -0.5145, -0.3746,
+            0.6171,  0.1846],
+          [ 0.1504,  0.6539, -1.2307, -0.2107, -0.0197, -0.4715, -0.4735, -0.5097,
+            0.7017,  0.3896],
+          [-0.3131,  0.5793, -0.7222,  0.3839,  0.2663,  0.1142, -0.2276, -0.3296,
+            0.5736,  0.3725],
+          [-0.1891,  0.7832, -0.6698, -0.4061,  0.0187,  0.2489, -0.7562, -0.4756,
+           -0.3769, -0.0138],
+          [-0.2848, -0.0932, -1.5895, -0.3908,  0.2375,  0.7115, -0.1028, -0.4253,
+            0.7398,  0.3552],
+          [ 0.0989,  0.4912, -1.1648, -0.3542,  0.5756, -0.1735, -0.4224, -0.7733,
+            0.3692,  0.5483],
+          [ 0.0159, -0.1449, -0.7036,  0.0097, -0.1335,  0.8083, -0.8031, -0.6092,
+            0.3222, -0.6013],
+          [ 0.2509,  1.1312, -0.8464, -0.0735,  0.2681, -0.6897, -0.6874,  0.4764,
+           -0.3113,  0.7633],
+          [-0.2534,  1.4766, -0.6960, -0.3075,  0.9940,  0.3950, -0.1235, -0.3097,
+            0.9933,  0.0358],
+          [-0.1991,  0.9206, -0.9216, -0.2902,  0.4046,  0.4394,  0.2959, -0.0869,
+            0.5846,  0.8427],
+          [-0.2527,  0.7576, -0.7818, -0.0261, -0.2097, -0.2418,  0.3616,  0.2356,
+            0.8972,  0.0182],
+          [ 0.0702,  1.4633, -0.1903, -0.0636, -0.3037,  0.3715, -0.3133, -0.7069,
+            0.3538,  0.2535]], grad_fn=<AddmmBackward0>)
 # ---
 # name: test_model_training[confidnet][config]
   '''
@@ -790,12 +293,12 @@
   trainer:
     resume_from_ckpt_confidnet: false
     num_epochs: 470
-    num_steps: 300
+    num_steps: null
     num_epochs_backbone: 250
     dg_pretrain_epochs: 100
-    val_every_n_epoch: 1
+    val_every_n_epoch: 5
     val_split: devries
-    do_val: false
+    do_val: true
     batch_size: 4
     resume_from_ckpt: false
     benchmark: true
@@ -819,6 +322,7 @@
     callbacks:
       model_checkpoint: null
       confid_monitor: null
+      learning_rate_monitor: null
       training_stages:
         milestones:
         - 250
@@ -827,7 +331,6 @@
         pretrained_confidnet_path: null
         disable_dropout_at_finetuning: true
         confidnet_lr_scheduler: false
-      learning_rate_monitor: null
     learning_rate_confidnet: 0.0001
     learning_rate_confidnet_finetune: 1.0e-06
   exp:
@@ -1035,7 +538,7 @@
     confidnet_fc_dim: 400
     dg_reward: 2.2
     avg_pool: true
-    dropout_rate: 0
+    dropout_rate: 1
     monitor_mcd_samples: 50
     test_mcd_samples: 50
     budget: 0.3
@@ -1045,7 +548,16 @@
       imagenet_weights_path: null
       load_dg_backbone_path: null
       save_dg_backbone_path: !!python/object/apply:pathlib.PosixPath
-      - ${exp.dir}
+      - /
+      - private
+      - var
+      - folders
+      - b2
+      - 72t1cfqx03x417_8kl9tqctw0000gq
+      - T
+      - test_model_training_confidnet_0
+      - confidnet
+      - cifar10
       - dg_backbone.ckpt
   eval:
     performance_metrics:
@@ -1068,6 +580,8 @@
       - failap_suc
       - failap_err
       - fpr@95tpr
+      - e-aurc
+      - aurc
       val:
       - failauc
       - failap_suc
@@ -1092,11 +606,15 @@
       test:
       - det_mcp
       - det_pe
+      - ext
       - mcd_mcp
       - mcd_pe
       - mcd_ee
       - mcd_mi
       - mcd_sv
+      - mcd_waic
+      - ext_mcd
+      - ext_waic
     monitor_plots:
     - hist_per_confid
     tb_hparams:
@@ -1112,9 +630,9 @@
       - corrupt_cifar10
       in_class_study: []
       new_class_study:
-      - tinyimagenet_resize
       - cifar100
       - svhn
+      - tinyimagenet_resize
   test:
     name: test_results
     dir: !!python/object/apply:pathlib.PosixPath
@@ -1162,7 +680,7 @@
     iid_set_split: devries
     raw_output_path: raw_output.npz
     external_confids_output_path: external_confids.npz
-    selection_mode: null
+    selection_mode: max
   
   '''
 # ---
@@ -1175,6 +693,7 @@
     PosixPath('confidnet/cifar10/test_results/raw_output.npz'),
     PosixPath('confidnet/cifar10/test_results/raw_output_dist.npz'),
     PosixPath('confidnet/cifar10/test_results/external_confids_dist.npz'),
+    PosixPath('confidnet/cifar10/test_results/external_confids.npz'),
   ])
 # ---
 # name: test_model_training[deepgamblers].1
@@ -1300,12 +819,12 @@
   trainer:
     resume_from_ckpt_confidnet: false
     num_epochs: 300
-    num_steps: 300
+    num_steps: null
     num_epochs_backbone: null
     dg_pretrain_epochs: 100
-    val_every_n_epoch: 1
+    val_every_n_epoch: 5
     val_split: devries
-    do_val: false
+    do_val: true
     batch_size: 4
     resume_from_ckpt: false
     benchmark: true
@@ -1623,6 +1142,7 @@
       new_class_study:
       - cifar100
       - svhn
+      - tinyimagenet_resize
   test:
     name: test_results
     dir: !!python/object/apply:pathlib.PosixPath
@@ -1807,12 +1327,12 @@
   trainer:
     resume_from_ckpt_confidnet: false
     num_epochs: 250
-    num_steps: 300
+    num_steps: null
     num_epochs_backbone: null
     dg_pretrain_epochs: 100
-    val_every_n_epoch: 1
+    val_every_n_epoch: 5
     val_split: devries
-    do_val: false
+    do_val: true
     batch_size: 4
     resume_from_ckpt: false
     benchmark: true
@@ -1820,7 +1340,7 @@
     lr_scheduler:
       _target_: torch.optim.lr_scheduler.CosineAnnealingLR
       _partial_: true
-      T_max: 300
+      T_max: 250
       eta_min: 0
       last_epoch: -1
       verbose: false
@@ -2042,7 +1562,7 @@
     name: devries_model
     fc_dim: 512
     confidnet_fc_dim: null
-    dg_reward: -1.0
+    dg_reward: 0.0
     avg_pool: true
     dropout_rate: 0
     monitor_mcd_samples: 50
@@ -2119,6 +1639,7 @@
       new_class_study:
       - cifar100
       - svhn
+      - tinyimagenet_resize
   test:
     name: test_results
     dir: !!python/object/apply:pathlib.PosixPath
@@ -2178,5 +1699,512 @@
     PosixPath('devries/cifar10/test_results'),
     PosixPath('devries/cifar10/test_results/raw_output.npz'),
     PosixPath('devries/cifar10/test_results/external_confids.npz'),
+  ])
+# ---
+# name: test_model_training[vit].1
+  tensor([[-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434]], grad_fn=<AddmmBackward0>)
+# ---
+# name: test_model_training[vit].2
+  tensor([[-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434]], grad_fn=<AddmmBackward0>)
+# ---
+# name: test_model_training[vit][config]
+  '''
+  data:
+    dataset: cifar10
+    data_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Data
+    - cifar10
+    pin_memory: true
+    img_size:
+    - 384
+    - 384
+    - 3
+    num_workers: 0
+    num_classes: 10
+    reproduce_confidnet_splits: true
+    augmentations:
+      train:
+        to_tensor: null
+        resize: 384
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+      val:
+        to_tensor: null
+        resize: 384
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+      test:
+        to_tensor: null
+        resize: 384
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+    kwargs: null
+  trainer:
+    resume_from_ckpt_confidnet: false
+    num_epochs: null
+    num_steps: 40000
+    num_epochs_backbone: null
+    dg_pretrain_epochs: 100
+    val_every_n_epoch: 5
+    val_split: devries
+    do_val: true
+    batch_size: 4
+    resume_from_ckpt: false
+    benchmark: true
+    fast_dev_run: false
+    lr_scheduler:
+      _target_: pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR
+      _partial_: true
+      warmup_epochs: 500
+      max_epochs: 40000
+      warmup_start_lr: 0.0
+      eta_min: 0.0
+      last_epoch: -1
+    optimizer:
+      _target_: torch.optim.sgd.SGD
+      _partial_: true
+      lr: 0.003
+      momentum: 0.9
+      dampening: 0
+      weight_decay: 0.0
+      nesterov: false
+      maximize: false
+    callbacks:
+      model_checkpoint: null
+      confid_monitor: null
+      learning_rate_monitor: null
+    learning_rate_confidnet: null
+    learning_rate_confidnet_finetune: null
+  exp:
+    group_name: vit
+    name: cifar10
+    version: null
+    mode: train_test
+    work_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Projects
+    - failure-detection-benchmark
+    - the-great-fixup
+    fold_dir: !!python/object/apply:pathlib.PosixPath
+    - exp
+    - '0'
+    root_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - test_model_training_vit_0
+    data_root_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Data
+    group_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - test_model_training_vit_0
+    - vit
+    dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - test_model_training_vit_0
+    - vit
+    - cifar10
+    version_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - test_model_training_vit_0
+    - vit
+    - cifar10
+    - version_None
+    fold: 0
+    crossval_n_folds: 10
+    crossval_ids_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - test_model_training_vit_0
+    - vit
+    - cifar10
+    - crossval_ids.pickle
+    output_paths:
+      fit:
+        input_imgs_plot: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - test_model_training_vit_0
+        - vit
+        - cifar10
+        - input_imgs.png
+        raw_output: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - test_model_training_vit_0
+        - vit
+        - cifar10
+        - version_None
+        - raw_output.npz
+        raw_output_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - test_model_training_vit_0
+        - vit
+        - cifar10
+        - version_None
+        - raw_output_dist.npz
+        external_confids: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - test_model_training_vit_0
+        - vit
+        - cifar10
+        - version_None
+        - external_confids.npz
+        external_confids_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - test_model_training_vit_0
+        - vit
+        - cifar10
+        - version_None
+        - external_confids_dist.npz
+      test:
+        input_imgs_plot: null
+        raw_output: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - test_model_training_vit_0
+        - vit
+        - cifar10
+        - test_results
+        - raw_output.npz
+        raw_output_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - test_model_training_vit_0
+        - vit
+        - cifar10
+        - test_results
+        - raw_output_dist.npz
+        external_confids: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - test_model_training_vit_0
+        - vit
+        - cifar10
+        - test_results
+        - external_confids.npz
+        external_confids_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - test_model_training_vit_0
+        - vit
+        - cifar10
+        - test_results
+        - external_confids_dist.npz
+    log_path: !!python/object/apply:pathlib.PosixPath
+    - log.txt
+    global_seed: 815965
+  model:
+    name: vit_model
+    fc_dim: 512
+    confidnet_fc_dim: null
+    dg_reward: 2.2
+    avg_pool: true
+    dropout_rate: 0
+    monitor_mcd_samples: 50
+    test_mcd_samples: 50
+    budget: 0.3
+    network:
+      name: vgg13
+      backbone: null
+      imagenet_weights_path: null
+      load_dg_backbone_path: null
+      save_dg_backbone_path: !!python/object/apply:pathlib.PosixPath
+      - /
+      - private
+      - var
+      - folders
+      - b2
+      - 72t1cfqx03x417_8kl9tqctw0000gq
+      - T
+      - test_model_training_vit_0
+      - vit
+      - cifar10
+      - dg_backbone.ckpt
+  eval:
+    performance_metrics:
+      train:
+      - loss
+      - nll
+      - accuracy
+      val:
+      - loss
+      - nll
+      - accuracy
+      - brier_score
+      test:
+      - nll
+      - accuracy
+      - brier_score
+    confid_metrics:
+      train:
+      - failauc
+      - failap_suc
+      - failap_err
+      - fpr@95tpr
+      - e-aurc
+      - aurc
+      val:
+      - failauc
+      - failap_suc
+      - failap_err
+      - fpr@95tpr
+      - e-aurc
+      - aurc
+      test:
+      - failauc
+      - failap_suc
+      - failap_err
+      - mce
+      - ece
+      - e-aurc
+      - aurc
+      - fpr@95tpr
+    confidence_measures:
+      train:
+      - det_mcp
+      val:
+      - det_mcp
+      test:
+      - det_mcp
+      - det_pe
+      - ext
+    monitor_plots:
+    - hist_per_confid
+    tb_hparams:
+    - fold
+    ext_confid_name: maha
+    test_conf_scaling: false
+    val_tuning: true
+    r_star: 0.25
+    r_delta: 0.05
+    query_studies:
+      iid_study: cifar10_384
+      noise_study:
+      - corrupt_cifar10_384
+      in_class_study: []
+      new_class_study:
+      - cifar100_384
+      - svhn_384
+      - tinyimagenet_384
+  test:
+    name: test_results
+    dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - test_model_training_vit_0
+    - vit
+    - cifar10
+    - test_results
+    cf_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - test_model_training_vit_0
+    - vit
+    - cifar10
+    - hydra
+    - config.yaml
+    selection_criterion: latest
+    best_ckpt_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - test_model_training_vit_0
+    - vit
+    - cifar10
+    - version_None
+    - latest.ckpt
+    only_latest_version: true
+    devries_repro_ood_split: false
+    assim_ood_norm_flag: false
+    iid_set_split: devries
+    raw_output_path: raw_output.npz
+    external_confids_output_path: external_confids.npz
+    selection_mode: max
+  
+  '''
+# ---
+# name: test_model_training[vit][test_results_file_list]
+  list([
+    PosixPath('vit'),
+    PosixPath('vit/cifar10'),
+    PosixPath('vit/cifar10/version_None'),
+    PosixPath('vit/cifar10/test_results'),
+    PosixPath('vit/cifar10/test_results/raw_output.npz'),
+    PosixPath('vit/cifar10/test_results/external_confids.npz'),
   ])
 # ---
