@@ -31,6 +31,7 @@ exp:
     test:
       raw_output: ${test.dir}/raw_output.npz
       encoded_output: ${test.dir}/encoded_output.npz
+      attributions_output: ${test.dir}/attributions.csv
       raw_output_dist: ${test.dir}/raw_output_dist.npz
       external_confids: ${test.dir}/external_confids.npz
       external_confids_dist: ${test.dir}/external_confids_dist.npz

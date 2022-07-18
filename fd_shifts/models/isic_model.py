@@ -59,11 +59,16 @@ class net(pl.LightningModule):
             maha = maha.max(dim=1)[0].type_as(x)
 
             softmax_list.append(softmax.unsqueeze(2))
+            # external confid->was nicht aus dem Softmax berechnet wird!
+            # theoretically brauche ich das nicht?
+
             conf_list.append(maha.unsqueeze(1))
 
         self.disable_dropout()
 
         return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
+        # der Zweite Teil returned für external confids
+        # diese müssen bei der study confid angegeben sein "ext" siehe vit models
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -193,16 +198,18 @@ class net(pl.LightningModule):
         #    len(self.train_dataloader()) / self.trainer.accumulate_grad_batches
         # )
         scheduler_cosine = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-            optim, self.hparams.trainer.max_epochs - 1
+            optim, (self.hparams.trainer.max_epochs - 1) * 4
         )
         scheduler_warmup = GradualWarmupSchedulerV2(
             optim, multiplier=10, total_epoch=1, after_scheduler=scheduler_cosine
-        )
+        )  # try basic cosine annealing
 
-        lr_sched = {
-            "scheduler": scheduler_warmup,
-            "interval": "step",
-        }
+        # lr_sched = {
+        #    "scheduler": scheduler_cosine,
+        #    "interval": "step",
+        # }
+
+        lr_sched = {"scheduler": scheduler_warmup, "interval": "epoch", "frequency": 1}
 
         optimizers = {
             "optimizer": optim,
