@@ -1,3 +1,5 @@
+from typing import TypeVar
+from functools import reduce
 import logging
 from random import randint
 
@@ -32,3 +34,10 @@ logging.basicConfig(handlers=[InterceptHandler()], level=logging.DEBUG)
 
 OmegaConf.register_new_resolver("fd_shifts.version", version)
 OmegaConf.register_new_resolver("fd_shifts.random_seed", lambda: randint(0, 1_000_000))
+OmegaConf.register_new_resolver("fd_shifts.if_else", lambda cond, a, b: a if cond else b)
+
+T = TypeVar('T')
+def _concat(*args: list[T]) -> list[T]:
+    return reduce(lambda a, b: a + b, args)
+
+OmegaConf.register_new_resolver("fd_shifts.concat", _concat)
