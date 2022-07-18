@@ -126,6 +126,8 @@ def test_model_training(study: str, snapshot: Any, tmp_path: Path, mock_env: Non
     cfg.exp.version_dir.mkdir()
     cfg.test.dir.mkdir()
 
+    assert OmegaConf.to_yaml(cfg) == snapshot(name="config")
+
     datamodule = AbstractDataLoader(cfg)
     model = models.get_model(cfg.model.name)(cfg)
     trainer = pl.Trainer(

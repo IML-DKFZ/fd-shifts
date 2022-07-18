@@ -204,6 +204,494 @@
           [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
            -0.3771, -0.8434]], grad_fn=<AddmmBackward0>)
 # ---
+# name: test_model_training[cifar10_vit_study].2
+  tensor([[-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434],
+          [-0.8136,  0.7066,  0.1053,  1.1278, -0.0272, -0.4608,  0.8297, -0.4879,
+           -0.3771, -0.8434]], grad_fn=<AddmmBackward0>)
+# ---
+# name: test_model_training[cifar10_vit_study][config]
+  '''
+  pkgversion: 0.0.1+6c57df6
+  data:
+    dataset: cifar10
+    data_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Data
+    - cifar10
+    pin_memory: true
+    img_size:
+    - 384
+    - 384
+    - 3
+    num_workers: 0
+    num_classes: 10
+    reproduce_confidnet_splits: true
+    augmentations:
+      train:
+        to_tensor: null
+        resize: 384
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+      val:
+        to_tensor: null
+        resize: 384
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+      test:
+        to_tensor: null
+        resize: 384
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+    kwargs: null
+  trainer:
+    resume_from_ckpt_confidnet: false
+    num_epochs: null
+    num_steps: 40000
+    num_epochs_backbone: null
+    dg_pretrain_epochs: 100
+    val_every_n_epoch: 10
+    val_split: zhang
+    do_val: false
+    batch_size: 4
+    resume_from_ckpt: false
+    benchmark: true
+    fast_dev_run: false
+    lr_scheduler:
+      _target_: pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR
+      _partial_: true
+      warmup_epochs: 500
+      max_epochs: 40000
+      warmup_start_lr: 0.0
+      eta_min: 0.0
+      last_epoch: -1
+    optimizer:
+      _target_: torch.optim.sgd.SGD
+      _partial_: true
+      lr: 0.003
+      momentum: 0.9
+      dampening: 0
+      weight_decay: 0.0
+      nesterov: false
+      maximize: false
+    callbacks:
+      model_checkpoint: null
+      confid_monitor: null
+      learning_rate_monitor: null
+    learning_rate_confidnet: null
+    learning_rate_confidnet_finetune: null
+  exp:
+    group_name: vit
+    name: cifar10
+    version: null
+    mode: train_test
+    work_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Projects
+    - failure-detection-benchmark
+    - the-great-fixup
+    fold_dir: !!python/object/apply:pathlib.PosixPath
+    - exp
+    - '0'
+    root_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_cifar10_vi0
+    data_root_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Data
+    group_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_cifar10_vi0
+    - vit
+    dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_cifar10_vi0
+    - vit
+    - cifar10
+    version_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_cifar10_vi0
+    - vit
+    - cifar10
+    - version_None
+    fold: 0
+    crossval_n_folds: 10
+    crossval_ids_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_cifar10_vi0
+    - vit
+    - cifar10
+    - crossval_ids.pickle
+    output_paths:
+      fit:
+        input_imgs_plot: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_cifar10_vi0
+        - vit
+        - cifar10
+        - input_imgs.png
+        raw_output: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_cifar10_vi0
+        - vit
+        - cifar10
+        - version_None
+        - raw_output.npz
+        raw_output_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_cifar10_vi0
+        - vit
+        - cifar10
+        - version_None
+        - raw_output_dist.npz
+        external_confids: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_cifar10_vi0
+        - vit
+        - cifar10
+        - version_None
+        - external_confids.npz
+        external_confids_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_cifar10_vi0
+        - vit
+        - cifar10
+        - version_None
+        - external_confids_dist.npz
+      test:
+        input_imgs_plot: null
+        raw_output: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_cifar10_vi0
+        - vit
+        - cifar10
+        - test_results
+        - raw_output.npz
+        raw_output_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_cifar10_vi0
+        - vit
+        - cifar10
+        - test_results
+        - raw_output_dist.npz
+        external_confids: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_cifar10_vi0
+        - vit
+        - cifar10
+        - test_results
+        - external_confids.npz
+        external_confids_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_cifar10_vi0
+        - vit
+        - cifar10
+        - test_results
+        - external_confids_dist.npz
+    log_path: !!python/object/apply:pathlib.PosixPath
+    - log.txt
+    global_seed: 815965
+  model:
+    name: vit_model
+    fc_dim: 512
+    confidnet_fc_dim: null
+    dg_reward: 2.2
+    avg_pool: true
+    dropout_rate: 0
+    monitor_mcd_samples: 50
+    test_mcd_samples: 50
+    budget: 0.3
+    network:
+      name: vgg13
+      backbone: null
+      imagenet_weights_path: null
+      load_dg_backbone_path: null
+      save_dg_backbone_path: !!python/object/apply:pathlib.PosixPath
+      - ${exp.dir}
+      - dg_backbone.ckpt
+  eval:
+    performance_metrics:
+      train:
+      - loss
+      - nll
+      - accuracy
+      val:
+      - loss
+      - nll
+      - accuracy
+      - brier_score
+      test:
+      - nll
+      - accuracy
+      - brier_score
+    confid_metrics:
+      train:
+      - failauc
+      - failap_suc
+      - failap_err
+      - fpr@95tpr
+      val:
+      - failauc
+      - failap_suc
+      - failap_err
+      - fpr@95tpr
+      - e-aurc
+      - aurc
+      test:
+      - failauc
+      - failap_suc
+      - failap_err
+      - mce
+      - ece
+      - e-aurc
+      - aurc
+      - fpr@95tpr
+    confidence_measures:
+      train:
+      - det_mcp
+      val:
+      - det_mcp
+      - ext
+      test:
+      - det_mcp
+      - det_pe
+      - ext
+    monitor_plots:
+    - hist_per_confid
+    tb_hparams:
+    - fold
+    ext_confid_name: maha
+    test_conf_scaling: false
+    val_tuning: true
+    r_star: 0.25
+    r_delta: 0.05
+    query_studies:
+      iid_study: cifar10_384
+      noise_study:
+      - corrupt_cifar10_384
+      in_class_study: []
+      new_class_study:
+      - cifar100_384
+      - svhn_384
+      - tinyimagenet_384
+  test:
+    name: test_results
+    dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_cifar10_vi0
+    - vit
+    - cifar10
+    - test_results
+    cf_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_cifar10_vi0
+    - vit
+    - cifar10
+    - hydra
+    - config.yaml
+    selection_criterion: latest
+    best_ckpt_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_cifar10_vi0
+    - vit
+    - cifar10
+    - version_None
+    - latest.ckpt
+    only_latest_version: true
+    devries_repro_ood_split: false
+    assim_ood_norm_flag: false
+    iid_set_split: all
+    raw_output_path: /private/var/folders/b2/72t1cfqx03x417_8kl9tqctw0000gq/T/pytest-of-tillb/pytest-291/test_model_training_cifar10_vi0/vit/cifar10/test_results/raw_output.npy
+    external_confids_output_path: /private/var/folders/b2/72t1cfqx03x417_8kl9tqctw0000gq/T/pytest-of-tillb/pytest-291/test_model_training_cifar10_vi0/vit/cifar10/test_results/external_confids.npy
+    selection_mode: max
+  
+  '''
+# ---
 # name: test_model_training[cifar10_vit_study][test_results_file_list]
   list([
     PosixPath('vit'),
@@ -247,6 +735,506 @@
             0.5543,  0.5259],
           [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
             0.5543,  0.5259]], grad_fn=<AddmmBackward0>)
+# ---
+# name: test_model_training[confidnet].2
+  tensor([[-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259],
+          [-0.2799,  0.9154, -1.0051, -0.2340,  0.3345,  0.3086, -0.3964, -0.3085,
+            0.5543,  0.5259]], grad_fn=<AddmmBackward0>)
+# ---
+# name: test_model_training[confidnet][config]
+  '''
+  pkgversion: 0.0.1+6c57df6
+  data:
+    dataset: cifar10
+    data_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Data
+    - cifar10
+    pin_memory: true
+    img_size:
+    - 32
+    - 32
+    - 3
+    num_workers: 0
+    num_classes: 10
+    reproduce_confidnet_splits: true
+    augmentations:
+      train:
+        random_crop:
+        - 32
+        - 4
+        hflip: true
+        to_tensor: null
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+        cutout: 16
+      val:
+        to_tensor: null
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+      test:
+        to_tensor: null
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+    kwargs: null
+  trainer:
+    resume_from_ckpt_confidnet: false
+    num_epochs: 470
+    num_steps: 300
+    num_epochs_backbone: 250
+    dg_pretrain_epochs: 100
+    val_every_n_epoch: 1
+    val_split: devries
+    do_val: false
+    batch_size: 4
+    resume_from_ckpt: false
+    benchmark: true
+    fast_dev_run: false
+    lr_scheduler:
+      _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+      _partial_: true
+      T_max: 250
+      eta_min: 0
+      last_epoch: -1
+      verbose: false
+    optimizer:
+      _target_: torch.optim.sgd.SGD
+      _partial_: true
+      lr: 0.1
+      momentum: 0.9
+      dampening: 0
+      weight_decay: 0.0005
+      nesterov: false
+      maximize: false
+    callbacks:
+      model_checkpoint: null
+      confid_monitor: null
+      training_stages:
+        milestones:
+        - 250
+        - 450
+        pretrained_backbone_path: null
+        pretrained_confidnet_path: null
+        disable_dropout_at_finetuning: true
+        confidnet_lr_scheduler: false
+      learning_rate_monitor: null
+    learning_rate_confidnet: 0.0001
+    learning_rate_confidnet_finetune: 1.0e-06
+  exp:
+    group_name: confidnet
+    name: cifar10
+    version: null
+    mode: train_test
+    work_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Projects
+    - failure-detection-benchmark
+    - the-great-fixup
+    fold_dir: !!python/object/apply:pathlib.PosixPath
+    - exp
+    - '0'
+    root_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_confidnet_0
+    data_root_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Data
+    group_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_confidnet_0
+    - confidnet
+    dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_confidnet_0
+    - confidnet
+    - cifar10
+    version_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_confidnet_0
+    - confidnet
+    - cifar10
+    - version_None
+    fold: 0
+    crossval_n_folds: 10
+    crossval_ids_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_confidnet_0
+    - confidnet
+    - cifar10
+    - crossval_ids.pickle
+    output_paths:
+      fit:
+        input_imgs_plot: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_confidnet_0
+        - confidnet
+        - cifar10
+        - input_imgs.png
+        raw_output: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_confidnet_0
+        - confidnet
+        - cifar10
+        - version_None
+        - raw_output.npz
+        raw_output_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_confidnet_0
+        - confidnet
+        - cifar10
+        - version_None
+        - raw_output_dist.npz
+        external_confids: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_confidnet_0
+        - confidnet
+        - cifar10
+        - version_None
+        - external_confids.npz
+        external_confids_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_confidnet_0
+        - confidnet
+        - cifar10
+        - version_None
+        - external_confids_dist.npz
+      test:
+        input_imgs_plot: null
+        raw_output: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_confidnet_0
+        - confidnet
+        - cifar10
+        - test_results
+        - raw_output.npz
+        raw_output_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_confidnet_0
+        - confidnet
+        - cifar10
+        - test_results
+        - raw_output_dist.npz
+        external_confids: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_confidnet_0
+        - confidnet
+        - cifar10
+        - test_results
+        - external_confids.npz
+        external_confids_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_confidnet_0
+        - confidnet
+        - cifar10
+        - test_results
+        - external_confids_dist.npz
+    log_path: !!python/object/apply:pathlib.PosixPath
+    - log.txt
+    global_seed: 815965
+  model:
+    name: confidnet_model
+    fc_dim: 512
+    confidnet_fc_dim: 400
+    dg_reward: 2.2
+    avg_pool: true
+    dropout_rate: 0
+    monitor_mcd_samples: 50
+    test_mcd_samples: 50
+    budget: 0.3
+    network:
+      name: confidnet_and_enc
+      backbone: vgg13
+      imagenet_weights_path: null
+      load_dg_backbone_path: null
+      save_dg_backbone_path: !!python/object/apply:pathlib.PosixPath
+      - ${exp.dir}
+      - dg_backbone.ckpt
+  eval:
+    performance_metrics:
+      train:
+      - loss
+      - nll
+      - accuracy
+      val:
+      - loss
+      - nll
+      - accuracy
+      - brier_score
+      test:
+      - nll
+      - accuracy
+      - brier_score
+    confid_metrics:
+      train:
+      - failauc
+      - failap_suc
+      - failap_err
+      - fpr@95tpr
+      val:
+      - failauc
+      - failap_suc
+      - failap_err
+      - fpr@95tpr
+      - e-aurc
+      - aurc
+      test:
+      - failauc
+      - failap_suc
+      - failap_err
+      - mce
+      - ece
+      - e-aurc
+      - aurc
+      - fpr@95tpr
+    confidence_measures:
+      train:
+      - det_mcp
+      val:
+      - det_mcp
+      test:
+      - det_mcp
+      - det_pe
+      - mcd_mcp
+      - mcd_pe
+      - mcd_ee
+      - mcd_mi
+      - mcd_sv
+    monitor_plots:
+    - hist_per_confid
+    tb_hparams:
+    - fold
+    ext_confid_name: tcp
+    test_conf_scaling: false
+    val_tuning: true
+    r_star: 0.25
+    r_delta: 0.05
+    query_studies:
+      iid_study: cifar10
+      noise_study:
+      - corrupt_cifar10
+      in_class_study: []
+      new_class_study:
+      - tinyimagenet_resize
+      - cifar100
+      - svhn
+  test:
+    name: test_results
+    dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_confidnet_0
+    - confidnet
+    - cifar10
+    - test_results
+    cf_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_confidnet_0
+    - confidnet
+    - cifar10
+    - hydra
+    - config.yaml
+    selection_criterion: latest
+    best_ckpt_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_confidnet_0
+    - confidnet
+    - cifar10
+    - version_None
+    - latest.ckpt
+    only_latest_version: true
+    devries_repro_ood_split: false
+    assim_ood_norm_flag: false
+    iid_set_split: devries
+    raw_output_path: raw_output.npz
+    external_confids_output_path: external_confids.npz
+    selection_mode: null
+  
+  '''
 # ---
 # name: test_model_training[confidnet][test_results_file_list]
   list([
@@ -293,6 +1281,506 @@
           [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
             0.6423,  0.5489, -0.2563]], grad_fn=<AddmmBackward0>)
 # ---
+# name: test_model_training[deepgamblers].2
+  tensor([[-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563],
+          [-0.9669,  0.7009, -0.1158,  0.0420, -0.1330, -0.2605, -0.9845,  0.1741,
+            0.6423,  0.5489, -0.2563]], grad_fn=<AddmmBackward0>)
+# ---
+# name: test_model_training[deepgamblers][config]
+  '''
+  pkgversion: 0.0.1+6c57df6
+  data:
+    dataset: cifar10
+    data_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Data
+    - cifar10
+    pin_memory: true
+    img_size:
+    - 32
+    - 32
+    - 3
+    num_workers: 0
+    num_classes: 10
+    reproduce_confidnet_splits: true
+    augmentations:
+      train:
+        random_crop:
+        - 32
+        - 4
+        hflip: true
+        to_tensor: null
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+        cutout: 16
+      val:
+        to_tensor: null
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+      test:
+        to_tensor: null
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+    kwargs: null
+  trainer:
+    resume_from_ckpt_confidnet: false
+    num_epochs: 300
+    num_steps: 300
+    num_epochs_backbone: null
+    dg_pretrain_epochs: 100
+    val_every_n_epoch: 1
+    val_split: devries
+    do_val: false
+    batch_size: 4
+    resume_from_ckpt: false
+    benchmark: true
+    fast_dev_run: false
+    lr_scheduler:
+      _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+      _partial_: true
+      T_max: 300
+      eta_min: 0
+      last_epoch: -1
+      verbose: false
+    optimizer:
+      _target_: torch.optim.sgd.SGD
+      _partial_: true
+      lr: 0.1
+      momentum: 0.9
+      dampening: 0
+      weight_decay: 0.0005
+      nesterov: false
+      maximize: false
+    callbacks:
+      model_checkpoint: null
+      confid_monitor: null
+      learning_rate_monitor: null
+    learning_rate_confidnet: null
+    learning_rate_confidnet_finetune: null
+  exp:
+    group_name: deepgamblers
+    name: cifar10
+    version: null
+    mode: train_test
+    work_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Projects
+    - failure-detection-benchmark
+    - the-great-fixup
+    fold_dir: !!python/object/apply:pathlib.PosixPath
+    - exp
+    - '0'
+    root_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_deepgamble0
+    data_root_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Data
+    group_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_deepgamble0
+    - deepgamblers
+    dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_deepgamble0
+    - deepgamblers
+    - cifar10
+    version_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_deepgamble0
+    - deepgamblers
+    - cifar10
+    - version_None
+    fold: 0
+    crossval_n_folds: 10
+    crossval_ids_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_deepgamble0
+    - deepgamblers
+    - cifar10
+    - crossval_ids.pickle
+    output_paths:
+      fit:
+        input_imgs_plot: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_deepgamble0
+        - deepgamblers
+        - cifar10
+        - input_imgs.png
+        raw_output: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_deepgamble0
+        - deepgamblers
+        - cifar10
+        - version_None
+        - raw_output.npz
+        raw_output_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_deepgamble0
+        - deepgamblers
+        - cifar10
+        - version_None
+        - raw_output_dist.npz
+        external_confids: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_deepgamble0
+        - deepgamblers
+        - cifar10
+        - version_None
+        - external_confids.npz
+        external_confids_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_deepgamble0
+        - deepgamblers
+        - cifar10
+        - version_None
+        - external_confids_dist.npz
+      test:
+        input_imgs_plot: null
+        raw_output: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_deepgamble0
+        - deepgamblers
+        - cifar10
+        - test_results
+        - raw_output.npz
+        raw_output_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_deepgamble0
+        - deepgamblers
+        - cifar10
+        - test_results
+        - raw_output_dist.npz
+        external_confids: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_deepgamble0
+        - deepgamblers
+        - cifar10
+        - test_results
+        - external_confids.npz
+        external_confids_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_deepgamble0
+        - deepgamblers
+        - cifar10
+        - test_results
+        - external_confids_dist.npz
+    log_path: !!python/object/apply:pathlib.PosixPath
+    - log.txt
+    global_seed: 815965
+  model:
+    name: devries_model
+    fc_dim: 512
+    confidnet_fc_dim: null
+    dg_reward: 2.2
+    avg_pool: true
+    dropout_rate: 0
+    monitor_mcd_samples: 50
+    test_mcd_samples: 50
+    budget: 0.3
+    network:
+      name: vgg13
+      backbone: null
+      imagenet_weights_path: null
+      load_dg_backbone_path: null
+      save_dg_backbone_path: !!python/object/apply:pathlib.PosixPath
+      - /
+      - private
+      - var
+      - folders
+      - b2
+      - 72t1cfqx03x417_8kl9tqctw0000gq
+      - T
+      - pytest-of-tillb
+      - pytest-291
+      - test_model_training_deepgamble0
+      - deepgamblers
+      - cifar10
+      - dg_backbone.ckpt
+  eval:
+    performance_metrics:
+      train:
+      - loss
+      - nll
+      - accuracy
+      val:
+      - loss
+      - nll
+      - accuracy
+      - brier_score
+      test:
+      - nll
+      - accuracy
+      - brier_score
+    confid_metrics:
+      train:
+      - failauc
+      - failap_suc
+      - failap_err
+      - fpr@95tpr
+      - e-aurc
+      - aurc
+      val:
+      - failauc
+      - failap_suc
+      - failap_err
+      - fpr@95tpr
+      - e-aurc
+      - aurc
+      test:
+      - failauc
+      - failap_suc
+      - failap_err
+      - mce
+      - ece
+      - e-aurc
+      - aurc
+      - fpr@95tpr
+    confidence_measures:
+      train:
+      - det_mcp
+      val:
+      - det_mcp
+      test:
+      - det_mcp
+      - det_pe
+      - ext
+    monitor_plots:
+    - hist_per_confid
+    tb_hparams:
+    - fold
+    ext_confid_name: dg
+    test_conf_scaling: false
+    val_tuning: true
+    r_star: 0.25
+    r_delta: 0.05
+    query_studies:
+      iid_study: cifar10
+      noise_study:
+      - corrupt_cifar10
+      in_class_study: []
+      new_class_study:
+      - cifar100
+      - svhn
+  test:
+    name: test_results
+    dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_deepgamble0
+    - deepgamblers
+    - cifar10
+    - test_results
+    cf_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_deepgamble0
+    - deepgamblers
+    - cifar10
+    - hydra
+    - config.yaml
+    selection_criterion: latest
+    best_ckpt_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_deepgamble0
+    - deepgamblers
+    - cifar10
+    - version_None
+    - latest.ckpt
+    only_latest_version: true
+    devries_repro_ood_split: false
+    assim_ood_norm_flag: false
+    iid_set_split: devries
+    raw_output_path: raw_output.npz
+    external_confids_output_path: external_confids.npz
+    selection_mode: max
+  
+  '''
+# ---
 # name: test_model_training[deepgamblers][test_results_file_list]
   list([
     PosixPath('deepgamblers'),
@@ -336,6 +1824,493 @@
             0.1605,  1.0840],
           [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
             0.1605,  1.0840]], grad_fn=<AddmmBackward0>)
+# ---
+# name: test_model_training[devries].2
+  tensor([[-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840],
+          [-0.9720,  0.7373, -0.2204,  0.3471, -0.2913, -0.4838, -0.2003, -0.3001,
+            0.1605,  1.0840]], grad_fn=<AddmmBackward0>)
+# ---
+# name: test_model_training[devries][config]
+  '''
+  pkgversion: 0.0.1+6c57df6
+  data:
+    dataset: cifar10
+    data_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Data
+    - cifar10
+    pin_memory: true
+    img_size:
+    - 32
+    - 32
+    - 3
+    num_workers: 0
+    num_classes: 10
+    reproduce_confidnet_splits: true
+    augmentations:
+      train:
+        random_crop:
+        - 32
+        - 4
+        hflip: true
+        to_tensor: null
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+        cutout: 16
+      val:
+        to_tensor: null
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+      test:
+        to_tensor: null
+        normalize:
+        - - 0.4914
+          - 0.4822
+          - 0.4465
+        - - 0.2023
+          - 0.1994
+          - 0.201
+    kwargs: null
+  trainer:
+    resume_from_ckpt_confidnet: false
+    num_epochs: 250
+    num_steps: 300
+    num_epochs_backbone: null
+    dg_pretrain_epochs: 100
+    val_every_n_epoch: 1
+    val_split: devries
+    do_val: false
+    batch_size: 4
+    resume_from_ckpt: false
+    benchmark: true
+    fast_dev_run: false
+    lr_scheduler:
+      _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+      _partial_: true
+      T_max: 300
+      eta_min: 0
+      last_epoch: -1
+      verbose: false
+    optimizer:
+      _target_: torch.optim.sgd.SGD
+      _partial_: true
+      lr: 0.1
+      momentum: 0.9
+      dampening: 0
+      weight_decay: 0.0005
+      nesterov: true
+      maximize: false
+    callbacks:
+      model_checkpoint: null
+      confid_monitor: null
+      learning_rate_monitor: null
+    learning_rate_confidnet: null
+    learning_rate_confidnet_finetune: null
+  exp:
+    group_name: devries
+    name: cifar10
+    version: null
+    mode: train_test
+    work_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Projects
+    - failure-detection-benchmark
+    - the-great-fixup
+    fold_dir: !!python/object/apply:pathlib.PosixPath
+    - exp
+    - '0'
+    root_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_devries_0
+    data_root_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - Users
+    - tillb
+    - Data
+    group_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_devries_0
+    - devries
+    dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_devries_0
+    - devries
+    - cifar10
+    version_dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_devries_0
+    - devries
+    - cifar10
+    - version_None
+    fold: 0
+    crossval_n_folds: 10
+    crossval_ids_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_devries_0
+    - devries
+    - cifar10
+    - crossval_ids.pickle
+    output_paths:
+      fit:
+        input_imgs_plot: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_devries_0
+        - devries
+        - cifar10
+        - input_imgs.png
+        raw_output: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_devries_0
+        - devries
+        - cifar10
+        - version_None
+        - raw_output.npz
+        raw_output_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_devries_0
+        - devries
+        - cifar10
+        - version_None
+        - raw_output_dist.npz
+        external_confids: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_devries_0
+        - devries
+        - cifar10
+        - version_None
+        - external_confids.npz
+        external_confids_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_devries_0
+        - devries
+        - cifar10
+        - version_None
+        - external_confids_dist.npz
+      test:
+        input_imgs_plot: null
+        raw_output: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_devries_0
+        - devries
+        - cifar10
+        - test_results
+        - raw_output.npz
+        raw_output_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_devries_0
+        - devries
+        - cifar10
+        - test_results
+        - raw_output_dist.npz
+        external_confids: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_devries_0
+        - devries
+        - cifar10
+        - test_results
+        - external_confids.npz
+        external_confids_dist: !!python/object/apply:pathlib.PosixPath
+        - /
+        - private
+        - var
+        - folders
+        - b2
+        - 72t1cfqx03x417_8kl9tqctw0000gq
+        - T
+        - pytest-of-tillb
+        - pytest-291
+        - test_model_training_devries_0
+        - devries
+        - cifar10
+        - test_results
+        - external_confids_dist.npz
+    log_path: !!python/object/apply:pathlib.PosixPath
+    - log.txt
+    global_seed: 815965
+  model:
+    name: devries_model
+    fc_dim: 512
+    confidnet_fc_dim: null
+    dg_reward: -1.0
+    avg_pool: true
+    dropout_rate: 0
+    monitor_mcd_samples: 50
+    test_mcd_samples: 50
+    budget: 0.3
+    network:
+      name: devries_and_enc
+      backbone: vgg13
+      imagenet_weights_path: null
+      load_dg_backbone_path: null
+      save_dg_backbone_path: null
+  eval:
+    performance_metrics:
+      train:
+      - loss
+      - nll
+      - accuracy
+      val:
+      - loss
+      - nll
+      - accuracy
+      - brier_score
+      test:
+      - nll
+      - accuracy
+      - brier_score
+    confid_metrics:
+      train:
+      - failauc
+      - failap_suc
+      - failap_err
+      - fpr@95tpr
+      - e-aurc
+      - aurc
+      val:
+      - failauc
+      - failap_suc
+      - failap_err
+      - fpr@95tpr
+      - e-aurc
+      - aurc
+      test:
+      - failauc
+      - failap_suc
+      - failap_err
+      - mce
+      - ece
+      - e-aurc
+      - aurc
+      - fpr@95tpr
+    confidence_measures:
+      train:
+      - det_mcp
+      val:
+      - det_mcp
+      test:
+      - det_mcp
+      - det_pe
+      - ext
+    monitor_plots:
+    - hist_per_confid
+    tb_hparams:
+    - fold
+    ext_confid_name: devries
+    test_conf_scaling: false
+    val_tuning: true
+    r_star: 0.25
+    r_delta: 0.05
+    query_studies:
+      iid_study: cifar10
+      noise_study:
+      - corrupt_cifar10
+      in_class_study: []
+      new_class_study:
+      - cifar100
+      - svhn
+  test:
+    name: test_results
+    dir: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_devries_0
+    - devries
+    - cifar10
+    - test_results
+    cf_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_devries_0
+    - devries
+    - cifar10
+    - hydra
+    - config.yaml
+    selection_criterion: latest
+    best_ckpt_path: !!python/object/apply:pathlib.PosixPath
+    - /
+    - private
+    - var
+    - folders
+    - b2
+    - 72t1cfqx03x417_8kl9tqctw0000gq
+    - T
+    - pytest-of-tillb
+    - pytest-291
+    - test_model_training_devries_0
+    - devries
+    - cifar10
+    - version_None
+    - latest.ckpt
+    only_latest_version: true
+    devries_repro_ood_split: false
+    assim_ood_norm_flag: false
+    iid_set_split: devries
+    raw_output_path: raw_output.npz
+    external_confids_output_path: external_confids.npz
+    selection_mode: max
+  
+  '''
 # ---
 # name: test_model_training[devries][test_results_file_list]
   list([
