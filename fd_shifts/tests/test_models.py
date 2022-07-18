@@ -126,7 +126,13 @@ def test_model_training(study: str, snapshot: Any, tmp_path: Path, mock_env: Non
     cfg.exp.version_dir.mkdir()
     cfg.test.dir.mkdir()
 
-    assert OmegaConf.to_yaml(cfg) == snapshot(name="config")
+    def _filter_unstable_line(line: str) -> bool:
+        return not (
+            "- pytest-" in line  # tmppaths
+            or "pkgversion" in line  # commit being tested
+        )
+
+    assert "\n".join(filter(_filter_unstable_line, OmegaConf.to_yaml(cfg).split("\n"))) == snapshot(name="config")
 
     datamodule = AbstractDataLoader(cfg)
     model = models.get_model(cfg.model.name)(cfg)

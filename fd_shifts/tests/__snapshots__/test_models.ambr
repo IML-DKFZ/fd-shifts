@@ -240,7 +240,6 @@
 # ---
 # name: test_model_training[cifar10_vit_study][config]
   '''
-  pkgversion: 0.0.1+6c57df6
   data:
     dataset: cifar10
     data_dir: !!python/object/apply:pathlib.PosixPath
@@ -348,8 +347,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_cifar10_vi0
     data_root_dir: !!python/object/apply:pathlib.PosixPath
     - /
@@ -364,8 +361,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_cifar10_vi0
     - vit
     dir: !!python/object/apply:pathlib.PosixPath
@@ -376,8 +371,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_cifar10_vi0
     - vit
     - cifar10
@@ -389,8 +382,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_cifar10_vi0
     - vit
     - cifar10
@@ -405,8 +396,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_cifar10_vi0
     - vit
     - cifar10
@@ -421,8 +410,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_cifar10_vi0
         - vit
         - cifar10
@@ -435,8 +422,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_cifar10_vi0
         - vit
         - cifar10
@@ -450,8 +435,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_cifar10_vi0
         - vit
         - cifar10
@@ -465,8 +448,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_cifar10_vi0
         - vit
         - cifar10
@@ -480,8 +461,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_cifar10_vi0
         - vit
         - cifar10
@@ -497,8 +476,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_cifar10_vi0
         - vit
         - cifar10
@@ -512,8 +489,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_cifar10_vi0
         - vit
         - cifar10
@@ -527,8 +502,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_cifar10_vi0
         - vit
         - cifar10
@@ -542,8 +515,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_cifar10_vi0
         - vit
         - cifar10
@@ -645,8 +616,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_cifar10_vi0
     - vit
     - cifar10
@@ -659,8 +628,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_cifar10_vi0
     - vit
     - cifar10
@@ -675,8 +642,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_cifar10_vi0
     - vit
     - cifar10
@@ -686,8 +651,8 @@
     devries_repro_ood_split: false
     assim_ood_norm_flag: false
     iid_set_split: all
-    raw_output_path: /private/var/folders/b2/72t1cfqx03x417_8kl9tqctw0000gq/T/pytest-of-tillb/pytest-291/test_model_training_cifar10_vi0/vit/cifar10/test_results/raw_output.npy
-    external_confids_output_path: /private/var/folders/b2/72t1cfqx03x417_8kl9tqctw0000gq/T/pytest-of-tillb/pytest-291/test_model_training_cifar10_vi0/vit/cifar10/test_results/external_confids.npy
+    raw_output_path: /private/var/folders/b2/72t1cfqx03x417_8kl9tqctw0000gq/T/pytest-of-tillb/pytest-295/test_model_training_cifar10_vi0/vit/cifar10/test_results/raw_output.npy
+    external_confids_output_path: /private/var/folders/b2/72t1cfqx03x417_8kl9tqctw0000gq/T/pytest-of-tillb/pytest-295/test_model_training_cifar10_vi0/vit/cifar10/test_results/external_confids.npy
     selection_mode: max
   
   '''
@@ -772,7 +737,6 @@
 # ---
 # name: test_model_training[confidnet][config]
   '''
-  pkgversion: 0.0.1+6c57df6
   data:
     dataset: cifar10
     data_dir: !!python/object/apply:pathlib.PosixPath
@@ -889,8 +853,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_confidnet_0
     data_root_dir: !!python/object/apply:pathlib.PosixPath
     - /
@@ -905,8 +867,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_confidnet_0
     - confidnet
     dir: !!python/object/apply:pathlib.PosixPath
@@ -917,8 +877,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_confidnet_0
     - confidnet
     - cifar10
@@ -930,8 +888,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_confidnet_0
     - confidnet
     - cifar10
@@ -946,8 +902,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_confidnet_0
     - confidnet
     - cifar10
@@ -962,8 +916,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_confidnet_0
         - confidnet
         - cifar10
@@ -976,8 +928,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_confidnet_0
         - confidnet
         - cifar10
@@ -991,8 +941,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_confidnet_0
         - confidnet
         - cifar10
@@ -1006,8 +954,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_confidnet_0
         - confidnet
         - cifar10
@@ -1021,8 +967,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_confidnet_0
         - confidnet
         - cifar10
@@ -1038,8 +982,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_confidnet_0
         - confidnet
         - cifar10
@@ -1053,8 +995,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_confidnet_0
         - confidnet
         - cifar10
@@ -1068,8 +1008,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_confidnet_0
         - confidnet
         - cifar10
@@ -1083,8 +1021,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_confidnet_0
         - confidnet
         - cifar10
@@ -1189,8 +1125,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_confidnet_0
     - confidnet
     - cifar10
@@ -1203,8 +1137,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_confidnet_0
     - confidnet
     - cifar10
@@ -1219,8 +1151,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_confidnet_0
     - confidnet
     - cifar10
@@ -1317,7 +1247,6 @@
 # ---
 # name: test_model_training[deepgamblers][config]
   '''
-  pkgversion: 0.0.1+6c57df6
   data:
     dataset: cifar10
     data_dir: !!python/object/apply:pathlib.PosixPath
@@ -1426,8 +1355,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_deepgamble0
     data_root_dir: !!python/object/apply:pathlib.PosixPath
     - /
@@ -1442,8 +1369,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_deepgamble0
     - deepgamblers
     dir: !!python/object/apply:pathlib.PosixPath
@@ -1454,8 +1379,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_deepgamble0
     - deepgamblers
     - cifar10
@@ -1467,8 +1390,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_deepgamble0
     - deepgamblers
     - cifar10
@@ -1483,8 +1404,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_deepgamble0
     - deepgamblers
     - cifar10
@@ -1499,8 +1418,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_deepgamble0
         - deepgamblers
         - cifar10
@@ -1513,8 +1430,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_deepgamble0
         - deepgamblers
         - cifar10
@@ -1528,8 +1443,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_deepgamble0
         - deepgamblers
         - cifar10
@@ -1543,8 +1456,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_deepgamble0
         - deepgamblers
         - cifar10
@@ -1558,8 +1469,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_deepgamble0
         - deepgamblers
         - cifar10
@@ -1575,8 +1484,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_deepgamble0
         - deepgamblers
         - cifar10
@@ -1590,8 +1497,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_deepgamble0
         - deepgamblers
         - cifar10
@@ -1605,8 +1510,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_deepgamble0
         - deepgamblers
         - cifar10
@@ -1620,8 +1523,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_deepgamble0
         - deepgamblers
         - cifar10
@@ -1653,8 +1554,6 @@
       - b2
       - 72t1cfqx03x417_8kl9tqctw0000gq
       - T
-      - pytest-of-tillb
-      - pytest-291
       - test_model_training_deepgamble0
       - deepgamblers
       - cifar10
@@ -1734,8 +1633,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_deepgamble0
     - deepgamblers
     - cifar10
@@ -1748,8 +1645,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_deepgamble0
     - deepgamblers
     - cifar10
@@ -1764,8 +1659,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_deepgamble0
     - deepgamblers
     - cifar10
@@ -1861,7 +1754,6 @@
 # ---
 # name: test_model_training[devries][config]
   '''
-  pkgversion: 0.0.1+6c57df6
   data:
     dataset: cifar10
     data_dir: !!python/object/apply:pathlib.PosixPath
@@ -1970,8 +1862,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_devries_0
     data_root_dir: !!python/object/apply:pathlib.PosixPath
     - /
@@ -1986,8 +1876,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_devries_0
     - devries
     dir: !!python/object/apply:pathlib.PosixPath
@@ -1998,8 +1886,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_devries_0
     - devries
     - cifar10
@@ -2011,8 +1897,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_devries_0
     - devries
     - cifar10
@@ -2027,8 +1911,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_devries_0
     - devries
     - cifar10
@@ -2043,8 +1925,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_devries_0
         - devries
         - cifar10
@@ -2057,8 +1937,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_devries_0
         - devries
         - cifar10
@@ -2072,8 +1950,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_devries_0
         - devries
         - cifar10
@@ -2087,8 +1963,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_devries_0
         - devries
         - cifar10
@@ -2102,8 +1976,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_devries_0
         - devries
         - cifar10
@@ -2119,8 +1991,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_devries_0
         - devries
         - cifar10
@@ -2134,8 +2004,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_devries_0
         - devries
         - cifar10
@@ -2149,8 +2017,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_devries_0
         - devries
         - cifar10
@@ -2164,8 +2030,6 @@
         - b2
         - 72t1cfqx03x417_8kl9tqctw0000gq
         - T
-        - pytest-of-tillb
-        - pytest-291
         - test_model_training_devries_0
         - devries
         - cifar10
@@ -2265,8 +2129,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_devries_0
     - devries
     - cifar10
@@ -2279,8 +2141,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_devries_0
     - devries
     - cifar10
@@ -2295,8 +2155,6 @@
     - b2
     - 72t1cfqx03x417_8kl9tqctw0000gq
     - T
-    - pytest-of-tillb
-    - pytest-291
     - test_model_training_devries_0
     - devries
     - cifar10
