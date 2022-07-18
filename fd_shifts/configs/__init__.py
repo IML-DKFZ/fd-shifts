@@ -2,7 +2,7 @@ from dataclasses import field
 from enum import Enum, auto
 from pathlib import Path
 from random import randint, random
-from typing import Any, Iterator, Optional, cast
+from typing import Any, Iterator, Optional, TypeVar, cast
 
 import hydra
 import pl_bolts
@@ -46,48 +46,67 @@ class IterableMixin:
         ).__iter__()
 
 
+T = TypeVar('T')
+def defer_validation(original_class: type[T]) -> type[T]:
+    def __validate(obj):
+        obj.__defered_validate()
+
+        for subobj in obj.__dict__.values():
+            if hasattr(subobj, "__defered_validate"):
+                subobj.validate()
+
+    original_class.__defered_validate = original_class.__post_init__
+    original_class.__post_init__ = lambda _: None
+    original_class.validate = __validate
+    return original_class
+
+
+@defer_validation
 @dataclass
 class OutputPathsConfig(IterableMixin):
-    input_imgs_plot: Optional[Path] = Path("${exp.dir}/input_imgs.png")
-    raw_output: Path = Path("${exp.version_dir}/raw_output.npz")
-    raw_output_dist: Path = Path("${exp.version_dir}/raw_output_dist.npz")
-    external_confids: Path = Path("${exp.version_dir}/external_confids.npz")
-    external_confids_dist: Path = Path("${exp.version_dir}/external_confids_dist.npz")
+    input_imgs_plot: Optional[Path] = MISSING
+    raw_output: Path = MISSING
+    raw_output_dist: Path = MISSING
+    external_confids: Path = MISSING
+    external_confids_dist: Path = MISSING
 
 
+@defer_validation
 @dataclass
 class OutputPathsPerMode(IterableMixin):
     fit: OutputPathsConfig = OutputPathsConfig()
     test: OutputPathsConfig = OutputPathsConfig(
-        input_imgs_plot=None,
-        raw_output=Path("${test.dir}/raw_output.npz"),
-        raw_output_dist=Path("${test.dir}/raw_output_dist.npz"),
-        external_confids=Path("${test.dir}/external_confids.npz"),
-        external_confids_dist=Path("${test.dir}/external_confids_dist.npz"),
+        input_imgs_plot=MISSING,
+        raw_output=MISSING,
+        raw_output_dist=MISSING,
+        external_confids=MISSING,
+        external_confids_dist=MISSING,
     )
 
 
+@defer_validation
 @dataclass
 class ExperimentConfig(IterableMixin):
     group_name: str = MISSING
     name: str = MISSING
-    version: Optional[int] = None
-    mode: Mode = Mode.train_test  # train or test
-    work_dir: Path = Path("${hydra:runtime.cwd}")
-    fold_dir: Path = Path("exp/${exp.fold}")
-    root_dir: Path = Path("${env:EXPERIMENT_ROOT_DIR}")
-    data_root_dir: Path = Path("${env:DATASET_ROOT_DIR}")
-    group_dir: Path = Path("${env:EXPERIMENT_ROOT_DIR}/${exp.group_name}")
-    dir: Path = Path("${exp.group_dir}/${exp.name}")
-    version_dir: Path = Path("${exp.dir}/version_${exp.version}")
-    fold: int = 0
-    crossval_n_folds: int = 10
-    crossval_ids_path: Path = Path("${exp.dir}/crossval_ids.pickle")
+    version: Optional[int] = MISSING
+    mode: Mode = MISSING
+    work_dir: Path = MISSING
+    fold_dir: Path = MISSING
+    root_dir: Path = MISSING
+    data_root_dir: Path = MISSING
+    group_dir: Path = MISSING
+    dir: Path = MISSING
+    version_dir: Path = MISSING
+    fold: int = MISSING
+    crossval_n_folds: int = MISSING
+    crossval_ids_path: Path = MISSING
     output_paths: OutputPathsPerMode = OutputPathsPerMode()
-    log_path: Path = Path("./log.txt")
-    global_seed: int = randint(0, 1_000_000)
+    log_path: Path = MISSING
+    global_seed: int = MISSING
 
 
+@defer_validation
 @dataclass
 class LRSchedulerConfig:
     _target_: str = MISSING
@@ -111,6 +130,7 @@ LinearWarmupCosineAnnealingLR = builds(
 )
 
 
+@defer_validation
 @dataclass
 class OptimizerConfig:
     _target_: str = MISSING
@@ -127,32 +147,33 @@ SGD = builds(
 )
 
 
+@defer_validation
 @dataclass
 class TrainerConfig(IterableMixin):
-    resume_from_ckpt_confidnet: bool = False
+    resume_from_ckpt_confidnet: bool = MISSING
     num_epochs: Optional[
         int
-    ] = 300  # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
+    ] = MISSING
     num_steps: Optional[
         int
-    ] = 300  # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
-    num_epochs_backbone: Optional[int] = None
-    dg_pretrain_epochs: int = 100  # 100 and 300 total epochs
-    val_every_n_epoch: int = 1  # has to be 1 because of schedulers
-    val_split: Optional[ValSplit] = ValSplit.devries
-    do_val: bool = False
-    batch_size: int = 128
-    resume_from_ckpt: bool = False
-    benchmark: bool = True  # set to false if input size varies during training!
-    fast_dev_run: bool = False  # True/Fals
+    ] = MISSING
+    num_epochs_backbone: Optional[int] = MISSING
+    dg_pretrain_epochs: int = MISSING
+    val_every_n_epoch: int = MISSING
+    val_split: Optional[ValSplit] = MISSING
+    do_val: bool = MISSING
+    batch_size: int = MISSING
+    resume_from_ckpt: bool = MISSING
+    benchmark: bool = MISSING
+    fast_dev_run: bool = MISSING
     lr_scheduler: LRSchedulerConfig = LRSchedulerConfig()
     optimizer: OptimizerConfig = OptimizerConfig()
     callbacks: dict[str, Optional[dict[Any, Any]]] = field(
         default_factory=lambda: {}
     )  # TODO: validate existence
 
-    learning_rate_confidnet: Optional[float] = None
-    learning_rate_confidnet_finetune: Optional[float] = None
+    learning_rate_confidnet: Optional[float] = MISSING
+    learning_rate_confidnet_finetune: Optional[float] = MISSING
 
     @validator("num_steps")
     def validate_steps(cls, num_steps: Optional[int], values: dict[str, Any]):
@@ -163,13 +184,14 @@ class TrainerConfig(IterableMixin):
         return num_steps
 
 
+@defer_validation
 @dataclass
 class NetworkConfig(IterableMixin):
-    name: str = "vgg13"
-    backbone: Optional[str] = None
-    imagenet_weights_path: Optional[Path] = None
-    load_dg_backbone_path: Optional[Path] = None
-    save_dg_backbone_path: Optional[Path] = Path("${exp.dir}/dg_backbone.ckpt")
+    name: str = MISSING
+    backbone: Optional[str] = MISSING
+    imagenet_weights_path: Optional[Path] = MISSING
+    load_dg_backbone_path: Optional[Path] = MISSING
+    save_dg_backbone_path: Optional[Path] = MISSING
 
     @validator("name", "backbone")
     def validate_network_name(cls, name: str):
@@ -178,19 +200,18 @@ class NetworkConfig(IterableMixin):
         return name
 
 
+@defer_validation
 @dataclass
 class ModelConfig(IterableMixin):
-    name: str = "devries_model"
-    fc_dim: int = 512
-    confidnet_fc_dim: Optional[int] = None
-    dg_reward: float = 2.2
-    avg_pool: bool = True
-    dropout_rate: int = 0  # TODO: this should really be a boolean
-    monitor_mcd_samples: int = (
-        50  # only activated if "mcd" substring in train or val monitor confids.
-    )
-    test_mcd_samples: int = 50  # only activated if "mcd" substring in test confids.
-    budget: float = 0.3
+    name: str = MISSING
+    fc_dim: int = MISSING
+    confidnet_fc_dim: Optional[int] = MISSING
+    dg_reward: float = MISSING
+    avg_pool: bool = MISSING
+    dropout_rate: int = MISSING
+    monitor_mcd_samples: int = MISSING
+    test_mcd_samples: int = MISSING
+    budget: float = MISSING
     network: NetworkConfig = NetworkConfig()
 
     @validator("name")
@@ -200,6 +221,7 @@ class ModelConfig(IterableMixin):
         return name
 
 
+@defer_validation
 @dataclass
 class PerfMetricsConfig(IterableMixin):
     # TODO: Validate Perf metrics
@@ -216,6 +238,7 @@ class PerfMetricsConfig(IterableMixin):
     test: list[str] = field(default_factory=lambda: ["nll", "accuracy", "brier_score"])
 
 
+@defer_validation
 @dataclass
 class ConfidMetricsConfig(IterableMixin):
     train: list[str] = field(
@@ -258,6 +281,7 @@ class ConfidMetricsConfig(IterableMixin):
         return name
 
 
+@defer_validation
 @dataclass
 class ConfidMeasuresConfig(IterableMixin):
     train: list[str] = field(
@@ -275,18 +299,13 @@ class ConfidMeasuresConfig(IterableMixin):
         return name
 
 
+@defer_validation
 @dataclass
 class QueryStudiesConfig(IterableMixin):
-    iid_study: str = "cifar10"
-    noise_study: list[str] = field(default_factory=lambda: ["corrupt_cifar10"])
-    in_class_study: list[str] = field(default_factory=lambda: [])
-    new_class_study: list[str] = field(
-        default_factory=lambda: [
-            "tinyimagenet_resize",
-            "cifar100",
-            "svhn",
-        ]
-    )
+    iid_study: str = MISSING
+    noise_study: list[str] = MISSING
+    in_class_study: list[str] = MISSING
+    new_class_study: list[str] = MISSING
 
     @validator(
         "iid_study", "in_class_study", "noise_study", "new_class_study", each_item=True
@@ -297,6 +316,7 @@ class QueryStudiesConfig(IterableMixin):
         return name
 
 
+@defer_validation
 @dataclass
 class EvalConfig(IterableMixin):
     performance_metrics: PerfMetricsConfig = PerfMetricsConfig()
@@ -310,41 +330,43 @@ class EvalConfig(IterableMixin):
         ]
     )
 
-    tb_hparams: list[str] = field(default_factory=lambda: ["fold"])
-    ext_confid_name: str = "dg"
-    test_conf_scaling: bool = False
-    val_tuning: bool = True
-    r_star: float = 0.25
-    r_delta: float = 0.05
+    tb_hparams: list[str] = MISSING
+    ext_confid_name: Optional[str] = MISSING
+    test_conf_scaling: bool = MISSING
+    val_tuning: bool = MISSING
+    r_star: float = MISSING
+    r_delta: float = MISSING
 
     query_studies: QueryStudiesConfig = QueryStudiesConfig()
 
 
+@defer_validation
 @dataclass
 class TestConfig(IterableMixin):
-    name: str = "test_results"
-    dir: Path = Path("${exp.dir}/${test.name}")
-    cf_path: Path = Path("${exp.dir}/hydra/config.yaml")
-    selection_criterion: str = "latest"
-    best_ckpt_path: Path = Path("${exp.version_dir}/${test.selection_criterion}.ckpt")
-    only_latest_version: bool = True  # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
-    devries_repro_ood_split: bool = False
-    assim_ood_norm_flag: bool = False
-    iid_set_split: str = "devries"  # all, devries
-    raw_output_path: str = "raw_output.npz"
-    external_confids_output_path: str = "external_confids.npz"
-    selection_mode: Optional[str] = "max"  # model selection criterion or "latest"
+    name: str = MISSING
+    dir: Path = MISSING
+    cf_path: Path = MISSING
+    selection_criterion: str = MISSING
+    best_ckpt_path: Path = MISSING
+    only_latest_version: bool = MISSING
+    devries_repro_ood_split: bool = MISSING
+    assim_ood_norm_flag: bool = MISSING
+    iid_set_split: str = MISSING
+    raw_output_path: str = MISSING
+    external_confids_output_path: str = MISSING
+    selection_mode: Optional[str] = MISSING
 
 
+@defer_validation
 @dataclass
 class DataConfig(IterableMixin):
-    dataset: str = "cifar10"
-    data_dir: Path = Path("${oc.env:DATASET_ROOT_DIR}/${data.dataset}")
-    pin_memory: bool = True
-    img_size: tuple[int, int, int] = (32, 32, 3)
-    num_workers: int = 12
-    num_classes: int = 10
-    reproduce_confidnet_splits: bool = True
+    dataset: str = MISSING
+    data_dir: Path = MISSING
+    pin_memory: bool = MISSING
+    img_size: tuple[int, int, int] = MISSING
+    num_workers: int = MISSING
+    num_classes: int = MISSING
+    reproduce_confidnet_splits: bool = MISSING
     augmentations: Any = MISSING
     # train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
     #   random_crop: [32, 4] # size, padding
@@ -359,12 +381,13 @@ class DataConfig(IterableMixin):
     # test:
     #   to_tensor:
     #   normalize: [[0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]]
-    kwargs: Optional[dict[Any, Any]] = None
+    kwargs: Optional[dict[Any, Any]] = MISSING
 
 
+@defer_validation
 @dataclass
 class Config(IterableMixin):
-    pkgversion: str = fd_shifts.version()
+    pkgversion: str = MISSING
     data: DataConfig = DataConfig()
 
     trainer: TrainerConfig = TrainerConfig()
