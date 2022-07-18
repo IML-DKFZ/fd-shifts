@@ -1,22 +1,44 @@
 defaults:
   - config_schema
-  - data: svhn_data
   - /trainer/lr_scheduler: LinearWarmupCosineAnnealingLR
   - /trainer/optimizer: SGD
-  - study: deepgamblers
   - _self_
+  - data: cifar10_data
+  - study: deepgamblers
   - override hydra/job_logging: disabled
-
-pkgversion: ${fd_shifts.version:}
 
 hydra:
   run:
     dir: ${exp.dir}
-  output_subdir: hydra # needs to be null for manual testing!
+  output_subdir: hydra
+
+pkgversion: ${fd_shifts.version:}
+
+trainer:
+  num_epochs: 300
+  num_steps: null
+  num_epochs_backbone: null
+  dg_pretrain_epochs: 100
+  val_every_n_epoch: 5
+  val_split: devries
+  do_val: true
+  batch_size: 128
+  resume_from_ckpt: false
+  benchmark: true
+  fast_dev_run: false
+  callbacks:
+    model_checkpoint:
+    confid_monitor:
+    learning_rate_monitor:
+  learning_rate_confidnet: null
+  learning_rate_confidnet_finetune: null
+  resume_from_ckpt_confidnet: false
 
 exp:
+  group_name: ???
+  name: ???
   version: null
-  mode: train_test # train or test
+  mode: train_test
   work_dir: ${hydra:runtime.cwd}
   fold_dir: exp/${exp.fold}
   root_dir: ${oc.env:EXPERIMENT_ROOT_DIR}
@@ -35,12 +57,115 @@ exp:
       external_confids: ${exp.version_dir}/external_confids.npz
       external_confids_dist: ${exp.version_dir}/external_confids_dist.npz
     test:
+      input_imgs_plot: null
       raw_output: ${test.dir}/raw_output.npz
       raw_output_dist: ${test.dir}/raw_output_dist.npz
       external_confids: ${test.dir}/external_confids.npz
       external_confids_dist: ${test.dir}/external_confids_dist.npz
-  log_path: ./log.txt
-  global_seed: ${fd_shifts.random_seed:} # set to False to disable deterministic training.
+  log_path: log.txt
+  global_seed: ${fd_shifts.random_seed:}
 
-trainer:
-  resume_from_ckpt_confidnet: False
+model:
+  name: devries_model
+  fc_dim: 512
+  confidnet_fc_dim: null
+  dg_reward: 2.2
+  avg_pool: true
+  dropout_rate: 0
+  monitor_mcd_samples: 50
+  test_mcd_samples: 50
+  budget: 0.3
+  network:
+    name: vgg13
+    backbone: null
+    imagenet_weights_path: null
+    load_dg_backbone_path: null
+    save_dg_backbone_path: ${exp.dir}/dg_backbone.ckpt
+
+eval:
+  performance_metrics:
+    train:
+      - loss
+      - nll
+      - accuracy
+    val:
+      - loss
+      - nll
+      - accuracy
+      - brier_score
+    test:
+      - nll
+      - accuracy
+      - brier_score
+  confid_metrics:
+    train:
+      - failauc
+      - failap_suc
+      - failap_err
+      - fpr@95tpr
+      - e-aurc
+      - aurc
+    val:
+      - failauc
+      - failap_suc
+      - failap_err
+      - fpr@95tpr
+      - e-aurc
+      - aurc
+    test:
+      - failauc
+      - failap_suc
+      - failap_err
+      - mce
+      - ece
+      - e-aurc
+      - aurc
+      - fpr@95tpr
+  confidence_measures:
+    train:
+      - det_mcp
+    val:
+      - det_mcp
+    # Select confidences based on whether ext is defined and dropout is on
+    test: '${fd_shifts.concat:
+      [det_mcp, det_pe],
+      ${fd_shifts.if_else:${eval.ext_confid_name},
+        [ext],
+        []},
+      ${fd_shifts.if_else:${model.dropout_rate},
+        [mcd_mcp, mcd_pe, mcd_ee, mcd_mi, mcd_sv, mcd_waic],
+        []},
+      ${fd_shifts.if_else:${eval.ext_confid_name},
+        ${fd_shifts.if_else:${model.dropout_rate},
+          [ext_mcd, ext_waic],
+          []},
+        []}
+      }'
+  monitor_plots:
+    - hist_per_confid
+  tb_hparams:
+    - fold
+  ext_confid_name: ???
+  test_conf_scaling: false
+  val_tuning: true
+  r_star: 0.25
+  r_delta: 0.05
+  query_studies:
+    iid_study: ${data.dataset}
+    noise_study: []
+    in_class_study: []
+    new_class_study: []
+
+test:
+  name: test_results
+  dir: ${exp.dir}/${test.name}
+  cf_path: ${exp.dir}/hydra/config.yaml
+  selection_criterion: latest
+  best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt
+  only_latest_version: true
+  devries_repro_ood_split: false
+  assim_ood_norm_flag: false
+  iid_set_split: devries
+  raw_output_path: raw_output.npz
+  external_confids_output_path: external_confids.npz
+  selection_mode: max
