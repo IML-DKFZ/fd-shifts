@@ -507,7 +507,12 @@ class ConfidMonitor(Callback):
             ],
             dim=1,
         )
-
+        try:
+            trainer.datamodule.test_datasets[0].csv["attributions"].to_csv(
+                self.output_paths.test.attributions_output
+            )
+        except:
+            pass
         np.savez_compressed(
             self.output_paths.test.encoded_output, stacked_encoded.cpu().data.numpy()
         )
