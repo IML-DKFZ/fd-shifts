@@ -52,7 +52,7 @@ class AbstractDataLoader(pl.LightningDataModule):
                             os.path.abspath(os.path.dirname(data_configs.__file__)),
                             "{}_data.yaml".format(ext_set),
                         )
-                    )
+                    ).data
 
         # Set up augmentations
         self.augmentations = {}
