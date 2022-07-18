@@ -64,15 +64,12 @@ def test_validation(
     with expected:
         configs.init()
 
-        cfg = initialize_hydra(overrides)
+        dcfg = initialize_hydra(overrides)
 
-        print(type(cfg))
-        cfg = OmegaConf.to_object(cfg)
-        print(cfg.pkgversion)
-        print(cfg.exp.global_seed)
+        cfg: configs.Config = OmegaConf.to_object(dcfg)
+        cfg.validate()
         pprint(OmegaConf.to_yaml(cfg, resolve=True))
-        print(type(cfg))
-        assert cfg.exp.root_dir == Path(os.getenv("EXPERIMENT_ROOT_DIR"))
+        assert cfg.exp.root_dir == Path(os.getenv("EXPERIMENT_ROOT_DIR", default=""))
 
 
 @pytest.mark.parametrize(
@@ -96,10 +93,10 @@ def test_existing_studies(study: str, mock_env_if_missing: Any):
     configs.init()
     overrides = [f"study={study}"]
 
-    cfg = initialize_hydra(overrides)
+    dcfg = initialize_hydra(overrides)
 
-    print(type(cfg))
-    cfg = OmegaConf.to_object(cfg)
+    print(type(dcfg))
+    cfg: configs.Config = OmegaConf.to_object(dcfg)
     pprint(OmegaConf.to_yaml(cfg, resolve=False))
     print(type(cfg))
 
