@@ -75,18 +75,10 @@ def test_validation(
 @pytest.mark.parametrize(
     ("study",),
     [
-        ("breeds_vit_study",),
-        ("cifar100_vit_study",),
-        ("cifar10_vit_study",),
+        ("vit",),
         ("confidnet",),
         ("deepgamblers",),
         ("devries",),
-        ("super_cifar100_vit_study",),
-        ("svhn_openset_vit_study",),
-        ("svhn_vit_study",),
-        ("wilds_animals_openset_vit_study",),
-        ("wilds_animals_vit_study",),
-        ("wilds_camelyon_vit_study",),
     ],
 )
 def test_existing_studies(study: str, mock_env_if_missing: Any):
