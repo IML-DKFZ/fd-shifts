@@ -508,7 +508,7 @@ class ConfidMonitor(Callback):
             dim=1,
         )
         try:
-            trainer.datamodule.test_datasets[0].csv["attributions"].to_csv(
+            trainer.datamodule.test_datasets[0].csv.to_csv(
                 self.output_paths.test.attributions_output
             )
         except:
