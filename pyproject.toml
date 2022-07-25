@@ -7,6 +7,7 @@ name = "fd_shifts"
 dynamic = ["version"]
 dependencies = [
     "albumentations>=1.0.3",
+    "deepdiff",
     "hydra-colorlog>=1.1.0",
     "hydra-core>=1.1.1",
     "hydra-zen",
@@ -47,6 +48,9 @@ dev = [
     "pylint",
     "black",
     "debugpy",
+]
+launcher = [
+    "parallel-ssh"
 ]
 
 [project.scripts]
@@ -92,3 +96,30 @@ filterwarnings = [
     # Ignore lightning_bolts optional dependencies warnings
     'ignore:You want to use:UserWarning',
 ]
+
+[tool.pylint.logging]
+# The type of string formatting that logging methods do. `old` means using %
+# formatting, `new` is for `{}` formatting.
+logging-format-style = "new"
+
+# Logging modules to check that the string format arguments are in logging
+# function parameter format.
+logging-modules = ["logging", "loguru"]
+
+[tool.pylint."messages control"]
+disable = [
+    "raw-checker-failed",
+    "bad-inline-option",
+    "locally-disabled",
+    "file-ignored",
+    "suppressed-message",
+    "useless-suppression",
+    "deprecated-pragma",
+    "use-symbolic-message-instead",
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+]
+
+[tool.pylint.design]
+max-args = 10
