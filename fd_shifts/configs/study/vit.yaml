@@ -18,6 +18,8 @@ trainer:
 
 model:
   name: vit_model
+  network:
+    name: vit
 
 eval:
   ext_confid_name: "maha"

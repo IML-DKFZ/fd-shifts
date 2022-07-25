@@ -30,7 +30,7 @@ class InterceptHandler(logging.Handler):
         )
 
 
-logging.basicConfig(handlers=[InterceptHandler()], level=logging.DEBUG)
+logging.basicConfig(handlers=[InterceptHandler()], level=logging.WARNING)
 
 OmegaConf.register_new_resolver("fd_shifts.version", version)
 OmegaConf.register_new_resolver("fd_shifts.random_seed", lambda: randint(0, 1_000_000))

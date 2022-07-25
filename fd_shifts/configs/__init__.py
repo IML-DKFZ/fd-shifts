@@ -30,6 +30,7 @@ class Mode(Enum):
     train = auto()
     test = auto()
     train_test = auto()
+    analysis = auto()
 
 
 class ValSplit(Enum):
