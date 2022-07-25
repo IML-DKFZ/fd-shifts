@@ -96,7 +96,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             self.augmentations[datasplit_k] = transforms_collection["compose"](
                 augmentations
             )
-        logging.debug("CHECK AUGMETNATIONS", self.assim_ood_norm_flag, self.augmentations)
+        logging.debug("CHECK AUGMETNATIONS %s, %s", self.assim_ood_norm_flag, self.augmentations)
 
     def setup(self, stage=None):
 
@@ -108,7 +108,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             transform=self.augmentations["train"],
             kwargs=self.dataset_kwargs,
         )
-        logging.debug("Len Training data: ", len(self.train_dataset))
+        logging.debug("Len Training data: %s", len(self.train_dataset))
 
         self.iid_test_set = get_dataset(
             name=self.dataset_name,
@@ -173,26 +173,26 @@ class AbstractDataLoader(pl.LightningDataModule):
                 kwargs=self.dataset_kwargs,
             )
 
-        logging.debug("Len Val data: ", len(self.val_dataset))
-        logging.debug("Len iid test data: ", len(self.iid_test_set))
+        logging.debug("Len Val data: %s", len(self.val_dataset))
+        logging.debug("Len iid test data: %s", len(self.iid_test_set))
 
         self.test_datasets = []
 
         if self.add_val_tuning:
             self.test_datasets.append(self.val_dataset)
             logging.debug(
-                "Adding tuning data. (preliminary) len: ", len(self.test_datasets[-1])
+                "Adding tuning data. (preliminary) len: %s", len(self.test_datasets[-1])
             )
 
         if not (
             self.query_studies is not None and "iid_study" not in self.query_studies
         ):
             self.test_datasets.append(self.iid_test_set)
-            logging.debug("Adding internal test dataset.", len(self.test_datasets[-1]))
+            logging.debug("Adding internal test dataset. %s", len(self.test_datasets[-1]))
 
         if self.query_studies is not None and len(self.external_test_sets) > 0:
             for ext_set in self.external_test_sets:
-                logging.debug("Adding external test dataset:", ext_set)
+                logging.debug("Adding external test dataset: %s", ext_set)
                 tmp_external_set = get_dataset(
                     name=ext_set,
                     root=os.path.join(
@@ -216,12 +216,12 @@ class AbstractDataLoader(pl.LightningDataModule):
                         tmp_external_set.__len__ = len(tmp_external_set.data)
 
                     logging.debug(
-                        "shortened external set {} to len {}".format(
+                        "shortened external set %s to len %s".format(
                             ext_set, len(tmp_external_set)
                         )
                     )
                 self.test_datasets.append(tmp_external_set)
-                logging.debug("Len external Test data: ", len(self.test_datasets[-1]))
+                logging.debug("Len external Test data: %s", len(self.test_datasets[-1]))
 
         # val_split: None, repro_confidnet, devries, cv
         if (
@@ -244,7 +244,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             np.random.shuffle(indices)
             train_idx, val_idx = indices[split:], indices[:split]
             logging.debug(
-                "reproduced train_val_splits from confidnet with val_idxs:",
+                "reproduced train_val_splits from confidnet with val_idxs: %s",
                 val_idx[:10],
             )
             self.val_sampler = val_idx
@@ -269,8 +269,8 @@ class AbstractDataLoader(pl.LightningDataModule):
         else:
             raise NotImplementedError
 
-        logging.debug("len train sampler", len(train_idx))
-        logging.debug("len val sampler", len(val_idx))
+        logging.debug("len train sampler %s", len(train_idx))
+        logging.debug("len val sampler %s", len(val_idx))
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(
