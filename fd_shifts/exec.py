@@ -23,6 +23,8 @@ from fd_shifts.utils import exp_utils
 # TODO: Handle mode better
 # TODO: Log git commit
 
+configs.init()
+
 
 def train(cf: configs.Config, progress: RichProgressBar, subsequent_testing=False):
     """
@@ -183,9 +185,10 @@ def main(dconf: DictConfig):
         level="DEBUG",
     )
 
-    schema = hydra.compose(config_name="config_schema")
+    # NOTE: Needed because hydra does not set this if we load a previous experiment
+    dconf._metadata.object_type = configs.Config
 
-    conf: configs.Config = cast(configs.Config, OmegaConf.to_object(OmegaConf.merge(schema, dconf)))
+    conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
     conf.validate()
     # sys.stdout = exp_utils.Logger(conf.exp.log_path)
     # sys.stderr = exp_utils.Logger(conf.exp.log_path)
@@ -213,5 +216,4 @@ def main(dconf: DictConfig):
 
 
 if __name__ == "__main__":
-    configs.init()
     main()
