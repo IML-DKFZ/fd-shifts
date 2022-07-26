@@ -35,6 +35,7 @@ class Mode(AutoName):
     test = auto()
     train_test = auto()
     analysis = auto()
+    debug = auto()
 
 
 class ValSplit(AutoName):
@@ -71,7 +72,7 @@ def defer_validation(original_class: type[T]) -> type[T]:
 @defer_validation
 @dataclass
 class OutputPathsConfig(IterableMixin):
-    input_imgs_plot: Optional[Path] = MISSING
+    input_imgs_plot: Optional[Path] = None
     raw_output: Path = MISSING
     raw_output_dist: Path = MISSING
     external_confids: Path = MISSING
@@ -96,7 +97,7 @@ class OutputPathsPerMode(IterableMixin):
 class ExperimentConfig(IterableMixin):
     group_name: str = MISSING
     name: str = MISSING
-    version: Optional[int] = MISSING
+    version: Optional[int] = None
     mode: Mode = MISSING
     work_dir: Path = MISSING
     fold_dir: Path = MISSING
@@ -117,7 +118,7 @@ class ExperimentConfig(IterableMixin):
 @dataclass
 class LRSchedulerConfig:
     _target_: str = MISSING
-    _partial_: Optional[str] = MISSING
+    _partial_: Optional[str] = None
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -145,7 +146,7 @@ LinearWarmupCosineAnnealingLR = builds(
 @dataclass
 class OptimizerConfig:
     _target_: str = MISSING
-    _partial_: Optional[str] = MISSING
+    _partial_: Optional[str] = None
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -165,13 +166,13 @@ SGD = builds(
 @defer_validation
 @dataclass
 class TrainerConfig(IterableMixin):
-    resume_from_ckpt_confidnet: bool = MISSING
-    num_epochs: Optional[int] = MISSING
-    num_steps: Optional[int] = MISSING
-    num_epochs_backbone: Optional[int] = MISSING
-    dg_pretrain_epochs: int = MISSING
+    resume_from_ckpt_confidnet: Optional[bool] = None
+    num_epochs: Optional[int] = None
+    num_steps: Optional[int] = None
+    num_epochs_backbone: Optional[int] = None
+    dg_pretrain_epochs: Optional[int] = None
     val_every_n_epoch: int = MISSING
-    val_split: Optional[ValSplit] = MISSING
+    val_split: Optional[ValSplit] = None
     do_val: bool = MISSING
     batch_size: int = MISSING
     resume_from_ckpt: bool = MISSING
@@ -183,8 +184,8 @@ class TrainerConfig(IterableMixin):
         default_factory=lambda: {}
     )  # TODO: validate existence
 
-    learning_rate_confidnet: Optional[float] = MISSING
-    learning_rate_confidnet_finetune: Optional[float] = MISSING
+    learning_rate_confidnet: Optional[float] = None
+    learning_rate_confidnet_finetune: Optional[float] = None
 
     @validator("num_steps")
     def validate_steps(cls, num_steps: Optional[int], values: dict[str, Any]):
@@ -199,10 +200,10 @@ class TrainerConfig(IterableMixin):
 @dataclass
 class NetworkConfig(IterableMixin):
     name: str = MISSING
-    backbone: Optional[str] = MISSING
-    imagenet_weights_path: Optional[Path] = MISSING
-    load_dg_backbone_path: Optional[Path] = MISSING
-    save_dg_backbone_path: Optional[Path] = MISSING
+    backbone: Optional[str] = None
+    imagenet_weights_path: Optional[Path] = None
+    load_dg_backbone_path: Optional[Path] = None
+    save_dg_backbone_path: Optional[Path] = None
 
     @validator("name", "backbone")
     def validate_network_name(cls, name: str):
@@ -216,13 +217,13 @@ class NetworkConfig(IterableMixin):
 class ModelConfig(IterableMixin):
     name: str = MISSING
     fc_dim: int = MISSING
-    confidnet_fc_dim: Optional[int] = MISSING
-    dg_reward: float = MISSING
+    confidnet_fc_dim: Optional[int] = None
+    dg_reward: Optional[float] = None
     avg_pool: bool = MISSING
     dropout_rate: int = MISSING
     monitor_mcd_samples: int = MISSING
     test_mcd_samples: int = MISSING
-    budget: float = MISSING
+    budget: Optional[float] = None
     network: NetworkConfig = NetworkConfig()
 
     @validator("name")
@@ -342,7 +343,7 @@ class EvalConfig(IterableMixin):
     )
 
     tb_hparams: list[str] = MISSING
-    ext_confid_name: Optional[str] = MISSING
+    ext_confid_name: Optional[str] = None
     test_conf_scaling: bool = MISSING
     val_tuning: bool = MISSING
     r_star: float = MISSING
@@ -365,7 +366,7 @@ class TestConfig(IterableMixin):
     iid_set_split: str = MISSING
     raw_output_path: str = MISSING
     external_confids_output_path: str = MISSING
-    selection_mode: Optional[str] = MISSING
+    selection_mode: Optional[str] = None
 
 
 @defer_validation
@@ -392,7 +393,7 @@ class DataConfig(IterableMixin):
     # test:
     #   to_tensor:
     #   normalize: [[0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]]
-    kwargs: Optional[dict[Any, Any]] = MISSING
+    kwargs: Optional[dict[Any, Any]] = None
 
 
 @defer_validation
