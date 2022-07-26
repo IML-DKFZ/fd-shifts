@@ -183,7 +183,7 @@ def main(dconf: DictConfig):
         level="DEBUG",
     )
 
-    schema = OmegaConf.structured(configs.Config)
+    schema = hydra.compose(config_name="config_schema")
 
     conf: configs.Config = cast(configs.Config, OmegaConf.to_object(OmegaConf.merge(schema, dconf)))
     conf.validate()
