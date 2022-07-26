@@ -80,14 +80,14 @@ class net(pl.LightningModule):
                 logits, confidence = self.model(x)
                 softmax = F.softmax(logits, dim=1)
                 confidence = torch.sigmoid(confidence).squeeze(1)
-                softmax_list.append(softmax.unsqueeze(2))
+                softmax_list.append(logits.unsqueeze(2))
                 conf_list.append(confidence.unsqueeze(1))
             if self.ext_confid_name == "dg":
                 outputs = self.model(x)
-                outputs = F.softmax(outputs, dim=1)
-                softmax, reservation = outputs[:, :-1], outputs[:, -1]
+                soutputs = F.softmax(outputs, dim=1)
+                softmax, reservation = soutputs[:, :-1], soutputs[:, -1]
                 confidence = 1 - reservation
-                softmax_list.append(softmax.unsqueeze(2))
+                softmax_list.append(outputs[:, :-1].unsqueeze(2))
                 conf_list.append(confidence.unsqueeze(1))
 
         self.model.encoder.disable_dropout()
@@ -253,27 +253,30 @@ class net(pl.LightningModule):
         x, y = batch
         if self.ext_confid_name == "devries":
             logits, confidence = self.model(x)
-            softmax = F.softmax(logits, dim=1)
+            # softmax = F.softmax(logits, dim=1)
             confidence = torch.sigmoid(confidence).squeeze(1)
         elif self.ext_confid_name == "dg":
             outputs = self.model(x)
             outputs = F.softmax(outputs, dim=1)
             softmax, reservation = outputs[:, :-1], outputs[:, -1]
+            logits = outputs[:, :-1]
             confidence = 1 - reservation
 
-        softmax_dist = None
+        logits_dist = None
         confid_dist = None
         if any("mcd" in cfd for cfd in self.query_confids.test):
-            softmax_dist, confid_dist = self.mcd_eval_forward(
+            logits_dist, confid_dist = self.mcd_eval_forward(
                 x=x, n_samples=self.test_mcd_samples
             )
             # print(softmax_dist.std(1).mean(), confid_dist.std(1).mean(), confid_dist[0])
 
         self.test_results = {
-            "softmax": softmax,
+            # "softmax": softmax,
+            "logits": logits,
             "labels": y,
             "confid": confidence,
-            "softmax_dist": softmax_dist,
+            # "softmax_dist": softmax_dist,
+            "logits_dist": logits_dist,
             "confid_dist": confid_dist,
         }
 

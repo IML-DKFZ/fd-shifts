@@ -83,7 +83,7 @@ class net(pl.LightningModule):
             _, confidence = self.network(x)
             softmax = F.softmax(logits, dim=1)
             confidence = torch.sigmoid(confidence).squeeze(1)
-            softmax_list.append(softmax.unsqueeze(2))
+            softmax_list.append(logits.unsqueeze(2))
             conf_list.append(confidence.unsqueeze(1))
 
         self.network.encoder.disable_dropout()
@@ -224,21 +224,24 @@ class net(pl.LightningModule):
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
 
-        softmax = F.softmax(self.backbone(x), dim=1)
+        logits = self.backbone(x)
+        softmax = F.softmax(logits, dim=1)
         _, pred_confid = self.network(x)
         pred_confid = torch.sigmoid(pred_confid).squeeze(1)
 
-        softmax_dist = None
+        logits_dist = None
         pred_confid_dist = None
 
         if any("mcd" in cfd for cfd in self.query_confids.test):
-            softmax_dist, pred_confid_dist = self.mcd_eval_forward(
+            logits_dist, pred_confid_dist = self.mcd_eval_forward(
                 x=x, n_samples=self.test_mcd_samples
             )
 
         self.test_results = {
-            "softmax": softmax,
-            "softmax_dist": softmax_dist,
+            # "softmax": softmax,
+            # "softmax_dist": softmax_dist,
+            "logits": logits,
+            "logits_dist": logits_dist,
             "labels": y,
             "confid": pred_confid,
             "confid_dist": pred_confid_dist,

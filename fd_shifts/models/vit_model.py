@@ -68,13 +68,13 @@ class net(pl.LightningModule):
         for _ in range(n_samples - len(softmax_list)):
             z = self.model.forward_features(x)
             probs = self.model.head(z)
-            softmax = torch.softmax(probs, dim=1)
+            # softmax = torch.softmax(probs, dim=1)
             zm = z[:, None, :] - self.mean
 
             maha = -(torch.einsum("inj,jk,ink->in", zm, self.icov, zm))
             maha = maha.max(dim=1)[0].type_as(x)
 
-            softmax_list.append(softmax.unsqueeze(2))
+            softmax_list.append(probs.unsqueeze(2))
             conf_list.append(maha.unsqueeze(1))
 
         self.disable_dropout()
@@ -186,18 +186,20 @@ class net(pl.LightningModule):
 
         probs = self.model.head(z)
 
-        softmax_dist = None
+        logits_dist = None
         confid_dist = None
         if any("mcd" in cfd for cfd in self.query_confids.test):
-            softmax_dist, confid_dist = self.mcd_eval_forward(
+            logits_dist, confid_dist = self.mcd_eval_forward(
                 x=x, n_samples=self.test_mcd_samples
             )
 
         self.test_results = {
-            "softmax": torch.softmax(probs, dim=1),
+            # "softmax": torch.softmax(probs, dim=1),
+            "logits": probs,
             "labels": y,
             "confid": maha,
-            "softmax_dist": softmax_dist,
+            # "softmax_dist": softmax_dist,
+            "logits_dist": logits_dist,
             "confid_dist": confid_dist,
         }
 

@@ -58,8 +58,8 @@ exp:
       external_confids_dist: ${exp.version_dir}/external_confids_dist.npz
     test:
       input_imgs_plot: null
-      raw_output: ${test.dir}/raw_output.npz
-      raw_output_dist: ${test.dir}/raw_output_dist.npz
+      raw_output: ${test.dir}/raw_logits.npz
+      raw_output_dist: ${test.dir}/raw_logits_dist.npz
       external_confids: ${test.dir}/external_confids.npz
       external_confids_dist: ${test.dir}/external_confids_dist.npz
   log_path: log.txt
