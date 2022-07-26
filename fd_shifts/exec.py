@@ -195,16 +195,16 @@ def main(dconf: DictConfig):
     logger.info(OmegaConf.to_yaml(conf))
     conf.data.num_workers = exp_utils.get_allowed_n_proc_DA(conf.data.num_workers)
 
-    if conf.exp.mode == "train":
+    if conf.exp.mode == configs.Mode.train:
         train(conf, progress)
 
-    if conf.exp.mode == "train_test":
+    if conf.exp.mode == configs.Mode.train_test:
         train(conf, progress, subsequent_testing=True)
 
-    if conf.exp.mode == "test":
+    if conf.exp.mode == configs.Mode.test:
         test(conf, progress)
 
-    if conf.exp.mode == "analysis":
+    if conf.exp.mode == configs.Mode.analysis:
         analysis.main(
             in_path=conf.test.dir,
             out_path=conf.test.dir,
