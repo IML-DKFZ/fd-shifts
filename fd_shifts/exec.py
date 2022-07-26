@@ -183,8 +183,10 @@ def main(dconf: DictConfig):
         level="DEBUG",
     )
 
+    schema = OmegaConf.structured(configs.Config)
 
-    conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
+    conf: configs.Config = cast(configs.Config, OmegaConf.to_object(OmegaConf.merge(schema, dconf)))
+    conf.validate()
     # sys.stdout = exp_utils.Logger(conf.exp.log_path)
     # sys.stderr = exp_utils.Logger(conf.exp.log_path)
     logger.info(OmegaConf.to_yaml(conf))
