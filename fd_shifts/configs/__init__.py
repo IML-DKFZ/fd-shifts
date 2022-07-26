@@ -25,15 +25,19 @@ from ..models import networks
 # TODO: Clean up data configs (-> instantiation? enum?)
 # TODO: Clean up model configs (-> instantiation? enum?)
 
+class AutoName(Enum):
+    def _generate_next_value_(name, start, count, last_values):
+        return name
 
-class Mode(Enum):
+
+class Mode(AutoName):
     train = auto()
     test = auto()
     train_test = auto()
     analysis = auto()
 
 
-class ValSplit(Enum):
+class ValSplit(AutoName):
     devries = auto()
     repro_confidnet = auto()
     cv = auto()
@@ -47,7 +51,9 @@ class IterableMixin:
         ).__iter__()
 
 
-T = TypeVar('T')
+T = TypeVar("T")
+
+
 def defer_validation(original_class: type[T]) -> type[T]:
     def __validate(obj):
         obj.__defered_validate()
@@ -111,6 +117,10 @@ class ExperimentConfig(IterableMixin):
 @dataclass
 class LRSchedulerConfig:
     _target_: str = MISSING
+    _partial_: Optional[str] = MISSING
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
 
 
 CosineAnnealingLR = builds(
@@ -135,6 +145,10 @@ LinearWarmupCosineAnnealingLR = builds(
 @dataclass
 class OptimizerConfig:
     _target_: str = MISSING
+    _partial_: Optional[str] = MISSING
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
 
 
 SGD = builds(
@@ -152,12 +166,8 @@ SGD = builds(
 @dataclass
 class TrainerConfig(IterableMixin):
     resume_from_ckpt_confidnet: bool = MISSING
-    num_epochs: Optional[
-        int
-    ] = MISSING
-    num_steps: Optional[
-        int
-    ] = MISSING
+    num_epochs: Optional[int] = MISSING
+    num_steps: Optional[int] = MISSING
     num_epochs_backbone: Optional[int] = MISSING
     dg_pretrain_epochs: int = MISSING
     val_every_n_epoch: int = MISSING
@@ -398,6 +408,9 @@ class Config(IterableMixin):
 
     eval: EvalConfig = EvalConfig()
     test: TestConfig = TestConfig()
+
+    def validate(self):
+        pass
 
     @validator("pkgversion")
     def validate_version(cls, version: str):
