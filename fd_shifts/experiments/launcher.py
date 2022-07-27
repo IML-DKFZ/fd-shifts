@@ -17,17 +17,15 @@ bsub -gpu num=1:j_exclusive=yes:gmem=10.7G \
     -q gpu-lowprio \
     -u 'till.bungert@dkfz-heidelberg.de' \
     -B \
-    -N \
     -g /t974t/test \
-    -J "_test" \
-    '{command}'
+    -J "{name}" \
+    bash -li -c 'echo $LSB_JOBID && {command} |& tee -a "/home/t974t/logs/$LSB_JOBID.log"'
 """
 
 # lang: bash
 BASE_COMMAND = r"""
-source ~/.env &&
-source /dkfz/cluster/gpu/data/OE0612/t974t/venv/fd-shifts/bin/activate &&
-python -W ignore fd_shifts/exec.py config={config_path}
+source .envrc &&
+python -W ignore fd_shifts/exec.py --config-path=$EXPERIMENT_ROOT_DIR/{config_path}/hydra/ --config-name=config exp.mode=test trainer.batch_size=64
 """
 
 
@@ -77,16 +75,21 @@ def launch(validation_file: Path | None, study: str | None, dataset: str | None)
             )
         )
 
-    pprint(_experiments)
+    pprint(_experiments[0].experiment.to_path().relative_to("fd-shifts"))
+    # return
 
-    cmd = BASE_COMMAND.format(config_path=_experiments[0].experiment.to_path()).strip()
-    cmd = BSUB_COMMAND.format(command=cmd).strip()
-
+    cmd = BASE_COMMAND.format(
+        config_path=_experiments[0].experiment.to_path().relative_to("fd-shifts")
+    ).strip()
+    cmd = BSUB_COMMAND.format(
+        name=_experiments[0].experiment.to_path().relative_to("fd-shifts"), command=cmd
+    ).strip()
 
     client = SSHClient("odcf-worker01.inet.dkfz-heidelberg.de")
 
     with client.open_shell(read_timeout=1) as shell:
         shell.run("cd failure-detection-benchmark")
+        shell.run("source .envrc")
         shell.run(cmd)
 
         try:
@@ -100,6 +103,12 @@ def launch(validation_file: Path | None, study: str | None, dataset: str | None)
                 print(line, file=sys.stderr)
         except Timeout:
             pass
+
+    for line in shell.stdout:
+        print(line)
+
+    for line in shell.stderr:
+        print(line)
 
 
 def main():
