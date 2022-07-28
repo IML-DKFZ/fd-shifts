@@ -1,4 +1,3 @@
-from collections.abc import Iterable, MutableMapping
 from dataclasses import field
 from enum import Enum, auto
 from pathlib import Path
@@ -46,23 +45,11 @@ class ValSplit(AutoName):
     zhang = auto()  # TODO: Should this still be here?
 
 
-class IterableMappingMixin(MutableMapping, Iterable):
+class IterableMixin:
     def __iter__(self) -> Iterator[tuple[str, Any]]:
         return filter(
             lambda item: item[0] != "__initialised__", self.__dict__.items()
         ).__iter__()
-
-    def __getitem__(self, key: str):
-        return self.__dict__[key]
-
-    def __setitem__(self, key: str, item: Any):
-        self.__dict__[key] = item
-
-    def __delitem__(self, key: str):
-        del self.__dict__[key]
-
-    def __len__(self):
-        return len(self.__dict__)
 
 
 T = TypeVar("T")
@@ -84,7 +71,7 @@ def defer_validation(original_class: type[T]) -> type[T]:
 
 @defer_validation
 @dataclass
-class OutputPathsConfig(IterableMappingMixin):
+class OutputPathsConfig(IterableMixin):
     input_imgs_plot: Optional[Path] = None
     raw_output: Path = MISSING
     raw_output_dist: Path = MISSING
@@ -94,7 +81,7 @@ class OutputPathsConfig(IterableMappingMixin):
 
 @defer_validation
 @dataclass
-class OutputPathsPerMode(IterableMappingMixin):
+class OutputPathsPerMode(IterableMixin):
     fit: OutputPathsConfig = OutputPathsConfig()
     test: OutputPathsConfig = OutputPathsConfig(
         input_imgs_plot=MISSING,
@@ -107,7 +94,7 @@ class OutputPathsPerMode(IterableMappingMixin):
 
 @defer_validation
 @dataclass
-class ExperimentConfig(IterableMappingMixin):
+class ExperimentConfig(IterableMixin):
     group_name: str = MISSING
     name: str = MISSING
     version: Optional[int] = None
@@ -178,7 +165,7 @@ SGD = builds(
 
 @defer_validation
 @dataclass
-class TrainerConfig(IterableMappingMixin):
+class TrainerConfig(IterableMixin):
     resume_from_ckpt_confidnet: Optional[bool] = None
     num_epochs: Optional[int] = None
     num_steps: Optional[int] = None
@@ -211,7 +198,7 @@ class TrainerConfig(IterableMappingMixin):
 
 @defer_validation
 @dataclass
-class NetworkConfig(IterableMappingMixin):
+class NetworkConfig(IterableMixin):
     name: str = MISSING
     backbone: Optional[str] = None
     imagenet_weights_path: Optional[Path] = None
@@ -227,7 +214,7 @@ class NetworkConfig(IterableMappingMixin):
 
 @defer_validation
 @dataclass
-class ModelConfig(IterableMappingMixin):
+class ModelConfig(IterableMixin):
     name: str = MISSING
     fc_dim: int = MISSING
     confidnet_fc_dim: Optional[int] = None
@@ -248,7 +235,7 @@ class ModelConfig(IterableMappingMixin):
 
 @defer_validation
 @dataclass
-class PerfMetricsConfig(IterableMappingMixin):
+class PerfMetricsConfig(IterableMixin):
     # TODO: Validate Perf metrics
     train: list[str] = field(
         default_factory=lambda: [
@@ -265,7 +252,7 @@ class PerfMetricsConfig(IterableMappingMixin):
 
 @defer_validation
 @dataclass
-class ConfidMetricsConfig(IterableMappingMixin):
+class ConfidMetricsConfig(IterableMixin):
     train: list[str] = field(
         default_factory=lambda: [
             "failauc",
@@ -308,7 +295,7 @@ class ConfidMetricsConfig(IterableMappingMixin):
 
 @defer_validation
 @dataclass
-class ConfidMeasuresConfig(IterableMappingMixin):
+class ConfidMeasuresConfig(IterableMixin):
     train: list[str] = field(
         default_factory=lambda: ["det_mcp"]
     )  # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
@@ -326,7 +313,7 @@ class ConfidMeasuresConfig(IterableMappingMixin):
 
 @defer_validation
 @dataclass
-class QueryStudiesConfig(IterableMappingMixin):
+class QueryStudiesConfig(IterableMixin):
     iid_study: str = MISSING
     noise_study: list[str] = MISSING
     in_class_study: list[str] = MISSING
@@ -343,7 +330,7 @@ class QueryStudiesConfig(IterableMappingMixin):
 
 @defer_validation
 @dataclass
-class EvalConfig(IterableMappingMixin):
+class EvalConfig(IterableMixin):
     performance_metrics: PerfMetricsConfig = PerfMetricsConfig()
     confid_metrics: ConfidMetricsConfig = ConfidMetricsConfig()
     confidence_measures: ConfidMeasuresConfig = ConfidMeasuresConfig()
@@ -367,7 +354,7 @@ class EvalConfig(IterableMappingMixin):
 
 @defer_validation
 @dataclass
-class TestConfig(IterableMappingMixin):
+class TestConfig(IterableMixin):
     name: str = MISSING
     dir: Path = MISSING
     cf_path: Path = MISSING
@@ -384,7 +371,7 @@ class TestConfig(IterableMappingMixin):
 
 @defer_validation
 @dataclass
-class DataConfig(IterableMappingMixin):
+class DataConfig(IterableMixin):
     dataset: str = MISSING
     data_dir: Path = MISSING
     pin_memory: bool = MISSING
@@ -411,7 +398,7 @@ class DataConfig(IterableMappingMixin):
 
 @defer_validation
 @dataclass
-class Config(IterableMappingMixin):
+class Config(IterableMixin):
     pkgversion: str = MISSING
     data: DataConfig = DataConfig()
 
