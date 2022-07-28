@@ -468,7 +468,7 @@ class ConfidMonitor(Callback):
 
     def on_test_end(self, trainer, pl_module):
         stacked_encoded = torch.stack(self.running_test_encoded, dim=0)
-
+        # mit torch .cat dataset index dranpacken
         stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
         stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
         stacked_dataset_idx = torch.stack(
@@ -482,6 +482,13 @@ class ConfidMonitor(Callback):
             ],
             dim=1,
         )
+        encoded_output = torch.cat(
+            [
+                stacked_encoded,
+                stacked_dataset_idx,
+            ],
+            dim=1,
+        )
         try:
             trainer.datamodule.test_datasets[0].csv.to_csv(
                 self.output_paths.test.attributions_output
@@ -489,7 +496,7 @@ class ConfidMonitor(Callback):
         except:
             pass
         np.savez_compressed(
-            self.output_paths.test.encoded_output, stacked_encoded.cpu().data.numpy()
+            self.output_paths.test.encoded_output, encoded_output.cpu().data.numpy()
         )
         np.savez_compressed(
             self.output_paths.test.raw_output, raw_output.cpu().data.numpy()

@@ -22,6 +22,9 @@ class ConfidNetAndEncoder(nn.Module):
 
         return pred_class, pred_confid
 
+    def forward_features(self, x):
+        return self.encoder(x)
+
 
 class ConfidNet(nn.Module):
     def __init__(self, cf):

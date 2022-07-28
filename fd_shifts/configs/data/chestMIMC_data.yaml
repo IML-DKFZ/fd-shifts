@@ -1,0 +1,37 @@
+# @package _group_
+dataset: dermoscopyallbarcelona
+data_dir: ${env:DATASET_ROOT_DIR}/${data.dataset}
+pin_memory: True
+img_size: [512, 512, 3] #dataset is 28x28x1 either upscale it or need to adjust transforms and neural net
+num_workers: 12
+num_classes: 2
+reproduce_confidnet_splits: True
+target_transforms:
+  train:
+    extractZeroDim:
+  val:
+    extractZeroDim:
+  test:
+    extractZeroDim:  
+
+augmentations:
+  train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
+    to_tensor:
+    hflip:
+    rotate: 15
+    scale: 256
+    center_crop: 256
+    normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
+  val:
+    to_tensor:
+    scale: 256
+    center_crop: 256
+    normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
+  test:
+    to_tensor:
+    scale: 256
+    center_crop: 256
+    normalize: [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]]
+
+kwargs:
+  

@@ -7,7 +7,7 @@ exp:
   name: isic_name
 
 trainer:
-  num_epochs: 15
+  num_epochs: 30
   num_steps: 
   max_epochs: 15
   val_every_n_epoch: 1
@@ -17,11 +17,13 @@ trainer:
   val_split: devries
   learning_rate: 0.00003
   lr_scheduler:
-    name: "LinearWarmupCosineAnnealing" # "MultiStep" "CosineAnnealing"
+    name: "CosineAnnealingWarmRestarts" # "MultiStep" "CosineAnnealing"
     warmup_epochs: 1
     warmup_start_lr: 0
     eta_min: 0
     max_epochs: 15
+  optimizer:
+    name: "ADAM"
   momentum: 0.9
   weight_decay: 0.0
   batch_size: 64
@@ -35,7 +37,7 @@ trainer:
 
 model:
   name: isic_model
-  dropout_rate: 0
+  dropout_rate: 1
   network:
     name: efficientnetb4
 
@@ -89,10 +91,6 @@ eval:
   ext_confid_name: "maha"
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
-    iid_study: isic_v01_cr_data
-    #noise_study:
-    #  - corrupt_cifar10_384
-    #new_class_study:
-    #  - cifar100_384
-    #  - svhn_384
-    #  - tinyimagenet_384
+   iid_study: ${data.dataset}
+   in_class_study: [dermoscopyalld7p]
+
