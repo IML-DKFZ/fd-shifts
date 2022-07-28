@@ -99,7 +99,30 @@ def get_dataset(
         "isic_v01_cr": Isicv01,
         "isic_winner": MelanomaDataset,
         "dermoscopyall": DermoscopyAllDataset,
+        "dermoscopyalld7p": DermoscopyAllDataset,
+        "dermoscopyallph2": DermoscopyAllDataset,
+        "dermoscopyallbarcelona": DermoscopyAllDataset,
+        "dermoscopyallqueensland": DermoscopyAllDataset,
+        "dermoscopyallvienna": DermoscopyAllDataset,
+        "dermoscopyallmskcc": DermoscopyAllDataset,
+        "dermoscopyallpascal": DermoscopyAllDataset,
         "dermoscopyallbutd7p": DermoscopyAllDataset,
+        "dermoscopyallbutph2": DermoscopyAllDataset,
+        "dermoscopyallbutbarcelona": DermoscopyAllDataset,
+        "dermoscopyallbutqueensland": DermoscopyAllDataset,
+        "dermoscopyallbutvienna": DermoscopyAllDataset,
+        "dermoscopyallbutmskcc": DermoscopyAllDataset,
+        "dermoscopyallbutpascal": DermoscopyAllDataset,
+        "dermoscopyallcorrbrlow": DermoscopyAllDataset,
+        "dermoscopyallcorrbrlowlow": DermoscopyAllDataset,
+        "dermoscopyallcorrbrhigh": DermoscopyAllDataset,
+        "dermoscopyallcorrbrhighhigh": DermoscopyAllDataset,
+        "dermoscopyallcorrmotblrhigh": DermoscopyAllDataset,
+        "dermoscopyallcorrmotblrhighhigh": DermoscopyAllDataset,
+        "dermoscopyallcorrgaunoihigh": DermoscopyAllDataset,
+        "dermoscopyallcorrgaunoihighhigh": DermoscopyAllDataset,
+        "dermoscopyallcorrelastichigh": DermoscopyAllDataset,
+        "dermoscopyallcorrelastichighhigh": DermoscopyAllDataset,
         "isic_2020": Isic2020Dataset,
         "ph2": Ph2Dataset,
         "d7p": D7pDataset,
@@ -326,8 +349,14 @@ def get_dataset(
             data_dir = os.path.join(dataroot + datafolder)
             for i in range(len(df_train)):
                 start, end = df_train["filepath"].iloc[i].split(".")
+                # create new path for corrupted images
+                if "corr" in name:
+                    _, cor = name.split("dermoscopyallcorr")
+                    cor = "_" + cor
+                else:
+                    cor = ""
                 df_train.iloc[i, df_train.columns.get_loc("filepath")] = (
-                    data_dir + "/" + start + "_512." + end
+                    data_dir + "/" + start + "_512" + cor + "." + end
                 )
             if dataset in ["d7p", "ham10000", "ph2"]:
                 df_train["attribution"] = dataset
@@ -337,8 +366,64 @@ def get_dataset(
         df_train = pd.concat(dataframes)
         if name == "dermoscopyall":
             pass
+        elif name == "dermoscopyalld7p":
+            df_train = df_train[df_train.attribution == "d7p"]
+        elif name == "dermoscopyallph2":
+            df_train = df_train[df_train.attribution == "ph2"]
+        elif name == "dermoscopyallbarcelona":
+            df_train = df_train[
+                df_train.attribution
+                == "Department of Dermatology, Hospital Clínic de Barcelona"
+            ]
+        elif name == "dermoscopyallqueensland":
+            df_train = df_train[
+                df_train.attribution
+                == "The University of Queensland Diamantina Institute, The University of Queensland, Dermatology Research Centre"
+            ]
+        elif name == "dermoscopyallvienna":
+            df_train = df_train[
+                df_train.attribution
+                == "ViDIR group, Department of Dermatology, Medical University of Vienna"
+            ]
+        elif name == "dermoscopyallmskcc":
+            df_train = df_train[df_train.attribution == "MSKCC"]
+        elif name == "dermoscopyallpascal":
+            df_train = df_train[df_train.attribution == "Pascale Guitera"]
+
         elif name == "dermoscopyallbutd7p":
             df_train = df_train.drop(df_train[df_train.attribution == "d7p"].index)
+        elif name == "dermoscopyallbutph2":
+            df_train = df_train.drop(df_train[df_train.attribution == "ph2"].index)
+        elif name == "dermoscopyallbutbarcelona":
+            df_train = df_train.drop(
+                df_train[
+                    df_train.attribution
+                    == "Department of Dermatology, Hospital Clínic de Barcelona"
+                ].index
+            )
+        elif name == "dermoscopyallbutqueensland":
+            df_train = df_train.drop(
+                df_train[
+                    df_train.attribution
+                    == "The University of Queensland Diamantina Institute, The University of Queensland, Dermatology Research Centre"
+                ].index
+            )
+        elif name == "dermoscopyallbutvienna":
+            df_train = df_train.drop(
+                df_train[
+                    df_train.attribution
+                    == "ViDIR group, Department of Dermatology, Medical University of Vienna"
+                ].index
+            )
+        elif name == "dermoscopyallbutmskcc":
+            df_train = df_train.drop(df_train[df_train.attribution == "MSKCC"].index)
+        elif name == "dermoscopyallbutpascal":
+            df_train = df_train.drop(
+                df_train[df_train.attribution == "Pascale Guitera"].index
+            )
+        else:
+            pass
+
         transforms_train, transforms_val = get_transforms(512)
         if train:
             transforms = transforms_train

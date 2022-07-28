@@ -8,22 +8,22 @@ class EfficientNetb4(nn.Module):
         super(EfficientNetb4, self).__init__()
 
         self.encoder = Encoder(cf)
+        self.classifier = Classifier(self.encoder)
         # self.classifier = Classifier(self.encoder.model.head)
         self.num_features = self.encoder.model.num_features
 
     def forward(self, x):
-        # out = self.encoder(x)
-        # pred = self.classifier(out)
-        return self.encoder(x)
+        out = self.encoder(x)
+        pred = self.classifier(out)
+        return pred
 
+    # def head(self, x):
+    #    return self.encoder.model.classifier(x)
     def forward_features(self, x):
-        x = self.encoder.model.forward_features(x)
-        avg2d = torch.nn.AvgPool2d(16, stride=1)
-        flatten = torch.nn.Flatten()
-        return flatten(avg2d(x))
+        return self.encoder.forward(x)
 
     def head(self, x):
-        return self.encoder.model.classifier(x)
+        return self.classifier.forward(x)
 
 
 class Encoder(nn.Module):
@@ -56,8 +56,14 @@ class Encoder(nn.Module):
                 layer[1].train()
 
     def forward(self, x):
-        x = self.model(x)
-        return x
+        x = self.model.forward_features(x)
+        avg2d = torch.nn.AvgPool2d(16, stride=1)
+        flatten = torch.nn.Flatten()
+        return flatten(avg2d(x))
+
+    # def forward(self, x):
+    #    x = self.model(x)
+    #    return x
 
     # def load_state_dict(self, state_dict, strict=True):
     #     print(state_dict)
@@ -70,7 +76,7 @@ class Classifier(nn.Module):
         self.module = module
 
     def forward(self, x):
-        return self.module(x)
+        return self.module.model.classifier(x)
 
     def load_state_dict(self, state_dict, strict=True):
         pass

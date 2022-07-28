@@ -16,6 +16,8 @@ trainer:
     nesterov: True
     weight_decay: 0.0005
 
+
+
 model:
   name: devries_model
   fc_dim: 512

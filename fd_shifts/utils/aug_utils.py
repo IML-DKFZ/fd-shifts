@@ -13,6 +13,7 @@ _transforms_collection: dict[str, type] = {
     "normalize": lambda x: transforms.Normalize(x[0], x[1]),
     "random_crop": lambda x: transforms.RandomCrop(x[0], padding=x[1]),
     "center_crop": lambda x: transforms.CenterCrop(x),
+    "scale": lambda x: transforms.Scale(x),
     "randomresized_crop": lambda x: transforms.RandomResizedCrop(x),
     "hflip": lambda x: transforms.RandomHorizontalFlip() if x else None,
     "resize": lambda x: transforms.Resize(size=x),
@@ -50,10 +51,13 @@ target_transforms_collection = {
     "extractZeroDim": lambda x: ExtractZeroDimension(),
 }
 
+
 class ExtractZeroDimension(object):
-    """ takes the Zero dimension of a array and returns it"""
+    """takes the Zero dimension of a array and returns it"""
+
     def __call__(self, target):
         return target[0]
+
 
 class ToThreeChannel(object):
     """Convert 1D greyscale to 3D greyscale by copying."""

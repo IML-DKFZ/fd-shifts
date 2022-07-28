@@ -28,6 +28,9 @@ class DeVriesAndEncoder(networks.network.Network):
 
         return pred_class, pred_confid
 
+    def forward_features(self, x):
+        return self.encoder(x)
+
 
 class DeVriesNet(nn.Module):
     def __init__(self, cf):
