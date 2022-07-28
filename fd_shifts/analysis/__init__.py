@@ -9,19 +9,21 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import torch
 from loguru import logger
 from omegaconf import DictConfig, ListConfig, OmegaConf
+from rich import inspect
 from scipy import special as scpspecial
 from sklearn.calibration import _sigmoid_calibration as calib
-import torch
-from rich import inspect
 
+from fd_shifts import configs
+
+from . import metrics
 from .confid_scores import (ConfidScore, SecondaryConfidScore,
                             is_external_confid)
 from .eval_utils import (ConfidEvaluator, ConfidPlotter, ThresholdPlot,
                          cifar100_classes, qual_plot)
 from .studies import get_study_iterator
-from . import metrics
 
 # TODO: Finish cleaning this up
 # FIX: Add error checking
@@ -34,7 +36,7 @@ class ExperimentData:
     labels: npt.NDArray[Any]
     dataset_idx: npt.NDArray[Any]
 
-    config: DictConfig | ListConfig
+    config: configs.Config
 
     logits: npt.NDArray[Any] | None = None
 
@@ -72,7 +74,7 @@ class ExperimentData:
             return 0
 
         flat_test_set_list = []
-        for _, datasets in self.config.eval.query_studies.items():
+        for _, datasets in self.config.eval.query_studies:
             if isinstance(datasets, (list, ListConfig)):
                 flat_test_set_list.extend(list(datasets))
             else:
@@ -120,8 +122,8 @@ class ExperimentData:
     @staticmethod
     def from_experiment(
         test_dir: Path,
+        config: configs.Config,
         holdout_classes: list | None = None,
-        config: DictConfig | ListConfig | None = None,
     ) -> ExperimentData:
         if not isinstance(test_dir, Path):
             test_dir = Path(test_dir)
@@ -133,9 +135,11 @@ class ExperimentData:
             logits = raw_output[:, :-2]
             softmax = scpspecial.softmax(logits, axis=1)
 
-            if (mcd_logits_dist := ExperimentData.__load_npz_if_exists(
-                test_dir / "raw_logits_dist.npz"
-            )) is not None:
+            if (
+                mcd_logits_dist := ExperimentData.__load_npz_if_exists(
+                    test_dir / "raw_logits_dist.npz"
+                )
+            ) is not None:
                 mcd_softmax_dist = scpspecial.softmax(mcd_logits_dist, axis=1)
             else:
                 mcd_softmax_dist = None
@@ -152,10 +156,6 @@ class ExperimentData:
             )
         else:
             raise FileNotFoundError("Could not find model output")
-
-
-        if config is None:
-            config = OmegaConf.load(test_dir.parent / "hydra/config.yaml")
 
         # HACK: OpenSet runs currently output all classes, but only train on in-classes
         if holdout_classes is not None:
@@ -239,41 +239,42 @@ class TemperatureScaling:
         # self.temperature = temperature.detach().numpy().astype("double")[0]
 
     def __call__(self, logits: npt.NDArray[Any]):
-        return np.max(
-            logits, axis=1
-        )
+        return np.max(logits, axis=1)
 
 
 class Analysis:
     def __init__(
         self,
-        path,
-        query_performance_metrics,
-        query_confid_metrics,
-        query_plots,
-        query_studies,
-        analysis_out_dir,
-        add_val_tuning,
-        threshold_plot_confid,
+        path: Path,
+        query_performance_metrics: list[str],
+        query_confid_metrics: list[str],
+        query_plots: list[str],
+        query_studies: configs.QueryStudiesConfig,
+        analysis_out_dir: Path,
+        add_val_tuning: bool,
+        threshold_plot_confid: str | None,
         qual_plot_confid,
-        cf,
+        cf: configs.Config,
     ):
 
         self.method_dict = {
-            "cfg": OmegaConf.load(Path(path).parent / "hydra" / "config.yaml")
-            if cf is None
-            else cf,
-            "name": path.split("/")[-2],  # last level is version or test dir
+            # "cfg": OmegaConf.load(path.parent / "hydra" / "config.yaml")
+            # if cf is None
+            # else cf,
+            "cfg": cf,
+            "name": path.parts[-2]
         }
+
+        self.cfg = cf
 
         # HACK: OpenSet runs currently output all classes, but only train on in-classes
         holdout_classes: list | None = (
-            kwargs.get("out_classes") if (kwargs := cf.data.get("kwargs")) else None
+            kwargs.get("out_classes") if (kwargs := cf.data.kwargs) else None
         )
-        self.experiment_data = ExperimentData.from_experiment(path, holdout_classes, cf)
+        self.experiment_data = ExperimentData.from_experiment(path, cf, holdout_classes)
 
-        if self.method_dict["cfg"].data.num_classes is None:
-            self.method_dict["cfg"].data.num_classes = self.method_dict[
+        if self.cfg.data.num_classes is None:
+            self.cfg.data.num_classes = self.method_dict[
                 "cfg"
             ].trainer.num_classes
         self.method_dict["query_confids"] = self.method_dict[
@@ -297,7 +298,10 @@ class Analysis:
 
         self.secondary_confids = []
 
-        if "ext" in self.method_dict["query_confids"] and self.method_dict["cfg"].eval.ext_confid_name == "maha":
+        if (
+            "ext" in self.method_dict["query_confids"]
+            and self.cfg.eval.ext_confid_name == "maha"
+        ):
             self.method_dict["query_confids"].append("ext_qt")
             self.secondary_confids.extend(
                 [
@@ -317,14 +321,14 @@ class Analysis:
         self.query_confid_metrics = query_confid_metrics
         self.query_plots = query_plots
         self.query_studies = (
-            self.method_dict["cfg"].eval.query_studies
+            self.cfg.eval.query_studies
             if query_studies is None
             else query_studies
         )
         self.analysis_out_dir = analysis_out_dir
         self.calibration_bins = 20
         self.val_risk_scores = {}
-        self.num_classes = self.method_dict["cfg"].data.num_classes
+        self.num_classes = self.cfg.data.num_classes
         self.add_val_tuning = add_val_tuning
 
         if not add_val_tuning:
@@ -341,14 +345,14 @@ class Analysis:
 
         if self.add_val_tuning:
 
-            self.rstar = self.method_dict["cfg"].eval.r_star
-            self.rdelta = self.method_dict["cfg"].eval.r_delta
+            self.rstar = self.cfg.eval.r_star
+            self.rdelta = self.cfg.eval.r_delta
             for study_name, study_data in get_study_iterator("val_tuning")(
                 "val_tuning", self
             ):
                 self.perform_study("val_tuning", study_data)
 
-        for query_study in self.query_studies.keys():
+        for query_study in self.query_studies:
             for study_name, study_data in get_study_iterator(query_study)(
                 query_study, self
             ):
@@ -366,7 +370,7 @@ class Analysis:
         if not is_external_confid(name):
             return name
 
-        ext_confid_name = self.method_dict["cfg"].eval.ext_confid_name
+        ext_confid_name = self.cfg.eval.ext_confid_name
 
         suffix = f"_{parts[1]}" if len(parts := name.split("_")) > 1 else ""
 
@@ -395,9 +399,13 @@ class Analysis:
 
             if self.study_name == "val_tuning":
                 if query_confid == "maha_qt":
-                    self.normalization_functions[query_confid] = QuantileScaling(confids)
+                    self.normalization_functions[query_confid] = QuantileScaling(
+                        confids
+                    )
                 elif query_confid == "temp_logits":
-                    self.normalization_functions[query_confid] = TemperatureScaling(confids, study_data.labels)
+                    self.normalization_functions[query_confid] = TemperatureScaling(
+                        confids, study_data.labels
+                    )
                 elif any(
                     cfd in query_confid
                     for cfd in ["_pe", "_ee", "_mi", "_sv", "bpd", "maha", "_mls"]
@@ -408,9 +416,13 @@ class Analysis:
                 else:
                     self.normalization_functions[query_confid] = lambda confids: confids
 
-            assert not np.all(np.isnan(confids)), f"Nan in {query_confid} in {self.study_name} before normalization"
+            assert not np.all(
+                np.isnan(confids)
+            ), f"Nan in {query_confid} in {self.study_name} before normalization"
             confids = self.normalization_functions[query_confid](confids)
-            assert not np.all(np.isnan(confids)), f"Nan in {query_confid} in {self.study_name} after normalization {inspect(self.normalization_functions[query_confid])}"
+            assert not np.all(
+                np.isnan(confids)
+            ), f"Nan in {query_confid} in {self.study_name} after normalization {inspect(self.normalization_functions[query_confid])}"
 
             self.method_dict[query_confid] = {}
             self.method_dict[query_confid]["confids"] = confids
@@ -482,19 +494,19 @@ class Analysis:
             #     confid_dict["confids"] = self.normalization_functions[confid_key](
             #         unnormed_confids
             #     )
-                # 1 / (
-                #     1
-                #     + np.exp(
-                #         unnormed_confids * self.platt_a[confid_key]
-                #         + self.platt_b[confid_key]
-                #     )
-                # )
-                # unnomred_confids = confid_dict["confids"].astype(np.float64)
-                # min_confid = np.min(unnomred_confids)
-                # max_confid = np.max(unnomred_confids)
-                # confid_dict["confids"] = 1 - (
-                #     (unnomred_confids - min_confid) / (max_confid - min_confid + 1e-9)
-                # )
+            # 1 / (
+            #     1
+            #     + np.exp(
+            #         unnormed_confids * self.platt_a[confid_key]
+            #         + self.platt_b[confid_key]
+            #     )
+            # )
+            # unnomred_confids = confid_dict["confids"].astype(np.float64)
+            # min_confid = np.min(unnomred_confids)
+            # max_confid = np.max(unnomred_confids)
+            # confid_dict["confids"] = 1 - (
+            #     (unnomred_confids - min_confid) / (max_confid - min_confid + 1e-9)
+            # )
             # if "maha" in confid_key:
             #     unnomred_confids = confid_dict["confids"].astype(np.float64)
             #     min_confid = np.min(unnomred_confids)
@@ -581,19 +593,18 @@ class Analysis:
                     self.plot_threshs = []
                     self.true_covs = []
                     logger.debug("creating threshold_plot_dict....")
-                    for delta in self.rdelta:
-                        plot_val_risk_scores = eval.get_val_risk_scores(
-                            self.rstar, delta
-                        )
-                        self.plot_threshs.append(plot_val_risk_scores["theta"])
-                        self.true_covs.append(plot_val_risk_scores["val_cov"])
-                        logger.debug(
-                            "{}\n{}\n{}\n{}",
-                            self.rstar,
-                            delta,
-                            plot_val_risk_scores["theta"],
-                            plot_val_risk_scores["val_risk"],
-                        )
+                    plot_val_risk_scores = eval.get_val_risk_scores(
+                        self.rstar, self.rdelta
+                    )
+                    self.plot_threshs.append(plot_val_risk_scores["theta"])
+                    self.true_covs.append(plot_val_risk_scores["val_cov"])
+                    logger.debug(
+                        "{}\n{}\n{}\n{}",
+                        self.rstar,
+                        self.rdelta,
+                        plot_val_risk_scores["theta"],
+                        plot_val_risk_scores["val_risk"],
+                    )
 
                 plot_string = "r*: {:.2f}  \n".format(self.rstar)
                 for ix, thresh in enumerate(self.plot_threshs):
@@ -608,7 +619,7 @@ class Analysis:
                     )
                     emp_coverage = len(selected_residuals) / len(confid_dict["correct"])
                     diff_risk = emp_risk - self.rstar
-                    plot_string += "delta: {:.3f}: ".format(self.rdelta[ix])
+                    plot_string += "delta: {:.3f}: ".format(self.rdelta)
                     plot_string += "erisk: {:.3f} ".format(emp_risk)
                     plot_string += "diff risk: {:.3f} ".format(diff_risk)
                     plot_string += "ecov.: {:.3f} \n".format(emp_coverage)
@@ -764,7 +775,7 @@ class Analysis:
             "n_test",
         ] + all_metrics
         df = pd.DataFrame(columns=columns)
-        network = self.method_dict["cfg"].model.network
+        network = self.cfg.model.network
         if network is not None:
             backbone = dict(network).get("backbone")
         else:
@@ -773,9 +784,9 @@ class Analysis:
             submit_list = [
                 self.method_dict["name"],
                 self.study_name,
-                self.method_dict["cfg"].model.name,
+                self.cfg.model.name,
                 backbone,
-                self.method_dict["cfg"].exp.fold,
+                self.cfg.exp.fold,
                 confid_key,
                 study_data.mcd_softmax_mean.shape[0]
                 if "mcd" in confid_key
@@ -801,7 +812,7 @@ class Analysis:
         )
 
         group_file_path = os.path.join(
-            self.method_dict["cfg"].exp.group_dir, "group_analysis_metrics.csv"
+            self.cfg.exp.group_dir, "group_analysis_metrics.csv"
         )
         if os.path.exists(group_file_path):
             with open(group_file_path, "a") as f:
@@ -850,20 +861,20 @@ class Analysis:
         )
 
     def get_dataloader(self):
-        from src.loaders.abstract_loader import AbstractDataLoader
+        from fd_shifts.loaders.abstract_loader import AbstractDataLoader
 
-        dm = AbstractDataLoader(self.method_dict["cfg"], no_norm_flag=True)
+        dm = AbstractDataLoader(self.cfg, no_norm_flag=True)
         dm.prepare_data()
         dm.setup()
         self.test_dataloaders = dm.test_dataloader()
 
 
 def main(
-    in_path=None,
-    out_path=None,
-    query_studies=None,
-    add_val_tuning=True,
-    cf=None,
+    in_path: Path,
+    out_path: Path,
+    cf: configs.Config,
+    query_studies: configs.QueryStudiesConfig,
+    add_val_tuning: bool = True,
     threshold_plot_confid: str | None = "tcp_mcd",
     qual_plot_confid=None,
 ):  # qual plot to false
@@ -928,5 +939,5 @@ def main(
         analysis.create_threshold_plot()
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

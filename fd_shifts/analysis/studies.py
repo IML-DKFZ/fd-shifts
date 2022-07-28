@@ -65,7 +65,7 @@ def iterate_default_study(
         analysis.experiment_data,
         "val_tuning"
         if study_name == "val_tuning"
-        else analysis.query_studies[study_name],
+        else getattr(analysis.query_studies, study_name),
     )
 
     yield study_name, study_data
@@ -76,7 +76,7 @@ def iterate_in_class_study_data(
     study_name: str, analysis: "Analysis"
 ) -> Iterator[Tuple[str, "ExperimentData"]]:
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
-    for in_class_set in analysis.query_studies[study_name]:
+    for in_class_set in getattr(analysis.query_studies, study_name):
         study_data = filter_func(analysis.experiment_data, in_class_set,)
 
         yield f"{study_name}_{in_class_set}", study_data
@@ -155,12 +155,12 @@ def iterate_new_class_study_data(
     study_name: str, analysis: "Analysis"
 ) -> Iterator[Tuple[str, "ExperimentData"]]:
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
-    for new_class_set in analysis.query_studies[study_name]:
+    for new_class_set in getattr(analysis.query_studies, study_name):
         for mode in ["original_mode", "proposed_mode"]:
 
             study_data = filter_func(
                 analysis.experiment_data,
-                analysis.query_studies["iid_study"],
+                analysis.query_studies.iid_study,
                 new_class_set,
                 mode,
             )
@@ -234,7 +234,7 @@ def iterate_noise_study_data(
     study_name: str, analysis: "Analysis"
 ) -> Iterator[Tuple[str, "ExperimentData"]]:
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
-    for noise_set in analysis.query_studies[study_name]:
+    for noise_set in getattr(analysis.query_studies, study_name):
         for intensity_level in range(5):
             logger.debug(
                 "starting noise study with intensitiy level %s", intensity_level + 1,
