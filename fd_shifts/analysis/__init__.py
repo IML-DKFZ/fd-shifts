@@ -273,13 +273,7 @@ class Analysis:
         )
         self.experiment_data = ExperimentData.from_experiment(path, cf, holdout_classes)
 
-        if self.cfg.data.num_classes is None:
-            self.cfg.data.num_classes = self.method_dict[
-                "cfg"
-            ].trainer.num_classes
-        self.method_dict["query_confids"] = self.method_dict[
-            "cfg"
-        ].eval.confidence_measures["test"]
+        self.method_dict["query_confids"] = self.cfg.eval.confidence_measures.test
         if self.experiment_data.external_confids is None:
             self.method_dict["query_confids"] = list(
                 filter(
