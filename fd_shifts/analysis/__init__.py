@@ -346,7 +346,7 @@ class Analysis:
             ):
                 self.perform_study("val_tuning", study_data)
 
-        for query_study in self.query_studies:
+        for query_study, _ in self.query_studies:
             for study_name, study_data in get_study_iterator(query_study)(
                 query_study, self
             ):

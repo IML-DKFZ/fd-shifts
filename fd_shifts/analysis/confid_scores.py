@@ -25,7 +25,6 @@ def _assert_softmax_finite(softmax: npt.NDArray[np.number]):
 
 def _assert_softmax_numerically_stable(softmax: ArrayType):
     # TODO: Assert on acceptable error rate?
-    np.testing.assert_array_almost_equal(softmax.sum(axis=1), 1.0)
     msr = softmax.max(axis=1)
     errors = (msr == 1) & ((softmax > 0) & (softmax < 1)).any(axis=1)
     assert not errors.any(), f"Numerical errors in softmax: {errors.mean() * 100:.2f}%"

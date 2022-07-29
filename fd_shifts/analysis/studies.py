@@ -26,7 +26,7 @@ def register_filter_func(name: str) -> Callable:
     return _inner_wrapper
 
 
-def get_filter_function(study_name):
+def get_filter_function(study_name: str):
     if study_name not in _filter_funcs:
         return _filter_funcs["*"]
 
@@ -44,7 +44,7 @@ def register_study_iterator(name: str) -> Callable:
     return _inner_wrapper
 
 
-def get_study_iterator(study_name):
+def get_study_iterator(study_name: str):
     if study_name not in _study_iterators:
         return _study_iterators["*"]
 
