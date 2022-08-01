@@ -119,6 +119,8 @@ def get_dataset(
         "dermoscopyallcorrbrhighhigh": DermoscopyAllDataset,
         "dermoscopyallcorrmotblrhigh": DermoscopyAllDataset,
         "dermoscopyallcorrmotblrhighhigh": DermoscopyAllDataset,
+        "dermoscopyallcorrgaunoilow": DermoscopyAllDataset,
+        "dermoscopyallcorrgaunoilowlow": DermoscopyAllDataset,
         "dermoscopyallcorrgaunoihigh": DermoscopyAllDataset,
         "dermoscopyallcorrgaunoihighhigh": DermoscopyAllDataset,
         "dermoscopyallcorrelastichigh": DermoscopyAllDataset,
