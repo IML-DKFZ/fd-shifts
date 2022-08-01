@@ -18,7 +18,7 @@ accelerator = "ddp"
 exp_name = "devries_mcd"
 num_epochs = "30"
 batchsize = "8"
-in_class_study = [
+in_class_study_ls = [
     "dermoscopyallcorrbrhigh",
     "dermoscopyallcorrbrhighhigh",
     "dermoscopyallcorrbrlow",
@@ -30,10 +30,14 @@ in_class_study = [
     "dermoscopyallcorrmotblrhigh",
     "dermoscopyallcorrmotblrhighhigh",
 ]
+in_class_study = f"\[{in_class_study_ls[0]}\]"
+in_class_study = f"\[{in_class_study_ls[0]},{in_class_study_ls[1]},{in_class_study_ls[2]},{in_class_study_ls[3]},{in_class_study_ls[4]},{in_class_study_ls[5]},{in_class_study_ls[6]},{in_class_study_ls[7]},{in_class_study_ls[8]},{in_class_study_ls[9]}\]"
+
+
 fd_shifts_command = f"fd_shifts study={study} data={data} exp.group_name={exp_group_name} exp.name={exp_name} eval.query_studies.in_class_study={in_class_study} cf.trainer.accelerator={accelerator} trainer.batch_size={batchsize} trainer.num_epochs={num_epochs}"
-subcommand = f'bsub -gpu num=2j_exclusive=yes:mode=exclusive_process:gmem=22G -L /bin/bash -q gpu "source ~/.bashrc && conda activate fd-shifts && {fd_shifts_command}"'
+subcommand = f'bsub -gpu num=2:j_exclusive=yes:mode=exclusive_process:gmem=22G -L /bin/bash -q gpu "source ~/.bashrc && conda activate fd-shifts && {fd_shifts_command}"'
 print(subcommand)
-subcommand = "echo $PATH"
+# subcommand = "echo $PATH"
 # channel = ssh.get_transport().open_session()
 #
 # channel.get_pty()
@@ -47,11 +51,12 @@ stdin_, stdout_, stderr_ = ssh.exec_command(subcommand)
 # stdin_, stdout_, stderr_ = ssh.exec_command(f"git pull")
 time.sleep(2)  # Previously, I had to sleep for some time.
 print(stdout_.read().decode())
+print(stderr_.read().decode())
 
-stdin2_, stdout2_, stderr2_ = ssh.exec_command(subcommand)
+# stdin2_, stdout2_, stderr2_ = ssh.exec_command(subcommand)
 # stdin_, stdout_, stderr_ = ssh.exec_command(f"git pull")
-time.sleep(2)  # Previously, I had to sleep for some time.
-print(stdout2_.read().decode())
+# time.sleep(2)  # Previously, I had to sleep for some time.
+# print(stdout2_.read().decode())
 # stdout_.channel.recv_exit_status()
 # lines = stdout_.readlines()
 # for line in lines:
