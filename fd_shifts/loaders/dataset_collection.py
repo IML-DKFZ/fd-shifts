@@ -83,6 +83,8 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         "dermoscopyallcorrbrhighhigh": DermoscopyAllDataset,
         "dermoscopyallcorrmotblrhigh": DermoscopyAllDataset,
         "dermoscopyallcorrmotblrhighhigh": DermoscopyAllDataset,
+        "dermoscopyallcorrgaunoilow": DermoscopyAllDataset,
+        "dermoscopyallcorrgaunoilowlow": DermoscopyAllDataset,
         "dermoscopyallcorrgaunoihigh": DermoscopyAllDataset,
         "dermoscopyallcorrgaunoihighhigh": DermoscopyAllDataset,
         "dermoscopyallcorrelastichigh": DermoscopyAllDataset,
