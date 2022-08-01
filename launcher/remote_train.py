@@ -11,15 +11,28 @@ k = paramiko.RSAKey.from_private_key_file(keyfilename, password=password)
 hostname = "bsub01.lsf.dkfz.de"
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 ssh.connect(hostname=hostname, username="l049e", pkey=k)
-study = "isic_study"
-data = "isic_winner_data"
-exp_group_name = "isic_winner"
-exp_name = "effnetb4"
-numEpochs = "30"
-batchsize = "16"
-fd_shifts_command = f"fd_shifts study={study} data={data} exp.group_name={exp_group_name} exp.name={exp_name} eval.query_studies.iid_study={data} trainer.batch_size={batchsize} trainer.num_epochs={numEpochs} trainer.do_val=True"
-subcommand = f'bsub -gpu num=8j_exclusive=yes:mode=exclusive_process:gmem=20G -L /bin/bash -q gpu "source ~/.bashrc && conda activate fd-shifts && {fd_shifts_command}"'
-# print(subcommand)
+study = "devries_mod"
+data = "dermoscopyall_data"
+exp_group_name = "dermoscopyall_run1"
+accelerator = "ddp"
+exp_name = "devries_mcd"
+num_epochs = "30"
+batchsize = "8"
+in_class_study = [
+    "dermoscopyallcorrbrhigh",
+    "dermoscopyallcorrbrhighhigh",
+    "dermoscopyallcorrbrlow",
+    "dermoscopyallcorrbrlowlow",
+    "dermoscopyallcorrgaunoihigh",
+    "dermoscopyallcorrgaunoihighhigh",
+    "dermoscopyallcorrelastichigh",
+    "dermoscopyallcorrelastichighhigh",
+    "dermoscopyallcorrmotblrhigh",
+    "dermoscopyallcorrmotblrhighhigh",
+]
+fd_shifts_command = f"fd_shifts study={study} data={data} exp.group_name={exp_group_name} exp.name={exp_name} eval.query_studies.in_class_study={in_class_study} cf.trainer.accelerator={accelerator} trainer.batch_size={batchsize} trainer.num_epochs={num_epochs}"
+subcommand = f'bsub -gpu num=2j_exclusive=yes:mode=exclusive_process:gmem=22G -L /bin/bash -q gpu "source ~/.bashrc && conda activate fd-shifts && {fd_shifts_command}"'
+print(subcommand)
 subcommand = "echo $PATH"
 # channel = ssh.get_transport().open_session()
 #

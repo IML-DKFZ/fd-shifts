@@ -15,7 +15,7 @@ trainer:
   # - repro_confidnet: use the same cv split as Corbiere et al. 2020 (ConfidNet)
   val_split: "devries"
   do_val: False
-  learning_rate: 1e-1
+  learning_rate: 3e-5
   learning_rate_confidnet: 1e-4
   learning_rate_confidnet_finetune: 1e-6
   lr_scheduler:
@@ -111,4 +111,4 @@ eval:
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
     iid_study: ${data.dataset}
-    in_class_study: 
+    in_class_study: ${data.dataset}
