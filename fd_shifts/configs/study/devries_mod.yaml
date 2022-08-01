@@ -14,7 +14,7 @@ trainer:
   # - repro_confidnet: use the same cv split as Corbiere et al. 2020 (ConfidNet)
   val_split: "devries"
   do_val: False
-  accelerator:
+  accelerator: 
   batch_size: 16
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
@@ -41,7 +41,7 @@ model:
   fc_dim: 1792
   dg_reward: -1 # dummy
   avg_pool: True
-  dropout_rate: 1 # 0 sets dropout to false
+  dropout_rate: 0 # 0 sets dropout to false
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   budget: 0.3

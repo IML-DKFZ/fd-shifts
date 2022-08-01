@@ -1,16 +1,17 @@
 import paramiko
 import time
 import getpass
+import os
 
-ssh = paramiko.SSHClient()
-keyfilename = "/home/l049e/.ssh/id_rsa"
-password = getpass.getpass("Password: ")
-k = paramiko.RSAKey.from_private_key_file(keyfilename, password=password)
-# OR k = paramiko.DSSKey.from_private_key_file(keyfilename)
-# hostname = "odcf-worker01"#
-hostname = "bsub01.lsf.dkfz.de"
-ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-ssh.connect(hostname=hostname, username="l049e", pkey=k)
+# ssh = paramiko.SSHClient()
+# keyfilename = "/home/l049e/.ssh/id_rsa"
+# password = getpass.getpass("Password: ")
+# k = paramiko.RSAKey.from_private_key_file(keyfilename, password=password)
+## OR k = paramiko.DSSKey.from_private_key_file(keyfilename)
+## hostname = "odcf-worker01"#
+# hostname = "bsub01.lsf.dkfz.de"
+# ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+# ssh.connect(hostname=hostname, username="l049e", pkey=k)
 study = "devries_mod"
 data = "dermoscopyall_data"
 exp_group_name = "dermoscopyall_run1"
@@ -45,6 +46,7 @@ if dropout == 1:
 fd_shifts_command = f"fd_shifts study={study} data={data} exp.group_name={exp_group_name} exp.name={exp_name} eval.query_studies.in_class_study={in_class_study} trainer.accelerator={accelerator} trainer.batch_size={batchsize} trainer.num_epochs={num_epochs} model.dropout_rate={dropout} eval.confidence_measures.test={confidence_measures}"
 subcommand = f'bsub -gpu num=2:j_exclusive=yes:mode=exclusive_process:gmem=22G -L /bin/bash -q gpu "source ~/.bashrc && conda activate fd-shifts && {fd_shifts_command}"'
 print(subcommand)
+os.system(subcommand)
 # subcommand = "echo $PATH"
 # channel = ssh.get_transport().open_session()
 #
@@ -55,11 +57,11 @@ print(subcommand)
 # time.sleep(5)
 # print(channel.recv(10024))
 
-stdin_, stdout_, stderr_ = ssh.exec_command(subcommand)
-# stdin_, stdout_, stderr_ = ssh.exec_command(f"git pull")
-time.sleep(2)  # Previously, I had to sleep for some time.
-print(stdout_.read().decode())
-print(stderr_.read().decode())
+# stdin_, stdout_, stderr_ = ssh.exec_command(subcommand)
+## stdin_, stdout_, stderr_ = ssh.exec_command(f"git pull")
+# time.sleep(2)  # Previously, I had to sleep for some time.
+# print(stdout_.read().decode())
+# print(stderr_.read().decode())
 
 # stdin2_, stdout2_, stderr2_ = ssh.exec_command(subcommand)
 # stdin_, stdout_, stderr_ = ssh.exec_command(f"git pull")
@@ -69,4 +71,4 @@ print(stderr_.read().decode())
 # lines = stdout_.readlines()
 # for line in lines:
 #    print(line)
-ssh.close()
+# ssh.close()
