@@ -14,12 +14,21 @@ from pytorch_lightning.callbacks import RichProgressBar
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from rich.console import Console
 from torch import multiprocessing
-
+import cv2
 from fd_shifts import analysis
 from fd_shifts.loaders.abstract_loader import AbstractDataLoader
 from fd_shifts.models import get_model
 from fd_shifts.models.callbacks import get_callbacks
 from fd_shifts.utils import exp_utils
+
+cv2.setNumThreads(0)
+cv2.ocl.setUseOpenCL(False)
+
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 
 class InterceptHandler(logging.Handler):
