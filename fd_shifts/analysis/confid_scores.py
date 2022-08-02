@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
@@ -27,6 +28,11 @@ def _assert_softmax_numerically_stable(softmax: ArrayType):
     # TODO: Assert on acceptable error rate?
     msr = softmax.max(axis=1)
     errors = (msr == 1) & ((softmax > 0) & (softmax < 1)).any(axis=1)
+
+    if softmax.dtype != np.float64:
+        logging.warning("Softmax is not 64bit, not checking for numerical stability")
+        return
+
     assert not errors.any(), f"Numerical errors in softmax: {errors.mean() * 100:.2f}%"
 
 
