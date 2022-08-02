@@ -10,9 +10,19 @@ from fd_shifts import configs
 from fd_shifts.analysis import eval_utils
 
 
+DTYPES = {
+    16: torch.float16,
+    32: torch.float32,
+    64: torch.float64,
+}
+
+
 class ConfidMonitor(Callback):
     def __init__(self, cf: configs.Config):
         self.sync_dist = True if torch.cuda.device_count() > 1 else False
+
+        self.cfg = cf
+        self.output_dtype = DTYPES[cf.test.output_precision]
 
         self.num_epochs = cf.trainer.num_epochs
         if self.num_epochs is None:
@@ -444,14 +454,14 @@ class ConfidMonitor(Callback):
         outputs = pl_module.test_results
 
         self.running_test_softmax.extend(
-            outputs["logits"].to(dtype=torch.float64).cpu()
+            outputs["logits"].to(dtype=self.output_dtype).cpu()
         )
         self.running_test_labels.extend(outputs["labels"].cpu())
         if "ext" in self.query_confids.test:
             self.running_test_external_confids.extend(outputs["confid"].cpu())
         if outputs.get("logits_dist") is not None:
             self.running_test_softmax_dist.extend(
-                outputs["logits_dist"].to(dtype=torch.float64).cpu()
+                outputs["logits_dist"].to(dtype=self.output_dtype).cpu()
             )
         if outputs.get("confid_dist") is not None:
             self.running_test_external_confids_dist.extend(outputs["confid_dist"].cpu())

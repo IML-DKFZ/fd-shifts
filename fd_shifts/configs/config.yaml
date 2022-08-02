@@ -169,3 +169,4 @@ test:
   raw_output_path: raw_output.npz
   external_confids_output_path: external_confids.npz
   selection_mode: max
+  output_precision: 64

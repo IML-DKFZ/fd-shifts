@@ -367,6 +367,7 @@ class TestConfig(IterableMixin):
     raw_output_path: str = MISSING
     external_confids_output_path: str = MISSING
     selection_mode: Optional[str] = None
+    output_precision: int = MISSING
 
 
 @defer_validation
