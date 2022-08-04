@@ -1,16 +1,16 @@
-from torchvision.models import efficientnet_b4
 import torch
 import torch.nn as nn
+import timm
 
 
-class EfficientNetb4(nn.Module):
+class EfficientNetb4timm(nn.Module):
     def __init__(self, cf):
-        super(EfficientNetb4, self).__init__()
+        super(EfficientNetb4timm, self).__init__()
 
         self.encoder = Encoder(cf)
         self.classifier = Classifier(self.encoder)
         # self.classifier = Classifier(self.encoder.model.head)
-        self.num_features = self.encoder.model.classifier[1].in_features
+        self.num_features = self.encoder.model.num_features
 
     def forward(self, x):
         out = self.encoder(x)
@@ -20,10 +20,10 @@ class EfficientNetb4(nn.Module):
     # def head(self, x):
     #    return self.encoder.model.classifier(x)
     def forward_features(self, x):
-        return self.encoder(x)
+        return self.encoder.forward(x)
 
     def head(self, x):
-        return self.classifier(x)
+        return self.classifier.forward(x)
 
 
 class Encoder(nn.Module):
@@ -35,10 +35,15 @@ class Encoder(nn.Module):
         if cf.eval.ext_confid_name == "dg":
             num_classes += 1
 
-        self.model = efficientnet_b4(num_classes=num_classes)
-        for layer in self.named_modules():
-            if isinstance(layer[1], nn.modules.dropout.Dropout):
-                layer[1].p = cf.model.dropout_rate * 0.1
+        self.model = timm.create_model(
+            "efficientnet_b4",
+            pretrained=True,
+            # img_size=cf.data.img_size[0],
+            num_classes=num_classes,
+            drop_rate=cf.model.dropout_rate * 0.1,
+        )
+        self.model.reset_classifier(num_classes)
+        self.dropout_rate = cf.model.dropout_rate
 
     def disable_dropout(self):
         for layer in self.named_modules():
@@ -51,7 +56,7 @@ class Encoder(nn.Module):
                 layer[1].train()
 
     def forward(self, x):
-        x = self.model.features(x)
+        x = self.model.forward_features(x)
         avg2d = torch.nn.AvgPool2d(16, stride=1)
         flatten = torch.nn.Flatten()
         return flatten(avg2d(x))

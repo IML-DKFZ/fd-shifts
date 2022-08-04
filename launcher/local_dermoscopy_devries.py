@@ -1,4 +1,4 @@
-#import paramiko
+# import paramiko
 import time
 import getpass
 import os
@@ -13,12 +13,21 @@ import os
 # ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 # ssh.connect(hostname=hostname, username="l049e", pkey=k)
 study = "devries_mod"
-data_ls = ["dermoscopyall_data","dermoscopyallbutbarcelona_data","dermoscopyallbutd7p_data","dermoscopyallbutmskcc_data","dermoscopyallbutpascal_data","dermoscopyallbutph2_data","dermoscopyallbutqueensland_data","dermoscopyallbutvienna_data"]
+data_ls = [
+    "dermoscopyall_data",
+    "dermoscopyallbutbarcelona_data",
+    "dermoscopyallbutd7p_data",
+    "dermoscopyallbutmskcc_data",
+    "dermoscopyallbutpascal_data",
+    "dermoscopyallbutph2_data",
+    "dermoscopyallbutqueensland_data",
+    "dermoscopyallbutvienna_data",
+]
 for data in data_ls[0:1]:
-    for dropout in [0,1]:
+    for dropout in [0, 1]:
         start, _ = data.split("_data")
         exp_group_name = f"{start}_run1"
-        accelerator = "ddp"
+        accelerator = "None"
         exp_name = "devries"
         num_epochs = "30"
         batchsize = "8"
@@ -39,20 +48,23 @@ for data in data_ls[0:1]:
         else:
             start, end = data.split("but")
             attribution, _ = end.split("_data")
-            in_class_study_ls= start+attribution 
+            in_class_study_ls = start + attribution
             in_class_study = f"\[{in_class_study_ls}\]"
 
-
-        
         confidence_measures_ls = ["det_mcp", "det_pe", "ext"]
         confidence_measures = f"\[{confidence_measures_ls[0]},{confidence_measures_ls[1]},{confidence_measures_ls[2]}\]"
 
         if dropout == 1:
-            confidence_measures_ls = ["det_mcp", "det_pe", "ext", "mcd_mcp", "mcd_pe", "mcd_ee"]
+            confidence_measures_ls = [
+                "det_mcp",
+                "det_pe",
+                "ext",
+                "mcd_mcp",
+                "mcd_pe",
+                "mcd_ee",
+            ]
             confidence_measures = f"\[{confidence_measures_ls[0]},{confidence_measures_ls[1]},{confidence_measures_ls[2]},{confidence_measures_ls[3]},{confidence_measures_ls[4]},{confidence_measures_ls[5]}\]"
-            exp_name = exp_name+"_mcd"
-
-
+            exp_name = exp_name + "_mcd"
 
         fd_shifts_command = f"fd_shifts study={study} data={data} exp.group_name={exp_group_name} exp.name={exp_name} eval.query_studies.in_class_study={in_class_study} trainer.accelerator={accelerator} trainer.batch_size={batchsize} trainer.num_epochs={num_epochs} model.dropout_rate={dropout} eval.confidence_measures.test={confidence_measures}"
         subcommand = f'bsub -gpu num=2:j_exclusive=yes:mode=exclusive_process:gmem=22G -L /bin/bash -q gpu "source ~/.bashrc && conda activate fd-shifts && {fd_shifts_command}"'
