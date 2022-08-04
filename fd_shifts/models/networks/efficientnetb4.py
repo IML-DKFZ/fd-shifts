@@ -34,8 +34,9 @@ class Encoder(nn.Module):
         num_classes = cf.data.num_classes
         if cf.eval.ext_confid_name == "dg":
             num_classes += 1
-
-        self.model = efficientnet_b4(num_classes=num_classes)
+        self.model = efficientnet_b4(pretrained=True)
+        num_features = self.model.classifier[1].in_features
+        self.model.classifier[1] = nn.Linear(num_features, num_classes)
         for layer in self.named_modules():
             if isinstance(layer[1], nn.modules.dropout.Dropout):
                 layer[1].p = cf.model.dropout_rate * 0.1
