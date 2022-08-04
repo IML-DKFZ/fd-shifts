@@ -15,6 +15,7 @@ trainer:
   # - repro_confidnet: use the same cv split as Corbiere et al. 2020 (ConfidNet)
   val_split: "devries"
   do_val: False
+  accelerator:
   learning_rate: 3e-5
   learning_rate_confidnet: 1e-4
   learning_rate_confidnet_finetune: 1e-6
