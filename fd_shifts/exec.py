@@ -6,6 +6,7 @@ from typing import cast
 
 import hydra
 import pytorch_lightning as pl
+from rich import get_console, reconfigure
 import torch
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import RichProgressBar
@@ -171,15 +172,15 @@ def test(cf: configs.Config, progress: RichProgressBar):
 def main(dconf: DictConfig):
     multiprocessing.set_start_method("spawn")
 
-    console = Console(stderr=True, force_terminal=True)
+    reconfigure(stderr=True, force_terminal=True)
     progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
-    progress._console = console
+    # progress._console = console
     logger.remove()  # Remove default 'stderr' handler
 
     # We need to specify end=''" as log message already ends with \n (thus the lambda function)
     # Also forcing 'colorize=True' otherwise Loguru won't recognize that the sink support colors
     logger.add(
-        lambda m: progress._console.print(m, end="", markup=False, highlight=False),
+        lambda m: get_console().print(m, end="", markup=False, highlight=False),
         colorize=True,
         enqueue=True,
         level="DEBUG",

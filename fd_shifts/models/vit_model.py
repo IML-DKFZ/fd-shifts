@@ -6,6 +6,7 @@ import hydra
 import numpy as np
 import pl_bolts
 import pytorch_lightning as pl
+from rich import get_console
 from rich.progress import track
 import timm
 import torch
@@ -151,7 +152,7 @@ class net(pl.LightningModule):
         logger.info("Calculating trainset mean and cov")
         all_z = []
         all_y = []
-        for x, y in track(self.trainer.datamodule.train_dataloader()):
+        for x, y in track(self.trainer.datamodule.train_dataloader(), console=get_console()):
             x = x.type_as(self.model.head.weight)
             y = y.type_as(self.model.head.weight)
             z = self.model.forward_features(x)
