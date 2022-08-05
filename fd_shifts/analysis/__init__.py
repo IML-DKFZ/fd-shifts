@@ -200,10 +200,8 @@ class PlattScaling:
         confids = val_confids[~np.isnan(val_confids)]
         correct = val_correct[~np.isnan(val_confids)]
         if len(confids) == 0:
-            raise ValueError
+            raise ValueError("All confids are NaN")
         self.a, self.b = calib(confids, correct)
-        assert self.a
-        assert self.b
 
     def __call__(self, confids: npt.NDArray[Any]) -> npt.NDArray[Any]:
         return 1 / (1 + np.exp(confids * self.a + self.b))

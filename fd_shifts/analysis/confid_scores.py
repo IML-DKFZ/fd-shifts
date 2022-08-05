@@ -33,7 +33,8 @@ def _assert_softmax_numerically_stable(softmax: ArrayType):
         logging.warning("Softmax is not 64bit, not checking for numerical stability")
         return
 
-    assert not errors.any(), f"Numerical errors in softmax: {errors.mean() * 100:.2f}%"
+    # alert if more than 10% are erroneous
+    assert errors.mean() < 0.1, f"Numerical errors in softmax: {errors.mean() * 100:.2f}%"
 
 
 def validate_softmax(func: T) -> T:

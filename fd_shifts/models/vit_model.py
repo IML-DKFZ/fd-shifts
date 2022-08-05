@@ -6,13 +6,14 @@ import hydra
 import numpy as np
 import pl_bolts
 import pytorch_lightning as pl
+from rich.progress import track
 import timm
 import torch
 import torch.nn as nn
 from pytorch_lightning.utilities.parsing import AttributeDict
 from tqdm import tqdm
 
-from fd_shifts import logging
+from fd_shifts import logger
 
 if TYPE_CHECKING:
     from fd_shifts import configs
@@ -147,16 +148,15 @@ class net(pl.LightningModule):
     def on_test_start(self, *args):
         if not any("ext" in cfd for cfd in self.query_confids.test):
             return
-        tqdm.write("Calculating trainset mean and cov")
+        logger.info("Calculating trainset mean and cov")
         all_z = []
         all_y = []
-        for x, y in tqdm(self.trainer.datamodule.train_dataloader()):
+        for x, y in track(self.trainer.datamodule.train_dataloader()):
             x = x.type_as(self.model.head.weight)
             y = y.type_as(self.model.head.weight)
             z = self.model.forward_features(x)
             all_z.append(z.cpu())
             all_y.append(y.cpu())
-            break
 
         all_z = torch.cat(all_z, dim=0)
         all_y = torch.cat(all_y, dim=0)
@@ -204,6 +204,7 @@ class net(pl.LightningModule):
         }
 
     def configure_optimizers(self):
+        logger.error(self.model.parameters())
         optim = hydra.utils.instantiate(self.config.trainer.optimizer)(
             self.model.parameters()
         )
