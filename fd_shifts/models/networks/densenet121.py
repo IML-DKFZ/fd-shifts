@@ -4,15 +4,20 @@ import torch.nn as nn
 from torch import Tensor
 from typing import Any, List, Tuple
 import torch.nn.functional as F
+import torchvision
 
 
 class Densenet121(nn.Module):
     def __init__(self, cf) -> None:
-        super(Densenet121).__init__()
+        super(Densenet121, self).__init__()
         self.model = models.densenet121(pretrained=True)
-
-        self.encoder = Encoder(self.model)
-        self.classifier = Classifier(cf, self.encoder)
+        for i in self.model.children():
+            for j in i.children():
+                for l in j.children():
+                    if isinstance(l, torchvision.models.densenet._DenseLayer):
+                        l.add_module("drop1", nn.Dropout(p=cf.model.dropout_rate * 0.1))
+        self.encoder = Encoder(model=self.model)
+        self.classifier = Classifier(cf=cf, model=self.model)
 
     def forward(self, x):
         out = self.encoder(x)
@@ -30,7 +35,7 @@ class Densenet121(nn.Module):
 
 class Encoder(nn.Module):
     def __init__(self, model) -> None:
-        super(Encoder).__init__()
+        super(Encoder, self).__init__()
         self.model = model
 
     def forward(self, x: Tensor) -> Tensor:
@@ -38,19 +43,36 @@ class Encoder(nn.Module):
         out = F.relu(features, inplace=True)
         out = F.adaptive_avg_pool2d(out, (1, 1))
         out = torch.flatten(out, 1)
+        return out
+
+    def disable_dropout(self):
+        for layer in self.children():
+            for layer2 in layer.children():
+                for layer3 in layer2.children():
+                    for layer4 in layer3.children():
+                        for layer5 in layer4.children():
+                            if isinstance(layer5, nn.modules.dropout.Dropout):
+                                layer5.eval()
+
+    def enable_dropout(self):
+        for layer in self.children():
+            for layer2 in layer.children():
+                for layer3 in layer2.children():
+                    for layer4 in layer3.children():
+                        for layer5 in layer4.children():
+                            if isinstance(layer5, nn.modules.dropout.Dropout):
+                                layer5.train()
 
 
 class Classifier(nn.Module):
     def __init__(self, cf, model) -> None:
-        super(Classifier).__init__()
+        super(Classifier, self).__init__()
         num_ftrs = model.classifier.in_features
         num_classes = cf.data.num_classes
         self.model = model
         if cf.eval.ext_confid_name == "dg":
             num_classes += 1
-        self.model.classifier = nn.Sequential(
-            nn.Linear(num_ftrs, num_classes), nn.Sigmoid()
-        )
+        self.model.classifier = nn.Sequential(nn.Linear(num_ftrs, num_classes))
 
     def forward(self, x: Tensor) -> Tensor:
-        self.model.classifier(x)
+        return self.model.classifier(x)
