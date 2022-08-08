@@ -95,6 +95,25 @@ def get_dataset(
         "med_mnist_blood": BloodMNIST,
         "med_mnist_tissue": TissueMNIST,
         "med_mnist_organ_a": OrganAMNIST,
+        "xray_chestall": XrayDataset,
+        "xray_chestallnih14": XrayDataset,
+        "xray_chestallchexpert": XrayDataset,
+        "xray_chestallmimic": XrayDataset,
+        "xray_chestallbutnih14": XrayDataset,
+        "xray_chestallbutchexpert": XrayDataset,
+        "xray_chestallbutmimic": XrayDataset,
+        "xray_chestallcorrletter": XrayDataset,
+        "xray_chestallcorrbrlow": XrayDataset,
+        "xray_chestallcorrbrlowlow": XrayDataset,
+        "xray_chestallcorrbrhigh": XrayDataset,
+        "xray_chestallcorrbrhighhigh": XrayDataset,
+        "xray_chestallcorrmotblrhigh": XrayDataset,
+        "xray_chestallcorrmotblrhighhigh": XrayDataset,
+        "xray_chestallcorrgaunoilow": XrayDataset,
+        "xray_chestallcorrgaunoilowlow": XrayDataset,
+
+        "xray_chestallcorrelastichigh": XrayDataset,
+        "xray_chestallcorrelastichighhigh": XrayDataset,
         "isic_v01": Isicv01,
         "isic_v01_cr": Isicv01,
         "isic_winner": MelanomaDataset,
@@ -434,6 +453,49 @@ def get_dataset(
         pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
         return dataset_factory[name](**pass_kwargs)
 
+    elif "xray_chest" in name:
+        datasetls = ["nih14", "chexpert", "mimic"]
+        dataframes = []
+        dataroot = os.environ["DATASET_ROOT_DIR"]
+        for dataset in datasetls:
+            csv_file = f"{dataroot}/{dataset}/{dataset}_multiclass.csv"
+            df = pd.read_csv(csv_file)
+            datafolder = "/" + dataset
+            data_dir = os.path.join(dataroot + datafolder)
+            for i in range(len(df)):
+                start, end = df["filepath"].iloc[i].split(".")
+                # create new path for corrupted images
+                if "corr" in name:
+                    _, cor = name.split("dermoscopyallcorr")
+                    cor = "_" + cor
+                else:
+                    cor = ""
+                df.iloc[i, df.columns.get_loc("filepath")] = (
+                    data_dir + "/" + start + "_256" + cor + "." + end
+                )
+            df["attribution"] = dataset
+            col_to_keep = ["filepath", "target", "attribution"]
+            df = df[col_to_keep]
+            dataframes.append(df)
+        df = pd.concat(dataframes)
+        if name == "xray_chestall":
+            pass
+        elif name == "xray_chestallnih14":
+            df = df[df.attribution == "nih14"]
+        elif name == "xray_chestallchexpert":
+            df = df[df.attribution == "chexpert"]
+        elif name == "xray_chestallmimic":
+            df = df[df.attribution == "mimic"]
+        elif name == "xray_chestallbutnih14":
+            df = df.drop(df[df_train.attribution == "nih14"].index)
+        elif name == "xray_chestallbutchexpert":
+            df = df.drop(df[df_train.attribution == "chexpert"].index)
+        elif name == "xray_chestallbutmimic":
+            df = df.drop(df[df_train.attribution == "mimic"].index)
+
+        pass_kwargs = {"csv": df, "train": train, "transform": transform}
+        return dataset_factory[name](**pass_kwargs)
+
     else:
         return _dataset_factory[name](**pass_kwargs)
 
@@ -644,6 +706,50 @@ from torch.utils.data import Dataset
 import cv2
 import pandas as pd
 from typing import Optional
+
+
+class XrayDataset(Dataset):
+    def __init__(
+        self,
+        csv: pd.core.frame.DataFrame,
+        train: bool,
+        transform: Optional[callable] = None,
+    ):
+
+        self.csv = csv.reset_index(drop=True)
+        self.train = train
+        self.transform = transform
+        self.train_df = self.csv.sample(frac=0.8, random_state=200)
+        self.test_df = self.csv.drop(self.train_df.index)
+        if self.train:
+            self.csv = self.train_df
+        elif not self.train:
+            self.csv = self.test_df
+        self.targets = self.csv.target
+        self.imgs = self.csv["filepath"]
+        self.samples = self.imgs
+
+    def __len__(self):
+        return self.csv.shape[0]
+
+    def __getitem__(self, index):
+
+        row = self.csv.iloc[index]
+
+        image = cv2.imread(row.filepath)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        if self.transform is not None:
+            res = self.transform(image=image)
+            image = res["image"].astype(np.float32)
+        else:
+            image = image.astype(np.float32)
+
+        image = image.transpose(2, 0, 1)
+
+        data = torch.tensor(image).float()
+
+        return data, torch.tensor(self.csv.iloc[index].target).long()
 
 
 class BasicDataset(Dataset):
