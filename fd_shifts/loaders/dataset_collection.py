@@ -29,6 +29,7 @@ from torch.utils.data import Dataset
 from medmnist.info import INFO, HOMEPAGE, DEFAULT_ROOT
 import cv2
 import albumentations
+import imghdr
 
 
 def get_dataset(name, root, train, download, transform, target_transforms, kwargs):
@@ -75,7 +76,6 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         "xray_chestallcorrmotblrhighhigh": XrayDataset,
         "xray_chestallcorrgaunoilow": XrayDataset,
         "xray_chestallcorrgaunoilowlow": XrayDataset,
-
         "xray_chestallcorrelastichigh": XrayDataset,
         "xray_chestallcorrelastichighhigh": XrayDataset,
         "isic_v01": Isicv01,
@@ -429,7 +429,15 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
             datafolder = "/" + dataset
             data_dir = os.path.join(dataroot + datafolder)
             for i in range(len(df)):
-                start, end = df["filepath"].iloc[i].split(".")
+                img_sub_path = df["filepath"].iloc[i]
+                img_path = data_dir + "/" + img_sub_path
+                if imghdr.what(img_path) == "png":
+                    start, __annotations__ = img_path.split(".png")
+                    end = "png"
+                if imghdr.what(img_path) == "jpeg":
+                    start, __annotations__ = img_path.split(".jpg")
+                    end = "jpg"
+
                 # create new path for corrupted images
                 if "corr" in name:
                     _, cor = name.split("dermoscopyallcorr")
@@ -437,7 +445,7 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
                 else:
                     cor = ""
                 df.iloc[i, df.columns.get_loc("filepath")] = (
-                    data_dir + "/" + start + "_256" + cor + "." + end
+                    start + "_256" + cor + "." + end
                 )
             df["attribution"] = dataset
             col_to_keep = ["filepath", "target", "attribution"]
@@ -706,15 +714,10 @@ class XrayDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if self.transform is not None:
-            res = self.transform(image=image)
-            image = res["image"].astype(np.float32)
+            image = self.transform(image)
         else:
             image = image.astype(np.float32)
-
-        image = image.transpose(2, 0, 1)
-
-        data = torch.tensor(image).float()
-
+        data = image
         return data, torch.tensor(self.csv.iloc[index].target).long()
 
 

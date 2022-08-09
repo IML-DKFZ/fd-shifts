@@ -17,7 +17,7 @@ target_transforms:
 augmentations:
   train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
     to_tensor:
-    hflip:
+    hflip: 1
     rotate: 15
     resize: 256
     center_crop: 256

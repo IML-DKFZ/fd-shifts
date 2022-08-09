@@ -39,7 +39,7 @@ class Encoder(nn.Module):
         self.model.classifier[1] = nn.Linear(num_features, num_classes)
         for layer in self.named_modules():
             if isinstance(layer[1], nn.modules.dropout.Dropout):
-                layer[1].p = cf.model.dropout_rate * 0.1
+                layer[1].p = cf.model.dropout_rate * 0.2
 
     def disable_dropout(self):
         for layer in self.named_modules():
