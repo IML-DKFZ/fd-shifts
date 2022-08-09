@@ -1,3 +1,4 @@
+import imghdr
 import io
 import os
 import pickle
@@ -111,7 +112,6 @@ def get_dataset(
         "xray_chestallcorrmotblrhighhigh": XrayDataset,
         "xray_chestallcorrgaunoilow": XrayDataset,
         "xray_chestallcorrgaunoilowlow": XrayDataset,
-
         "xray_chestallcorrelastichigh": XrayDataset,
         "xray_chestallcorrelastichighhigh": XrayDataset,
         "isic_v01": Isicv01,
@@ -275,7 +275,7 @@ def get_dataset(
             "transform": transform,
             "csv_file": "/home/l049e/Projects/ISIC/isic_v01_dataframe.csv",
         }
-        return dataset_factory[name](**pass_kwargs)
+        return _dataset_factory[name](**pass_kwargs)
     elif name == "isic_v01_cr":
         pass_kwargs = {
             "root": root,
@@ -284,7 +284,7 @@ def get_dataset(
             "transform": transform,
             "csv_file": "/home/l049e/Projects/ISIC/isic_v01_dataframe.csv",
         }
-        return dataset_factory[name](**pass_kwargs)
+        return _dataset_factory[name](**pass_kwargs)
 
     elif name == "isic_winner":
         out_dim = 9
@@ -299,7 +299,7 @@ def get_dataset(
         else:
             transforms = transforms_val
         pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return dataset_factory[name](**pass_kwargs)
+        return _dataset_factory[name](**pass_kwargs)
 
     elif name == "d7p":
         out_dim = 2
@@ -314,7 +314,7 @@ def get_dataset(
         else:
             transforms = transforms_val
         pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return dataset_factory[name](**pass_kwargs)
+        return _dataset_factory[name](**pass_kwargs)
     elif name == "ham10000":
         out_dim = 2
         data_dir = root
@@ -329,7 +329,7 @@ def get_dataset(
         else:
             transforms = transforms_val
         pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return dataset_factory[name](**pass_kwargs)
+        return _dataset_factory[name](**pass_kwargs)
     elif name == "isic_2020":
         out_dim = 2
         data_dir = root
@@ -344,7 +344,7 @@ def get_dataset(
         else:
             transforms = transforms_val
         pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return dataset_factory[name](**pass_kwargs)
+        return _dataset_factory[name](**pass_kwargs)
     elif name == "ph2":
         out_dim = 2
         data_dir = root
@@ -358,7 +358,7 @@ def get_dataset(
         else:
             transforms = transforms_val
         pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return dataset_factory[name](**pass_kwargs)
+        return _dataset_factory[name](**pass_kwargs)
     elif "dermoscopyall" in name:
         datasetls = ["d7p", "ham10000", "ph2", "isic_2020"]
         dataframes = []
@@ -451,7 +451,7 @@ def get_dataset(
         else:
             transforms = transforms_val
         pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return dataset_factory[name](**pass_kwargs)
+        return _dataset_factory[name](**pass_kwargs)
 
     elif "xray_chest" in name:
         datasetls = ["nih14", "chexpert", "mimic"]
@@ -463,7 +463,15 @@ def get_dataset(
             datafolder = "/" + dataset
             data_dir = os.path.join(dataroot + datafolder)
             for i in range(len(df)):
-                start, end = df["filepath"].iloc[i].split(".")
+                img_sub_path = df["filepath"].iloc[i]
+                img_path = data_dir + "/" + img_sub_path
+                if imghdr.what(img_path) == "png":
+                    start, __annotations__ = img_path.split(".png")
+                    end = "png"
+                if imghdr.what(img_path) == "jpeg":
+                    start, __annotations__ = img_path.split(".jpg")
+                    end = "jpg"
+
                 # create new path for corrupted images
                 if "corr" in name:
                     _, cor = name.split("dermoscopyallcorr")
@@ -471,7 +479,7 @@ def get_dataset(
                 else:
                     cor = ""
                 df.iloc[i, df.columns.get_loc("filepath")] = (
-                    data_dir + "/" + start + "_256" + cor + "." + end
+                    start + "_256" + cor + "." + end
                 )
             df["attribution"] = dataset
             col_to_keep = ["filepath", "target", "attribution"]
@@ -494,7 +502,7 @@ def get_dataset(
             df = df.drop(df[df_train.attribution == "mimic"].index)
 
         pass_kwargs = {"csv": df, "train": train, "transform": transform}
-        return dataset_factory[name](**pass_kwargs)
+        return _dataset_factory[name](**pass_kwargs)
 
     else:
         return _dataset_factory[name](**pass_kwargs)
@@ -702,10 +710,11 @@ class MelanomaDataset(Dataset):
         return data, torch.tensor(self.csv.iloc[index].target).long()
 
 
-from torch.utils.data import Dataset
+from typing import Optional
+
 import cv2
 import pandas as pd
-from typing import Optional
+from torch.utils.data import Dataset
 
 
 class XrayDataset(Dataset):
@@ -740,15 +749,10 @@ class XrayDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if self.transform is not None:
-            res = self.transform(image=image)
-            image = res["image"].astype(np.float32)
+            image = self.transform(image)
         else:
             image = image.astype(np.float32)
-
-        image = image.transpose(2, 0, 1)
-
-        data = torch.tensor(image).float()
-
+        data = image
         return data, torch.tensor(self.csv.iloc[index].target).long()
 
 
@@ -796,10 +800,11 @@ class BasicDataset(Dataset):
         return data, torch.tensor(self.csv.iloc[index].target).long()
 
 
-from torch.utils.data import Dataset
+from typing import Optional
+
 import cv2
 import pandas as pd
-from typing import Optional
+from torch.utils.data import Dataset
 
 
 class DermoscopyAllDataset(Dataset):
