@@ -111,7 +111,10 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         "isic_2020": Isic2020Dataset,
         "ph2": Ph2Dataset,
         "d7p": D7pDataset,
-        "ham10000": Ham10000Dataset,
+        "dermoscopyallham10000": DermoscopyAllDataset,
+        "ham10000multi": Ham10000Dataset,
+        "ham10000subbig": Ham10000DatasetSubbig,
+        "ham10000subsmall": Ham10000DatasetSubsmall,
         "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
@@ -296,6 +299,71 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
             transforms = transforms_val
         pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
         return dataset_factory[name](**pass_kwargs)
+
+    elif name == "ham10000multi":
+        out_dim = 6
+        dataset = "ham10000"
+        dataroot = os.environ["DATASET_ROOT_DIR"]
+        csv_file = f"{dataroot}/{dataset}/{dataset}_multiclass"
+        df_train = pd.read_csv(csv_file)
+        datafolder = "/" + dataset
+        data_dir = os.path.join(dataroot + datafolder)
+        for i in range(len(df_train)):
+            start, end = df_train["filepath"].iloc[i].split(".")
+            df_train.iloc[i, df_train.columns.get_loc("filepath")] = (
+                data_dir + "/" + start + "_512" + "." + end
+            )
+        transforms_train, transforms_val = get_transforms(512)
+        if train:
+            transforms = transforms_train
+        else:
+            transforms = transforms_val
+        pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
+        return dataset_factory[name](**pass_kwargs)
+
+    elif name == "ham10000subbig":
+        out_dim = 2
+        dataset = "ham10000"
+        dataroot = os.environ["DATASET_ROOT_DIR"]
+        csv_file = f"{dataroot}/{dataset}/{dataset}_subbig_binaryclass"
+        df_train = pd.read_csv(csv_file)
+        datafolder = "/" + dataset
+        data_dir = os.path.join(dataroot + datafolder)
+        for i in range(len(df_train)):
+            start, end = df_train["filepath"].iloc[i].split(".")
+            # create new path for corrupted images
+            df_train.iloc[i, df_train.columns.get_loc("filepath")] = (
+                data_dir + "/" + start + "_512" + "." + end
+            )
+        transforms_train, transforms_val = get_transforms(512)
+        if train:
+            transforms = transforms_train
+        else:
+            transforms = transforms_val
+        pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
+        return dataset_factory[name](**pass_kwargs)
+    elif name == "ham10000subsmall":
+        out_dim = 2
+        dataset = "ham10000"
+        dataroot = os.environ["DATASET_ROOT_DIR"]
+        csv_file = f"{dataroot}/{dataset}/{dataset}_subsmall_binaryclass"
+        df_train = pd.read_csv(csv_file)
+        datafolder = "/" + dataset
+        data_dir = os.path.join(dataroot + datafolder)
+        for i in range(len(df_train)):
+            start, end = df_train["filepath"].iloc[i].split(".")
+            # create new path for corrupted images
+            df_train.iloc[i, df_train.columns.get_loc("filepath")] = (
+                data_dir + "/" + start + "_512" + "." + end
+            )
+        tansforms_train, transforms_val = get_transforms(512)
+        if train:
+            transforms = transforms_train
+        else:
+            transforms = transforms_val
+        pass_kwargs = {"csv": df_train, "train": True, "transform": transforms}
+        return dataset_factory[name](**pass_kwargs)
+
     elif name == "isic_2020":
         out_dim = 2
         data_dir = root
@@ -328,6 +396,7 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
     elif "dermoscopyall" in name:
         datasetls = ["d7p", "ham10000", "ph2", "isic_2020"]
         dataframes = []
+        oversampeling = 0
         dataroot = os.environ["DATASET_ROOT_DIR"]
         for dataset in datasetls:
             csv_file = f"{dataroot}/{dataset}/{dataset}_binaryclass"
@@ -352,11 +421,13 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
             dataframes.append(df_train)
         df_train = pd.concat(dataframes)
         if name == "dermoscopyall":
-            pass
+            oversampeling = 7
         elif name == "dermoscopyalld7p":
             df_train = df_train[df_train.attribution == "d7p"]
         elif name == "dermoscopyallph2":
             df_train = df_train[df_train.attribution == "ph2"]
+        elif name == "dermoscopyallham10000":
+            df_train = df_train[df_train.attribution == "ham10000"]
         elif name == "dermoscopyallbarcelona":
             df_train = df_train[
                 df_train.attribution
@@ -379,8 +450,11 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
 
         elif name == "dermoscopyallbutd7p":
             df_train = df_train.drop(df_train[df_train.attribution == "d7p"].index)
+            oversampeling = 7
+
         elif name == "dermoscopyallbutph2":
             df_train = df_train.drop(df_train[df_train.attribution == "ph2"].index)
+            oversampeling = 7
         elif name == "dermoscopyallbutbarcelona":
             df_train = df_train.drop(
                 df_train[
@@ -388,6 +462,7 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
                     == "Department of Dermatology, Hospital Clínic de Barcelona"
                 ].index
             )
+            oversampeling = 7
         elif name == "dermoscopyallbutqueensland":
             df_train = df_train.drop(
                 df_train[
@@ -395,6 +470,7 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
                     == "The University of Queensland Diamantina Institute, The University of Queensland, Dermatology Research Centre"
                 ].index
             )
+            oversampeling = 7
         elif name == "dermoscopyallbutvienna":
             df_train = df_train.drop(
                 df_train[
@@ -402,12 +478,15 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
                     == "ViDIR group, Department of Dermatology, Medical University of Vienna"
                 ].index
             )
+            oversampeling = 7
         elif name == "dermoscopyallbutmskcc":
             df_train = df_train.drop(df_train[df_train.attribution == "MSKCC"].index)
+            oversampeling = 7
         elif name == "dermoscopyallbutpascal":
             df_train = df_train.drop(
                 df_train[df_train.attribution == "Pascale Guitera"].index
             )
+            oversampeling = 7
         else:
             pass
 
@@ -416,7 +495,14 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
             transforms = transforms_train
         else:
             transforms = transforms_val
-        pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
+        if oversampeling is None:
+            oversampeling = 0
+        pass_kwargs = {
+            "csv": df_train,
+            "train": train,
+            "transform": transforms,
+            "oversampeling": oversampeling,
+        }
         return dataset_factory[name](**pass_kwargs)
 
     elif "xray_chest" in name:
@@ -777,6 +863,7 @@ class DermoscopyAllDataset(Dataset):
         csv: pd.core.frame.DataFrame,
         train: bool,
         transform: Optional[callable] = None,
+        oversampeling: int = 0,
     ):
 
         self.csv = csv.reset_index(drop=True)
@@ -785,6 +872,16 @@ class DermoscopyAllDataset(Dataset):
         self.train_df = self.csv.sample(frac=0.8, random_state=200)
         self.test_df = self.csv.drop(self.train_df.index)
         if self.train:
+            # oversample malignant class for ~50/50 ratio
+            if oversampeling > 0:
+                df_mal = self.train_df[self.train_df.target == 1]
+                for _ in range(oversampeling):
+                    self.train_df = pd.concat(
+                        [
+                            self.train_df,
+                            df_mal,
+                        ]
+                    )
             self.csv = self.train_df
         elif not self.train:
             self.csv = self.test_df
@@ -878,6 +975,90 @@ class Ham10000Dataset(Dataset):
             self.csv = self.train_df
         elif not self.train:
             self.csv = self.test_df
+        self.targets = self.csv.target
+
+        self.imgs = self.csv["filepath"]
+        self.samples = self.imgs
+
+    def __len__(self):
+        return self.csv.shape[0]
+
+    def __getitem__(self, index):
+
+        row = self.csv.iloc[index]
+
+        image = cv2.imread(row.filepath)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        if self.transform is not None:
+            res = self.transform(image=image)
+            image = res["image"].astype(np.float32)
+        else:
+            image = image.astype(np.float32)
+
+        image = image.transpose(2, 0, 1)
+
+        data = torch.tensor(image).float()
+
+        return data, torch.tensor(self.csv.iloc[index].target).long()
+
+
+class Ham10000DatasetSubbig(Dataset):
+    def __init__(
+        self,
+        csv: pd.core.frame.DataFrame,
+        train: bool,
+        transform: Optional[callable] = None,
+    ):
+
+        self.csv = csv.reset_index(drop=True)
+        self.train = train
+        self.transform = transform
+        self.train_df = self.csv.sample(frac=0.8, random_state=200)
+        self.test_df = self.csv.drop(self.train_df.index)
+        if self.train:
+            self.csv = self.train_df
+        elif not self.train:
+            self.csv = self.test_df
+        self.targets = self.csv.target
+
+        self.imgs = self.csv["filepath"]
+        self.samples = self.imgs
+
+    def __len__(self):
+        return self.csv.shape[0]
+
+    def __getitem__(self, index):
+
+        row = self.csv.iloc[index]
+
+        image = cv2.imread(row.filepath)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        if self.transform is not None:
+            res = self.transform(image=image)
+            image = res["image"].astype(np.float32)
+        else:
+            image = image.astype(np.float32)
+
+        image = image.transpose(2, 0, 1)
+
+        data = torch.tensor(image).float()
+
+        return data, torch.tensor(self.csv.iloc[index].target).long()
+
+
+class Ham10000DatasetSubsmall(Dataset):
+    def __init__(
+        self,
+        csv: pd.core.frame.DataFrame,
+        train: bool,
+        transform: Optional[callable] = None,
+    ):
+
+        self.csv = csv.reset_index(drop=True)
+        self.train = train
+        self.transform = transform
         self.targets = self.csv.target
 
         self.imgs = self.csv["filepath"]

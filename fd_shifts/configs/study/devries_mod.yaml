@@ -20,7 +20,7 @@ trainer:
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
   lr_scheduler:
-    name: "CosineAnnealingWarmRestarts" # "MultiStep" "CosineAnnealing"
+    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
     milestones: [60, 120, 160] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
     max_epochs: ${trainer.num_epochs}
     gamma: 0.2
