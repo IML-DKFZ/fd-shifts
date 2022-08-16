@@ -483,43 +483,38 @@ def get_dataset(
             df_train = df_train[df_train.attribution == "Pascale Guitera"]
 
         elif name == "dermoscopyallbutd7p":
-            df_train = df_train.drop(df_train[df_train.attribution == "d7p"].index)
+            df_train = df_train[df_train.attribution != "d7p"]
             oversampeling = 7
 
         elif name == "dermoscopyallbutph2":
-            df_train = df_train.drop(df_train[df_train.attribution == "ph2"].index)
+            df_train = df_train[df_train.attribution != "ph2"]
             oversampeling = 7
         elif name == "dermoscopyallbutbarcelona":
-            df_train = df_train.drop(
-                df_train[
-                    df_train.attribution
-                    == "Department of Dermatology, Hospital Clínic de Barcelona"
-                ].index
-            )
+            df_train = df_train[
+                df_train.attribution
+                != "Department of Dermatology, Hospital Clínic de Barcelona"
+            ]
+
             oversampeling = 7
         elif name == "dermoscopyallbutqueensland":
-            df_train = df_train.drop(
-                df_train[
-                    df_train.attribution
-                    == "The University of Queensland Diamantina Institute, The University of Queensland, Dermatology Research Centre"
-                ].index
-            )
+            df_train = df_train[
+                df_train.attribution
+                != "The University of Queensland Diamantina Institute, The University of Queensland, Dermatology Research Centre"
+            ]
+
             oversampeling = 7
         elif name == "dermoscopyallbutvienna":
-            df_train = df_train.drop(
-                df_train[
-                    df_train.attribution
-                    == "ViDIR group, Department of Dermatology, Medical University of Vienna"
-                ].index
-            )
+            df_train = df_train[
+                df_train.attribution
+                != "ViDIR group, Department of Dermatology, Medical University of Vienna"
+            ]
+
             oversampeling = 7
         elif name == "dermoscopyallbutmskcc":
-            df_train = df_train.drop(df_train[df_train.attribution == "MSKCC"].index)
+            df_train = df_train[df_train.attribution != "MSKCC"]
             oversampeling = 7
         elif name == "dermoscopyallbutpascal":
-            df_train = df_train.drop(
-                df_train[df_train.attribution == "Pascale Guitera"].index
-            )
+            df_train = df_train[df_train.attribution != "Pascale Guitera"]
             oversampeling = 7
         else:
             pass
@@ -581,11 +576,11 @@ def get_dataset(
         elif name == "xray_chestallmimic":
             df = df[df.attribution == "mimic"]
         elif name == "xray_chestallbutnih14":
-            df = df.drop(df[df_train.attribution == "nih14"].index)
+            df = df[df.attribution != "nih14"]
         elif name == "xray_chestallbutchexpert":
-            df = df.drop(df[df_train.attribution == "chexpert"].index)
+            df = df[df.attribution != "chexpert"]
         elif name == "xray_chestallbutmimic":
-            df = df.drop(df[df_train.attribution == "mimic"].index)
+            df = df[df.attribution != "mimic"]
 
         pass_kwargs = {"csv": df, "train": train, "transform": transform}
         return _dataset_factory[name](**pass_kwargs)
