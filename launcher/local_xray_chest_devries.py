@@ -26,8 +26,8 @@ for data in data_ls[0:1]:
     exp_group_name = f"{start}_run1"
     accelerator = "None"
     exp_name = "devries"
-    num_epochs = "30"
-    batchsize = "24"
+    num_epochs = "120"
+    batchsize = "48"
     if data == "xray_chestall_data":
         in_class_study_ls = [
             "xray_chestallcorrletter",

@@ -1,12 +1,11 @@
 # @package _global_
-
 exp:
-  group_name: isic
-  name: isic_name
-
+  group_name: dermoscopyall_run_1
+  name: dermoscopyall_confidnet
 trainer:
-  num_epochs: 30 # 250 has to be >1 because of incompatibility of lighting eval with psuedo test
-  val_every_n_epoch: 1 #has to be 1 because of schedulers
+  num_epochs: 5
+  num_epochs_backbone: 3
+  val_every_n_epoch: 1
   # val splits:
   # - null: no validation set is created
   # - "devries": split the first 1000 cases of the iid test set as validation set
@@ -15,54 +14,66 @@ trainer:
   val_split: "devries"
   do_val: True
   accelerator: 
-  batch_size: 16
-  resume_from_ckpt: False
-  benchmark: True # set to false if input size varies during training!
-  fast_dev_run: False # True/Fals
-  lr_scheduler:
-    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
-    milestones: [60, 120, 160] # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
-    max_epochs: ${trainer.num_epochs}
-    gamma: 0.2
+
+  learning_rate: 0.00003
   optimizer:
     name: ADAM
     learning_rate: 0.00003
     momentum: 0.9
     nesterov: True
     weight_decay: 0
+  learning_rate_confidnet: 1e-4
+  learning_rate_confidnet_finetune: 1e-6
+  lr_scheduler:
+    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
+    max_epochs: ${trainer.num_epochs_backbone}
+  momentum: 0.9
+  weight_decay: 0
+  batch_size: 12
+  resume_from_ckpt: False
+  benchmark: True # set to false if input size varies during training!
+  fast_dev_run: False # True/Fals
   callbacks:
     model_checkpoint:
-    monitor:
+    #      n: 2
+    #      selection_metric: ["val/accuracy", "val/ext_failap_err"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
+    #      mode: ["max", "max"]
+    #      filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
+    #      save_top_k: [1, 1]
     confid_monitor:
+    training_stages:
+      milestones: [3, 4]
+      pretrained_backbone_path: #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
+      pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
+      disable_dropout_at_finetuning: True
+      confidnet_lr_scheduler: False
     learning_rate_monitor:
 
 model:
-  name: devries_model_mod # devries_model #
+  name: confidnet_model_mod #det_mcd_model
   fc_dim: 1792
-  dg_reward: -1 # dummy
   avg_pool: True
-  dropout_rate: 0 # 0 sets dropout to false
+  confidnet_fc_dim: 400
+  dropout_rate: 0
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
-  budget: 0.3
   network:
-    name: devries_and_enc #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
+    name: confidnet_and_enc # confidnet_small_conv_and_enc / small_conv
     backbone: efficientnetb4
-    imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
-    load_dg_backbone_path: #${exp.dir}/dg_backbone_2.ckpt  # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
-    save_dg_backbone_path: # ${exp.dir}/dg_backbone.ckpt # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
+    imagenet_weights_path: #${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 test:
   name: test_results
   dir: ${exp.dir}/${test.name}
   cf_path: ${exp.dir}/hydra/config.yaml
-  selection_criterion: "latest" #"best_valacc" #best_valacc # model selection criterion or "latest"
-  selection_mode: #"l#max # model selection criterion or "latest"
+  selection_criterion: latest # latest / best_failap_err
+  selection_mode: #"latest" # model selection criterion or "latest"
   best_ckpt_path: ${exp.version_dir}/${test.selection_criterion}.ckpt # latest or best
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
   devries_repro_ood_split: False
   assim_ood_norm_flag: False
   iid_set_split: "devries" # all, devries
+
 
 eval:
   performance_metrics:
@@ -87,7 +98,8 @@ eval:
   confidence_measures: # ["det_mcp" , "det_pe", "tcp" , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
     train: ["det_mcp"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val: ["det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
-    test: ["det_mcp", "det_pe", "ext"]
+    test:
+      ["det_mcp", "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
 
   monitor_plots: #"calibration",
     [
@@ -96,12 +108,11 @@ eval:
     ]
 
   tb_hparams: ["fold"]
-  ext_confid_name: "devries"
-  test_conf_scaling: False
   val_tuning: True
+  ext_confid_name: "tcp"
   r_star: 0.25
   r_delta: 0.05
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
    iid_study: ${data.dataset}
-   in_class_study: [dermoscopyallcorrbrhigh,dermoscopyallcorrbrhighhigh,dermoscopyallcorrbrlow,dermoscopyallcorrbrlowlow,dermoscopyallcorrgaunoilow,dermoscopyallcorrgaunoilowlow,dermoscopyallcorrgaunoihigh,dermoscopyallcorrgaunoihighhigh,dermoscopyallcorrelastichigh,dermoscopyallcorrelastichighhigh,dermoscopyallcorrmotblrhigh,dermoscopyallcorrmotblrhighhigh]
+   in_class_study:
