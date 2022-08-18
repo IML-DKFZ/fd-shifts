@@ -489,10 +489,16 @@ class ConfidMonitor(Callback):
             ],
             dim=1,
         )
+        # try:
+        #    trainer.datamodule.test_datasets[0].csv.to_csv(
+        #        self.output_paths.test.attributions_output
+        #    )
         try:
-            trainer.datamodule.test_datasets[0].csv.to_csv(
-                self.output_paths.test.attributions_output
-            )
+            for ds_idx, test_ds in enumerate(trainer.datamodule.test_datasets):
+                test_ds.csv.to_csv(
+                    f"{self.output_paths.test.attributions_output[:-4]}{ds_idx}.csv"
+                )
+
         except:
             pass
         np.savez_compressed(
