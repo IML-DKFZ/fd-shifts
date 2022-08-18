@@ -3,8 +3,8 @@ exp:
   group_name: dermoscopyall_run_1
   name: dermoscopyall_confidnet
 trainer:
-  num_epochs: 35
-  num_epochs_backbone: 30
+  num_epochs: 130
+  num_epochs_backbone: 120
   val_every_n_epoch: 1
   # val splits:
   # - null: no validation set is created
@@ -42,7 +42,7 @@ trainer:
     #      save_top_k: [1, 1]
     confid_monitor:
     training_stages:
-      milestones: [30, 34]
+      milestones: [120, 125]
       pretrained_backbone_path: #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
       disable_dropout_at_finetuning: True
@@ -51,7 +51,7 @@ trainer:
 
 model:
   name: confidnet_model_mod #det_mcd_model
-  fc_dim: 1792
+  fc_dim: 1024
   avg_pool: True
   confidnet_fc_dim: 400
   dropout_rate: 0
@@ -59,7 +59,7 @@ model:
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   network:
     name: confidnet_and_enc # confidnet_small_conv_and_enc / small_conv
-    backbone: efficientnetb4
+    backbone: densenet121
     imagenet_weights_path: #${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
 
 test:
