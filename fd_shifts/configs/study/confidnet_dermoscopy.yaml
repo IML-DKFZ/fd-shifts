@@ -3,8 +3,8 @@ exp:
   group_name: dermoscopyall_run_1
   name: dermoscopyall_confidnet
 trainer:
-  num_epochs: 35
-  num_epochs_backbone: 30
+  num_epochs: 55
+  num_epochs_backbone: 50
   val_every_n_epoch: 1
   # val splits:
   # - null: no validation set is created
@@ -25,7 +25,8 @@ trainer:
   learning_rate_confidnet: 1e-4
   learning_rate_confidnet_finetune: 1e-6
   lr_scheduler:
-    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
+    name: "CosineAnnealingWarmRestarts" # "MultiStep" "CosineAnnealing"
+    milestones: [15, 30, 40] 
     max_epochs: ${trainer.num_epochs_backbone}
   momentum: 0.9
   weight_decay: 0
@@ -42,7 +43,7 @@ trainer:
     #      save_top_k: [1, 1]
     confid_monitor:
     training_stages:
-      milestones: [30, 34]
+      milestones: [50, 54]
       pretrained_backbone_path: #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
       disable_dropout_at_finetuning: True
