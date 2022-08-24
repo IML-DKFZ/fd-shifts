@@ -1,9 +1,9 @@
 # @package _global_
 exp:
-  group_name: dermoscopyall_run_1
-  name: dermoscopyall_crossentropy
+  group_name: chestxrayall_run_1
+  name: chestxrayall_cross_entropy
 trainer:
-  num_epochs: 40
+  num_epochs: 120
   val_every_n_epoch: 1
   # val splits:
   # - null: no validation set is created
@@ -14,10 +14,10 @@ trainer:
   do_val: True
   accelerator: None
 
-  learning_rate: 0.00003
+  learning_rate: 0.0005
   optimizer:
     name: ADAM
-    learning_rate: 0.00003
+    learning_rate: 0.0005
     momentum: 0.9
     nesterov: True
     weight_decay: 0
@@ -25,7 +25,7 @@ trainer:
   lr_scheduler:
     name: "MultiStep" # "MultiStep" "CosineAnnealing"
     gamma: 0.1
-    milestones: [30, 35] 
+    milestones: [100, 110] 
     max_epochs: ${trainer.num_epochs}
   momentum: 0.9
   weight_decay: 0
@@ -40,13 +40,13 @@ trainer:
 
 model:
   name: cross_entropy #det_mcd_model
-  fc_dim: 1792
+  fc_dim: 1024
   avg_pool: True
   dropout_rate: 0
   monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
   network: 
-    name: efficientnetb4 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
+    name: densenet121 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
     backbone: 
     imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
     load_dg_backbone_path: #${exp.dir}/dg_backbone_2.ckpt  # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
