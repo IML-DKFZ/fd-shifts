@@ -6,6 +6,7 @@ from fd_shifts.models import vit_model
 from fd_shifts.models import isic_model
 from fd_shifts.models import devries_model_mod
 from fd_shifts.models import confidnet_model_mod
+from fd_shifts.models import cross_entropy
 
 
 def get_model(model_name):
@@ -23,6 +24,7 @@ def get_model(model_name):
         "isic_model": isic_model.net,
         "devries_model_mod": devries_model_mod.net,
         "confidnet_model_mod": confidnet_model_mod.net,
+        "cross_entropy": cross_entropy.net,
     }
 
     return model_factory[model_name]
