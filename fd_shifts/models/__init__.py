@@ -3,6 +3,7 @@ import pytorch_lightning as pl
 from fd_shifts.models import (
     confidnet_model,
     confidnet_model_mod,
+    cross_entropy,
     devries_model,
     devries_model_mod,
     isic_model,
@@ -16,6 +17,7 @@ _model_factory: dict[str, type[pl.LightningModule]] = {
     "isic_model": isic_model.net,
     "devries_model_mod": devries_model_mod.net,
     "confidnet_model_mod": confidnet_model_mod.net,
+    "cross_entropy": cross_entropy.net,
 }
 
 
