@@ -521,7 +521,7 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
 
                 # create new path for corrupted images
                 if "corr" in name:
-                    _, cor = name.split("dermoscopyallcorr")
+                    _, cor = name.split("xray_chestallcorr")
                     cor = "_" + cor
                 else:
                     cor = ""
