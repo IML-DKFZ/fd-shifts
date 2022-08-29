@@ -78,6 +78,11 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         "xray_chestallcorrgaunoilowlow": XrayDataset,
         "xray_chestallcorrelastichigh": XrayDataset,
         "xray_chestallcorrelastichighhigh": XrayDataset,
+        "rxrx1all": Rxrx1Dataset,
+        "rxrx1all_1cell": Rxrx1Dataset,
+        "rxrx1all_3cell": Rxrx1Dataset,
+        "rxrx1all_40s": Rxrx1Dataset,
+        "rxrx1all_11s": Rxrx1Dataset,
         "isic_v01": Isicv01,
         "isic_v01_cr": Isicv01,
         "isic_winner": MelanomaDataset,
@@ -551,6 +556,61 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         pass_kwargs = {"csv": df, "train": train, "transform": transform}
         return dataset_factory[name](**pass_kwargs)
 
+    elif "rxrx1" in name:
+        dataroot = os.environ["DATASET_ROOT_DIR"]
+        dataset = "rxrx1"
+        csv_file = f"{dataroot}/{dataset}/{dataset}_multiclass.csv"
+        df = pd.read_csv(csv_file)
+        df["filepath"] = dataroot + "/" + df["filepath"]
+        datafolder = "/" + dataset
+        data_dir = os.path.join(dataroot + datafolder)
+        for i in range(len(df)):
+            img_sub_path = df["stempath"].iloc[i]
+            img_path = data_dir + "/" + img_sub_path
+            start, _ = img_path.split(".png")
+            end = "png"
+            if "corr" in name:
+                _, cor = name.split("rxrx1_allcorr")
+                cor = "_" + cor
+            else:
+                cor = ""
+            df.iloc[i, df.columns.get_loc("stempath")] = start + cor + "." + end
+
+        if name == "rxrx1_3cell":
+            df = df[df["cell_type"] != "U2OS"]
+        elif name == "rxrx1_1cell":
+            df = df[df["cell_type"] == "U2OS"]
+        elif name == "rxrx1_40s":
+            df = df[
+                ~(df["experiment"] == "HEPG2-08")
+                | (df["experiment"] == "HEPG2-09")
+                | (df["experiment"] == "HEPG2-11")
+                | (df["experiment"] == "HEPG2-17")
+                | (df["experiment"] == "HUVEC-18")
+                | (df["experiment"] == "HUVEC-19")
+                | (df["experiment"] == "HUVEC-20")
+                | (df["experiment"] == "RPE-08")
+                | (df["experiment"] == "RPE-09")
+                | (df["experiment"] == "U2OS-01")
+                | (df["experiment"] == "HUVEC-13")
+            ]
+        elif name == "rxrx1_11s":
+            df = df[
+                (df["experiment"] == "HEPG2-08")
+                | (df["experiment"] == "HEPG2-09")
+                | (df["experiment"] == "HEPG2-11")
+                | (df["experiment"] == "HEPG2-17")
+                | (df["experiment"] == "HUVEC-18")
+                | (df["experiment"] == "HUVEC-19")
+                | (df["experiment"] == "HUVEC-20")
+                | (df["experiment"] == "RPE-08")
+                | (df["experiment"] == "RPE-09")
+                | (df["experiment"] == "U2OS-01")
+                | (df["experiment"] == "HUVEC-13")
+            ]
+        pass_kwargs = {"csv": df, "train": train, "transform": transform}
+        return dataset_factory[name](**pass_kwargs)
+
     else:
         return dataset_factory[name](**pass_kwargs)
 
@@ -761,6 +821,61 @@ from torch.utils.data import Dataset
 import cv2
 import pandas as pd
 from typing import Optional
+
+
+class Rxrx1Dataset(Dataset):
+    """
+    Returns 6-Channel image, not rgb but stacked greychannels from fluoresenzemicroscopy
+    """
+
+    def __init__(
+        self,
+        csv: pd.core.frame.DataFrame,
+        train: bool,
+        transform: Optional[callable] = None,
+    ):
+
+        self.csv = csv.reset_index(drop=True)
+        self.train = train
+        self.transform = transform
+        self.train_df = self.csv.sample(frac=0.8, random_state=200)
+        self.test_df = self.csv.drop(self.train_df.index)
+        if self.train:
+            self.csv = self.train_df
+        elif not self.train:
+            self.csv = self.test_df
+        self.targets = self.csv.target
+        self.imgs = self.csv["filepath"]
+        self.samples = self.imgs
+
+    def __len__(self):
+        return self.csv.shape[0]
+
+    def __getitem__(self, index):
+
+        row = self.csv.iloc[index]
+        filepath = row.stempath
+        channels = []
+        for channel in range(1, 7, 1):
+            start, end = filepath.split("XXX")
+            channel_path = start + str(channel) + end
+            channels.append(channel_path)
+        blue = cv2.imread(channels[0])[:, :, 0]
+        green = cv2.imread(channels[1])[:, :, 0]
+        red = cv2.imread(channels[2])[:, :, 0]
+        cyan = cv2.imread(channels[3])[:, :, 0]
+        magenta = cv2.imread(channels[4])[:, :, 0]
+        yellow = cv2.imread(channels[5])[:, :, 0]
+
+        image = np.stack((red, green, blue, cyan, magenta, yellow), axis=2)
+
+        if self.transform is not None:
+            image = self.transform(image)
+        else:
+            image = image.astype(np.float32)
+        data = image
+
+        return data, torch.tensor(self.csv.iloc[index].target).long()
 
 
 class XrayDataset(Dataset):

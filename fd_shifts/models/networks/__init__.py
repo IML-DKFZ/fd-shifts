@@ -12,6 +12,7 @@ from fd_shifts.models.networks import dgvgg
 from fd_shifts.models.networks import vit
 from fd_shifts.models.networks import efficientnetb4
 from fd_shifts.models.networks import densenet121
+from fd_shifts.models.networks import densenet161
 
 
 def get_network(network_name):
@@ -38,6 +39,7 @@ def get_network(network_name):
         "vit": vit.ViT,
         "efficientnetb4": efficientnetb4.EfficientNetb4,
         "densenet121": densenet121.Densenet121,
+        "densenet161": densenet161.Densenet161,
     }
 
     return network_factory[network_name]
