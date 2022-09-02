@@ -610,30 +610,32 @@ def get_dataset(
                 cor = ""
             df.iloc[i, df.columns.get_loc("stempath")] = start + cor + "." + end
 
-        if name == "rxrx1_3cell":
+        if name == "rxrx1all_3cell":
             df = df[df["cell_type"] != "U2OS"]
-        elif name == "rxrx1_1cell":
+        elif name == "rxrx1all_1cell":
             df = df[df["cell_type"] == "U2OS"]
-        elif name == "rxrx1_40s":
+        elif name == "rxrx1all_40s":
             df = df[
-                ~(df["experiment"] == "HEPG2-08")
-                | (df["experiment"] == "HEPG2-09")
-                | (df["experiment"] == "HEPG2-11")
-                | (df["experiment"] == "HEPG2-17")
-                | (df["experiment"] == "HUVEC-18")
-                | (df["experiment"] == "HUVEC-19")
-                | (df["experiment"] == "HUVEC-20")
-                | (df["experiment"] == "RPE-08")
-                | (df["experiment"] == "RPE-09")
-                | (df["experiment"] == "U2OS-01")
-                | (df["experiment"] == "HUVEC-13")
+                ~(
+                    (df["experiment"] == "HEPG2-08")
+                    | (df["experiment"] == "HEPG2-09")
+                    | (df["experiment"] == "HEPG2-11")
+                    | (df["experiment"] == "HEPG2-07")
+                    | (df["experiment"] == "HUVEC-18")
+                    | (df["experiment"] == "HUVEC-19")
+                    | (df["experiment"] == "HUVEC-20")
+                    | (df["experiment"] == "RPE-08")
+                    | (df["experiment"] == "RPE-09")
+                    | (df["experiment"] == "U2OS-01")
+                    | (df["experiment"] == "HUVEC-13")
+                )
             ]
-        elif name == "rxrx1_11s":
+        elif name == "rxrx1all_11s":
             df = df[
                 (df["experiment"] == "HEPG2-08")
                 | (df["experiment"] == "HEPG2-09")
                 | (df["experiment"] == "HEPG2-11")
-                | (df["experiment"] == "HEPG2-17")
+                | (df["experiment"] == "HEPG2-07")
                 | (df["experiment"] == "HUVEC-18")
                 | (df["experiment"] == "HUVEC-19")
                 | (df["experiment"] == "HUVEC-20")
