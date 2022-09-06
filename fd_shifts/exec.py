@@ -184,36 +184,54 @@ def main(dconf: DictConfig):
         colorize=True,
         enqueue=True,
         level="DEBUG",
+        backtrace=True,
+        diagnose=True
     )
 
-    # NOTE: Needed because hydra does not set this if we load a previous experiment
-    dconf._metadata.object_type = configs.Config
+    try:
+        # NOTE: Needed because hydra does not set this if we load a previous experiment
+        dconf._metadata.object_type = configs.Config
 
-    conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
-    conf.validate()
-    # sys.stdout = exp_utils.Logger(conf.exp.log_path)
-    # sys.stderr = exp_utils.Logger(conf.exp.log_path)
-    logger.info(OmegaConf.to_yaml(conf))
-    conf.data.num_workers = exp_utils.get_allowed_n_proc_DA(conf.data.num_workers)
+        def fix_metadata(cfg: DictConfig):
+            if hasattr(cfg, "_target_"):
+                cfg._metadata.object_type = getattr(configs, cfg._target_.split(".")[-1])
+            for k, v in cfg.items():
+                match v:
+                    case DictConfig():
+                        fix_metadata(v)
+                    case _:
+                        pass
 
-    if conf.exp.mode == configs.Mode.train:
-        train(conf, progress)
+        fix_metadata(dconf)
 
-    if conf.exp.mode == configs.Mode.train_test:
-        train(conf, progress, subsequent_testing=True)
+        conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
+        conf.validate()
+        # sys.stdout = exp_utils.Logger(conf.exp.log_path)
+        # sys.stderr = exp_utils.Logger(conf.exp.log_path)
+        logger.info(OmegaConf.to_yaml(conf))
+        conf.data.num_workers = exp_utils.get_allowed_n_proc_DA(conf.data.num_workers)
 
-    if conf.exp.mode == configs.Mode.test:
-        test(conf, progress)
+        if conf.exp.mode == configs.Mode.train:
+            train(conf, progress)
 
-    if conf.exp.mode == configs.Mode.analysis:
-        analysis.main(
-            in_path=conf.test.dir,
-            out_path=conf.test.dir,
-            query_studies=conf.eval.query_studies,
-            add_val_tuning=conf.eval.val_tuning,
-            threshold_plot_confid=None,
-            cf=conf,
-        )
+        if conf.exp.mode == configs.Mode.train_test:
+            train(conf, progress, subsequent_testing=True)
+
+        if conf.exp.mode == configs.Mode.test:
+            test(conf, progress)
+
+        if conf.exp.mode == configs.Mode.analysis:
+            analysis.main(
+                in_path=conf.test.dir,
+                out_path=conf.test.dir,
+                query_studies=conf.eval.query_studies,
+                add_val_tuning=conf.eval.val_tuning,
+                threshold_plot_confid=None,
+                cf=conf,
+            )
+    except Exception as e:
+        logger.exception(e)
+        raise e
 
 
 if __name__ == "__main__":
