@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+from itertools import islice
 from typing import TYPE_CHECKING
 
 import hydra
 import numpy as np
 import pl_bolts
 import pytorch_lightning as pl
-from rich import get_console
-from rich.progress import track
 import timm
 import torch
 import torch.nn as nn
 from pytorch_lightning.utilities.parsing import AttributeDict
+from rich import get_console
+from rich.progress import track
 from tqdm import tqdm
 
 from fd_shifts import logger
@@ -155,7 +156,20 @@ class net(pl.LightningModule):
         all_z = []
         all_y = []
         get_console().clear_live()
-        for x, y in track(self.trainer.datamodule.train_dataloader(), console=get_console()):
+        tracker = track(
+            self.trainer.datamodule.train_dataloader(), console=get_console()
+        )
+
+        if self.trainer.fast_dev_run:
+            tracker = track(
+                islice(
+                    self.trainer.datamodule.train_dataloader(),
+                    self.trainer.fast_dev_run,
+                ),
+                console=get_console(),
+            )
+
+        for x, y in tracker:
             x = x.type_as(self.model.head.weight)
             y = y.type_as(self.model.head.weight)
             z = self.model.forward_features(x)
