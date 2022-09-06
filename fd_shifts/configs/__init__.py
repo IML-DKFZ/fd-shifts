@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import field
 from enum import Enum, auto
 from pathlib import Path
@@ -24,6 +25,7 @@ from ..models import networks
 
 # TODO: Clean up data configs (-> instantiation? enum?)
 # TODO: Clean up model configs (-> instantiation? enum?)
+
 
 class AutoName(Enum):
     def _generate_next_value_(name, start, count, last_values):
@@ -118,10 +120,7 @@ class ExperimentConfig(IterableMixin):
 @dataclass
 class LRSchedulerConfig:
     _target_: str = MISSING
-    _partial_: Optional[str] = None
-
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+    _partial_: Optional[bool] = None
 
 
 CosineAnnealingLR = builds(
@@ -146,21 +145,19 @@ LinearWarmupCosineAnnealingLR = builds(
 @dataclass
 class OptimizerConfig:
     _target_: str = MISSING
-    _partial_: Optional[str] = None
-
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+    _partial_: Optional[bool] = None
 
 
-SGD = builds(
-    torch.optim.SGD,
-    lr=0.003,
-    momentum=0.9,
-    weight_decay=0.0,
-    builds_bases=(OptimizerConfig,),
-    zen_partial=True,
-    populate_full_signature=True,
-)
+@defer_validation
+@dataclass
+class SGD(OptimizerConfig):
+    _target_: str = "torch.optim.SGD"
+    lr: float = 0.003
+    dampening: float = 0.0
+    momentum: float = 0.9
+    nesterov: bool = False
+    maximize: bool = False
+    weight_decay: float = 0.0
 
 
 @defer_validation
@@ -177,9 +174,9 @@ class TrainerConfig(IterableMixin):
     batch_size: int = MISSING
     resume_from_ckpt: bool = MISSING
     benchmark: bool = MISSING
-    fast_dev_run: bool = MISSING
+    fast_dev_run: bool | int = MISSING
     lr_scheduler: LRSchedulerConfig = LRSchedulerConfig()
-    optimizer: OptimizerConfig = OptimizerConfig()
+    optimizer: OptimizerConfig = MISSING
     callbacks: dict[str, Optional[dict[Any, Any]]] = field(
         default_factory=lambda: {}
     )  # TODO: validate existence

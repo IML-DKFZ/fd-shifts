@@ -205,15 +205,14 @@ class net(pl.LightningModule):
         }
 
     def configure_optimizers(self):
-        logger.error(self.model.parameters())
-        optim = hydra.utils.instantiate(self.config.trainer.optimizer)(
-            self.model.parameters()
+        optim = hydra.utils.instantiate(
+            self.config.trainer.optimizer, _convert_="all", params=self.model.parameters()
         )
 
         lr_sched = {
-            "scheduler": hydra.utils.instantiate(
-                self.config.trainer.lr_scheduler
-            )(optimizer=optim),
+            "scheduler": hydra.utils.instantiate(self.config.trainer.lr_scheduler)(
+                optimizer=optim
+            ),
             "interval": "step",
         }
 
