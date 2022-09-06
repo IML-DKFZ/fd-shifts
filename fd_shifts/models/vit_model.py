@@ -71,17 +71,19 @@ class net(pl.LightningModule):
             z = self.model.forward_features(x)
             probs = self.model.head(z)
             # softmax = torch.softmax(probs, dim=1)
-            zm = z[:, None, :] - self.mean
+            maha = None
+            if any("ext" in cfd for cfd in self.query_confids.test):
+                zm = z[:, None, :] - self.mean
 
-            maha = -(torch.einsum("inj,jk,ink->in", zm, self.icov, zm))
-            maha = maha.max(dim=1)[0].type_as(x)
+                maha = -(torch.einsum("inj,jk,ink->in", zm, self.icov, zm))
+                maha = maha.max(dim=1)[0].type_as(x).unsqueeze(1)
+                conf_list.append(maha)
 
             softmax_list.append(probs.unsqueeze(2))
-            conf_list.append(maha.unsqueeze(1))
 
         self.disable_dropout()
 
-        return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
+        return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1) if len(conf_list) else None
 
     def forward(self, x):
         return self.model(x)
@@ -152,6 +154,7 @@ class net(pl.LightningModule):
         logger.info("Calculating trainset mean and cov")
         all_z = []
         all_y = []
+        get_console().clear_live()
         for x, y in track(self.trainer.datamodule.train_dataloader(), console=get_console()):
             x = x.type_as(self.model.head.weight)
             y = y.type_as(self.model.head.weight)
@@ -162,6 +165,9 @@ class net(pl.LightningModule):
         all_z = torch.cat(all_z, dim=0)
         all_y = torch.cat(all_y, dim=0)
 
+        if torch.isnan(all_z).any():
+            logger.error("NaN in z's: {}%", torch.isnan(all_z).any(dim=1).mean() * 100)
+
         mean = []
         for c in all_y.unique():
             mean.append(all_z[all_y == c].mean(dim=0))
@@ -169,9 +175,9 @@ class net(pl.LightningModule):
         mean = torch.stack(mean, dim=0)
         self.mean = mean.type_as(self.model.head.weight)
         self.icov = torch.inverse(
-            torch.tensor(np.cov(all_z.numpy(), rowvar=False)).type_as(
+            torch.cov(all_z.type_as(
                 self.model.head.weight
-            )
+            ).T)
         )
 
     def test_step(self, batch, batch_idx, *args):
