@@ -156,6 +156,7 @@ def get_dataset(
         "ham10000multi": Ham10000Dataset,
         "ham10000subbig": Ham10000DatasetSubbig,
         "ham10000subsmall": Ham10000DatasetSubsmall,
+        "ham10000subsmallprevadj": Ham10000DatasetSubsmall,
         "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
@@ -395,7 +396,7 @@ def get_dataset(
             df_train.iloc[i, df_train.columns.get_loc("filepath")] = (
                 data_dir + "/" + start + "_512" + "." + end
             )
-        tansforms_train, transforms_val = get_transforms(512)
+        transforms_train, transforms_val = get_transforms(512)
         if train:
             transforms = transforms_train
         else:
@@ -403,6 +404,32 @@ def get_dataset(
         pass_kwargs = {"csv": df_train, "train": True, "transform": transforms}
         return _dataset_factory[name](**pass_kwargs)
 
+    elif name == "ham10000subsmallprevadj":
+        out_dim = 2
+        dataset = "ham10000"
+        dataroot = os.environ["DATASET_ROOT_DIR"]
+        csv_file = f"{dataroot}/{dataset}/{dataset}_subsmall_binaryclass"
+        df_train = pd.read_csv(csv_file)
+        datafolder = "/" + dataset
+        data_dir = os.path.join(dataroot + datafolder)
+        for i in range(len(df_train)):
+            start, end = df_train["filepath"].iloc[i].split(".")
+            # create new path for corrupted images
+            df_train.iloc[i, df_train.columns.get_loc("filepath")] = (
+                data_dir + "/" + start + "_512" + "." + end
+            )
+        transforms_train, transforms_val = get_transforms(512)
+        if train:
+            transforms = transforms_train
+        else:
+            transforms = transforms_val
+        # manualy adjusting for prevailance: iid set 1590 benign to 222 mal -> 7.2
+        # subset: 442 ben 514 mal: Downsample 442 benign to 61 mal -> 7.2
+        df_61 = df_train[df_train.benign_malignant == "malignant"].iloc[0:61]
+        df_442 = df_train[df_train.benign_malignant == "benign"]
+        df_adj = pd.concat((df_61, df_442))
+        pass_kwargs = {"csv": df_adj, "train": True, "transform": transforms}
+        return _dataset_factory[name](**pass_kwargs)
     elif name == "isic_2020":
         out_dim = 2
         data_dir = root
