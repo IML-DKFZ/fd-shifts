@@ -36,10 +36,9 @@ def train(cf: configs.Config, progress: RichProgressBar, subsequent_testing=Fals
     logger.info("CHECK CUDNN VERSION", torch.backends.cudnn.version())
     train_deterministic_flag = False
     if cf.exp.global_seed is not None:
-        # exp_utils.set_seed(cf.exp.global_seed)
         exp_utils.set_seed(cf.exp.global_seed)
         cf.trainer.benchmark = False
-        train_deterministic_flag = True
+        # train_deterministic_flag = True
         logger.info(
             "setting seed {}, benchmark to False for deterministic training.".format(
                 cf.exp.global_seed
@@ -62,8 +61,8 @@ def train(cf: configs.Config, progress: RichProgressBar, subsequent_testing=Fals
 
     # TODO: Don't hard-code number of total classes and number of holdout classes
     if "openset" in cf.data.dataset:
-        cf.data.kwargs.out_classes = random.sample(
-            range(cf.data.num_classes), int(0.4 * cf.data.num_classes)
+        cf.data.kwargs["out_classes"] = cf.data.kwargs.get("out_classes", random.sample(
+            range(cf.data.num_classes), int(0.4 * cf.data.num_classes))
         )
 
     datamodule = AbstractDataLoader(cf)

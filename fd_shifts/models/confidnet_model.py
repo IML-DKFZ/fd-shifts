@@ -292,7 +292,7 @@ class net(pl.LightningModule):
         #             }
         #         )
         optimizers = [
-            hydra.utils.instantiate(self.cf.trainer.optimizer)(
+            hydra.utils.instantiate(self.cf.trainer.optimizer, _partial_=True)(
                 self.backbone.parameters()
             )
         ]

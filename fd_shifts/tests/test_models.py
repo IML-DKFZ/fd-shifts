@@ -170,7 +170,19 @@ def test_model_training(study: str, snapshot: Any, tmp_path: Path, mock_env: Non
 @pytest.mark.parametrize(
     ("study",),
     [
-        ("vit/cifar100_modelvit_bbvit_lr0.01_bs128_run2_do1_rew0",),
+        # ("vit/cifar100_modelvit_bbvit_lr0.01_bs128_run2_do1_rew0",),
+        ("svhn_openset_paper_sweep/dg_bbsvhn_small_conv_do0_run1_rew10",),
+        # ("animals_openset_paper_sweep/dg_bbresnet50_do0_run1_rew10",),
+        ("svhn_openset_paper_sweep/dg_bbsvhn_small_conv_do1_run1_rew10",),
+        # ("animals_openset_paper_sweep/dg_bbresnet50_do1_run1_rew10",),
+        ("svhn_openset_paper_sweep/confidnet_bbsvhn_small_conv_do0_run1_rew2.2",),
+        # ("animals_openset_paper_sweep/confidnet_bbresnet50_do0_run1_rew2.2",),
+        ("svhn_openset_paper_sweep/confidnet_bbsvhn_small_conv_do1_run1_rew2.2",),
+        # ("animals_openset_paper_sweep/confidnet_bbresnet50_do1_run1_rew2.2",),
+        ("svhn_openset_paper_sweep/devries_bbsvhn_small_conv_do0_run1_rew2.2",),
+        # ("animals_openset_paper_sweep/devries_bbresnet50_do0_run1_rew10",),
+        ("svhn_openset_paper_sweep/devries_bbsvhn_small_conv_do1_run1_rew2.2",),
+        # ("animals_openset_paper_sweep/devries_bbresnet50_do1_run1_rew10",),
     ],
 )
 def test_exec(
@@ -187,7 +199,8 @@ python -W ignore fd_shifts/exec.py \
     trainer.batch_size=4 \
     trainer.fast_dev_run=5 \
     data.num_workers=0 \
-    trainer.num_steps=5
+    ~trainer.num_epochs \
+    ++trainer.num_steps=5 
 """
 
     shutil.copytree(
@@ -204,6 +217,7 @@ python -W ignore fd_shifts/exec.py \
             stderr=subprocess.STDOUT,
             text=True,
         )
+        # print(proc.stdout)
     except subprocess.CalledProcessError as e:
         print(e.stdout)
         raise e

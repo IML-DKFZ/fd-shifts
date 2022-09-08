@@ -322,7 +322,7 @@ class net(pl.LightningModule):
         #         }
         #     ]
         optimizers = [
-            hydra.utils.instantiate(self.optimizer_cfgs)(
+            hydra.utils.instantiate(self.optimizer_cfgs, _partial_=True)(
                 self.model.parameters()
             )
         ]
