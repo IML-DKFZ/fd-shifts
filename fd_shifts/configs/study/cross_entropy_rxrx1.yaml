@@ -43,8 +43,8 @@ model:
   fc_dim: 2208
   avg_pool: True
   dropout_rate: 0
-  monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
-  test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
+  monitor_mcd_samples: 10 # only activated if "mcd" substring in train or val monitor confids.
+  test_mcd_samples: 10 # only activated if "mcd" substring in test confids.
   network: 
     name: densenet161 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
     backbone: 
