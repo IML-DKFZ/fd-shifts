@@ -963,7 +963,7 @@ class XrayDataset(Dataset):
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
-        self.train_df = self.csv.sample(frac=0.8, random_state=200)
+        self.train_df = self.csv.sample(frac=0.9, random_state=200)
         self.test_df = self.csv.drop(self.train_df.index)
         if self.train:
             self.csv = self.train_df
