@@ -568,6 +568,9 @@ def get_dataset(
             transforms = transforms_val
         if oversampeling is None:
             oversampeling = 0
+        ## for the small ph2 set use train set also for testing. otherwise only 40 images
+        elif name == "dermoscopyallph2":
+            train = True
         pass_kwargs = {
             "csv": df_train,
             "train": train,
