@@ -609,7 +609,7 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
             start, _ = img_path.split(".png")
             end = "png"
             if "corr" in name:
-                _, cor = name.split("rxrx1_allcorr")
+                _, cor = name.split("rxrx1allcorr")
                 cor = "_" + cor
             else:
                 cor = ""
