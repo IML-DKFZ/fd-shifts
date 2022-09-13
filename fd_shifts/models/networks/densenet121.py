@@ -11,11 +11,10 @@ class Densenet121(nn.Module):
     def __init__(self, cf) -> None:
         super(Densenet121, self).__init__()
         self.model = models.densenet121(pretrained=True)
-        for i in self.model.children():
-            for j in i.children():
-                for l in j.children():
-                    if isinstance(l, torchvision.models.densenet._DenseLayer):
-                        l.add_module("drop1", nn.Dropout(p=cf.model.dropout_rate * 0.1))
+        self.dropout_rate = cf.model.dropout_rate * 0.1
+        for layer in self.named_modules():
+            if isinstance(layer[1], torchvision.models.densenet._DenseLayer):
+                layer[1].drop_rate = self.dropout_rate
         self.encoder = Encoder(model=self.model)
         self.classifier = Classifier(cf=cf, model=self.model)
 
@@ -46,22 +45,14 @@ class Encoder(nn.Module):
         return out
 
     def disable_dropout(self):
-        for layer in self.children():
-            for layer2 in layer.children():
-                for layer3 in layer2.children():
-                    for layer4 in layer3.children():
-                        for layer5 in layer4.children():
-                            if isinstance(layer5, nn.modules.dropout.Dropout):
-                                layer5.eval()
+        for layer in self.named_modules():
+            if isinstance(layer[1], torchvision.models.densenet._DenseLayer):
+                layer[1].drop_rate = 0
 
     def enable_dropout(self):
-        for layer in self.children():
-            for layer2 in layer.children():
-                for layer3 in layer2.children():
-                    for layer4 in layer3.children():
-                        for layer5 in layer4.children():
-                            if isinstance(layer5, nn.modules.dropout.Dropout):
-                                layer5.train()
+        for layer in self.named_modules():
+            if isinstance(layer[1], torchvision.models.densenet._DenseLayer):
+                layer[1].drop_rate = 0.1
 
 
 class Classifier(nn.Module):
