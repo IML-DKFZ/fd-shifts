@@ -1,6 +1,6 @@
 # @package _global_
 exp:
-  group_name: chestxrayall_run_1
+  group_name: chestxrayall_prototyping
   name: chestxrayall_cross_entropy
 trainer:
   num_epochs: 120
@@ -29,7 +29,7 @@ trainer:
     max_epochs: ${trainer.num_epochs}
   momentum: 0.9
   weight_decay: 0
-  batch_size: 12
+  batch_size: 48
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals

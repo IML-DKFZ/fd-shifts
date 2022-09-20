@@ -83,6 +83,24 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         "rxrx1all_3cell": Rxrx1Dataset,
         "rxrx1all_40s": Rxrx1Dataset,
         "rxrx1all_11s": Rxrx1Dataset,
+        "rxrx1all_butHEPG2": Rxrx1Dataset,
+        "rxrx1all_butHUVEC": Rxrx1Dataset,
+        "rxrx1all_butU2OS": Rxrx1Dataset,
+        "rxrx1all_butRPE": Rxrx1Dataset,
+        "rxrx1all_onlyHEPG2": Rxrx1Dataset,
+        "rxrx1all_onlyHUVEC": Rxrx1Dataset,
+        "rxrx1all_onlyU2OS": Rxrx1Dataset,
+        "rxrx1all_onlyRPE": Rxrx1Dataset,
+        "rxrx1all_large_set1": Rxrx1Dataset,
+        "rxrx1all_large_set2": Rxrx1Dataset,
+        "rxrx1all_large_set3": Rxrx1Dataset,
+        "rxrx1all_large_set4": Rxrx1Dataset,
+        "rxrx1all_large_set5": Rxrx1Dataset,
+        "rxrx1all_small_set1": Rxrx1Dataset,
+        "rxrx1all_small_set2": Rxrx1Dataset,
+        "rxrx1all_small_set3": Rxrx1Dataset,
+        "rxrx1all_small_set4": Rxrx1Dataset,
+        "rxrx1all_small_set5": Rxrx1Dataset,
         "rxrx1allcorrbrlow": Rxrx1Dataset,
         "rxrx1allcorrbrlowlow": Rxrx1Dataset,
         "rxrx1allcorrbrhigh": Rxrx1Dataset,
@@ -93,6 +111,13 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         "rxrx1allcorrgaunoilowlow": Rxrx1Dataset,
         "rxrx1allcorrelastichigh": Rxrx1Dataset,
         "rxrx1allcorrelastichighhigh": Rxrx1Dataset,
+        "lidc_idriall": Lidc_idriDataset,
+        "lidc_idriall_calcification_iid": Lidc_idriDataset,
+        "lidc_idriall_calcification_ood": Lidc_idriDataset,
+        "lidc_idriall_spiculation_iid": Lidc_idriDataset,
+        "lidc_idriall_spiculation_ood": Lidc_idriDataset,
+        "lidc_idriall_texture_iid": Lidc_idriDataset,
+        "lidc_idriall_texture_ood": Lidc_idriDataset,
         "isic_v01": Isicv01,
         "isic_v01_cr": Isicv01,
         "isic_winner": MelanomaDataset,
@@ -127,10 +152,9 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         "ph2": Ph2Dataset,
         "d7p": D7pDataset,
         "dermoscopyallham10000": DermoscopyAllDataset,
-        "ham10000multi": Ham10000Dataset,
-        "ham10000subbig": Ham10000DatasetSubbig,
-        "ham10000subsmall": Ham10000DatasetSubsmall,
-        "ham10000subsmallprevadj": Ham10000DatasetSubsmall,
+        "dermoscopyallham10000multi": DermoscopyAllDataset,
+        "dermoscopyallham10000subbig": DermoscopyAllDataset,
+        "dermoscopyallham10000subsmall": DermoscopyAllDataset,
         "mnist": datasets.MNIST,
         "cifar10": datasets.CIFAR10,
         "cifar100": datasets.CIFAR100,
@@ -300,111 +324,7 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
             transforms = transforms_val
         pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
         return dataset_factory[name](**pass_kwargs)
-    elif name == "ham10000":
-        out_dim = 2
-        data_dir = root
-        data_folder = "512"  # input image size
-        csv_file = f"{root}/ham10000_binaryclass"
-        df_train = pd.read_csv(csv_file)
-        df_train["filepath"] = root + "/" + df_train["filepath"]
 
-        transforms_train, transforms_val = get_transforms(512)
-        if train:
-            transforms = transforms_train
-        else:
-            transforms = transforms_val
-        pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return dataset_factory[name](**pass_kwargs)
-
-    elif name == "ham10000multi":
-        out_dim = 6
-        dataset = "ham10000"
-        dataroot = os.environ["DATASET_ROOT_DIR"]
-        csv_file = f"{dataroot}/{dataset}/{dataset}_multiclass"
-        df_train = pd.read_csv(csv_file)
-        datafolder = "/" + dataset
-        data_dir = os.path.join(dataroot + datafolder)
-        for i in range(len(df_train)):
-            start, end = df_train["filepath"].iloc[i].split(".")
-            df_train.iloc[i, df_train.columns.get_loc("filepath")] = (
-                data_dir + "/" + start + "_512" + "." + end
-            )
-        transforms_train, transforms_val = get_transforms(512)
-        if train:
-            transforms = transforms_train
-        else:
-            transforms = transforms_val
-        pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return dataset_factory[name](**pass_kwargs)
-
-    elif name == "ham10000subbig":
-        out_dim = 2
-        dataset = "ham10000"
-        dataroot = os.environ["DATASET_ROOT_DIR"]
-        csv_file = f"{dataroot}/{dataset}/{dataset}_subbig_binaryclass"
-        df_train = pd.read_csv(csv_file)
-        datafolder = "/" + dataset
-        data_dir = os.path.join(dataroot + datafolder)
-        for i in range(len(df_train)):
-            start, end = df_train["filepath"].iloc[i].split(".")
-            # create new path for corrupted images
-            df_train.iloc[i, df_train.columns.get_loc("filepath")] = (
-                data_dir + "/" + start + "_512" + "." + end
-            )
-        transforms_train, transforms_val = get_transforms(512)
-        if train:
-            transforms = transforms_train
-        else:
-            transforms = transforms_val
-        pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return dataset_factory[name](**pass_kwargs)
-    elif name == "ham10000subsmall":
-        out_dim = 2
-        dataset = "ham10000"
-        dataroot = os.environ["DATASET_ROOT_DIR"]
-        csv_file = f"{dataroot}/{dataset}/{dataset}_subsmall_binaryclass"
-        df_train = pd.read_csv(csv_file)
-        datafolder = "/" + dataset
-        data_dir = os.path.join(dataroot + datafolder)
-        for i in range(len(df_train)):
-            start, end = df_train["filepath"].iloc[i].split(".")
-            # create new path for corrupted images
-            df_train.iloc[i, df_train.columns.get_loc("filepath")] = (
-                data_dir + "/" + start + "_512" + "." + end
-            )
-        transforms_train, transforms_val = get_transforms(512)
-        if train:
-            transforms = transforms_train
-        else:
-            transforms = transforms_val
-        pass_kwargs = {"csv": df_train, "train": True, "transform": transforms}
-        return dataset_factory[name](**pass_kwargs)
-    elif name == "ham10000subsmallprevadj":
-        out_dim = 2
-        dataset = "ham10000"
-        dataroot = os.environ["DATASET_ROOT_DIR"]
-        csv_file = f"{dataroot}/{dataset}/{dataset}_subsmall_binaryclass"
-        df_train = pd.read_csv(csv_file)
-        datafolder = "/" + dataset
-        data_dir = os.path.join(dataroot + datafolder)
-        for i in range(len(df_train)):
-            start, end = df_train["filepath"].iloc[i].split(".")
-            # create new path for corrupted images
-            df_train.iloc[i, df_train.columns.get_loc("filepath")] = (
-                data_dir + "/" + start + "_512" + "." + end
-            )
-        transforms_train, transforms_val = get_transforms(512)
-        if train:
-            transforms = transforms_train
-        else:
-            transforms = transforms_val
-        # manualy adjusting for prevailance: iid set 1590 benign to 222 mal -> 7.2
-        # subset: 442 ben 514 mal: Downsample 442 benign to 61 mal -> 7.2
-        df_61 = df_train[df_train.benign_malignant == "malignant"].iloc[0:61]
-        df_442 = df_train[df_train.benign_malignant == "benign"]
-        df_adj = pd.concat((df_61, df_442))
-        pass_kwargs = {"csv": df_adj, "train": True, "transform": transforms}
-        return dataset_factory[name](**pass_kwargs)
     elif name == "isic_2020":
         out_dim = 2
         data_dir = root
@@ -435,96 +355,59 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
         return dataset_factory[name](**pass_kwargs)
     elif "dermoscopyall" in name:
-        datasetls = ["d7p", "ham10000", "ph2", "isic_2020"]
-        dataframes = []
         oversampeling = 0
+        binary = "binaryclass"
+        if name == "dermoscopyall" or "corr" in name:
+            dataset_name = "all"
+        else:
+            _, dataset_name = name.split("dermoscopyall")
+        if dataset_name in ["d7p", "ph2"]:
+            dataset = dataset_name
+        else:
+            dataset = "isic_2020"
+
+        if train:
+            mode = "train"
+        else:
+            mode = "test"
+        if dataset_name in ["d7p", "ph2", "pascal"]:
+            mode = "test"
+        if "multi" in name:
+            dataset = "ham10000"
+            dataset_name = "ham10000"
+            binary = "multiclass"
+        if name == "dermoscopyallham10000subbig":
+            dataset = "ham10000"
+            dataset_name = "ham10000"
+            binary = "subbig"
+        if name == "dermoscopyallham10000subsmall":
+            dataset = "ham10000"
+            dataset_name = "ham10000"
+            binary = "subsmall"
+
         dataroot = os.environ["DATASET_ROOT_DIR"]
-        for dataset in datasetls:
-            csv_file = f"{dataroot}/{dataset}/{dataset}_binaryclass"
-            df_train = pd.read_csv(csv_file)
+        csv_file = f"{dataroot}/{dataset}/{dataset_name}_{binary}_{mode}.csv"
+        df_train = pd.read_csv(csv_file)
+
+        for i in range(len(df_train)):
+            start, end = df_train["filepath"].iloc[i].split(".")
+            atti = df_train["attribution"].iloc[i]
+            if atti in ["ham10000", "d7p", "ph2"]:
+                dataset = atti
+            else:
+                dataset = "isic_2020"
             datafolder = "/" + dataset
             data_dir = os.path.join(dataroot + datafolder)
-            for i in range(len(df_train)):
-                start, end = df_train["filepath"].iloc[i].split(".")
-                # create new path for corrupted images
-                if "corr" in name:
-                    _, cor = name.split("dermoscopyallcorr")
-                    cor = "_" + cor
-                else:
-                    cor = ""
-                df_train.iloc[i, df_train.columns.get_loc("filepath")] = (
-                    data_dir + "/" + start + "_512" + cor + "." + end
-                )
-            if dataset in ["d7p", "ham10000", "ph2"]:
-                df_train["attribution"] = dataset
-            col_to_keep = ["filepath", "target", "attribution"]
-            df_train = df_train[col_to_keep]
-            dataframes.append(df_train)
-        df_train = pd.concat(dataframes)
-        if name == "dermoscopyall":
-            oversampeling = 7
-        elif name == "dermoscopyalld7p":
-            df_train = df_train[df_train.attribution == "d7p"]
-        elif name == "dermoscopyallph2":
-            df_train = df_train[df_train.attribution == "ph2"]
-        elif name == "dermoscopyallham10000":
-            df_train = df_train[df_train.attribution == "ham10000"]
-        elif name == "dermoscopyallbarcelona":
-            df_train = df_train[
-                df_train.attribution
-                == "Department of Dermatology, Hospital Clínic de Barcelona"
-            ]
-        elif name == "dermoscopyallqueensland":
-            df_train = df_train[
-                df_train.attribution
-                == "The University of Queensland Diamantina Institute, The University of Queensland, Dermatology Research Centre"
-            ]
-        elif name == "dermoscopyallvienna":
-            df_train = df_train[
-                df_train.attribution
-                == "ViDIR group, Department of Dermatology, Medical University of Vienna"
-            ]
-        elif name == "dermoscopyallmskcc":
-            df_train = df_train[df_train.attribution == "MSKCC"]
-        elif name == "dermoscopyallpascal":
-            df_train = df_train[df_train.attribution == "Pascale Guitera"]
 
-        elif name == "dermoscopyallbutd7p":
-            df_train = df_train[df_train.attribution != "d7p"]
-            oversampeling = 7
-
-        elif name == "dermoscopyallbutph2":
-            df_train = df_train[df_train.attribution != "ph2"]
-            oversampeling = 7
-        elif name == "dermoscopyallbutbarcelona":
-            df_train = df_train[
-                df_train.attribution
-                != "Department of Dermatology, Hospital Clínic de Barcelona"
-            ]
-
-            oversampeling = 7
-        elif name == "dermoscopyallbutqueensland":
-            df_train = df_train[
-                df_train.attribution
-                != "The University of Queensland Diamantina Institute, The University of Queensland, Dermatology Research Centre"
-            ]
-
-            oversampeling = 7
-        elif name == "dermoscopyallbutvienna":
-            df_train = df_train[
-                df_train.attribution
-                != "ViDIR group, Department of Dermatology, Medical University of Vienna"
-            ]
-
-            oversampeling = 7
-        elif name == "dermoscopyallbutmskcc":
-            df_train = df_train[df_train.attribution != "MSKCC"]
-            oversampeling = 7
-        elif name == "dermoscopyallbutpascal":
-            df_train = df_train[df_train.attribution != "Pascale Guitera"]
-            oversampeling = 7
-        else:
-            pass
+            # create new path for corrupted images
+            if "corr" in name:
+                _, cor = name.split("dermoscopyallcorr")
+                cor = "_" + cor
+            else:
+                cor = ""
+            df_train.iloc[i, df_train.columns.get_loc("filepath")] = (
+                data_dir + "/" + start + "_512" + cor + "." + end
+            )
 
         transforms_train, transforms_val = get_transforms(512)
         if train:
@@ -534,8 +417,7 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         if oversampeling is None:
             oversampeling = 0
         ## for the small ph2 set use train set also for testing. otherwise only 40 images
-        elif name == "dermoscopyallph2":
-            train = True
+
         pass_kwargs = {
             "csv": df_train,
             "train": train,
@@ -545,52 +427,48 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         return dataset_factory[name](**pass_kwargs)
 
     elif "xray_chest" in name:
-        datasetls = ["nih14", "chexpert", "mimic"]
-        dataframes = []
+        binary = "multiclass"
+        _, dataset_name = name.split("xray_chestall")
+
+        if "but" in name:
+            _, dataset = dataset_name.split("but")
+        else:
+            dataset = dataset_name
+        if train:
+            mode = "train"
+        else:
+            mode = "test"
+
+        if name == "xray_chestall" or "corr" in name:
+            dataset = "mimic"
+            dataset_name = "all"
         dataroot = os.environ["DATASET_ROOT_DIR"]
-        for dataset in datasetls:
-            csv_file = f"{dataroot}/{dataset}/{dataset}_multiclass.csv"
-            df = pd.read_csv(csv_file)
+        csv_file = f"{dataroot}/{dataset}/{dataset_name}_{binary}_{mode}.csv"
+        df = pd.read_csv(csv_file)
+
+        for i in range(len(df)):
+            atti = df["attribution"].iloc[i]
+            dataset = atti
             datafolder = "/" + dataset
             data_dir = os.path.join(dataroot + datafolder)
-            for i in range(len(df)):
-                img_sub_path = df["filepath"].iloc[i]
-                img_path = data_dir + "/" + img_sub_path
-                if imghdr.what(img_path) == "png":
-                    start, __annotations__ = img_path.split(".png")
-                    end = "png"
-                if imghdr.what(img_path) == "jpeg":
-                    start, __annotations__ = img_path.split(".jpg")
-                    end = "jpg"
+            img_sub_path = df["filepath"].iloc[i]
+            img_path = data_dir + "/" + img_sub_path
+            if ".png" in img_path:
+                start, _ = img_path.split(".png")
+                end = "png"
+            if ".jpg" in img_path:
+                start, _ = img_path.split(".jpg")
+                end = "jpg"
 
-                # create new path for corrupted images
-                if "corr" in name:
-                    _, cor = name.split("xray_chestallcorr")
-                    cor = "_" + cor
-                else:
-                    cor = ""
-                df.iloc[i, df.columns.get_loc("filepath")] = (
-                    start + "_256" + cor + "." + end
-                )
-            df["attribution"] = dataset
-            col_to_keep = ["filepath", "target", "attribution"]
-            df = df[col_to_keep]
-            dataframes.append(df)
-        df = pd.concat(dataframes)
-        if name == "xray_chestall":
-            pass
-        elif name == "xray_chestallnih14":
-            df = df[df.attribution == "nih14"]
-        elif name == "xray_chestallchexpert":
-            df = df[df.attribution == "chexpert"]
-        elif name == "xray_chestallmimic":
-            df = df[df.attribution == "mimic"]
-        elif name == "xray_chestallbutnih14":
-            df = df[df.attribution != "nih14"]
-        elif name == "xray_chestallbutchexpert":
-            df = df[df.attribution != "chexpert"]
-        elif name == "xray_chestallbutmimic":
-            df = df[df.attribution != "mimic"]
+            # create new path for corrupted images
+            if "corr" in name:
+                _, cor = name.split("xray_chestallcorr")
+                cor = "_" + cor
+            else:
+                cor = ""
+            df.iloc[i, df.columns.get_loc("filepath")] = (
+                start + "_256" + cor + "." + end
+            )
 
         pass_kwargs = {"csv": df, "train": train, "transform": transform}
         return dataset_factory[name](**pass_kwargs)
@@ -598,11 +476,50 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
     elif "rxrx1" in name:
         dataroot = os.environ["DATASET_ROOT_DIR"]
         dataset = "rxrx1"
-        csv_file = f"{dataroot}/{dataset}/{dataset}_multiclass.csv"
-        df = pd.read_csv(csv_file)
+
+        if name == "rxrx1all":
+            if train:
+                mode = "train"
+            else:
+                mode = "test"
+
+            csv_file = f"{dataroot}/{dataset}/{dataset}_multiclass_all_{mode}.csv"
+            df = pd.read_csv(csv_file)
+
+        if "but" in name:
+            _, cell = name.split("but")
+            if train:
+                mode = "train"
+            else:
+                mode = "test"
+            df = pd.read_csv(
+                f"{dataroot}/{dataset}/{dataset}_multiclass_but_{cell}_{mode}.csv"
+            )
+        elif "only" in name:
+            _, cell = name.split("only")
+
+            mode = "test"
+            df = pd.read_csv(
+                f"{dataroot}/{dataset}/{dataset}_multiclass_only_{cell}_{mode}.csv"
+            )
+        elif "set" in name:
+            _, set_id = name.split("set")
+            if "large" in name:
+                largeOrSmall = "large"
+            elif "small" in name:
+                largeOrSmall = "small"
+
+            if train:
+                mode = "train"
+            else:
+                mode = "test"
+            df = pd.read_csv(
+                f"{dataroot}/{dataset}/{dataset}_multiclass_{largeOrSmall}_set{set_id}_{mode}.csv"
+            )
         df["filepath"] = dataroot + "/" + df["filepath"]
         datafolder = "/" + dataset
         data_dir = os.path.join(dataroot + datafolder)
+
         for i in range(len(df)):
             img_sub_path = df["stempath"].iloc[i]
             img_path = data_dir + "/" + img_sub_path
@@ -615,40 +532,84 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
                 cor = ""
             df.iloc[i, df.columns.get_loc("stempath")] = start + cor + "." + end
 
-        if name == "rxrx1all_3cell":
-            df = df[df["cell_type"] != "U2OS"]
-        elif name == "rxrx1all_1cell":
-            df = df[df["cell_type"] == "U2OS"]
-        elif name == "rxrx1all_40s":
-            df = df[
-                ~(
-                    (df["experiment"] == "HEPG2-08")
-                    | (df["experiment"] == "HEPG2-09")
-                    | (df["experiment"] == "HEPG2-11")
-                    | (df["experiment"] == "HEPG2-07")
-                    | (df["experiment"] == "HUVEC-18")
-                    | (df["experiment"] == "HUVEC-19")
-                    | (df["experiment"] == "HUVEC-20")
-                    | (df["experiment"] == "RPE-08")
-                    | (df["experiment"] == "RPE-09")
-                    | (df["experiment"] == "U2OS-01")
-                    | (df["experiment"] == "HUVEC-13")
-                )
-            ]
-        elif name == "rxrx1all_11s":
-            df = df[
-                (df["experiment"] == "HEPG2-08")
-                | (df["experiment"] == "HEPG2-09")
-                | (df["experiment"] == "HEPG2-11")
-                | (df["experiment"] == "HEPG2-07")
-                | (df["experiment"] == "HUVEC-18")
-                | (df["experiment"] == "HUVEC-19")
-                | (df["experiment"] == "HUVEC-20")
-                | (df["experiment"] == "RPE-08")
-                | (df["experiment"] == "RPE-09")
-                | (df["experiment"] == "U2OS-01")
-                | (df["experiment"] == "HUVEC-13")
-            ]
+        # if name == "rxrx1all_3cell":
+        #     df = df[df["cell_type"] != "U2OS"]
+        # elif name == "rxrx1all_1cell":
+        #     df = df[df["cell_type"] == "U2OS"]
+        # elif name == "rxrx1all_40s":
+        #     df = df[
+        #         ~(
+        #             (df["experiment"] == "HEPG2-08")
+        #             | (df["experiment"] == "HEPG2-09")
+        #             | (df["experiment"] == "HEPG2-11")
+        #             | (df["experiment"] == "HEPG2-07")
+        #             | (df["experiment"] == "HUVEC-18")
+        #             | (df["experiment"] == "HUVEC-19")
+        #             | (df["experiment"] == "HUVEC-20")
+        #             | (df["experiment"] == "RPE-08")
+        #             | (df["experiment"] == "RPE-09")
+        #             | (df["experiment"] == "U2OS-01")
+        #             | (df["experiment"] == "HUVEC-13")
+        #         )
+        #     ]
+        # elif name == "rxrx1all_11s":
+        #     df = df[
+        #         (df["experiment"] == "HEPG2-08")
+        #         | (df["experiment"] == "HEPG2-09")
+        #         | (df["experiment"] == "HEPG2-11")
+        #         | (df["experiment"] == "HEPG2-07")
+        #         | (df["experiment"] == "HUVEC-18")
+        #         | (df["experiment"] == "HUVEC-19")
+        #         | (df["experiment"] == "HUVEC-20")
+        #         | (df["experiment"] == "RPE-08")
+        #         | (df["experiment"] == "RPE-09")
+        #         | (df["experiment"] == "U2OS-01")
+        #         | (df["experiment"] == "HUVEC-13")
+        #     ]
+
+        pass_kwargs = {"csv": df, "train": train, "transform": transform}
+        return dataset_factory[name](**pass_kwargs)
+
+    elif "lidc_idri" in name:
+        dataroot = os.environ["DATASET_ROOT_DIR"]
+        dataset = "lidc_idri"
+        iidOrood = "iid"
+        shift = "all"
+        if train:
+            mode = "train"
+        else:
+            mode = "test"
+        if "calcification" in name:
+            shift = "calcification"
+        elif "spiculation" in name:
+            shift = "spiculation"
+        elif "texture" in name:
+            shift = "texture"
+
+        if "ood" in name:
+            iidOrood = "ood"
+            mode = "test"
+
+        csv_file = (
+            f"{dataroot}/{dataset}/{dataset}_binaryclass_{shift}_{iidOrood}_{mode}.csv"
+        )
+
+        df = pd.read_csv(csv_file)
+        # df["filepath"] = dataroot + "/" + df["filepath"]
+        datafolder = "/" + dataset
+        data_dir = os.path.join(dataroot + datafolder)
+        for i in range(len(df)):
+            img_sub_path = df["filepath"].iloc[i]
+            img_path = data_dir + "/" + img_sub_path
+            start, _ = img_path.split(".png")
+            end = "png"
+            if "corr" in name:
+                _, cor = name.split("lidc_idriallcorr")
+                cor = "_" + cor
+            else:
+                cor = ""
+            df.iloc[i, df.columns.get_loc("filepath")] = start + cor + "." + end
+
         pass_kwargs = {"csv": df, "train": train, "transform": transform}
         return dataset_factory[name](**pass_kwargs)
 
@@ -879,18 +840,12 @@ class Rxrx1Dataset(Dataset):
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
-        self.train_df = self.csv.sample(frac=0.8, random_state=200)
-        self.test_df = self.csv.drop(self.train_df.index)
-        if self.train:
-            self.csv = self.train_df
-        elif not self.train:
-            self.csv = self.test_df
         self.targets = self.csv.target
         self.imgs = self.csv["filepath"]
         self.samples = self.imgs
 
     def __len__(self):
-        return self.csv.shape[0]
+        return len(self.targets)
 
     def __getitem__(self, index):
 
@@ -930,31 +885,58 @@ class XrayDataset(Dataset):
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
-        self.train_df = self.csv.sample(frac=0.9, random_state=200)
-        self.test_df = self.csv.drop(self.train_df.index)
-        if self.train:
-            self.csv = self.train_df
-        elif not self.train:
-            self.csv = self.test_df
-        self.targets = self.csv.target
-        self.imgs = self.csv["filepath"]
+        self.targets = self.csv.target.to_list()
+        self.imgs = self.csv["filepath"].to_list()
         self.samples = self.imgs
 
     def __len__(self):
-        return self.csv.shape[0]
+        return len(self.targets)
 
     def __getitem__(self, index):
 
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
         if self.transform is not None:
+            image = Image.fromarray(image)
             image = self.transform(image)
         else:
             image = image.astype(np.float32)
         data = image
+
+        return data, torch.tensor(self.csv.iloc[index].target).long()
+
+
+class Lidc_idriDataset(Dataset):
+    def __init__(
+        self,
+        csv: pd.core.frame.DataFrame,
+        train: bool,
+        transform: Optional[callable] = None,
+    ):
+
+        self.csv = csv.reset_index(drop=True)
+        self.train = train
+        self.transform = transform
+        self.targets = self.csv.target.to_list()
+        self.imgs = self.csv["filepath"].to_list()
+        self.samples = self.imgs
+
+    def __len__(self):
+        return len(self.targets)
+
+    def __getitem__(self, index):
+
+        row = self.csv.iloc[index]
+
+        image = cv2.imread(row.filepath)
+        if self.transform is not None:
+            image = Image.fromarray(image)
+            image = self.transform(image)
+        else:
+            image = image.astype(np.float32)
+        data = image
+
         return data, torch.tensor(self.csv.iloc[index].target).long()
 
 
@@ -1020,8 +1002,7 @@ class DermoscopyAllDataset(Dataset):
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
-        self.train_df = self.csv.sample(frac=0.8, random_state=200)
-        self.test_df = self.csv.drop(self.train_df.index)
+        self.train_df = self.csv
         if self.train:
             # oversample malignant class for ~50/50 ratio
             if oversampeling > 0:
@@ -1034,15 +1015,14 @@ class DermoscopyAllDataset(Dataset):
                         ]
                     )
             self.csv = self.train_df
-        elif not self.train:
-            self.csv = self.test_df
+
         self.targets = self.csv.target
 
         self.imgs = self.csv["filepath"]
         self.samples = self.imgs
 
     def __len__(self):
-        return self.csv.shape[0]
+        return len(self.targets)
 
     def __getitem__(self, index):
 

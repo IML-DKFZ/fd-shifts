@@ -170,7 +170,7 @@ class net(pl.LightningModule):
 
             maha = -(torch.einsum("inj,jk,ink->in", zm, self.icov, zm))
             maha = maha.max(dim=1)[0].type_as(x)
-
+            # maha final ist abstand zu most likely class
         probs = self.model.head(z)
 
         softmax_dist = None

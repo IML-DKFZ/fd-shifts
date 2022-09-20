@@ -1,6 +1,6 @@
 # @package _global_
 exp:
-  group_name: dermoscopyall_run_1
+  group_name: dermoscopyall_prototyping
   name: dermoscopyall_crossentropy
 trainer:
   num_epochs: 40
@@ -43,8 +43,8 @@ model:
   fc_dim: 1792
   avg_pool: True
   dropout_rate: 0
-  monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
-  test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
+  monitor_mcd_samples: 10 # only activated if "mcd" substring in train or val monitor confids.
+  test_mcd_samples: 10 # only activated if "mcd" substring in test confids.
   network: 
     name: efficientnetb4 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
     backbone: 
