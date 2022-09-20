@@ -25,6 +25,7 @@ trainer:
   learning_rate_confidnet: 1e-4
   learning_rate_confidnet_finetune: 1e-6
   lr_scheduler:
+    gamma: 0.1
     name: "MultiStep" # "MultiStep" "CosineAnnealing"
     milestones: [30, 35] 
     max_epochs: ${trainer.num_epochs_backbone}
