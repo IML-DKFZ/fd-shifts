@@ -76,14 +76,18 @@ class FDShiftsDataLoader(pl.LightningDataModule):
         self.train_dataset, self.val_dataset, self.test_datasets = None, None, None
 
     def add_target_transforms(self, query_tt, no_norm_flag):
-        #add if for empty target transform. currently bug for no tt
+        # add if for empty target transform. currently bug for no tt
         for datasplit_k, datasplit_v in query_tt.items():
             target_transforms, target_transforms_after = [], []
             if datasplit_v is not None:
                 for tt_key, tt_param in datasplit_v.items():
-                    target_transforms.append(target_transforms_collection[tt_key](tt_param))
+                    target_transforms.append(
+                        target_transforms_collection[tt_key](tt_param)
+                    )
             self.target_transforms[datasplit_k] = target_transforms[0]
-        print("CHECK TARGET TRANSFORMS", self.assim_ood_norm_flag, self.target_transforms)
+        print(
+            "CHECK TARGET TRANSFORMS", self.assim_ood_norm_flag, self.target_transforms
+        )
 
     def prepare_data(self, *args, **kwargs):
         pass
@@ -140,27 +144,24 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             kwargs=self.dataset_kwargs,
         )
 
-        if self.test_iid_split == "devries":
+        if self.test_iid_split == "tenPercent":
+            length_test = len(self.iid_test_set)
+            split = int(length_test * 0.1)
             if "wilds" in self.dataset_name:
-                self.iid_test_set.indices = self.iid_test_set.indices[1000:]
+                self.iid_test_set.indices = self.iid_test_set.indices[split:]
                 self.iid_test_set.__len__ = len(self.iid_test_set.indices)
-            if "med_mnist" in self.dataset_name:
-                    self.iid_test_set.imgs = self.iid_test_set.imgs[1000:]
-                    self.iid_test_set.targets = self.iid_test_set.targets[1000:]
-                    self.iid_test_set.labels = self.iid_test_set.labels[1000:]
-                    self.iid_test_set.__len__ = len(self.iid_test_set.imgs)
             else:
                 try:
-                    self.iid_test_set.imgs = self.iid_test_set.imgs[1000:]
-                    self.iid_test_set.samples = self.iid_test_set.samples[1000:]
-                    self.iid_test_set.targets = self.iid_test_set.targets[1000:]
+                    self.iid_test_set.imgs = self.iid_test_set.imgs[split:]
+                    self.iid_test_set.samples = self.iid_test_set.samples[split:]
+                    self.iid_test_set.targets = self.iid_test_set.targets[split:]
                     self.iid_test_set.__len__ = len(self.iid_test_set.imgs)
                 except:
-                    self.iid_test_set.data = self.iid_test_set.data[1000:]
+                    self.iid_test_set.data = self.iid_test_set.data[split:]
                     try:
-                        self.iid_test_set.targets = self.iid_test_set.targets[1000:]
+                        self.iid_test_set.targets = self.iid_test_set.targets[split:]
                     except:
-                        self.iid_test_set.labels = self.iid_test_set.labels[1000:]
+                        self.iid_test_set.labels = self.iid_test_set.labels[split:]
                     self.iid_test_set.__len__ = len(self.iid_test_set.data)
 
         if self.val_split == "devries":
@@ -174,21 +175,47 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 kwargs=self.dataset_kwargs,
             )
             if "wilds" in self.dataset_name:
-                self.val_dataset.indices = self.val_dataset.indices[:1000]
-                self.val_dataset.__len__ = len(self.val_dataset.indices)
+                self.iid_test_set.indices = self.iid_test_set.indices[1000:1500]
+                self.iid_test_set.__len__ = len(self.iid_test_set.indices)
             else:
                 try:
-                    self.val_dataset.imgs = self.val_dataset.imgs[:1000]
-                    self.val_dataset.samples = self.val_dataset.samples[:1000]
-                    self.val_dataset.targets = self.val_dataset.targets[:1000]
-                    self.val_dataset.__len__ = len(self.val_dataset.imgs)
+                    self.iid_test_set.imgs = self.iid_test_set.imgs[1000:1500]
+                    self.iid_test_set.samples = self.iid_test_set.samples[1000:1500]
+                    self.iid_test_set.targets = self.iid_test_set.targets[1000:1500]
+                    self.iid_test_set.__len__ = len(self.iid_test_set.imgs)
                 except:
-                    self.val_dataset.data = self.val_dataset.data[:1000]
+                    self.iid_test_set.data = self.iid_test_set.data[1000:1500]
                     try:
-                        self.val_dataset.targets = self.val_dataset.targets[:1000]
+                        self.iid_test_set.targets = self.iid_test_set.targets[1000:1500]
                     except:
-                        self.val_dataset.labels = self.val_dataset.labels[:1000]
-                    self.val_dataset.__len__ = len(self.val_dataset.data)
+                        self.iid_test_set.labels = self.iid_test_set.labels[1000:1500]
+                    self.iid_test_set.__len__ = len(self.iid_test_set.data)
+            if self.val_split == "devries":
+                self.val_dataset = get_dataset(
+                    name=self.dataset_name,
+                    root=self.data_dir,
+                    train=False,
+                    download=True,
+                    target_transforms=self.target_transforms["val"],
+                    transform=self.augmentations["val"],
+                    kwargs=self.dataset_kwargs,
+                )
+                if "wilds" in self.dataset_name:
+                    self.val_dataset.indices = self.val_dataset.indices[:1000]
+                    self.val_dataset.__len__ = len(self.val_dataset.indices)
+                else:
+                    try:
+                        self.val_dataset.imgs = self.val_dataset.imgs[:1000]
+                        self.val_dataset.samples = self.val_dataset.samples[:1000]
+                        self.val_dataset.targets = self.val_dataset.targets[:1000]
+                        self.val_dataset.__len__ = len(self.val_dataset.imgs)
+                    except:
+                        self.val_dataset.data = self.val_dataset.data[:1000]
+                        try:
+                            self.val_dataset.targets = self.val_dataset.targets[:1000]
+                        except:
+                            self.val_dataset.labels = self.val_dataset.labels[:1000]
+                        self.val_dataset.__len__ = len(self.val_dataset.data)
 
         else:
             self.val_dataset = get_dataset(

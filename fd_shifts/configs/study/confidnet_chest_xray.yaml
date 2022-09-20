@@ -3,8 +3,8 @@ exp:
   group_name: dermoscopyall_run_1
   name: dermoscopyall_confidnet
 trainer:
-  num_epochs: 130
-  num_epochs_backbone: 120
+  num_epochs: 5
+  num_epochs_backbone: 3
   val_every_n_epoch: 1
   # val splits:
   # - null: no validation set is created
@@ -42,7 +42,7 @@ trainer:
     #      save_top_k: [1, 1]
     confid_monitor:
     training_stages:
-      milestones: [120, 125]
+      milestones: [3, 4]
       pretrained_backbone_path: #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
       pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
       disable_dropout_at_finetuning: True
@@ -55,8 +55,8 @@ model:
   avg_pool: True
   confidnet_fc_dim: 400
   dropout_rate: 0
-  monitor_mcd_samples: 50 # only activated if "mcd" substring in train or val monitor confids.
-  test_mcd_samples: 50 # only activated if "mcd" substring in test confids.
+  monitor_mcd_samples: 10 # only activated if "mcd" substring in train or val monitor confids.
+  test_mcd_samples: 10 # only activated if "mcd" substring in test confids.
   network:
     name: confidnet_and_enc # confidnet_small_conv_and_enc / small_conv
     backbone: densenet121
@@ -99,7 +99,7 @@ eval:
     train: ["det_mcp"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val: ["det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:
-      ["det_mcp", "det_pe", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
+      ["det_mcp", "det_pe","ext", "mcd_mcp", "mcd_pe", "mcd_ee"]
 
   monitor_plots: #"calibration",
     [

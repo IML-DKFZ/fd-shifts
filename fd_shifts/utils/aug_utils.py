@@ -25,6 +25,9 @@ _transforms_collection: dict[str, type] = {
     "cutout": lambda x: Cutout(length=x),
     "tothreechannel": lambda x: ToThreeChannel(),
     "pad4": lambda x: transforms.Pad(4),
+    "gaussian_blur": lambda x: transforms.GaussianBlur(kernel_size=(3, 7)),
+    "rand_erase": lambda x: transforms.RandomErasing()
+    # "random_choice": lambda x: transforms.RandomChoice(x),
 }
 
 

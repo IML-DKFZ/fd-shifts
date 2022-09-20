@@ -1,67 +1,57 @@
 # @package _global_
 exp:
-  group_name: dermoscopyall_run_1
-  name: dermoscopyall_confidnet
+  group_name: lidc_idri_prototyping
+  name: lidc_idri_cross_entropy
 trainer:
-  num_epochs: 55
-  num_epochs_backbone: 40
+  num_epochs: 45
   val_every_n_epoch: 1
   # val splits:
   # - null: no validation set is created
   # - "devries": split the first 1000 cases of the iid test set as validation set
   # - cv: split 10% of the training set as validation set
   # - repro_confidnet: use the same cv split as Corbiere et al. 2020 (ConfidNet)
-  val_split: "devries"
+  val_split: "tenPercent"
   do_val: True
-  accelerator: 
-
-  learning_rate: 0.00003
+  accelerator: None
+  learning_rate: 0.00015
   optimizer:
     name: ADAM
-    learning_rate: 0.00003
-    momentum: 0.9
-    nesterov: True
-    weight_decay: 0
-  learning_rate_confidnet: 1e-4
-  learning_rate_confidnet_finetune: 1e-6
+    learning_rate: 0.00015
+    momentum: 0
+    nesterov: False
+    weight_decay: 0.1
+
   lr_scheduler:
-    name: "MultiStep" # "MultiStep" "CosineAnnealing"
-    milestones: [30, 35] 
-    max_epochs: ${trainer.num_epochs_backbone}
-  momentum: 0.9
-  weight_decay: 0
-  batch_size: 12
+    name: "CosineAnnealing" # "MultiStep" "CosineAnnealing"
+    gamma: 0.1
+    milestones: [100, 110] 
+    max_epochs: ${trainer.num_epochs}
+  momentum: 0
+  weight_decay: 0.1
+  batch_size: 512
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
   callbacks:
     model_checkpoint:
-    #      n: 2
-    #      selection_metric: ["val/accuracy", "val/ext_failap_err"] # in logging syntax: val/loss, makes ure to self.log() this metric! Set to empty to disable. also dont forget confid_prefix.
-    #      mode: ["max", "max"]
-    #      filename: ["best_valacc", "best_failap_err"]# min:lower is better, max: higher is better
-    #      save_top_k: [1, 1]
     confid_monitor:
-    training_stages:
-      milestones: [40, 50]
-      pretrained_backbone_path: #/mnt/hdd2/checkpoints/checks/check_global_traintest/version_29/best_valacc.ckpt #  /mnt/hdd2/checkpoints/svhn_smallconv/model_epoch_076.ckpt # leave empty to train backbone on the fly. If set, first milestone needs to be 0!
-      pretrained_confidnet_path: #/mnt/hdd2/checkpoints/checks/check_pretrained_confidnet/version_43/best_failap_err.ckpt # leave empty to train confidnet on the fly. If set, second milestone needs to be 0!
-      disable_dropout_at_finetuning: True
-      confidnet_lr_scheduler: False
     learning_rate_monitor:
 
 model:
-  name: confidnet_model_mod #det_mcd_model
-  fc_dim: 1792
+  name: devries_model_mod #det_mcd_model
+  fc_dim: 1024
+  dg_reward: -1 # dummy
   avg_pool: True
-  confidnet_fc_dim: 400
   dropout_rate: 0
   monitor_mcd_samples: 10 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 10 # only activated if "mcd" substring in test confids.
-  network:
-    name: confidnet_and_enc # confidnet_small_conv_and_enc / small_conv
-    backbone: efficientnetb4
-    imagenet_weights_path: #${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
+  budget: 0.3
+  network: 
+    name: devries_and_enc #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
+    backbone: densenet121
+    imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
+    load_dg_backbone_path: #${exp.dir}/dg_backbone_2.ckpt  # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
+    save_dg_backbone_path:
 
 test:
   name: test_results
@@ -73,8 +63,7 @@ test:
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
   devries_repro_ood_split: False
   assim_ood_norm_flag: False
-  iid_set_split: "devries" # all, devries
-
+  iid_set_split: "tenPercent"  # all, devries
 
 eval:
   performance_metrics:
@@ -100,7 +89,7 @@ eval:
     train: ["det_mcp"] # mcd_confs not available due to performance. 'det_mcp' costs around 3% (hard to say more volatile)
     val: ["det_mcp"] # , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"
     test:
-      ["det_mcp", "det_pe","ext", "mcd_mcp", "mcd_pe", "mcd_ee"]
+      ["det_mcp", "det_pe", "ext", "mcd_mcp", "mcd_pe", "mcd_ee"]
 
   monitor_plots: #"calibration",
     [
@@ -110,7 +99,8 @@ eval:
 
   tb_hparams: ["fold"]
   val_tuning: True
-  ext_confid_name: "tcp"
+  ext_confid_name: "devries"
+  test_conf_scaling: False
   r_star: 0.25
   r_delta: 0.05
 

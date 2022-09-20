@@ -1,6 +1,6 @@
 # @package _global_
 exp:
-  group_name: rxrx1all_run_1
+  group_name: rxrx1all_prototyping
   name: rxrx1all_cross_entropy
 trainer:
   num_epochs: 90
