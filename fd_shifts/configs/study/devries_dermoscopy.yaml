@@ -46,8 +46,8 @@ model:
   budget: 0.3
   monitor_mcd_samples: 10 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 10 # only activated if "mcd" substring in test confids.
-  network: devries_and_enc
-    name:  #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
+  network: 
+    name:  devries_and_enc      # confidnet_small_conv_and_enc / small_conv
     backbone: efficientnetb4
     imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
     load_dg_backbone_path: #${exp.dir}/dg_backbone_2.ckpt  # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth

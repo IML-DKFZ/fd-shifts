@@ -46,7 +46,7 @@ trainer:
       disable_dropout_at_finetuning: True
       confidnet_lr_scheduler: False
 model:
-  name: cross_entropy #det_mcd_model
+  name: confidnet_model_mod #det_mcd_model
   fc_dim: 2208
   avg_pool: True
   confidnet_fc_dim: 400

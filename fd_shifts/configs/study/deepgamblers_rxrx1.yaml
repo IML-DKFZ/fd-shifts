@@ -40,16 +40,17 @@ trainer:
     learning_rate_monitor:
 
 model:
-  name: cross_entropy #det_mcd_model
+  name: devries_model_mod #det_mcd_model
   fc_dim: 2208
   dg_reward: 2.2 # dummy
   avg_pool: True
   dropout_rate: 0
   monitor_mcd_samples: 10 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 10 # only activated if "mcd" substring in test confids.
+  budget: 0.3
   network: 
     name: densenet161 #devries_and_enc      # confidnet_small_conv_and_enc / small_conv
-    backbone: 
+    backbone: densenet161
     imagenet_weights_path: # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
     load_dg_backbone_path: #${exp.dir}/dg_backbone_2.ckpt  # ${env:EXPERIMENT_ROOT_DIR}/pretrained_weights/vgg16-397923af.pth
     save_dg_backbone_path:
@@ -102,6 +103,7 @@ eval:
   tb_hparams: ["fold"]
   val_tuning: True
   ext_confid_name: "dg"
+  test_conf_scaling: False
   r_star: 0.25
   r_delta: 0.05
 

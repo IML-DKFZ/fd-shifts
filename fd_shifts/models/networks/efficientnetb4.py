@@ -10,7 +10,7 @@ class EfficientNetb4(nn.Module):
         self.encoder = Encoder(cf)
         self.classifier = Classifier(self.encoder)
         # self.classifier = Classifier(self.encoder.model.head)
-        self.num_features = self.encoder.model.classifier[1].in_features
+        # self.num_features = self.encoder.model.classifier[1].in_features
 
     def forward(self, x):
         out = self.encoder(x)
@@ -35,8 +35,13 @@ class Encoder(nn.Module):
         if cf.eval.ext_confid_name == "dg":
             num_classes += 1
         self.model = efficientnet_b4(pretrained=True)
-        num_features = self.model.classifier[1].in_features
-        self.model.classifier[1] = nn.Linear(num_features, num_classes)
+
+        in_features = cf.model.fc_dim
+        self.model.classifier = nn.Linear(
+            in_features=in_features, out_features=num_classes
+        )
+        self.dropout_rate = cf.model.dropout_rate * 0.1
+
         for layer in self.named_modules():
             if isinstance(layer[1], nn.modules.dropout.Dropout):
                 layer[1].p = cf.model.dropout_rate * 0.2
