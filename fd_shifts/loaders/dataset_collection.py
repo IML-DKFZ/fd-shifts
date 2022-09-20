@@ -115,10 +115,6 @@ def get_dataset(
         "xray_chestallcorrelastichigh": XrayDataset,
         "xray_chestallcorrelastichighhigh": XrayDataset,
         "rxrx1all": Rxrx1Dataset,
-        "rxrx1all_1cell": Rxrx1Dataset,
-        "rxrx1all_3cell": Rxrx1Dataset,
-        "rxrx1all_40s": Rxrx1Dataset,
-        "rxrx1all_11s": Rxrx1Dataset,
         "rxrx1all_butHEPG2": Rxrx1Dataset,
         "rxrx1all_butHUVEC": Rxrx1Dataset,
         "rxrx1all_butU2OS": Rxrx1Dataset,
@@ -187,7 +183,6 @@ def get_dataset(
         "isic_2020": Isic2020Dataset,
         "ph2": Ph2Dataset,
         "d7p": D7pDataset,
-        "dermoscopyallham10000": DermoscopyAllDataset,
         "dermoscopyallham10000multi": DermoscopyAllDataset,
         "dermoscopyallham10000subbig": DermoscopyAllDataset,
         "dermoscopyallham10000subsmall": DermoscopyAllDataset,
@@ -418,6 +413,7 @@ def get_dataset(
             dataset = "ham10000"
             dataset_name = "ham10000"
             binary = "subsmall"
+            mode = "test"
 
         dataroot = os.environ["DATASET_ROOT_DIR"]
         csv_file = f"{dataroot}/{dataset}/{dataset_name}_{binary}_{mode}.csv"
@@ -510,7 +506,10 @@ def get_dataset(
     elif "rxrx1" in name:
         dataroot = os.environ["DATASET_ROOT_DIR"]
         dataset = "rxrx1"
-
+        if train:
+            mode = "train"
+        else:
+            mode = "test"
         if name == "rxrx1all":
             if train:
                 mode = "train"
@@ -542,15 +541,12 @@ def get_dataset(
                 largeOrSmall = "large"
             elif "small" in name:
                 largeOrSmall = "small"
-
-            if train:
-                mode = "train"
-            else:
                 mode = "test"
+
             df = pd.read_csv(
                 f"{dataroot}/{dataset}/{dataset}_multiclass_{largeOrSmall}_set{set_id}_{mode}.csv"
             )
-        df["filepath"] = dataroot + "/" + df["filepath"]
+        df["filepath"] = dataroot + "/" + dataset + "/" + df["filepath"]
         datafolder = "/" + dataset
         data_dir = os.path.join(dataroot + datafolder)
 
@@ -608,6 +604,7 @@ def get_dataset(
         dataroot = os.environ["DATASET_ROOT_DIR"]
         dataset = "lidc_idri"
         iidOrood = "iid"
+
         shift = "all"
         if train:
             mode = "train"
@@ -627,6 +624,8 @@ def get_dataset(
         csv_file = (
             f"{dataroot}/{dataset}/{dataset}_binaryclass_{shift}_{iidOrood}_{mode}.csv"
         )
+        if name == "lidc_idriall":
+            csv_file = f"{dataroot}/{dataset}/{dataset}_binaryclass_{shift}_{mode}.csv"
 
         df = pd.read_csv(csv_file)
         # df["filepath"] = dataroot + "/" + df["filepath"]
