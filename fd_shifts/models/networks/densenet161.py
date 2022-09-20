@@ -11,7 +11,7 @@ class Densenet161(nn.Module):
     def __init__(self, cf) -> None:
         super(Densenet161, self).__init__()
 
-        self.encoder = Encoder(cf)
+        self.encoder = Encoder(cf=cf)
         self.classifier = Classifier(model=self.encoder)
 
     def forward(self, x):
@@ -30,7 +30,16 @@ class Encoder(nn.Module):
     def __init__(self, cf) -> None:
         super(Encoder, self).__init__()
         num_classes = cf.data.num_classes
+
+        if cf.eval.ext_confid_name == "dg":
+            num_classes += 1
+
         self.model = models.densenet161(pretrained=True)
+
+        in_features = cf.model.fc_dim
+        self.model.classifier = nn.Linear(
+            in_features=in_features, out_features=num_classes
+        )
         self.dropout_rate = cf.model.dropout_rate * 0.1
 
         for layer in self.named_modules():
@@ -46,14 +55,6 @@ class Encoder(nn.Module):
             bias=False,
         )
 
-        if cf.eval.ext_confid_name == "dg":
-            num_classes += 1
-
-        in_features = cf.model.fc_dim
-        self.model.classifier = nn.Linear(
-            in_features=in_features, out_features=num_classes
-        )
-        self.dropout_rate = cf.model.dropout_rate * 0.1
         for layer in self.named_modules():
             if isinstance(layer[1], torchvision.models.densenet._DenseLayer):
                 layer[1].drop_rate = self.dropout_rate

@@ -19,8 +19,6 @@ class Densenet121(nn.Module):
         pred = self.classifier(out)
         return pred
 
-    # def head(self, x):
-    #    return self.encoder.model.classifier(x)
     def forward_features(self, x):
         return self.encoder.forward(x)
 
@@ -37,11 +35,13 @@ class Encoder(nn.Module):
             num_classes += 1
 
         self.model = models.densenet121(pretrained=True)
+
         in_features = cf.model.fc_dim
         self.model.classifier = nn.Linear(
             in_features=in_features, out_features=num_classes
         )
         self.dropout_rate = cf.model.dropout_rate * 0.1
+
         for layer in self.named_modules():
             if isinstance(layer[1], torchvision.models.densenet._DenseLayer):
                 layer[1].drop_rate = self.dropout_rate

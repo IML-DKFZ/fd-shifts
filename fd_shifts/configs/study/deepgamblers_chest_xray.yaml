@@ -64,7 +64,7 @@ test:
   only_latest_version: True # if false looks for best metrics across all versions in exp_dir. Turn to false if resumed training.
   devries_repro_ood_split: False
   assim_ood_norm_flag: False
-  iid_set_split: "tenPercent"  # all, devries
+  iid_set_split: "devries"  # all, devries
 
 eval:
   performance_metrics:

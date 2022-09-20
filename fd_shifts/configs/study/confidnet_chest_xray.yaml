@@ -29,7 +29,7 @@ trainer:
     max_epochs: ${trainer.num_epochs_backbone}
   momentum: 0.9
   weight_decay: 0
-  batch_size: 12
+  batch_size: 48
   resume_from_ckpt: False
   benchmark: True # set to false if input size varies during training!
   fast_dev_run: False # True/Fals
@@ -115,4 +115,4 @@ eval:
 
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
    iid_study: ${data.dataset}
-   in_class_study:
+   #in_class_study:
