@@ -144,6 +144,16 @@ def get_dataset(
         "rxrx1allcorrelastichigh": Rxrx1Dataset,
         "rxrx1allcorrelastichighhigh": Rxrx1Dataset,
         "lidc_idriall": Lidc_idriDataset,
+        "lidc_idriallcorrbrlow": Lidc_idriDataset,
+        "lidc_idriallcorrbrlowlow": Lidc_idriDataset,
+        "lidc_idriallcorrbrhigh": Lidc_idriDataset,
+        "lidc_idriallcorrbrhighhigh": Lidc_idriDataset,
+        "lidc_idriallcorrmotblrhigh": Lidc_idriDataset,
+        "lidc_idriallcorrmotblrhighhigh": Lidc_idriDataset,
+        "lidc_idriallcorrgaunoilow": Lidc_idriDataset,
+        "lidc_idriallcorrgaunoilowlow": Lidc_idriDataset,
+        "lidc_idriallcorrelastichigh": Lidc_idriDataset,
+        "lidc_idriallcorrelastichighhigh": Lidc_idriDataset,
         "lidc_idriall_calcification_iid": Lidc_idriDataset,
         "lidc_idriall_calcification_ood": Lidc_idriDataset,
         "lidc_idriall_spiculation_iid": Lidc_idriDataset,
@@ -510,7 +520,7 @@ def get_dataset(
             mode = "train"
         else:
             mode = "test"
-        if name == "rxrx1all":
+        if name == "rxrx1all" or "corr" in name:
             if train:
                 mode = "train"
             else:
@@ -624,7 +634,7 @@ def get_dataset(
         csv_file = (
             f"{dataroot}/{dataset}/{dataset}_binaryclass_{shift}_{iidOrood}_{mode}.csv"
         )
-        if name == "lidc_idriall":
+        if name == "lidc_idriall" or "corr" in name:
             csv_file = f"{dataroot}/{dataset}/{dataset}_binaryclass_{shift}_{mode}.csv"
 
         df = pd.read_csv(csv_file)
