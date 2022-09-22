@@ -78,8 +78,8 @@ def get_confid_function(confid_name):
 
 
 @register_confid_func("det_mcp")
-@register_confid_func("det_mls")
 @validate_softmax
+@register_confid_func("det_mls")
 def maximum_softmax_probability(
     softmax: ArrayType,
 ) -> ArrayType:
