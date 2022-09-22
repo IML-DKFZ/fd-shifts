@@ -147,7 +147,6 @@ def test(cf: configs.Config, progress: RichProgressBar):
         gpus=-1,
         logger=False,
         callbacks=[progress] + get_callbacks(cf),
-        precision=cf.test.output_precision,
         replace_sampler_ddp=False,
         # accelerator="ddp",
         accelerator=None,
