@@ -163,6 +163,7 @@ class SGD(OptimizerConfig):
 @defer_validation
 @dataclass
 class TrainerConfig(IterableMixin):
+    accumulate_grad_batches: int = 1
     resume_from_ckpt_confidnet: Optional[bool] = None
     num_epochs: Optional[int] = None
     num_steps: Optional[int] = None
