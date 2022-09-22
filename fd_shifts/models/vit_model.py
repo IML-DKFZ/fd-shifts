@@ -226,7 +226,7 @@ class net(pl.LightningModule):
 
     def configure_optimizers(self):
         optim = hydra.utils.instantiate(
-            self.config.trainer.optimizer, _convert_="all", params=self.model.parameters()
+            self.config.trainer.optimizer, _convert_="all", _partial_=False, params=self.model.parameters()
         )
 
         lr_sched = {
