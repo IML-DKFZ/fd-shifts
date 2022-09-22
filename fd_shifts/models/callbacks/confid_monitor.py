@@ -71,7 +71,7 @@ class ConfidMonitor(Callback):
             hp_metrics.update(
                 {"hp/val_{}".format(k): 0 for k in self.query_performance_metrics}
             )
-            pl_module.logger[0].log_hyperparams(
+            pl_module.loggers[0].log_hyperparams(
                 self.tensorboard_hparams, hp_metrics
             )  # , {"hp/metric_1": 0, "hp/metric_2": 0})
 
@@ -79,9 +79,9 @@ class ConfidMonitor(Callback):
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
 
-        loss = outputs["loss"]
-        softmax = outputs["softmax"]
-        y = outputs["labels"]
+        loss = outputs["loss"].cpu()
+        softmax = outputs["softmax"].cpu()
+        y = outputs["labels"].cpu()
 
         tmp_correct = None
         if len(self.running_perf_stats["train"].keys()) > 0:
@@ -131,7 +131,7 @@ class ConfidMonitor(Callback):
                 )
 
             if "ext" in stat_keys:
-                tmp_confids = outputs["confid"]
+                tmp_confids = outputs["confid"].cpu()
                 if tmp_confids is not None:
                     self.running_confid_stats["train"]["ext"]["confids"].extend(
                         tmp_confids
@@ -169,7 +169,7 @@ class ConfidMonitor(Callback):
                 ext_confid_name=pl_module.ext_confid_name,
             )
             tqdm.write(f"CHECK TRAIN METRICS {str(monitor_metrics)}")
-            tensorboard = pl_module.logger[0].experiment
+            tensorboard = pl_module.loggers[0].experiment
             pl_module.log("step", pl_module.current_epoch, sync_dist=self.sync_dist)
             for k, v in monitor_metrics.items():
                 pl_module.log("train/{}".format(k), v, sync_dist=self.sync_dist)
@@ -369,7 +369,7 @@ class ConfidMonitor(Callback):
                 do_plot=do_plot,
                 ext_confid_name=pl_module.ext_confid_name,
             )
-            tensorboard = pl_module.logger[0].experiment
+            tensorboard = pl_module.loggers[0].experiment
             pl_module.log("step", pl_module.current_epoch, sync_dist=self.sync_dist)
             for k, v in monitor_metrics.items():
                 pl_module.log("val/{}".format(k), v, sync_dist=self.sync_dist)

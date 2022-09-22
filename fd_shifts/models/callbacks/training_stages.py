@@ -85,7 +85,7 @@ class TrainingStages(Callback):
             )
 
             trainer.optimizers = [new_optimizer]
-            trainer.lr_schedulers = []
+            trainer.strategy.lr_scheduler_configs = []
             new_schedulers = []
             if pl_module.confidnet_lr_scheduler:
                 logger.info("initializing new scheduler for confidnet...")
@@ -102,7 +102,7 @@ class TrainingStages(Callback):
                     }
                 )
 
-                trainer.lr_schedulers = trainer.configure_schedulers(new_schedulers)
+                trainer.strategy.lr_scheduler_configs = trainer.configure_schedulers(new_schedulers)
 
             lr_monitor = [x for x in trainer.callbacks if "lr_monitor" in x.__str__()]
             if len(lr_monitor) > 0:
