@@ -1,6 +1,6 @@
 from pytorch_lightning.callbacks import (GPUStatsMonitor, LearningRateMonitor,
                                          ModelCheckpoint, RichProgressBar)
-from fd_shifts import configs
+from fd_shifts import configs, logger
 
 from fd_shifts.models.callbacks import confid_monitor, training_stages
 
@@ -30,10 +30,12 @@ def get_callbacks(cfg: configs.Config):
                         )
                     )
             else:
+                logger.info("Adding ModelCheckpoint callback")
                 out_cb_list.append(
                     ModelCheckpoint(
                         dirpath=cfg.exp.version_dir,
                         save_last=True,
+                        every_n_train_steps=cfg.trainer.num_steps // 2 if cfg.trainer.num_steps is not None else None
                     )
                 )
 
