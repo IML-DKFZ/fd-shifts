@@ -10,3 +10,7 @@ build
 .env
 results
 result_images
+scripts
+launcher
+typings
+experiments.json
