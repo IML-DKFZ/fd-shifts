@@ -37,7 +37,7 @@ dependencies = [
     "torchvision>=0.12.0",
     "tqdm>=4.62.0",
     "typing_extensions>=4.1.1",
-    "wilds>=1.1.0",
+    "wilds==1.1.0",
 ]
 
 [project.optional-dependencies]
