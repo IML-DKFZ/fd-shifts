@@ -163,12 +163,15 @@ class ExperimentData:
 
             if logits is not None:
                 logits[:, holdout_classes] = -np.inf
-
-            if mcd_logits_dist is not None:
-                mcd_logits_dist[:, :, holdout_classes] = 0
+                softmax = scpspecial.softmax(logits, axis=1)
 
             if mcd_softmax_dist is not None:
-                mcd_softmax_dist[:, :, holdout_classes] = 0
+                mcd_softmax_dist[:, holdout_classes, :] = 0
+
+            if mcd_logits_dist is not None:
+                mcd_logits_dist[:, holdout_classes, :] = -np.inf
+                mcd_softmax_dist = scpspecial.softmax(mcd_logits_dist, axis=1)
+
 
         # TODO: remove ext from query confids if file doesn't exist
         external_confids = ExperimentData.__load_npz_if_exists(
