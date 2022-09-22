@@ -2,11 +2,16 @@ from typing import TypeVar
 from functools import reduce
 import logging
 from random import randint
+import warnings
 
 from loguru import logger
 from omegaconf import OmegaConf
 
 from .version import version
+
+warnings.filterwarnings("ignore", "You want to use `wandb` which is not installed yet", UserWarning)
+warnings.filterwarnings("ignore", "You want to use `gym` which is not installed yet", UserWarning)
+warnings.filterwarnings("ignore", "fields may not start with an underscore", RuntimeWarning)
 
 
 # Replace python logging everywhere
