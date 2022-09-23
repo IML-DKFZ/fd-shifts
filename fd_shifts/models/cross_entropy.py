@@ -42,7 +42,7 @@ class net(pl.LightningModule):
         softmax_list = []
         for _ in range(n_samples - len(softmax_list)):
             logits = self.network(x)
-            softmax = F.softmax(logits, dim=1)
+            softmax = F.softmax(logits.to(torch.float64), dim=1)
             softmax_list.append(softmax.unsqueeze(2))
 
         self.network.encoder.disable_dropout()
@@ -77,9 +77,9 @@ class net(pl.LightningModule):
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
-
-        softmax = F.softmax(self.network(x), dim=1)
         z = self.network.forward_features(x)
+
+        softmax = F.softmax(self.network.head(z).to(torch.float64), dim=1)
         softmax_dist = None
 
         if any("mcd" in cfd for cfd in self.query_confids["test"]):

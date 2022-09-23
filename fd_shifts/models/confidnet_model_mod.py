@@ -74,7 +74,7 @@ class net(pl.LightningModule):
         for _ in range(n_samples - len(softmax_list)):
             logits = self.backbone(x)
             _, confidence = self.network(x)
-            softmax = F.softmax(logits, dim=1)
+            softmax = F.softmax(logits.to(torch.float64), dim=1)
             confidence = torch.sigmoid(confidence).squeeze(1)
             softmax_list.append(softmax.unsqueeze(2))
             conf_list.append(confidence.unsqueeze(1))
@@ -216,11 +216,10 @@ class net(pl.LightningModule):
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
-
-        softmax = F.softmax(self.backbone(x), dim=1)
+        z = self.backbone.forward_features(x)
+        softmax = F.softmax(self.backbone.head(z).to(torch.float64), dim=1)
         _, pred_confid = self.network(x)
         pred_confid = torch.sigmoid(pred_confid).squeeze(1)
-        z = self.network.forward_features(x)
         softmax_dist = None
         pred_confid_dist = None
 
