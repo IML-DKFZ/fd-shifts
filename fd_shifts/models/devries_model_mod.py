@@ -67,13 +67,13 @@ class net(pl.LightningModule):
         for _ in range(n_samples - len(softmax_list)):
             if self.ext_confid_name == "devries":
                 logits, confidence = self.model(x)
-                softmax = F.softmax(logits, dim=1)
+                softmax = F.softmax(logits.to(torch.float64), dim=1)
                 confidence = torch.sigmoid(confidence).squeeze(1)
                 softmax_list.append(softmax.unsqueeze(2))
                 conf_list.append(confidence.unsqueeze(1))
             if self.ext_confid_name == "dg":
                 outputs = self.model(x)
-                outputs = F.softmax(outputs, dim=1)
+                outputs = F.softmax(outputs.to(torch.float64), dim=1)
                 softmax, reservation = outputs[:, :-1], outputs[:, -1]
                 confidence = 1 - reservation
                 softmax_list.append(softmax.unsqueeze(2))
@@ -240,16 +240,17 @@ class net(pl.LightningModule):
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
+        z = self.model.forward_features(x)
         if self.ext_confid_name == "devries":
-            logits, confidence = self.model(x)
-            softmax = F.softmax(logits, dim=1)
+            logits, confidence = self.model.head(z)
+            softmax = F.softmax(logits.to(torch.float64), dim=1)
             confidence = torch.sigmoid(confidence).squeeze(1)
         elif self.ext_confid_name == "dg":
-            outputs = self.model(x)
-            outputs = F.softmax(outputs, dim=1)
+            outputs = self.model.head(z)
+            outputs = F.softmax(outputs.to(torch.float64), dim=1)
             softmax, reservation = outputs[:, :-1], outputs[:, -1]
             confidence = 1 - reservation
-        z = self.model.forward_features(x)
+
         softmax_dist = None
         confid_dist = None
         if any("mcd" in cfd for cfd in self.query_confids["test"]):
