@@ -25,6 +25,12 @@ class DeVriesAndEncoder(nn.Module):
     def forward_features(self, x):
         return self.encoder(x)
 
+    def head(self, x):
+        pred_class = self.classifier(x)
+        pred_confid = self.devries_net(x)
+
+        return pred_class, pred_confid
+
 
 class DeVriesNet(nn.Module):
     def __init__(self, cf):

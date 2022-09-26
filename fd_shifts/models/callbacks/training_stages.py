@@ -84,6 +84,7 @@ class TrainingStages(Callback):
 
             trainer.optimizers = [new_optimizer]
             trainer.lr_schedulers = []
+            #in some pytorch lightning versions this is not supported. Adding a setter method for the lr_scheduler property in the pl trainer fixes it
             new_schedulers = []
             if pl_module.confidnet_lr_scheduler:
                 print("initializing new scheduler for confidnet...")
