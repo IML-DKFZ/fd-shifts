@@ -35,16 +35,13 @@ class Encoder(nn.Module):
         if cf.eval.ext_confid_name == "dg":
             num_classes += 1
         self.model = efficientnet_b4(pretrained=True)
+        self.dropout_rate = cf.model.dropout_rate * 0.2
 
         in_features = cf.model.fc_dim
-        self.model.classifier = nn.Linear(
-            in_features=in_features, out_features=num_classes
+        self.model.classifier = nn.Sequential(
+            nn.Dropout(p=self.dropout_rate, inplace=True),
+            nn.Linear(in_features=in_features, out_features=num_classes),
         )
-        self.dropout_rate = cf.model.dropout_rate * 0.1
-
-        for layer in self.named_modules():
-            if isinstance(layer[1], nn.modules.dropout.Dropout):
-                layer[1].p = cf.model.dropout_rate * 0.2
 
     def disable_dropout(self):
         for layer in self.named_modules():
