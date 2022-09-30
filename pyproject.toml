@@ -22,7 +22,7 @@ dependencies = [
     "protobuf<=3.20.0",
     "pydantic",
     "pytorch-lightning-bolts>=0.3.2",
-    "pytorch-lightning>=1.2.4",
+    "pytorch-lightning==1.6.5",
     "rich>=10.7.0",
     "robustness @ https://github.com/MadryLab/robustness/archive/master.tar.gz",
     "scikit-image>=0.18.2",
@@ -56,14 +56,7 @@ launcher = [
 [project.scripts]
 # TODO: Check entry points
 fd_shifts = "fd_shifts.exec:main"
-fd_shifts-breeds = "launcher.breeds_paper_sweep:main"
-fd_shifts-camelyon = "launcher.camelyon_paper_sweep:main"
-fd_shifts-cifar100 = "launcher.cifar100_paper_sweep:main"
-fd_shifts-cifar10 = "launcher.cifar10_paper_sweep:main"
-fd_shifts-supercifar = "launcher.supercifar_paper_sweep:main"
-fd_shifts-svhn = "launcher.svhn_paper_sweep:main"
-fd_shifts-wilds_animals = "launcher.wilds_animals_paper_sweep:main"
-fd_shifts-vit = "launcher.vit_paper_sweep:main"
+fd_shifts-launcher = "fd_shifts.experiments.launcher:main"
 
 
 [tool.setuptools.dynamic]
@@ -95,6 +88,12 @@ filterwarnings = [
     'ignore:torch.distributed._sharded_tensor will be deprecated, use torch.distributed._shard.sharded_tensor instead:DeprecationWarning',
     # Ignore lightning_bolts optional dependencies warnings
     'ignore:You want to use:UserWarning',
+]
+
+[tool.pylint.main]
+extension-pkg-allow-list = [
+    "numpy",
+    "torch"
 ]
 
 [tool.pylint.logging]
