@@ -62,6 +62,12 @@ class ExperimentData:
         return np.mean(self.mcd_softmax_dist, axis=2)
 
     @property
+    def mcd_logits_mean(self) -> npt.NDArray[Any] | None:
+        if self.mcd_logits_dist is None:
+            return None
+        return np.mean(self.mcd_logits_dist, axis=2)
+
+    @property
     def mcd_correct(self) -> npt.NDArray[Any] | None:
         if self._mcd_correct is not None:
             return self._mcd_correct
@@ -309,6 +315,9 @@ class Analysis:
 
         if self.experiment_data.logits is not None:
             self.method_dict["query_confids"].append("det_mls")
+
+        if self.experiment_data.mcd_logits_dist is not None:
+            self.method_dict["query_confids"].append("mcd_mls")
 
         logger.debug("CHECK QUERY CONFIDS\n{}", self.method_dict["query_confids"])
 

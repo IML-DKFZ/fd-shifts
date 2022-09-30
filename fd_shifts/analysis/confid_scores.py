@@ -1,6 +1,6 @@
 from __future__ import annotations
-import logging
 
+import logging
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import numpy as np
@@ -34,7 +34,9 @@ def _assert_softmax_numerically_stable(softmax: ArrayType):
         return
 
     # alert if more than 10% are erroneous
-    assert errors.mean() < 0.1, f"Numerical errors in softmax: {errors.mean() * 100:.2f}%"
+    assert (
+        errors.mean() < 0.1
+    ), f"Numerical errors in softmax: {errors.mean() * 100:.2f}%"
 
 
 def validate_softmax(func: T) -> T:
@@ -88,10 +90,11 @@ def maximum_softmax_probability(
 
 @register_confid_func("mcd_mcp")
 @validate_softmax
+@register_confid_func("mcd_mls")
 def mcd_maximum_softmax_probability(
     mcd_softmax_mean: ArrayType, _: ArrayType
 ) -> ArrayType:
-    return maximum_softmax_probability(mcd_softmax_mean)
+    return np.max(mcd_softmax_mean, axis=1)
 
 
 @register_confid_func("det_pe")
@@ -202,6 +205,13 @@ class ConfidScore:
                 self.confid_args = (
                     np.mean(study_data.mcd_external_confids_dist, axis=1),
                     study_data.mcd_external_confids_dist,
+                )
+
+            elif "mls" in query_confid:
+                assert study_data.mcd_logits_dist is not None
+                self.confid_args = (
+                    study_data.mcd_logits_mean,
+                    study_data.mcd_logits_dist,
                 )
 
         else:
