@@ -1,9 +1,28 @@
-from pytorch_lightning.callbacks import Callback
-import torch
 from collections import OrderedDict
 from copy import deepcopy
+from typing import Any
+
+import torch
+from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.core import optimizer as pl_optimizer
 
 from fd_shifts import logger
+
+
+def _init_optimizers_and_lr_schedulers(optim_conf: Any):
+    """Calls `LightningModule.configure_optimizers` and parses and validates the output."""
+
+    (
+        optimizers,
+        lr_schedulers,
+        optimizer_frequencies,
+        monitor,
+    ) = pl_optimizer._configure_optimizers(optim_conf)
+    lr_scheduler_configs = pl_optimizer._configure_schedulers_automatic_opt(
+        lr_schedulers, monitor
+    )
+    pl_optimizer._set_scheduler_opt_idx(optimizers, lr_scheduler_configs)
+    return optimizers, lr_scheduler_configs, optimizer_frequencies
 
 
 class TrainingStages(Callback):
@@ -79,20 +98,18 @@ class TrainingStages(Callback):
             self.freeze_layers(pl_module.network.encoder)
             self.freeze_layers(pl_module.network.classifier)
 
-            new_optimizer = torch.optim.Adam(
+            optim_conf: torch.optim.Optimizer | dict[str, Any] = torch.optim.Adam(
                 pl_module.network.confid_net.parameters(),
                 lr=pl_module.learning_rate_confidnet,
             )
 
-            trainer.optimizers = [new_optimizer]
-            trainer.strategy.lr_scheduler_configs = []
-            new_schedulers = []
             if pl_module.confidnet_lr_scheduler:
                 logger.info("initializing new scheduler for confidnet...")
-                new_schedulers.append(
-                    {
+                optim_conf = {
+                "optimizer": optim_conf,
+                "lr_scheduler": {
                         "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
-                            optimizer=new_optimizer,
+                            optimizer=optim_conf,
                             T_max=self.milestones[1] - self.milestones[0],
                             verbose=True,
                         ),
@@ -100,9 +117,13 @@ class TrainingStages(Callback):
                         "frequency": 1,
                         "name": "confidnet_adam",
                     }
-                )
+                }
 
-                trainer.strategy.lr_scheduler_configs = trainer.configure_schedulers(new_schedulers)
+            (
+                trainer.strategy.optimizers,
+                trainer.strategy.lr_scheduler_configs,
+                trainer.strategy.optimizer_frequencies,
+            ) = _init_optimizers_and_lr_schedulers(optim_conf)
 
             lr_monitor = [x for x in trainer.callbacks if "lr_monitor" in x.__str__()]
             if len(lr_monitor) > 0:
@@ -129,7 +150,9 @@ class TrainingStages(Callback):
                 and "latest" not in pl_module.test_selection_criterion
             ):
                 best_ckpt_path = trainer.checkpoint_callbacks[1].best_model_path
-                logger.info("Test selection criterion {}", pl_module.test_selection_criterion)
+                logger.info(
+                    "Test selection criterion {}", pl_module.test_selection_criterion
+                )
                 logger.info("Check BEST confidnet path {}", best_ckpt_path)
             else:
                 best_ckpt_path = None
