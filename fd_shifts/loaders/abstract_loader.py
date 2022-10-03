@@ -33,7 +33,11 @@ class AbstractDataLoader(pl.LightningDataModule):
         self.val_split = cf.trainer.val_split
         self.test_iid_split = cf.test.iid_set_split
         self.assim_ood_norm_flag = cf.test.get("assim_ood_norm_flag")
-
+        self.balanced_sampeling = False
+        try:
+            self.balanced_sampeling = cf.model.balanced_sampeling
+        except:
+            pass
         self.add_val_tuning = dict(cf.eval).get("val_tuning")
         self.query_studies = dict(cf.eval).get("query_studies")
         if self.query_studies is not None:
@@ -298,30 +302,31 @@ class AbstractDataLoader(pl.LightningDataModule):
             self.val_split is None
             or self.val_split == "devries"
             or self.val_split == "zhang"
+            or self.val_split == "tenPercent"
         ):
             val_idx = []
             train_idx = []
             self.val_sampler = None
             self.train_sampler = None
-        elif self.val_split == "tenPercent":
-            # do class balanced sampeling
-            val_idx = []
-            train_idx = []
-            self.val_sampler = None
-            class_weights = {}
-            sample_weights = [0] * len(self.train_dataset)
-            for cla in self.train_dataset.csv.target.unique():
-                class_weights[cla] = np.sum(self.train_dataset.csv.target == cla) / len(
-                    self.train_dataset.csv
-                )
-            for idx, (data, label) in enumerate(self.train_dataset):
-                class_weight = class_weights[int(label)]
-                sample_weights[idx] = class_weight
-            from torch.utils.data import WeightedRandomSampler
+            if self.balanced_sampeling:
+                # do class balanced sampeling
+                val_idx = []
+                train_idx = []
+                self.val_sampler = None
+                class_weights = {}
+                sample_weights = [0] * len(self.train_dataset)
+                for cla in self.train_dataset.csv.target.unique():
+                    class_weights[cla] = np.sum(
+                        self.train_dataset.csv.target == cla
+                    ) / len(self.train_dataset.csv)
+                for idx, (data, label) in enumerate(self.train_dataset):
+                    class_weight = class_weights[int(label)]
+                    sample_weights[idx] = class_weight
+                from torch.utils.data import WeightedRandomSampler
 
-            self.train_sampler = WeightedRandomSampler(
-                sample_weights, num_samples=len(sample_weights), replacement=True
-            )
+                self.train_sampler = WeightedRandomSampler(
+                    sample_weights, num_samples=len(sample_weights), replacement=True
+                )
 
         elif self.val_split == "repro_confidnet":
             num_train = len(self.train_dataset)
