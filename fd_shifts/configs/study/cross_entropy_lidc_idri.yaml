@@ -43,6 +43,7 @@ model:
   fc_dim: 1024
   avg_pool: True
   dropout_rate: 0
+  rotate_at_testtime: False
   monitor_mcd_samples: 10 # only activated if "mcd" substring in train or val monitor confids.
   test_mcd_samples: 10 # only activated if "mcd" substring in test confids.
   network: 
@@ -82,6 +83,7 @@ eval:
         "ece",
         "e-aurc",
         "aurc",
+        "b-aurc",
         "fpr@95tpr",
       ]
   confidence_measures: # ["det_mcp" , "det_pe", "tcp" , "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv"]
