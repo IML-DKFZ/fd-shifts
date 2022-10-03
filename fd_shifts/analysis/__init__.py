@@ -12,10 +12,14 @@ import pandas as pd
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
 from .confid_scores import ConfidScore, is_external_confid
-from .eval_utils import (ConfidEvaluator, ConfidPlotter, ThresholdPlot,
-                         cifar100_classes, qual_plot)
+from .eval_utils import (
+    ConfidEvaluator,
+    ConfidPlotter,
+    ThresholdPlot,
+    cifar100_classes,
+    qual_plot,
+)
 from .studies import get_study_iterator
-
 
 
 @dataclass
@@ -169,9 +173,9 @@ class Analysis:
         }
 
         # HACK: OpenSet runs currently output all classes, but only train on in-classes
-        holdout_classes: list | None = kwargs.get("out_classes") if (
-            kwargs := cf.data.get("kwargs")
-        ) else None
+        holdout_classes: list | None = (
+            kwargs.get("out_classes") if (kwargs := cf.data.get("kwargs")) else None
+        )
         self.experiment_data = ExperimentData.from_experiment(path, holdout_classes, cf)
 
         if self.method_dict["cfg"].data.num_classes is None:
@@ -246,7 +250,9 @@ class Analysis:
     def get_confidence_scores(self, study_data: ExperimentData):
         for query_confid in self.method_dict["query_confids"]:
             confid_score = ConfidScore(
-                study_data=study_data, query_confid=query_confid, analysis=self,
+                study_data=study_data,
+                query_confid=query_confid,
+                analysis=self,
             )
 
             query_confid = self._fix_external_confid_name(query_confid)
@@ -325,6 +331,7 @@ class Analysis:
                 query_metrics=self.query_confid_metrics,
                 query_plots=self.query_plots,
                 bins=self.calibration_bins,
+                labels=self.experiment_data.labels,
             )
 
             confid_dict["metrics"].update(eval.get_metrics_per_confid())
@@ -382,6 +389,7 @@ class Analysis:
                         query_metrics=self.query_confid_metrics,
                         query_plots=self.query_plots,
                         bins=self.calibration_bins,
+                        labels=self.experiment_data.labels,
                     )
                     self.threshold_plot_dict = {}
                     self.plot_threshs = []
@@ -428,6 +436,7 @@ class Analysis:
                     query_metrics=self.query_confid_metrics,
                     query_plots=self.query_plots,
                     bins=self.calibration_bins,
+                    labels=self.experiment_data.labels,
                 )
                 true_thresh = eval.get_val_risk_scores(
                     self.rstar, 0.1, no_bound_mode=True
@@ -688,6 +697,7 @@ def main(
         "mce",
         "ece",
         "e-aurc",
+        "b-aurc",
         "aurc",
         "fpr@95tpr",
         "risk@100cov",

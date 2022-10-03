@@ -118,7 +118,7 @@ def monitor_eval(
 
 
 class ConfidEvaluator:
-    def __init__(self, confids, correct, query_metrics, query_plots, bins):
+    def __init__(self, confids, correct, query_metrics, query_plots, bins, labels=None):
         self.confids = confids
         self.correct = correct
         self.query_metrics = query_metrics
@@ -131,29 +131,44 @@ class ConfidEvaluator:
         self.rc_curve = None
         self.precision_list = None
         self.recall_list = None
-
-        self.stats_cache = StatsCache(self.confids, self.correct, self.bins)
+        self.labels = labels
+        self.stats_cache = StatsCache(
+            self.confids, self.correct, self.bins, self.labels
+        )
 
     def get_metrics_per_confid(self):
 
         out_metrics = {}
         if "failauc" in self.query_metrics or "fpr@95tpr" in self.query_metrics:
             if "failauc" in self.query_metrics:
-                out_metrics["failauc"] = get_metric_function("failauc")(self.stats_cache)
+                out_metrics["failauc"] = get_metric_function("failauc")(
+                    self.stats_cache
+                )
             if "fpr@95tpr" in self.query_metrics:
-                out_metrics["fpr@95tpr"] = get_metric_function("fpr@95tpr")(self.stats_cache)
+                out_metrics["fpr@95tpr"] = get_metric_function("fpr@95tpr")(
+                    self.stats_cache
+                )
 
         if "failap_suc" in self.query_metrics:
-            out_metrics["failap_suc"] = get_metric_function("failap_suc")(self.stats_cache)
+            out_metrics["failap_suc"] = get_metric_function("failap_suc")(
+                self.stats_cache
+            )
         if "failap_err" in self.query_metrics:
-            out_metrics["failap_err"] = get_metric_function("failap_err")(self.stats_cache)
+            out_metrics["failap_err"] = get_metric_function("failap_err")(
+                self.stats_cache
+            )
 
-        if "aurc" in self.query_metrics or "e-aurc" in self.query_metrics:
+        if (
+            "aurc" in self.query_metrics
+            or "e-aurc" in self.query_metrics
+            or "b-aurc" in self.query_metrics
+        ):
             if self.rc_curve is None:
                 self.get_rc_curve_stats()
             if "aurc" in self.query_metrics:
                 out_metrics["aurc"] = get_metric_function("aurc")(self.stats_cache)
-
+            if "b-aurc" in self.query_metrics:
+                out_metrics["b-aurc"] = get_metric_function("b-aurc")(self.stats_cache)
             if "e-aurc" in self.query_metrics:
                 out_metrics["e-aurc"] = get_metric_function("e-aurc")(self.stats_cache)
 
@@ -190,7 +205,9 @@ class ConfidEvaluator:
 
         if "fail-NLL" in self.query_metrics:
             out_metrics["fail-NLL"] = get_metric_function("fail-NLL")(self.stats_cache)
-            logger.debug("CHECK FAIL NLL: \n{}\n{}", self.confids.max(), self.confids.min())
+            logger.debug(
+                "CHECK FAIL NLL: \n{}\n{}", self.confids.max(), self.confids.min()
+            )
 
         return out_metrics
 
@@ -736,7 +753,13 @@ def clean_logging(log_dir):
 
 def plot_input_imgs(x, y, out_path):
 
-    logger.debug("{}\n{}\n{}\n{}", x.mean().item(), x.std().item(), x.min().item(), x.max().item())
+    logger.debug(
+        "{}\n{}\n{}\n{}",
+        x.mean().item(),
+        x.std().item(),
+        x.min().item(),
+        x.max().item(),
+    )
     f, axs = plt.subplots(nrows=4, ncols=4, figsize=(10, 10))
     for ix in range(len(f.axes)):
         ax = f.axes[ix]
