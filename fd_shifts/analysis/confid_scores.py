@@ -64,7 +64,8 @@ def expected_entropy(
     mcd_softmax_mean: npt.NDArray[Any], mcd_softmax_dist: npt.NDArray[Any]
 ) -> npt.NDArray[Any]:
     return np.mean(
-        np.sum(mcd_softmax_dist * (-np.log(mcd_softmax_dist + 1e-7)), axis=1), axis=1,
+        np.sum(mcd_softmax_dist * (-np.log(mcd_softmax_dist + 1e-7)), axis=1),
+        axis=1,
     )
 
 
@@ -89,7 +90,8 @@ def mcd_waic(
     mcd_softmax_mean: npt.NDArray[Any], mcd_softmax_dist: npt.NDArray[Any]
 ) -> npt.NDArray[Any]:
     return np.max(mcd_softmax_mean, axis=1) - np.take(
-        np.std(mcd_softmax_dist, axis=2), np.argmax(mcd_softmax_mean, axis=1),
+        np.std(mcd_softmax_dist, axis=2),
+        np.argmax(mcd_softmax_mean, axis=1),
     )
 
 
@@ -129,13 +131,18 @@ def ext_confid(softmax: npt.NDArray[Any]) -> npt.NDArray[Any]:
 
 class ConfidScore:
     def __init__(
-        self, study_data: "ExperimentData", query_confid: str, analysis: "Analysis",
+        self,
+        study_data: "ExperimentData",
+        query_confid: str,
+        analysis: "Analysis",
     ) -> None:
         if is_mcd_confid(query_confid):
             assert study_data.mcd_softmax_mean is not None
             assert study_data.mcd_softmax_dist is not None
             self.softmax = study_data.mcd_softmax_mean
             self.correct = study_data.mcd_correct
+            self.labels = study_data.labels
+
             self.confid_args = (
                 study_data.mcd_softmax_mean,
                 study_data.mcd_softmax_dist,
@@ -156,6 +163,7 @@ class ConfidScore:
         else:
             self.softmax = study_data.softmax_output
             self.correct = study_data.correct
+            self.labels = study_data.labels
             self.confid_args = (study_data.softmax_output,)
             self.performance_args = (
                 study_data.softmax_output,
