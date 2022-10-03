@@ -19,7 +19,11 @@ class net(pl.LightningModule):
         self.test_mcd_samples = cf.model.test_mcd_samples
         self.monitor_mcd_samples = cf.model.monitor_mcd_samples
         self.learning_rate = cf.trainer.learning_rate
-
+        self.rotate_at_testtime = False
+        try:
+            self.rotate_at_testtime = cf.model.rotate_at_testtime
+        except:
+            pass
         self.lr_scheduler = cf.trainer.lr_scheduler
         self.momentum = cf.trainer.momentum
         self.weight_decay = cf.trainer.weight_decay
@@ -77,13 +81,41 @@ class net(pl.LightningModule):
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
-        z = self.network.forward_features(x)
+        if self.rotate_at_testtime:
 
-        softmax = F.softmax(self.network.head(z).to(torch.float64), dim=1)
-        softmax_dist = None
+            for rot in range(4):
+                x = torch.rot90(x, rot, [2, 3])
+                z = self.network.forward_features(x)
+                softmax = F.softmax(self.network.head(z).to(torch.float64), dim=1)
+                softmax_dist = None
 
-        if any("mcd" in cfd for cfd in self.query_confids["test"]):
-            softmax_dist = self.mcd_eval_forward(x=x, n_samples=self.test_mcd_samples)
+                if any("mcd" in cfd for cfd in self.query_confids["test"]):
+                    softmax_dist = self.mcd_eval_forward(
+                        x=x, n_samples=self.test_mcd_samples
+                    )
+                if rot == 0:
+                    encoded = z
+                    softmaxes = softmax
+                    softmax_dists = softmax_dist
+                else:
+                    encoded += z
+                    softmaxes += softmax
+                    if softmax_dist is not None:
+                        softmax_dists += softmax_dist
+            z = encoded / 4
+            softmax = softmaxes / 4
+            if softmax_dist is not None:
+                softmax_dist = softmax_dists / 4
+        else:
+            z = self.network.forward_features(x)
+
+            softmax = F.softmax(self.network.head(z).to(torch.float64), dim=1)
+            softmax_dist = None
+
+            if any("mcd" in cfd for cfd in self.query_confids["test"]):
+                softmax_dist = self.mcd_eval_forward(
+                    x=x, n_samples=self.test_mcd_samples
+                )
 
         self.test_results = {
             "softmax": softmax,
