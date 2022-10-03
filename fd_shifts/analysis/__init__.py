@@ -423,6 +423,7 @@ class Analysis:
             self.method_dict[query_confid]["correct"] = confid_score.correct
             self.method_dict[query_confid]["metrics"] = confid_score.metrics
             self.method_dict[query_confid]["predict"] = confid_score.predict
+            self.method_dict[query_confid]["labels"] = confid_score.labels
 
     def _compute_performance_metrics(self, softmax, labels, correct):
         performance_metrics = {}
@@ -474,10 +475,10 @@ class Analysis:
             eval = ConfidEvaluator(
                 confids=confid_dict["confids"],
                 correct=confid_dict["correct"],
+                labels=confid_dict["labels"],
                 query_metrics=self.query_confid_metrics,
                 query_plots=self.query_plots,
                 bins=self.calibration_bins,
-                labels=self.experiment_data.labels,
             )
 
             confid_dict["metrics"].update(eval.get_metrics_per_confid())
@@ -535,7 +536,7 @@ class Analysis:
                         query_metrics=self.query_confid_metrics,
                         query_plots=self.query_plots,
                         bins=self.calibration_bins,
-                        labels=self.experiment_data.labels,
+                        labels=confid_dict["labels"],
                     )
                     self.threshold_plot_dict = {}
                     self.plot_threshs = []
@@ -581,7 +582,7 @@ class Analysis:
                     query_metrics=self.query_confid_metrics,
                     query_plots=self.query_plots,
                     bins=self.calibration_bins,
-                    labels=self.experiment_data.labels,
+                    labels=confid_dict["labels"],
                 )
                 true_thresh = eval.get_val_risk_scores(
                     self.rstar, 0.1, no_bound_mode=True

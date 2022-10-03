@@ -300,6 +300,8 @@ class ConfidScore:
             assert study_data.mcd_softmax_dist is not None
             self.softmax = study_data.mcd_softmax_mean
             self.correct = study_data.mcd_correct
+            self.labels = study_data.labels
+
             self.confid_args = (
                 study_data.mcd_softmax_mean,
                 study_data.mcd_softmax_dist,
@@ -327,6 +329,7 @@ class ConfidScore:
         else:
             self.softmax = study_data.softmax_output
             self.correct = study_data.correct
+            self.labels = study_data.labels
             self.confid_args = (study_data.softmax_output,)
             self.performance_args = (
                 study_data.softmax_output,
