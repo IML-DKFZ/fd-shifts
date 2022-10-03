@@ -477,6 +477,7 @@ class Analysis:
                 query_metrics=self.query_confid_metrics,
                 query_plots=self.query_plots,
                 bins=self.calibration_bins,
+                labels=self.experiment_data.labels,
             )
 
             confid_dict["metrics"].update(eval.get_metrics_per_confid())
@@ -534,6 +535,7 @@ class Analysis:
                         query_metrics=self.query_confid_metrics,
                         query_plots=self.query_plots,
                         bins=self.calibration_bins,
+                        labels=self.experiment_data.labels,
                     )
                     self.threshold_plot_dict = {}
                     self.plot_threshs = []
@@ -579,6 +581,7 @@ class Analysis:
                     query_metrics=self.query_confid_metrics,
                     query_plots=self.query_plots,
                     bins=self.calibration_bins,
+                    labels=self.experiment_data.labels,
                 )
                 true_thresh = eval.get_val_risk_scores(
                     self.rstar, 0.1, no_bound_mode=True
@@ -830,6 +833,7 @@ def main(
         "mce",
         "ece",
         "e-aurc",
+        "b-aurc",
         "aurc",
         "fpr@95tpr",
         "risk@100cov",

@@ -125,8 +125,10 @@ class ConfidEvaluator:
         self.rc_curve = None
         self.precision_list = None
         self.recall_list = None
-
-        self.stats_cache = StatsCache(self.confids, self.correct, self.bins)
+        self.labels = labels
+        self.stats_cache = StatsCache(
+            self.confids, self.correct, self.bins, self.labels
+        )
 
     def get_metrics_per_confid(self):
         out_metrics = {}
@@ -149,12 +151,17 @@ class ConfidEvaluator:
                 self.stats_cache
             )
 
-        if "aurc" in self.query_metrics or "e-aurc" in self.query_metrics:
+        if (
+            "aurc" in self.query_metrics
+            or "e-aurc" in self.query_metrics
+            or "b-aurc" in self.query_metrics
+        ):
             if self.rc_curve is None:
                 self.get_rc_curve_stats()
             if "aurc" in self.query_metrics:
                 out_metrics["aurc"] = get_metric_function("aurc")(self.stats_cache)
-
+            if "b-aurc" in self.query_metrics:
+                out_metrics["b-aurc"] = get_metric_function("b-aurc")(self.stats_cache)
             if "e-aurc" in self.query_metrics:
                 out_metrics["e-aurc"] = get_metric_function("e-aurc")(self.stats_cache)
 
