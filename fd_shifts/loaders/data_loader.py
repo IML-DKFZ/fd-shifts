@@ -286,7 +286,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             train_idx = []
             self.val_sampler = None
             self.train_sampler = None
-            if self.balanced_sampeling:
+            if self.balanced_sampling:
                 # do class balanced sampeling
                 val_idx = []
                 train_idx = []
