@@ -1,17 +1,19 @@
-import torch
-from torch.utils.data.sampler import SubsetRandomSampler
-import pytorch_lightning as pl
-from omegaconf import OmegaConf
-from fd_shifts.utils.aug_utils import transforms_collection
-from fd_shifts.utils.aug_utils import target_transforms_collection
-
-from fd_shifts.loaders.dataset_collection import get_dataset
-from sklearn.model_selection import KFold
-import fd_shifts.configs.data as data_configs
 import os
 import pickle
-import numpy as np
 from copy import deepcopy
+
+import numpy as np
+import pytorch_lightning as pl
+import torch
+from omegaconf import OmegaConf
+from sklearn.model_selection import KFold
+from torch.utils.data import WeightedRandomSampler
+from torch.utils.data.sampler import SubsetRandomSampler
+
+import fd_shifts.configs.data as data_configs
+from fd_shifts.loaders.dataset_collection import get_dataset
+from fd_shifts.utils.aug_utils import (target_transforms_collection,
+                                       transforms_collection)
 
 
 class AbstractDataLoader(pl.LightningDataModule):
@@ -33,11 +35,9 @@ class AbstractDataLoader(pl.LightningDataModule):
         self.val_split = cf.trainer.val_split
         self.test_iid_split = cf.test.iid_set_split
         self.assim_ood_norm_flag = cf.test.get("assim_ood_norm_flag")
-        self.balanced_sampling = False
-        try:
-            self.balanced_sampling = cf.model.balanced_sampling
-        except:
-            pass
+
+        self.balanced_sampling = cf.model.get("balanced_sampling", False)
+
         self.add_val_tuning = dict(cf.eval).get("val_tuning")
         self.query_studies = dict(cf.eval).get("query_studies")
         if self.query_studies is not None:
@@ -314,16 +314,14 @@ class AbstractDataLoader(pl.LightningDataModule):
                 train_idx = []
                 self.val_sampler = None
                 class_weights = {}
-                sample_weights = [0] * len(self.train_dataset)
-                for cla in self.train_dataset.csv.target.unique():
+                labels = self.train_dataset.csv.target
+
+                for cla in labels.unique():
                     class_weights[cla] = 1 / (
-                        np.sum(self.train_dataset.csv.target == cla)
-                        / len(self.train_dataset.csv)
+                        np.mean(labels == cla)
                     )
-                for idx, (data, label) in enumerate(self.train_dataset):
-                    class_weight = class_weights[int(label)]
-                    sample_weights[idx] = class_weight
-                from torch.utils.data import WeightedRandomSampler
+
+                sample_weights = class_weights[labels.astype(int)]
 
                 self.train_sampler = WeightedRandomSampler(
                     sample_weights, num_samples=len(sample_weights), replacement=True
