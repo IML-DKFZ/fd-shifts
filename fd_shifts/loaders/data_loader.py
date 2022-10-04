@@ -8,6 +8,7 @@ import pytorch_lightning as pl
 import torch
 from omegaconf import OmegaConf
 from sklearn.model_selection import KFold
+from torch.utils.data import WeightedRandomSampler
 from torch.utils.data.sampler import SubsetRandomSampler
 
 import fd_shifts.configs.data as data_configs
@@ -292,16 +293,14 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 train_idx = []
                 self.val_sampler = None
                 class_weights = {}
-                sample_weights = [0] * len(self.train_dataset)
-                for cla in self.train_dataset.csv.target.unique():
+                labels = self.train_dataset.csv.target
+
+                for cla in labels.unique():
                     class_weights[cla] = 1 / (
-                        np.sum(self.train_dataset.csv.target == cla)
-                        / len(self.train_dataset.csv)
+                        np.mean(labels == cla)
                     )
-                for idx, (data, label) in enumerate(self.train_dataset):
-                    class_weight = class_weights[int(label)]
-                    sample_weights[idx] = class_weight
-                from torch.utils.data import WeightedRandomSampler
+
+                sample_weights = class_weights[labels.astype(int)]
 
                 self.train_sampler = WeightedRandomSampler(
                     sample_weights, num_samples=len(sample_weights), replacement=True
