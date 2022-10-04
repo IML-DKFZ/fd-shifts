@@ -64,6 +64,9 @@ class Encoder(nn.Module):
             if isinstance(layer[1], torchvision.models.densenet._DenseLayer):
                 layer[1].train()
                 # layer[1].drop_rate = 0.1
+        for layer in self.named_modules():
+            if isinstance(layer[1], nn.BatchNorm2d):
+                layer[1].eval()
 
 
 class Classifier(nn.Module):
