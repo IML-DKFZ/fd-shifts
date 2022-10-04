@@ -33,9 +33,9 @@ class AbstractDataLoader(pl.LightningDataModule):
         self.val_split = cf.trainer.val_split
         self.test_iid_split = cf.test.iid_set_split
         self.assim_ood_norm_flag = cf.test.get("assim_ood_norm_flag")
-        self.balanced_sampeling = False
+        self.balanced_sampling = False
         try:
-            self.balanced_sampeling = cf.model.balanced_sampeling
+            self.balanced_sampling = cf.model.balanced_sampling
         except:
             pass
         self.add_val_tuning = dict(cf.eval).get("val_tuning")
@@ -308,7 +308,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             train_idx = []
             self.val_sampler = None
             self.train_sampler = None
-            if self.balanced_sampeling:
+            if self.balanced_sampling:
                 # do class balanced sampeling
                 val_idx = []
                 train_idx = []
