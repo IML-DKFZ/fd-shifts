@@ -316,9 +316,10 @@ class AbstractDataLoader(pl.LightningDataModule):
                 class_weights = {}
                 sample_weights = [0] * len(self.train_dataset)
                 for cla in self.train_dataset.csv.target.unique():
-                    class_weights[cla] = np.sum(
-                        self.train_dataset.csv.target == cla
-                    ) / len(self.train_dataset.csv)
+                    class_weights[cla] = 1 / (
+                        np.sum(self.train_dataset.csv.target == cla)
+                        / len(self.train_dataset.csv)
+                    )
                 for idx, (data, label) in enumerate(self.train_dataset):
                     class_weight = class_weights[int(label)]
                     sample_weights[idx] = class_weight
