@@ -296,11 +296,9 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 labels = self.train_dataset.csv.target
 
                 for cla in labels.unique():
-                    class_weights[cla] = 1 / (
-                        np.mean(labels == cla)
-                    )
+                    class_weights[cla] = 1 / (np.mean(labels == cla))
 
-                sample_weights = class_weights[labels.astype(int)]
+                sample_weights = [*map(class_weights.get, labels)]
 
                 self.train_sampler = WeightedRandomSampler(
                     sample_weights, num_samples=len(sample_weights), replacement=True
