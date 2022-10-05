@@ -12,8 +12,10 @@ from torch.utils.data.sampler import SubsetRandomSampler
 
 import fd_shifts.configs.data as data_configs
 from fd_shifts.loaders.dataset_collection import get_dataset
-from fd_shifts.utils.aug_utils import (target_transforms_collection,
-                                       transforms_collection)
+from fd_shifts.utils.aug_utils import (
+    target_transforms_collection,
+    transforms_collection,
+)
 
 
 class AbstractDataLoader(pl.LightningDataModule):
@@ -317,11 +319,9 @@ class AbstractDataLoader(pl.LightningDataModule):
                 labels = self.train_dataset.csv.target
 
                 for cla in labels.unique():
-                    class_weights[cla] = 1 / (
-                        np.mean(labels == cla)
-                    )
+                    class_weights[cla] = 1 / (np.mean(labels == cla))
 
-                sample_weights = class_weights[labels.astype(int)]
+                sample_weights = [*map(class_weights.get, labels)]
 
                 self.train_sampler = WeightedRandomSampler(
                     sample_weights, num_samples=len(sample_weights), replacement=True
