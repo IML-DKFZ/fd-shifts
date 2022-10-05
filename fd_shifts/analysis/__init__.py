@@ -277,6 +277,13 @@ class Analysis:
                 )
         if "accuracy" in self.query_performance_metrics:
             performance_metrics["accuracy"] = np.sum(correct) / correct.size
+        if "b-accuracy" in self.query_performance_metrics:
+            accuracies_list = []
+            for cla in np.unique(labels):
+                is_class = labels == cla
+                accuracy_class = np.mean(correct[is_class])
+                accuracies_list.append(accuracy_class)
+            performance_metrics["b-accuracy"] = np.mean(accuracies_list)
         if "brier_score" in self.query_performance_metrics:
             if "new_class" in self.study_name:
                 performance_metrics["brier_score"] = None
@@ -689,7 +696,7 @@ def main(
 
     analysis_out_dir = out_path
 
-    query_performance_metrics = ["accuracy", "nll", "brier_score"]
+    query_performance_metrics = ["accuracy", "b-accuracy", "nll", "brier_score"]
     query_confid_metrics = [
         "failauc",
         "failap_suc",
