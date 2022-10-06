@@ -27,3 +27,18 @@ data:
 eval:
   query_studies:
     iid_study: ${data.dataset}
+
+trainer:
+  batch_size: 16
+  num_epochs: ${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,20,${fd_shifts.ifeq_else:${eval.ext_confid_name},dg,18,12}}
+  num_epochs_backbone: 12
+  dg_pretrain_epochs: 6
+  optimizer:
+    lr: 1e-3
+    weight_decay: 0
+
+model:
+  fc_dim: 2048
+  network:
+    name: ${fd_shifts.ifeq_else:${eval.ext_confid_name},devries,devries_and_enc,${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,confidnet_and_enc,resnet50}}
+    backbone: ${fd_shifts.ifeq_else:${eval.ext_confid_name},devries,resnet50,${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,resnet50,null}}

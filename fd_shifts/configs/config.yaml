@@ -3,8 +3,8 @@ defaults:
   - /trainer/lr_scheduler: LinearWarmupCosineAnnealingLR
   - /trainer/optimizer: SGD
   - _self_
-  - data: cifar10_data
   - study: deepgamblers
+  - data: cifar10_data
   - override hydra/job_logging: disabled
 
 hydra:
@@ -21,7 +21,7 @@ trainer:
   dg_pretrain_epochs: 100
   val_every_n_epoch: 5
   val_split: devries
-  do_val: false
+  do_val: true
   batch_size: 128
   resume_from_ckpt: false
   benchmark: true

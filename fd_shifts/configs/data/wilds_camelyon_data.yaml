@@ -24,3 +24,18 @@ eval:
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
     iid_study: ${data.dataset}
     in_class_study: [wilds_camelyon_ood_test]
+
+trainer:
+  batch_size: 32
+  num_epochs: ${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,9,${fd_shifts.ifeq_else:${eval.ext_confid_name},dg,8,5}}
+  num_epochs_backbone: 5
+  dg_pretrain_epochs: 3
+  optimizer:
+    lr: 1e-2
+    weight_decay: 1e-2
+
+model:
+  fc_dim: 2048
+  network:
+    name: ${fd_shifts.ifeq_else:${eval.ext_confid_name},devries,devries_and_enc,${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,confidnet_and_enc,resnet50}}
+    backbone: ${fd_shifts.ifeq_else:${eval.ext_confid_name},devries,resnet50,${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,resnet50,null}}

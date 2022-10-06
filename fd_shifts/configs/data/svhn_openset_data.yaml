@@ -28,3 +28,17 @@ data:
 eval:
   query_studies:
     iid_study: svhn_openset
+
+trainer:
+  batch_size: 128
+  num_epochs: ${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,320,${fd_shifts.ifeq_else:${eval.ext_confid_name},dg,150,100}}
+  num_epochs_backbone: 100
+  dg_pretrain_epochs: 50
+  optimizer:
+    lr: 1e-2
+    weight_decay: 5e-4
+
+model:
+  network:
+    name: ${fd_shifts.ifeq_else:${eval.ext_confid_name},devries,devries_and_enc,${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,confidnet_and_enc,svhn_small_conv}}
+    backbone: ${fd_shifts.ifeq_else:${eval.ext_confid_name},devries,svhn_small_conv,${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,svhn_small_conv,null}}

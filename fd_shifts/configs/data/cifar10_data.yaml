@@ -38,3 +38,13 @@ eval:
       - cifar100
       - svhn
       - tinyimagenet_resize
+
+trainer:
+  batch_size: 128
+  num_epochs: ${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,470,${fd_shifts.ifeq_else:${eval.ext_confid_name},dg,300,250}}
+  num_epochs_backbone: 250
+  dg_pretrain_epochs: 100
+  optimizer:
+    lr: 1e-1
+    weight_decay: 5e-4
+

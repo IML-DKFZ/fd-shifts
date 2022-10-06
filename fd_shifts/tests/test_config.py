@@ -1,3 +1,4 @@
+import json
 import os
 from contextlib import AbstractContextManager, contextmanager, nullcontext
 from pathlib import Path
@@ -5,14 +6,16 @@ from typing import Any, Optional, cast
 
 import hydra
 import pytest
+from deepdiff import DeepDiff
 from hydra import compose, initialize_config_module
 from hydra.core.config_store import ConfigStore
 from hydra.core.hydra_config import HydraConfig
 from hydra.errors import ConfigCompositionException
-from omegaconf import DictConfig, OmegaConf
-from rich import print as pprint
+from omegaconf import DictConfig, ListConfig, OmegaConf
+from rich.pretty import pprint
 
 from fd_shifts import configs
+from fd_shifts.experiments import Experiment, get_all_experiments
 
 
 @pytest.fixture
@@ -145,3 +148,121 @@ def test_existing_datasets(dataset: str, mock_env_if_missing: Any):
     pprint(OmegaConf.to_yaml(cfg, resolve=False))
     assert isinstance(cfg, configs.Config)  # runtime type check
     assert cfg.data.dataset == _normalize_dataset_name(dataset)
+
+
+@pytest.mark.parametrize(
+    "experiment",
+    list(
+        filter(
+            lambda experiment: not (experiment.model != "vit" and experiment.backbone == "vit")
+            and "precision" not in str(experiment.group_dir),
+            get_all_experiments(),
+        )
+    ),
+)
+def test_experiment_configs(experiment: Experiment):
+    configs.init()
+
+    base_path = Path("/media/experiments/")
+    path = base_path / experiment.to_path()
+    config_path = path / "hydra" / "config.yaml"
+
+    dconf = OmegaConf.load(config_path)
+    dconf._metadata.object_type = configs.Config
+
+    def fix_metadata(cfg: DictConfig | ListConfig):
+        if hasattr(cfg, "_target_"):
+            cfg._metadata.object_type = getattr(configs, cfg._target_.split(".")[-1])
+        for k, v in cfg.items():
+            match v:
+                case DictConfig():
+                    fix_metadata(v)
+                case _:
+                    pass
+
+    fix_metadata(dconf)
+
+    schema = initialize_hydra(
+        [f"{key}={value}" for key, value in experiment.overrides().items()]
+    )
+    oschema: configs.Config = OmegaConf.to_object(schema)  # type: ignore
+
+    conf: configs.Config = OmegaConf.to_object(dconf)  # type: ignore
+    conf.validate()
+
+    def to_dict(obj):
+        return json.loads(
+            json.dumps(obj, default=lambda o: getattr(o, "__dict__", str(o)))
+        )
+
+    exclude_paths = {
+        "root['hydra']",
+        "root['data']['num_workers']",
+        "root['data']['data_dir']",
+        "root['exp']['dir']",
+        "root['exp']['global_seed']",
+        "root['exp']['group_dir']",
+        # "root['exp']['group_name']",
+        "root['exp']['log_path']",
+        "root['exp']['mode']",
+        # "root['exp']['name']",
+        "root['exp']['output_paths']",
+        "root['exp']['version']",
+        "root['exp']['version_dir']",
+        "root['exp']['crossval_ids_path']",
+        "root['test']['best_ckpt_path']",
+        "root['test']['cf_path']",
+        "root['test']['dir']",
+        "root['test']['external_confids_output_path']",
+        "root['test']['raw_output_path']",
+        "root['pkgversion']",
+        "root['trainer']['val_every_n_epoch']",
+        "root['eval']['confidence_measures']['train']",
+        "root['eval']['confidence_measures']['val']",
+        "root['eval']['confid_metrics']['train']",
+        "root['data']['kwargs']['out_classes']",
+        "root['trainer']['do_val']",
+        # Remove this
+        "root['model']['network']['imagenet_weights_path']",
+        "root['trainer']['resume_from_ckpt_confidnet']",
+        "root['model']['network']['save_dg_backbone_path']",
+        "root['model']['avg_pool']",
+    }
+
+    if experiment.model != "dg":
+        exclude_paths.add("root['trainer']['dg_pretrain_epochs']")
+        exclude_paths.add("root['model']['dg_reward']")
+        exclude_paths.add("root['model']['network']['save_dg_backbone_path']")
+
+    if experiment.model == "vit":
+        exclude_paths.add("root['trainer']['num_steps']")
+        exclude_paths.add("root['trainer']['lr_scheduler']['max_epochs']")
+
+    if experiment.model != "confidnet":
+        exclude_paths.add("root['trainer']['resume_from_ckpt_confidnet']")
+        exclude_paths.add("root['trainer']['num_epochs_backbone']")
+        exclude_paths.add("root['model']['confidnet_fc_dim']")
+
+    if conf.trainer.optimizer._target_ == "torch.optim.SGD":
+        conf.trainer.optimizer._target_ = "torch.optim.sgd.SGD"
+        conf.trainer.optimizer._partial_ = True
+
+    if experiment.model != "vit" and experiment.dataset == "animals":
+        conf.trainer.batch_size = 16
+    if experiment.model != "vit" and experiment.dataset == "animals_openset":
+        conf.trainer.batch_size = 16
+
+    if experiment.model != "vit" and experiment.dataset == "camelyon":
+        conf.trainer.batch_size = 32
+
+    config_diff = DeepDiff(
+        to_dict(oschema),
+        to_dict(conf),
+        ignore_order=True,
+        ignore_numeric_type_changes=True,
+        exclude_paths=exclude_paths,
+    )
+
+    if config_diff:
+        pprint(config_diff)
+        raise AssertionError("Configs do not match")

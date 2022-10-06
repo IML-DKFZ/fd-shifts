@@ -20,6 +20,53 @@ class Experiment:
     def to_string(self):
         pass
 
+    def overrides(self):
+        match self.dataset:
+            case "camelyon" | "animals" | "animals_openset":
+                dataset = "wilds_" + self.dataset
+            case "supercifar":
+                dataset = "super_cifar100"
+            case _:
+                dataset = self.dataset
+
+        match self.model:
+            case "dg":
+                model = "deepgamblers"
+            case "vit":
+                model = self.model
+                dataset = dataset + "_384"
+            case _:
+                model = self.model
+
+        overrides = {
+            "data": dataset + "_data",
+            "study": model,
+            "model.dropout_rate": self.dropout,
+            "model.dg_reward": self.reward,
+            "exp.group_name": str(self.to_path().parent.stem),
+            "exp.name": str(self.to_path().name),
+        }
+
+        if self.learning_rate is not None:
+            overrides["trainer.optimizer.lr"] = self.learning_rate
+
+        if self.model == "confidnet":
+            match dataset:
+                case "breeds":
+                    overrides["trainer.callbacks.training_stages.milestones"] = [300, 500]
+                case "cifar10" | "cifar100" | "super_cifar100":
+                    overrides["trainer.callbacks.training_stages.milestones"] = [250, 450]
+                case "svhn" | "svhn_openset":
+                    overrides["trainer.callbacks.training_stages.milestones"] = [100, 300]
+                case "wilds_animals" | "wilds_animals_openset":
+                    overrides["trainer.callbacks.training_stages.milestones"] = [12, 17]
+                case "wilds_camelyon":
+                    overrides["trainer.callbacks.training_stages.milestones"] = [5, 8]
+                case _:
+                    pass
+
+        return overrides
+
     def to_path(self):
         self.group_dir = Path(self.group_dir)
         if "vit" in str(self.group_dir):
@@ -84,34 +131,34 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
     _experiments = []
 
     # ViT Hyperparameter sweep
-    if with_hyperparameter_sweep:
-        _experiments.extend(
-            Experiment.from_iterables(
-                group_dir=Path("fd-shifts/vit"),
-                datasets=(
-                    "cifar10",
-                    "cifar100",
-                    "super_cifar100",
-                    "svhn",
-                    "breeds",
-                    "wilds_animals",
-                    "wilds_camelyon",
-                ),
-                models=("vit",),
-                backbones=("vit",),
-                dropouts=(0, 1),
-                runs=(0,),
-                rewards=(0,),
-                learning_rates=(3e-2, 1e-2, 3e-3, 1e-3, 3e-4, 1e-4),
-            )
-        )
+    # if with_hyperparameter_sweep:
+    #     _experiments.extend(
+    #         Experiment.from_iterables(
+    #             group_dir=Path("fd-shifts/vit"),
+    #             datasets=(
+    #                 "cifar10",
+    #                 "cifar100",
+    #                 "super_cifar100",
+    #                 "svhn",
+    #                 "breeds",
+    #                 "wilds_animals",
+    #                 "wilds_camelyon",
+    #             ),
+    #             models=("vit",),
+    #             backbones=("vit",),
+    #             dropouts=(0, 1),
+    #             runs=(0,),
+    #             rewards=(0,),
+    #             learning_rates=(3e-2, 1e-2, 3e-3, 1e-3, 3e-4, 1e-4),
+    #         )
+    #     )
 
     # ViT Best lr runs
     _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("svhn",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-2,),
             dropouts=(1,),
@@ -124,12 +171,38 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("svhn",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-2,),
             dropouts=(0, 1),
             runs=range(5),
-            rewards=(0,)
+            rewards=(0,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
+            datasets=("svhn_openset",),
+            models=("vit", "dg", "devries", "confidnet"),
+            backbones=("vit",),
+            learning_rates=(3e-2,),
+            dropouts=(1,),
+            runs=range(5),
+            rewards=(0,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
+            datasets=("svhn_openset",),
+            models=("vit", "dg", "devries", "confidnet"),
+            backbones=("vit",),
+            learning_rates=(1e-2,),
+            dropouts=(0, 1),
+            runs=range(5),
+            rewards=(0,),
         )
     )
 
@@ -137,7 +210,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("cifar10",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-2,),
             dropouts=(1,),
@@ -150,7 +223,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("cifar10",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-4,),
             dropouts=(0,),
@@ -163,7 +236,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("cifar100",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-2,),
             dropouts=(1, 0),
@@ -176,7 +249,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("super_cifar100",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-3,),
             dropouts=(0,),
@@ -189,7 +262,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("super_cifar100",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-3,),
             dropouts=(1,),
@@ -202,7 +275,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_animals",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-3,),
             dropouts=(0,),
@@ -215,7 +288,33 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_animals",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
+            backbones=("vit",),
+            learning_rates=(3e-3, 1e-2),
+            dropouts=(0, 1),
+            runs=range(5),
+            rewards=(0,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
+            datasets=("wilds_animals_openset",),
+            models=("vit", "dg", "devries", "confidnet"),
+            backbones=("vit",),
+            learning_rates=(1e-3,),
+            dropouts=(0,),
+            runs=range(5),
+            rewards=(0,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
+            datasets=("wilds_animals_openset",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-3,),
             dropouts=(0, 1),
@@ -228,7 +327,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_camelyon",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-3,),
             dropouts=(0,),
@@ -241,7 +340,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_camelyon",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-3,),
             dropouts=(1,),
@@ -254,7 +353,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("breeds",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-3, 1e-3),
             dropouts=(0,),
@@ -267,7 +366,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("breeds",),
-            models=("vit",),
+            models=("vit", "dg", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-2,),
             dropouts=(1,),
@@ -286,7 +385,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -299,7 +398,33 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2, 3, 6, 10),
-            learning_rates=(None,)
+            learning_rates=(None,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts"),
+            datasets=("svhn_openset",),
+            models=("devries", "confidnet"),
+            backbones=("svhn_small_conv",),
+            dropouts=(0, 1),
+            runs=range(5),
+            rewards=(2.2,),
+            learning_rates=(None,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts"),
+            datasets=("svhn_openset",),
+            models=("dg",),
+            backbones=("svhn_small_conv",),
+            dropouts=(0, 1),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10),
+            learning_rates=(None,),
         )
     )
 
@@ -312,7 +437,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -325,7 +450,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2, 3, 6, 10),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -338,7 +463,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -351,7 +476,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2, 3, 6, 10, 12, 15, 20),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -364,10 +489,9 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
-
 
     _experiments.extend(
         Experiment.from_iterables(
@@ -377,8 +501,8 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             backbones=("vgg13",),
             dropouts=(0, 1),
             runs=range(5),
-            rewards=(2.2, 3, 6, 10),
-            learning_rates=(None,)
+            rewards=(2.2, 3, 6, 10, 12, 15, 20),
+            learning_rates=(None,),
         )
     )
 
@@ -391,7 +515,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -404,7 +528,33 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2, 3, 6, 10, 15),
-            learning_rates=(None,)
+            learning_rates=(None,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts"),
+            datasets=("animals_openset",),
+            models=("devries", "confidnet"),
+            backbones=("resnet50",),
+            dropouts=(0, 1),
+            runs=range(5),
+            rewards=(2.2,),
+            learning_rates=(None,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts"),
+            datasets=("animals_openset",),
+            models=("dg",),
+            backbones=("resnet50",),
+            dropouts=(0, 1),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10, 15),
+            learning_rates=(None,),
         )
     )
 
@@ -415,9 +565,9 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             models=("devries", "confidnet"),
             backbones=("resnet50",),
             dropouts=(0, 1),
-            runs=range(5),
+            runs=range(10),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -428,9 +578,9 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             models=("dg",),
             backbones=("resnet50",),
             dropouts=(0, 1),
-            runs=range(5),
+            runs=range(10),
             rewards=(2.2, 3, 6, 10),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -443,7 +593,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(2),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -456,10 +606,9 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(2),
             rewards=(2.2, 3, 6, 10, 15),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
-
 
     # precision study
     _experiments.extend(
@@ -471,7 +620,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -484,7 +633,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -497,7 +646,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -510,7 +659,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -523,7 +672,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -536,7 +685,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2,),
-            learning_rates=(None,)
+            learning_rates=(None,),
         )
     )
 
@@ -549,7 +698,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             learning_rates=(1e-2,),
             dropouts=(0, 1),
             runs=range(5),
-            rewards=(0,)
+            rewards=(0,),
         )
     )
 
@@ -562,7 +711,7 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             learning_rates=(1e-2,),
             dropouts=(0, 1),
             runs=range(5),
-            rewards=(0,)
+            rewards=(0,),
         )
     )
 
@@ -575,11 +724,12 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             learning_rates=(1e-2,),
             dropouts=(0, 1),
             runs=range(5),
-            rewards=(0,)
+            rewards=(0,),
         )
     )
 
     return _experiments
+
 
 if __name__ == "__main__":
     pprint(get_all_experiments())

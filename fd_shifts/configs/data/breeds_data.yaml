@@ -34,3 +34,18 @@ eval:
     iid_study: breeds
     in_class_study: 
       - breeds_ood_test
+
+trainer:
+  batch_size: 128
+  num_epochs: ${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,520,${fd_shifts.ifeq_else:${eval.ext_confid_name},dg,350,300}}
+  dg_pretrain_epochs: 50
+  num_epochs_backbone: 300
+  optimizer:
+    lr: 1e-1
+    weight_decay: 1e-4
+
+model:
+  fc_dim: 2048
+  network:
+    name: ${fd_shifts.ifeq_else:${eval.ext_confid_name},devries,devries_and_enc,${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,confidnet_and_enc,resnet50}}
+    backbone: ${fd_shifts.ifeq_else:${eval.ext_confid_name},devries,resnet50,${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,resnet50,null}}

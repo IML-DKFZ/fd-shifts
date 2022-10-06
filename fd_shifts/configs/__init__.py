@@ -145,13 +145,13 @@ LinearWarmupCosineAnnealingLR = builds(
 @dataclass
 class OptimizerConfig:
     _target_: str = MISSING
-    _partial_: Optional[bool] = None
+    _partial_: Optional[bool] = True
 
 
 @defer_validation
 @dataclass
 class SGD(OptimizerConfig):
-    _target_: str = "torch.optim.SGD"
+    _target_: str = "torch.optim.sgd.SGD"
     lr: float = 0.003
     dampening: float = 0.0
     momentum: float = 0.9
@@ -414,11 +414,11 @@ class Config(IterableMixin):
 
     @validator("pkgversion")
     def validate_version(cls, version: str):
-        if version != fd_shifts.version():
-            raise ValueError(
-                f"This config was created with version {version} of fd-shifts. "
-                f"You are on {fd_shifts.version()}."
-            )
+        # if version != fd_shifts.version():
+        #     raise ValueError(
+        #         f"This config was created with version {version} of fd-shifts. "
+        #         f"You are on {fd_shifts.version()}."
+        #     )
 
         return version
 

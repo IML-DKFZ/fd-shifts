@@ -28,3 +28,12 @@ data:
 eval:
   query_studies: # iid_study, new_class_study, sub_class_study, noise_study
     iid_study: super_cifar100
+
+trainer:
+  batch_size: 128
+  num_epochs: ${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,470,${fd_shifts.ifeq_else:${eval.ext_confid_name},dg,300,250}}
+  num_epochs_backbone: 250
+  dg_pretrain_epochs: 100
+  optimizer:
+    lr: 1e-1
+    weight_decay: 5e-4
