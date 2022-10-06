@@ -1,17 +1,28 @@
-from typing import TypeVar
-from functools import reduce
 import logging
-from random import randint
 import warnings
+from functools import reduce
+from random import randint
+from typing import TypeVar
 
 from loguru import logger
 from omegaconf import OmegaConf
 
 from .version import version
 
-warnings.filterwarnings("ignore", "You want to use `wandb` which is not installed yet", UserWarning)
-warnings.filterwarnings("ignore", "You want to use `gym` which is not installed yet", UserWarning)
-warnings.filterwarnings("ignore", "fields may not start with an underscore", RuntimeWarning)
+warnings.filterwarnings(
+    "ignore", "You want to use `wandb` which is not installed yet", UserWarning
+)
+warnings.filterwarnings(
+    "ignore", "You want to use `gym` which is not installed yet", UserWarning
+)
+warnings.filterwarnings(
+    "ignore", "fields may not start with an underscore", RuntimeWarning
+)
+warnings.filterwarnings(
+    "ignore",
+    "The value of the smallest subnormal for",
+    UserWarning,
+)
 
 
 # Replace python logging everywhere
@@ -39,10 +50,18 @@ logging.basicConfig(handlers=[InterceptHandler()], level=logging.WARNING)
 
 OmegaConf.register_new_resolver("fd_shifts.version", version)
 OmegaConf.register_new_resolver("fd_shifts.random_seed", lambda: randint(0, 1_000_000))
-OmegaConf.register_new_resolver("fd_shifts.if_else", lambda cond, a, b: a if cond else b)
+OmegaConf.register_new_resolver(
+    "fd_shifts.if_else", lambda cond, a, b: a if cond else b
+)
+OmegaConf.register_new_resolver(
+    "fd_shifts.ifeq_else", lambda cond, x, a, b: a if cond == x else b
+)
 
-T = TypeVar('T')
+T = TypeVar("T")
+
+
 def _concat(*args: list[T]) -> list[T]:
     return reduce(lambda a, b: a + b, args)
+
 
 OmegaConf.register_new_resolver("fd_shifts.concat", _concat)
