@@ -574,9 +574,4 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
     # if "iid" in study and metric == "failauc":
     #     axs[xix, yix].set_ylim(0.90, 0.96)
     plt.tight_layout()
-    # plt.savefig(
-    #     "/home/tillb/Projects/failure-detection-benchmark/results/final_paper_{}_single_column_box.png".format(
-    #         exp
-    #     )
-    # )
     plt.savefig(out_dir / f"vit_v_cnn.png")

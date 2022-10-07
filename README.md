@@ -79,7 +79,7 @@ fd_shifts launch
 Some at a time:
 
 ```bash
-fd_shifts launch --study=devries --dataset=cifar10
+fd_shifts launch --model=devries --dataset=cifar10
 ```
 
 Or one at a time (use `fd_shifts list` to find the names of experiments):
