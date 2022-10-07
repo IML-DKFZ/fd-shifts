@@ -1,30 +1,64 @@
+from __future__ import annotations
+
 import dataclasses
 import json
+import random
+import urllib.request
+import warnings
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
+from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import TypeVar
 
 import numpy as np
 from deepdiff import DeepDiff
 from hydra import compose, initialize_config_module
 from hydra.core.hydra_config import HydraConfig
-from loguru._logger import Logger
-from omegaconf import DictConfig, ListConfig, OmegaConf, resolvers
-from rich import inspect
-from rich.console import Console
-from rich.pretty import pretty_repr
+# from loguru._logger import Logger
+from omegaconf import DictConfig, ListConfig, OmegaConf
+from rich import get_console
 from rich.progress import Progress
-import torch
 
 import fd_shifts
 from fd_shifts import configs
-from fd_shifts.utils import exp_utils
 from fd_shifts.experiments import Experiment, get_all_experiments
-from fd_shifts.models import get_model
 
-BASE_PATH = Path("~/Experiments/").expanduser()
+warnings.filterwarnings("ignore")
+
+GB = 1024 * 1024 * 1024
+
+
+def get_jobs() -> list[dict[str, str]]:
+    with urllib.request.urlopen("http://localhost:3030/jobs") as response:
+        records: list[dict[str, str]] = json.loads(response.read())["RECORDS"]
+    return records
+
+
+def is_experiment_running(
+    experiment: ValidationResult, jobs: list[dict[str, str]]
+) -> bool:
+    _experiments = list(
+        map(
+            lambda j: j["JOB_NAME"],
+            filter(lambda j: j["STAT"] in ("RUN", "PEND"), jobs),
+        )
+    )
+    running = (
+        str(experiment.experiment.to_path().relative_to("fd-shifts")) in _experiments
+    )
+
+    if running:
+        print(f"{experiment.experiment.to_path()} is already running")
+
+    return running
+
+
+# BASE_PATH = Path("~/Experiments/").expanduser()
+NETWORK_DRIVES_PATH = Path("~/NetworkDrives/E130-Personal/Bungert/").expanduser()
+BASE_PATH = Path("/media/experiments/")
 
 DTYPES = {
     16: np.float16,
@@ -41,8 +75,11 @@ test_set_lengths = {
     "camelyon": 118614,
     "wilds_camelyon": 118614,
     "svhn": 56032,
+    "svhn_openset": 56032,
     "animals": 50945,
     "wilds_animals": 50945,
+    "wilds_animals_openset": 50945,
+    "animals_openset": 50945,
 }
 
 
@@ -63,6 +100,7 @@ class ValidationResult:
     config_valid: bool = False
     outputs_valid: bool = False
     results_valid: bool = False
+    has_job: bool = False
     logs: list[str] = field(default_factory=lambda: [])
 
     def __str__(self):
@@ -106,7 +144,7 @@ def apply_to_conf(func: Callable[[str], str], obj: T) -> T:
             return obj
 
 
-def validate_config(experiment: Experiment, config_path: Path, logger: Logger):
+def validate_config(experiment: Experiment, config_path: Path):  # , logger: Logger):
     dconf = OmegaConf.load(config_path)
 
     dconf = apply_to_conf(lambda s: s.replace(r"${env:", r"${oc.env:"), dconf)
@@ -125,7 +163,7 @@ def validate_config(experiment: Experiment, config_path: Path, logger: Logger):
         dconf.model["network"] = {"name": "vit"}
 
     match experiment.dataset:
-        case "animals" | "camelyon":
+        case "animals" | "camelyon" | "animals_openset":
             dataset = "wilds_" + experiment.dataset
         case "supercifar":
             dataset = "super_cifar100"
@@ -140,8 +178,28 @@ def validate_config(experiment: Experiment, config_path: Path, logger: Logger):
     schema.exp.work_dir = "${hydra:runtime.cwd}"
 
     match dataset:
-        case "svhn" | "wilds_camelyon" | "wilds_animals" | "breeds":
+        case "svhn" | "wilds_camelyon" | "wilds_animals" | "breeds" | "svhn_openset" | "wilds_animals_openset":
             schema.model.network.backbone = dconf.model.network.backbone
+
+    dconf.eval.query_studies["iid_study"] = schema.eval.query_studies["iid_study"]
+    if "openset" in dataset:
+        schema.data.kwargs["out_classes"] = random.sample(
+            range(schema.data.num_classes), int(0.4 * schema.data.num_classes)
+        )
+        dconf.data = schema.data
+        if model == "vit":
+            dconf.exp.name = dconf.exp.name.replace(
+                experiment.dataset.replace("_openset", ""), experiment.dataset
+            )
+        else:
+            dconf.exp.group_name = dconf.exp.group_name.replace(
+                experiment.dataset.replace("_openset", ""), experiment.dataset
+            )
+
+        dconf.eval.query_studies["iid_study"] = schema.eval.query_studies["iid_study"]
+        dconf.eval.query_studies["noise_study"] = []
+        dconf.eval.query_studies["in_class_study"] = []
+        dconf.eval.query_studies["new_class_study"] = []
 
     oschema: configs.Config = OmegaConf.to_object(schema)
     match dconf.trainer.lr_scheduler.get("name"):
@@ -246,8 +304,10 @@ def validate_config(experiment: Experiment, config_path: Path, logger: Logger):
         dconf.model.fc_dim = schema.model.fc_dim
 
     # FIX: needs checking
-    # dconf.model.avg_pool = schema.model.avg_pool
-    schema.model.avg_pool = dconf.model.avg_pool
+    if hasattr(dconf.model, "avg_pool"):
+        schema.model.avg_pool = dconf.model.avg_pool
+    else:
+        dconf.model.avg_pool = schema.model.avg_pool
 
     dconf.model.budget = schema.model.budget
     dconf.model.monitor_mcd_samples = schema.model.monitor_mcd_samples
@@ -311,6 +371,7 @@ def validate_config(experiment: Experiment, config_path: Path, logger: Logger):
             exclude_paths={
                 "root['hydra']",
                 "root['data']['num_workers']",
+                "root['data']['data_dir']",
                 "root['eval']['confid_metrics']['train']",
                 "root['eval']['confid_metrics']['val']",
                 "root['eval']['confidence_measures']['val']",
@@ -352,17 +413,18 @@ def validate_config(experiment: Experiment, config_path: Path, logger: Logger):
         )
 
         if config_diff:
-            logger.warning(
-                "Changes to default config: \n{}",
-                config_diff.pretty(),
-            )
+            # logs.append(
+            #     "Changes to default config: \n{}",
+            #     config_diff.pretty(),
+            # )
             result = False
         else:
             result = True
 
         backup_path = config_path.with_suffix(".yaml.bak")
         if backup_path.is_file():
-            logger.warning("Backup config exists, not overwriting config")
+            # logs.append("Backup config exists, not overwriting config")
+            pass
         else:
             config_path.rename(backup_path)
             OmegaConf.save(dconf, config_path)
@@ -370,57 +432,61 @@ def validate_config(experiment: Experiment, config_path: Path, logger: Logger):
         return conf, result
 
     except Exception as exception:
-        logger.error(
-            DeepDiff(
-                OmegaConf.to_container(schema),
-                OmegaConf.to_container(dconf),
-                ignore_order=True,
-                exclude_paths={
-                    "root['data']['num_workers']",
-                    "root['eval']['confid_metrics']['train']",
-                    "root['eval']['confid_metrics']['val']",
-                    "root['eval']['confidence_measures']['val']",
-                    "root['eval']['confidence_measures']['train']",
-                    "root['exp']['crossval_ids_path']",
-                    "root['exp']['dir']",
-                    "root['exp']['global_seed']",
-                    "root['exp']['group_dir']",
-                    "root['exp']['group_name']",
-                    "root['exp']['log_path']",
-                    "root['exp']['mode']",
-                    "root['exp']['name']",
-                    "root['exp']['output_paths']",
-                    "root['exp']['version']",
-                    "root['exp']['version_dir']",
-                    "root['hydra']['run']['dir']",
-                    "root['model']['confidnet_fc_dim']",
-                    "root['model']['dg_reward']",
-                    "root['model']['fc_dim']",
-                    "root['model']['network']['imagenet_weights_path']",
-                    "root['model']['network']['name']",
-                    "root['model']['network']['save_dg_backbone_path']",
-                    "root['test']['best_ckpt_path']",
-                    "root['test']['cf_path']",
-                    "root['test']['dir']",
-                    "root['test']['external_confids_output_path']",
-                    "root['test']['raw_output_path']",
-                    "root['trainer']['dg_pretrain_epochs']",
-                    "root['trainer']['do_val']",
-                    "root['trainer']['lr_scheduler']['T_max']",
-                    "root['trainer']['lr_scheduler']['max_epochs']",
-                    "root['trainer']['num_epochs']",
-                    "root['trainer']['num_steps']",
-                    "root['trainer']['optimizer']",
-                    "root['trainer']['val_every_n_epoch']",
-                },
-            ).pretty()
-        )
+        # logs.append(
+        #     DeepDiff(
+        #         OmegaConf.to_container(schema),
+        #         OmegaConf.to_container(dconf),
+        #         ignore_order=True,
+        #         exclude_paths={
+        #             "root['data']['num_workers']",
+        #             "root['data']['data_dir']",
+        #             "root['eval']['confid_metrics']['train']",
+        #             "root['eval']['confid_metrics']['val']",
+        #             "root['eval']['confidence_measures']['val']",
+        #             "root['eval']['confidence_measures']['train']",
+        #             "root['exp']['crossval_ids_path']",
+        #             "root['exp']['dir']",
+        #             "root['exp']['global_seed']",
+        #             "root['exp']['group_dir']",
+        #             "root['exp']['group_name']",
+        #             "root['exp']['log_path']",
+        #             "root['exp']['mode']",
+        #             "root['exp']['name']",
+        #             "root['exp']['output_paths']",
+        #             "root['exp']['version']",
+        #             "root['exp']['version_dir']",
+        #             "root['hydra']['run']['dir']",
+        #             "root['model']['confidnet_fc_dim']",
+        #             "root['model']['dg_reward']",
+        #             "root['model']['fc_dim']",
+        #             "root['model']['network']['imagenet_weights_path']",
+        #             "root['model']['network']['name']",
+        #             "root['model']['network']['save_dg_backbone_path']",
+        #             "root['test']['best_ckpt_path']",
+        #             "root['test']['cf_path']",
+        #             "root['test']['dir']",
+        #             "root['test']['external_confids_output_path']",
+        #             "root['test']['raw_output_path']",
+        #             "root['trainer']['dg_pretrain_epochs']",
+        #             "root['trainer']['do_val']",
+        #             "root['trainer']['lr_scheduler']['T_max']",
+        #             "root['trainer']['lr_scheduler']['max_epochs']",
+        #             "root['trainer']['num_epochs']",
+        #             "root['trainer']['num_steps']",
+        #             "root['trainer']['optimizer']",
+        #             "root['trainer']['val_every_n_epoch']",
+        #         },
+        #     ).pretty()
+        # )
         raise exception
 
 
 def validate_outputs(
-    experiment: Experiment, conf: configs.Config, path: Path, logger: Logger
+    experiment: Experiment,
+    conf: configs.Config,
+    path: Path,  # logger: Logger
 ):
+    logs = []
     _outputs = [path / "test_results" / "raw_logits.npz"]
 
     if conf.model.dropout_rate:
@@ -435,40 +501,66 @@ def validate_outputs(
         conf.eval.ext_confid_name
         and conf.model.dropout_rate
         and len(list(filter(lambda c: "ext" in c, conf.eval.confidence_measures.test)))
+        > 0
     ):
         _outputs.append(path / "test_results" / "external_confids_dist.npz")
 
     result = True
     for output in _outputs:
+        # if not output.is_file():
+        #     output = SECOND_DRIVE_PATH / output.relative_to(BASE_PATH)
+
+        if not output.is_file():
+            output = NETWORK_DRIVES_PATH / output.relative_to(BASE_PATH)
+
         if output.is_file():
-            logger.info("{} exists", output.stem)
+            # Don't try and load big files for now, might have to do something with memmap
+            if output.stat().st_size > 8 * GB:
+                logs.append(f"File {output} is too large to check")
+                result = True
+                continue
+
+            logs.append(f"{output} exists")
+
+            # HACK: Should only be temporary
+            age_valid = True
+            if output.stat().st_mtime < datetime(2022, 8, 1).timestamp():
+                logs.append(f"{output} is old")
+                age_valid = False
+
             try:
-                content = np.load(output)["arr_0"]
-            except:
-                logger.error("{} unloadable", output.stem)
-                result = False
+                content = np.load(output, allow_pickle=True)["arr_0"]
+            except Exception as ecpt:
+                logs.append(f"{output} unloadable: {ecpt}")
                 continue
             dtype_valid = content.dtype == DTYPES[conf.test.output_precision]
             if not dtype_valid:
-                logger.error("{} dtype invalid", output.stem)
+                logs.append(f"{output} dtype invalid")
+
+            if "external_confids" in str(output):
+                dtype_valid = True
+
             len_valid = content.shape[0] == test_set_lengths[experiment.dataset]
+
+            if "openset" in experiment.dataset:
+                len_valid = True
+
             if not len_valid:
-                logger.error(
-                    "{} len invalid: {}/{}",
-                    output.stem,
-                    content.shape[0],
-                    test_set_lengths[experiment.dataset],
+                logs.append(
+                    f"{output} len invalid: {content.shape[0]}/{test_set_lengths[experiment.dataset]}"
                 )
-            result = dtype_valid and len_valid and result
+            result = dtype_valid and len_valid and result and age_valid
         else:
-            logger.error("{} does not exist", output.stem)
+            logs.append(f"{output} does not exist")
             result = False
 
-    return result
+    return result, logs
 
 
 def validate_results(
-    experiment: Experiment, conf: configs.Config, path: Path, logger: Logger
+    experiment: Experiment,
+    conf: configs.Config,
+    path: Path,  # logger: Logger
 ):
     _paths: list[Path] = []
 
@@ -505,128 +597,153 @@ def validate_results(
                     )
                 )
 
+    logs = []
     result = True
     for p in _paths:
         is_file = p.is_file()
 
         if not is_file:
-            logger.error(f"Result file {p} does not exist")
+            logs.append(f"Result file {p} does not exist")
+            result = is_file and result
+            continue
 
-        result = is_file and result
+        # HACK: Should only be temporary
+        age_valid = True
+        if p.stat().st_mtime < datetime(2022, 8, 1).timestamp():
+            logs.append(f"{p} is old")
+            age_valid = False
 
-    return result
+        result = is_file and age_valid and result
+
+    return result, logs
 
 
-def validate_experiment(experiment: Experiment):
+def validate_experiment(experiment: Experiment, jobs: list[dict[str, str]]):
+
+    configs.init()
     validation_result = ValidationResult(experiment)
     path = BASE_PATH / experiment.to_path()
     config_path = path / "hydra" / "config.yaml"
 
-    logger = fd_shifts.logger.bind(experiment=str(experiment.to_path()))
+    validation_result.has_job = is_experiment_running(validation_result, jobs)
 
-    with logger.catch():
-        if config_path.is_file():
-            logger.info("Config exists")
-            validation_result.config_exists = True
+    # logger = fd_shifts.logs.append(experiment=str(experiment.to_path()))
 
-            validation_result.model_exists = len(list(path.glob("**/last.ckpt"))) > 0
-            conf, validation_result.config_valid = validate_config(
-                experiment, config_path, logger
-            )
+    # with logs.append():
+    if config_path.is_file():
+        # logs.append("Config exists")
+        validation_result.config_exists = True
 
-            if validation_result.model_exists:
-                try:
-                    conf.exp.version = exp_utils.get_most_recent_version(path)
-
-                    module = get_model(conf.model.name)(conf)
-                    state_dict = torch.load(path / f"version_{conf.exp.version}" / "last.ckpt", map_location="cpu")
-                    module.load_state_dict(state_dict["state_dict"], strict=True)
-                    del module, state_dict
-                except RuntimeError as e:
-                    logger.exception(e)
-                    validation_result.model_exists = False
-                    return validation_result
-
-        else:
-            logger.error("Config does not exist")
-            return validation_result
-
-        validation_result.outputs_valid = validate_outputs(
-            experiment, conf, path, logger
+        conf, validation_result.config_valid = validate_config(
+            experiment,
+            config_path,  # logger
         )
-        validation_result.results_valid = validate_results(
-            experiment, conf, path, logger
-        )
+
+        if len(list(path.glob("**/last.ckpt"))) > 0:
+            #     conf.exp.version = exp_utils.get_most_recent_version(path)
+            #
+            #     module = get_model(conf.model.name)(conf)
+            #     state_dict = torch.load(
+            #         path / f"version_{conf.exp.version}" / "last.ckpt",
+            #         map_location="cpu",
+            #     )
+            #     module.load_state_dict(state_dict["state_dict"], strict=True)
+            #     del module, state_dict
+
+            validation_result.model_exists = True
+
+    else:
+        # logs.append("Config does not exist")
+        return validation_result
+
+    validation_result.outputs_valid, _logs = validate_outputs(
+        experiment,
+        conf,
+        path,  # logger
+    )
+    validation_result.logs.extend(_logs)
+
+    validation_result.results_valid, _logs = validate_results(
+        experiment,
+        conf,
+        path,  # logger
+    )
+    validation_result.logs.extend(_logs)
+
+    validation_result.logs = list(map(lambda s: s + "\n", validation_result.logs))
 
     return validation_result
 
 
 if __name__ == "__main__":
-    console = Console(stderr=True)
-    fd_shifts.logger.remove()  # Remove default 'stderr' handler
+    # console = Console(stderr=True)
+    console = get_console()
+    # fd_shifts.logs.append()  # Remove default 'stderr' handler
 
-    format_log = (
-        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-        "<level>{level: <8}</level> | "
-        "<cyan>{extra[experiment]}</cyan> - <level>{message}</level>"
-    )
+    # format_log = (
+    #     "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+    #     "<level>{level: <8}</level> | "
+    #     "<cyan>{extra[experiment]}</cyan> - <level>{message}</level>"
+    # )
+    #
+    # # We need to specify end=''" as log message already ends with \n (thus the lambda function)
+    # # Also forcing 'colorize=True' otherwise Loguru won't recognize that the sink support colors
+    # fd_shifts.logs.append(
+    #     lambda m: console.print(m, end="", markup=False, highlight=False),
+    #     colorize=True,
+    #     enqueue=True,
+    #     level="INFO",
+    #     format=format_log,
+    # )
+    # fd_shifts.logs.append(
+    #     "{time}_validation.log", enqueue=True, level="INFO", format=format_log
+    # )
+    #
+    # _logs = {}
+    #
+    # def sink(message):
+    #     exp = message.record["extra"]["experiment"]
+    #
+    #     if not exp in _logs:
+    #         _logs[exp] = []
+    #
+    #     _logs[exp].append(message)
+    #
+    # fd_shifts.logs.append(sink, enqueue=True, level="INFO")
 
-    # We need to specify end=''" as log message already ends with \n (thus the lambda function)
-    # Also forcing 'colorize=True' otherwise Loguru won't recognize that the sink support colors
-    fd_shifts.logger.add(
-        lambda m: console.print(m, end="", markup=False, highlight=False),
-        colorize=True,
-        enqueue=True,
-        level="INFO",
-        format=format_log,
-    )
-    fd_shifts.logger.add(
-        "{time}_validation.log", enqueue=True, level="INFO", format=format_log
-    )
-
-    _logs = {}
-
-    def sink(message):
-        exp = message.record["extra"]["experiment"]
-
-        if not exp in _logs:
-            _logs[exp] = []
-
-        _logs[exp].append(message)
-
-    fd_shifts.logger.add(sink, enqueue=True, level="INFO")
-
-    configs.init()
     validation_results = {}
 
-    # for experiment in get_all_experiments():
-    #     validation_results[str(experiment.to_path())] = validate_experiment(experiment)
-    #     break
+    # NOTE: `precision_study64` runs are just symlinks to the normal runs,
+    # NOTE:     don't need to check them twice
+    experiments = list(
+        filter(
+            lambda e: "precision_study64" not in str(e.to_path()), get_all_experiments()
+        )
+    )
+
+    # HACK: Temporarily turn off special vit runs
+    experiments = list(
+        filter(lambda e: not (e.model != "vit" and e.backbone == "vit"), experiments)
+    )
+
+    n_experiments = len(experiments)
+    jobs = get_jobs()
 
     with Progress(console=console) as progress:
-        task_id = progress.add_task(
-            "[cyan]Working...", total=len(list(get_all_experiments()))
-        )
+        task_id = progress.add_task("[cyan]Working...", total=n_experiments)
         with Pool(
             processes=16,
             # initializer=set_logger,
             # initargs=(logger,),
             # maxtasksperchild=1,
         ) as pool:
-            for valres in pool.imap_unordered(
-                validate_experiment,
-                get_all_experiments(),
+            for valres in pool.imap(
+                partial(validate_experiment, jobs=jobs),
+                experiments,
+                chunksize=8,
             ):
                 validation_results[str(valres.experiment.to_path())] = valres
                 progress.advance(task_id)
-
-    with open("experiments.csv", "wt", encoding="utf-8") as file:
-        file.writelines(
-            map(lambda experiment: f"{experiment}\n", validation_results.values())
-        )
-
-    for k, v in _logs.items():
-        validation_results[k].logs = v
 
     with open("experiments.json", "wt", encoding="utf-8") as file:
         json.dump(validation_results, file, cls=EnhancedJSONEncoder, indent=2)
