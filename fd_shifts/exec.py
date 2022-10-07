@@ -72,7 +72,7 @@ def train(cf: configs.Config, progress: RichProgressBar, subsequent_testing=Fals
         name=cf.exp.name,
         default_hp_metric=False,
     )
-    cf.exp.version = tb_logger.version
+    # cf.exp.version = tb_logger.version
     csv_logger = CSVLogger(
         save_dir=cf.exp.group_dir, name=cf.exp.name, version=cf.exp.version
     )
@@ -202,23 +202,61 @@ def main(dconf: DictConfig):
 
         fix_metadata(dconf)
 
-        conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
-        conf.validate()
-        # sys.stdout = exp_utils.Logger(conf.exp.log_path)
-        # sys.stderr = exp_utils.Logger(conf.exp.log_path)
-        logger.info(OmegaConf.to_yaml(conf))
-        conf.data.num_workers = exp_utils.get_allowed_n_proc_DA(conf.data.num_workers)
+        if dconf.exp.mode == configs.Mode.train:
+            dconf.exp.version = exp_utils.get_next_version(dconf.exp.dir)
+            if dconf.trainer.resume_from_ckpt:
+                dconf.exp.version -= 1
 
-        if conf.exp.mode == configs.Mode.train:
+            if dconf.trainer.resume_from_ckpt_confidnet:
+                dconf.exp.version -= 1
+            dconf.data.num_workers = exp_utils.get_allowed_n_proc_DA(dconf.data.num_workers)
+
+            conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
+            conf.validate()
+            logger.info(OmegaConf.to_yaml(conf))
+
             train(conf, progress)
 
-        if conf.exp.mode == configs.Mode.train_test:
+        if dconf.exp.mode == configs.Mode.train_test:
+            dconf.exp.version = exp_utils.get_next_version(dconf.exp.dir)
+            if dconf.trainer.resume_from_ckpt:
+                dconf.exp.version -= 1
+
+            if dconf.trainer.resume_from_ckpt_confidnet:
+                dconf.exp.version -= 1
+            dconf.data.num_workers = exp_utils.get_allowed_n_proc_DA(dconf.data.num_workers)
+
+            conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
+            conf.validate()
+            logger.info(OmegaConf.to_yaml(conf))
             train(conf, progress, subsequent_testing=True)
 
-        if conf.exp.mode == configs.Mode.test:
+        if dconf.exp.mode == configs.Mode.test:
+            if "best" in dconf.test.selection_criterion and dconf.test.only_latest_version is False:
+                ckpt_path = exp_utils.get_path_to_best_ckpt(
+                    dconf.exp.dir, dconf.test.selection_criterion, dconf.test.selection_mode
+                )
+            else:
+                logger.info("CHECK dconf.exp.dir", dconf.exp.dir)
+                dconf.exp.version = exp_utils.get_most_recent_version(dconf.exp.dir)
+                ckpt_path = exp_utils.get_resume_ckpt_path(dconf)
+            conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
+            conf.validate()
+            logger.info(OmegaConf.to_yaml(conf))
             test(conf, progress)
 
-        if conf.exp.mode == configs.Mode.analysis:
+        if dconf.exp.mode == configs.Mode.analysis:
+            if "best" in dconf.test.selection_criterion and dconf.test.only_latest_version is False:
+                ckpt_path = exp_utils.get_path_to_best_ckpt(
+                    dconf.exp.dir, dconf.test.selection_criterion, dconf.test.selection_mode
+                )
+            else:
+                logger.info("CHECK dconf.exp.dir", dconf.exp.dir)
+                dconf.exp.version = exp_utils.get_most_recent_version(dconf.exp.dir)
+                ckpt_path = exp_utils.get_resume_ckpt_path(dconf)
+            conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
+            conf.validate()
+            logger.info(OmegaConf.to_yaml(conf))
             analysis.main(
                 in_path=conf.test.dir,
                 out_path=conf.test.dir,

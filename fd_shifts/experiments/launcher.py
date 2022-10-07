@@ -7,9 +7,9 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
+import rich
 from pssh.clients import SSHClient
 from pssh.exceptions import Timeout
-import rich
 from rich.pretty import pprint
 from rich.progress import Progress
 
@@ -68,6 +68,8 @@ async def run(_experiments: list[experiments.Experiment], mode: str):
         print("Nothing to run")
         return
 
+    Path("./logs").mkdir(exist_ok=True)
+
     # Create a queue that we will use to store our "workload".
     queue: asyncio.Queue[str] = asyncio.Queue()
 
@@ -92,7 +94,7 @@ async def run(_experiments: list[experiments.Experiment], mode: str):
 
         tasks = []
         # TODO: Flag for n_workers
-        for i in range(4):
+        for i in range(1):
             task = asyncio.create_task(
                 worker(f"worker-{i}", queue, progress, progress_task_id)
             )
@@ -109,30 +111,40 @@ async def run(_experiments: list[experiments.Experiment], mode: str):
 
 
 def launch(
-    validation_file: Path | None,
-    study: str | None,
+    # validation_file: Path | None,
+    # study: str | None,
     dataset: str | None,
     dropout: int | None,
-    backbone: str | None,
-    exclude_backbone: str | None,
-    model_exists: bool,
-    config_exists: bool,
-    config_valid: bool,
-    outputs_valid: bool,
-    results_valid: bool,
+    model: str | None,
+    exclude_model: str | None,
+    # model_exists: bool,
+    # config_exists: bool,
+    # config_valid: bool,
+    # outputs_valid: bool,
+    # results_valid: bool,
     mode: str,
     dry_run: bool,
-    n: int | None,
-    precision_study: bool,
-    local: bool,
-    ignore_running: bool,
-    jobs_list: list[str] | None,
+    run: int | None,
+    rew: float | None,
+    # precision_study: bool,
+    # local: bool,
+    # ignore_running: bool,
+    # jobs_list: list[str] | None,
     name: str | None,
 ):
     # if validation_file is not None:
     #     _experiments = parse_validation_file(validation_file)
     # else:
     _experiments = experiments.get_all_experiments()
+
+    _experiments = list(
+        filter(lambda e: "precision_study" not in str(e.to_path()), _experiments)
+    )
+
+    # HACK: Temporarily turn off special vit runs
+    _experiments = list(
+        filter(lambda e: not (e.model != "vit" and e.backbone == "vit"), _experiments)
+    )
 
     # if jobs_list is not None:
     #     _experiments = list(
@@ -209,41 +221,55 @@ def launch(
                 _experiments,
             )
         )
-
-    if backbone is not None:
+    if rew is not None:
         _experiments = list(
             filter(
-                lambda experiment: experiment.model == backbone,
+                lambda experiment: experiment.reward == rew,
+                _experiments,
+            )
+        )
+    if run is not None:
+        _experiments = list(
+            filter(
+                lambda experiment: experiment.run == run,
                 _experiments,
             )
         )
 
-    if exclude_backbone is not None:
+    if model is not None:
         _experiments = list(
             filter(
-                lambda experiment: experiment.model != exclude_backbone,
+                lambda experiment: experiment.model == model,
                 _experiments,
             )
         )
 
-    if n is not None:
-        _experiments = _experiments[:n]
+    if exclude_model is not None:
+        _experiments = list(
+            filter(
+                lambda experiment: experiment.model != exclude_model,
+                _experiments,
+            )
+        )
 
-    if precision_study:
-        _experiments = list(
-            filter(
-                lambda experiment: "precision_study" in str(experiment.group_dir)
-                and "64" not in str(experiment.group_dir),
-                _experiments,
-            )
-        )
-    else:
-        _experiments = list(
-            filter(
-                lambda experiment: "precision_study" not in str(experiment.group_dir),
-                _experiments,
-            )
-        )
+    # if n is not None:
+    #     _experiments = _experiments[:n]
+
+    # if precision_study:
+    #     _experiments = list(
+    #         filter(
+    #             lambda experiment: "precision_study" in str(experiment.group_dir)
+    #             and "64" not in str(experiment.group_dir),
+    #             _experiments,
+    #         )
+    #     )
+    # else:
+    #     _experiments = list(
+    #         filter(
+    #             lambda experiment: "precision_study" not in str(experiment.group_dir),
+    #             _experiments,
+    #         )
+    #     )
 
     if name is not None:
         _experiments = list(
@@ -278,14 +304,14 @@ def launch(
 def add_arguments(parser: argparse.ArgumentParser):
     sub_parsers = parser.add_subparsers()
 
-    parser.add_argument("--validation-file", default=None, type=Path)
-    parser.add_argument("--config-exists", action="store_true")
-    parser.add_argument("--model-exists", action="store_true")
-    parser.add_argument("--config-valid", action="store_true")
-    parser.add_argument("--outputs-valid", action="store_true")
-    parser.add_argument("--results-valid", action="store_true")
+    # parser.add_argument("--validation-file", default=None, type=Path)
+    # parser.add_argument("--config-exists", action="store_true")
+    # parser.add_argument("--model-exists", action="store_true")
+    # parser.add_argument("--config-valid", action="store_true")
+    # parser.add_argument("--outputs-valid", action="store_true")
+    # parser.add_argument("--results-valid", action="store_true")
 
-    parser.add_argument("--study", default=None, type=str)
+    # parser.add_argument("--study", default=None, type=str)
     parser.add_argument("--dataset", default=None, type=str)
     parser.add_argument("--dropout", default=None, type=int, choices=(0, 1))
     parser.add_argument(
@@ -297,46 +323,53 @@ def add_arguments(parser: argparse.ArgumentParser):
         type=str,
         choices=("vit", "dg", "devries", "confidnet"),
     )
-    parser.add_argument("--precision-study", action="store_true")
+    # parser.add_argument("--precision-study", action="store_true")
 
-    parser.add_argument("-n", "--limit", default=None, type=int)
+    # parser.add_argument("-n", "--limit", default=None, type=int)
+    parser.add_argument("--run", default=None, type=int)
+    parser.add_argument("--reward", default=None, type=float)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
-        "--mode", default="test", choices=("test", "train", "train_test", "analysis")
+        "--mode",
+        default="train_test",
+        choices=("test", "train", "train_test", "analysis"),
     )
-    parser.add_argument("--local", action="store_true")
-    parser.add_argument("--ignore-running", action="store_true")
-    parser.add_argument("--jobs-list", default=None, type=Path)
+    # parser.add_argument("--local", action="store_true")
+    # parser.add_argument("--ignore-running", action="store_true")
+    # parser.add_argument("--jobs-list", default=None, type=Path)
+
+    parser.add_argument("--name", default=None, type=str)
 
     return parser
 
 
 def main(args):
-    jobs_list: list[str] | None = None
-
-    if args.jobs_list is not None:
-        with open(args.jobs_list, "rt") as f:
-            jobs_list = f.read().split("\n")
+    # jobs_list: list[str] | None = None
+    #
+    # if args.jobs_list is not None:
+    #     with open(args.jobs_list, "rt") as f:
+    #         jobs_list = f.read().split("\n")
 
     launch(
-        validation_file=args.validation_file,
-        study=args.study,
+        # validation_file=args.validation_file,
+        # study=args.study,
         dataset=args.dataset,
         dropout=args.dropout,
-        backbone=args.model,
-        exclude_backbone=args.exclude_model,
-        config_exists=args.config_exists,
-        model_exists=args.model_exists,
-        config_valid=args.config_valid,
-        outputs_valid=args.outputs_valid,
-        results_valid=args.results_valid,
+        model=args.model,
+        exclude_model=args.exclude_model,
+        # config_exists=args.config_exists,
+        # model_exists=args.model_exists,
+        # config_valid=args.config_valid,
+        # outputs_valid=args.outputs_valid,
+        # results_valid=args.results_valid,
         mode=args.mode,
         dry_run=args.dry_run,
-        n=args.limit,
-        precision_study=args.precision_study,
-        local=args.local,
-        ignore_running=args.ignore_running,
-        jobs_list=jobs_list,
+        run=args.run,
+        rew=args.reward,
+        # precision_study=args.precision_study,
+        # local=args.local,
+        # ignore_running=args.ignore_running,
+        # jobs_list=jobs_list,
         name=args.name,
     )
 
