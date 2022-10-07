@@ -1,7 +1,10 @@
+import os
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 
+from fd_shifts.experiments import Experiment, get_all_experiments
 from fd_shifts.reporting import tables
 from fd_shifts.reporting.plots import plot_rank_style, vit_v_cnn_box
 from fd_shifts.reporting.tables import paper_results
@@ -20,6 +23,80 @@ DATASETS = (
     "animals",
     "breeds",
 )
+
+
+def _filter_experiment_by_dataset(experiments: list[Experiment], dataset: str):
+    match dataset:
+        case "super_cifar100":
+            _experiments = list(
+                filter(
+                    lambda exp: exp.dataset in ("super_cifar100", "supercifar"),
+                    experiments,
+                )
+            )
+        case "animals":
+            _experiments = list(
+                filter(
+                    lambda exp: exp.dataset in ("animals", "wilds_animals"), experiments
+                )
+            )
+        case "animals_openset":
+            _experiments = list(
+                filter(
+                    lambda exp: exp.dataset
+                    in ("animals_openset", "wilds_animals_openset"),
+                    experiments,
+                )
+            )
+        case "camelyon":
+            _experiments = list(
+                filter(
+                    lambda exp: exp.dataset in ("camelyon", "wilds_camelyon"),
+                    experiments,
+                )
+            )
+        case _:
+            _experiments = list(filter(lambda exp: exp.dataset == dataset, experiments))
+
+    return _experiments
+
+
+def gather_data(data_dir: Path):
+    experiment_dir = Path(os.environ["EXPERIMENT_ROOT_DIR"])
+    experiments = get_all_experiments()
+
+    for dataset in DATASETS + ("animals_openset", "svhn_openset"):
+        print(dataset)
+        _experiments = _filter_experiment_by_dataset(experiments, dataset)
+
+        _paths = []
+        _vit_paths = []
+
+        for experiment in _experiments:
+            if experiment.model == "vit":
+                _vit_paths.extend(
+                    (experiment_dir / experiment.to_path() / "test_results").glob(
+                        "*.csv"
+                    )
+                )
+            else:
+                _paths.extend(
+                    (experiment_dir / experiment.to_path() / "test_results").glob(
+                        "*.csv"
+                    )
+                )
+
+        if len(_paths) > 0:
+            dframe: pd.DataFrame = pd.concat(
+                [cast(pd.DataFrame, pd.read_csv(p)) for p in _paths]
+            )
+            dframe.to_csv(data_dir / f"{dataset}.csv")
+
+        if len(_vit_paths) > 0:
+            dframe: pd.DataFrame = pd.concat(
+                [cast(pd.DataFrame, pd.read_csv(p)) for p in _vit_paths]
+            )
+            dframe.to_csv(data_dir / f"{dataset}vit.csv")
 
 
 def load_file(path: Path) -> pd.DataFrame:
@@ -149,6 +226,7 @@ def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
         run=lambda data: extract_hparam(data.name, r"run([0-9]+)"),
         dropout=lambda data: extract_hparam(data.name, r"do([01])"),
         rew=lambda data: extract_hparam(data.name, r"rew([0-9.]+)"),
+        lr=lambda data: extract_hparam(data.name, r"lr([0-9.]+)", "0.1"),
         # Encode every detail into confid name
         # TODO: Should probably not be needed
         _confid=data.confid,
@@ -160,6 +238,72 @@ def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
         + "_"
         + data.rew,
     )
+
+    return data
+
+
+def filter_best_lr(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFrame:
+    """
+    for every study (which encodes dataset) and confidence (which encodes other stuff)
+    select all runs with the best avg combo of reward and dropout
+    (maybe learning rate? should actually have been selected before)
+    """
+
+    def filter_row(row, selection_df, optimization_columns, fixed_columns):
+        if "openset" in row["study"]:
+            return True
+        if "superclasses" in row["study"]:
+            return True
+        # if "mcd_mls" in row["confid"]:
+        #     return True
+        if "vit" not in row["model"]:
+            return True
+        temp = selection_df[
+            (row.experiment == selection_df.experiment)
+            & (row._confid == selection_df._confid)
+            & (row.model == selection_df.model)
+        ]
+
+        result = row[optimization_columns] == temp[optimization_columns]
+        if result.all(axis=1).any().item():
+            return True
+
+        return False
+
+    fixed_columns = [
+        "study",
+        "experiment",
+        "_confid",
+        "model",
+        "rew",
+        "dropout",
+    ]  # TODO: Merge these as soon as the first tuple doesn't encode everything anymore
+    optimization_columns = ["lr"]
+    aggregation_columns = ["run", metric]
+
+    # Only look at validation data and the relevant columns
+    selection_df = data[data.study.str.contains("val_tuning")][
+        fixed_columns + optimization_columns + aggregation_columns
+    ]
+
+    # compute aggregation column means
+    selection_df = (
+        selection_df.groupby(fixed_columns + optimization_columns).mean().reset_index()
+    )
+
+    # select best optimization columns combo
+    selection_df = selection_df.iloc[
+        selection_df.groupby(fixed_columns)[metric].idxmin()
+    ]
+
+    data = data[
+        data.apply(
+            lambda row: filter_row(
+                row, selection_df, optimization_columns, fixed_columns
+            ),
+            axis=1,
+        )
+    ]
 
     return data
 
@@ -192,6 +336,7 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
         "_confid",
         "model",
     ]  # TODO: Merge these as soon as the first tuple doesn't encode everything anymore
+    # optimization_columns = ["lr", "rew", "dropout"]
     optimization_columns = ["rew", "dropout"]
     aggregation_columns = ["run", metric]
 
@@ -224,7 +369,8 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
 
 def _confid_string_to_name(confid: pd.Series) -> pd.Series:
     confid = (
-        confid.str.replace("confidnet_", "")
+        confid.str.replace("vit_model", "vit")
+        .str.replace("confidnet_", "")
         .str.replace("_dg", "_res")
         .str.replace("_det", "")
         .str.replace("det_", "")
@@ -263,7 +409,7 @@ def filter_unused(data: pd.DataFrame) -> pd.DataFrame:
         & (~data.confid.str.contains("devries_mcd"))
         & (~data.confid.str.contains("devries_det"))
         & (~data.confid.str.contains("_sv"))
-        & (~data.confid.str.contains("_mi"))
+        # & (~data.confid.str.contains("_mi"))
     ]
     return data
 
@@ -289,14 +435,18 @@ def main(base_path: str | Path):
     pd.set_option("display.max_rows", 100)
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
-    pd.set_option("display.max_colwidth", -1)
+    pd.set_option("display.max_colwidth", None)
 
     data_dir: Path = Path(base_path).expanduser().resolve()
+    data_dir.mkdir(exist_ok=True, parents=True)
+
+    gather_data(data_dir)
 
     data, exp_names = load_data(data_dir)
 
     data = assign_hparams_from_names(data)
 
+    data = filter_best_lr(data)
     data = filter_best_hparams(data)
 
     data = filter_unused(data)
@@ -308,6 +458,8 @@ def main(base_path: str | Path):
 
     data = tables.aggregate_over_runs(data)
     data = str_format_metrics(data)
+
+    print(data)
 
     paper_results(data, "aurc", False, data_dir)
     paper_results(data, "ece", False, data_dir)

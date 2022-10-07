@@ -1,4 +1,5 @@
 from pathlib import Path
+from matplotlib import transforms
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
@@ -100,7 +101,8 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
 
     metric_dict = {
         "aurc": "AURC",
-        "failauc": "AUROC",
+        # "failauc": "AUROC",
+        "failauc": "$\\mathrm{AUROC}_f$",
         "ece": "ECE",
         "accuracy": "accuracy",
     }
@@ -149,12 +151,15 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
             "Devries et al.",
             "MCD-EE",
             "MCD-MSR",
+            "MCD-MLS",
             "MCD-PE",
+            "MCD-MI",
             "MSR",
+            "MLS",
             "PE",
             "MAHA",
             "DG-Res",
-            "DG-MCD-EE",
+            "DG-MCD-MSR",
         ]
         #     print(data.confid)
         plot_data = plot_data[plot_data.confid.str.replace("VIT-", "").isin(confids)]
@@ -305,7 +310,7 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
         axs.set_ylabel(metric_dict[metric], fontsize=1.6 * fontsize)
         axs.yaxis.set_label_position("right")
         axs.set_axisbelow(False)
-        axs.grid(True)
+        axs.grid(False)
         axs.tick_params(axis="y")
         axs.spines["top"].set_linewidth(0)
         axs.spines["top"].set_zorder(0.5)
@@ -334,7 +339,8 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
         twin0.spines["right"].set_linewidth(0)
         twin0.spines["right"].set_color("k")
         twin0.spines["right"].set_zorder(0.5)
-        twin0.grid(True)
+        # twin0.grid(True, transform=transforms.Affine2D().translate(0.5, 0))
+        twin0.grid(False)
         for label in twin0.get_xticklabels() + twin0.get_yticklabels():
             label.set_fontsize(fontsize)
             label.set_bbox(dict(facecolor="white", edgecolor="None", alpha=0.75))
@@ -371,12 +377,12 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
     whiskerprops = dict(linestyle="-", linewidth=0)
 
     plot_exps = [
-        "cifar10",
-        "cifar100",
-        "svhn",
-        "breeds",
         "animals",
+        "breeds",
         "camelyon",
+        "cifar100",
+        "cifar10",
+        "svhn",
     ]  # exp_names
     cross_mode = False
     scale = 15
@@ -386,9 +392,9 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
 
     metric_dict = {
         "aurc": "AURC",
-        "failauc": "AUROC",
+        "failauc": "$\\mathrm{AUROC}_f$",
         "ece": "ECE",
-        "accuracy": "accuracy",
+        "accuracy": "Accuracy",
     }
 
     dataset_dict = {
@@ -450,12 +456,13 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
         tmp_data.loc[tmp_data[dim].str.startswith("VIT"), "backbone"] = "VIT"
         confids = [
             "ConfidNet",
-            "DG-MCD-EE",
+            "DG-MCD-MSR",
             "DG-Res",
             "Devries et al.",
             "MCD-EE",
             "MCD-MSR",
             "MCD-PE",
+            "MCD-MI",
             "MSR",
             "PE",
             "MAHA",
@@ -511,7 +518,7 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
                 x="dataset",
                 y=metric,
                 hue="backbone",
-                data=tmp_data[tmp_data.dataset == exp],
+                data=tmp_data[tmp_data.dataset == exp].sort_values("backbone"),
                 # medianprops=dict(alpha=0),
                 medianprops=meanprops,
                 saturation=1,
