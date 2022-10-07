@@ -1,5 +1,15 @@
 # FD-Shifts
 
+![overview](./docs/new_overview.png)
+
+If you use fd-shifts please cite our [paper]()
+
+```
+
+```
+
+## Table Of Contents
+
 <!--toc:start-->
 
 - [FD-Shifts](#fd-shifts)
@@ -12,14 +22,6 @@
   - [Acknowledgements](#acknowledgements)
 
 <!--toc:end-->
-
-![overview](./docs/new_overview.png)
-
-If you use fd-shifts please cite our [paper]()
-
-```
-
-```
 
 ## Installation
 
