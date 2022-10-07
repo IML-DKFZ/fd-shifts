@@ -127,6 +127,7 @@ def launch(
     local: bool,
     ignore_running: bool,
     jobs_list: list[str] | None,
+    name: str | None,
 ):
     # if validation_file is not None:
     #     _experiments = parse_validation_file(validation_file)
@@ -244,6 +245,14 @@ def launch(
             )
         )
 
+    if name is not None:
+        _experiments = list(
+            filter(
+                lambda experiment: str(experiment.to_path()) == name,
+                _experiments,
+            )
+        )
+
     # if not ignore_running:
     # jobs = get_jobs()
 
@@ -328,6 +337,7 @@ def main(args):
         local=args.local,
         ignore_running=args.ignore_running,
         jobs_list=jobs_list,
+        name=args.name,
     )
 
 
