@@ -3,6 +3,7 @@ import argparse
 from fd_shifts import experiments
 # import fd_shifts.exec as fd_shifts_exec
 from fd_shifts.experiments import launcher
+from fd_shifts import reporting
 
 
 def list_experiments(_):
@@ -22,6 +23,9 @@ def main():
     launch_parser = subparsers.add_parser("launch")
     launcher.add_arguments(launch_parser)
     launch_parser.set_defaults(command=launcher.main)
+
+    reporting_parser = subparsers.add_parser("reporting")
+    reporting_parser.set_defaults(command=lambda _: reporting.main("./reporting"))
 
     args = parser.parse_args()
     args.command(args)
