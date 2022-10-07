@@ -59,22 +59,22 @@ For the predefined experiments we expect the data to be in the following folder 
 to the folder you set for `$DATASET_ROOT_DIR`.
 
 ```
-  <$DATASET_ROOT_DIR>
- ├──  breeds
- │   └──  ILSVRC ⇒ ../imagenet/ILSVRC
- ├──  imagenet
- │   ├──  ILSVRC
- ├──  cifar10
- ├──  cifar100
- ├──  corrupt_cifar10
- ├──  corrupt_cifar100
- ├──  svhn
- ├──  tinyimagenet
- ├──  tinyimagenet_resize
- ├──  wilds_animals
- │   └──  iwildcam_v2.0
- └──  wilds_camelyon
-     └──  camelyon17_v1.0
+ <$DATASET_ROOT_DIR>
+ ├── breeds
+ │   └── ILSVRC ⇒ ../imagenet/ILSVRC
+ ├── imagenet
+ │   ├── ILSVRC
+ ├── cifar10
+ ├── cifar100
+ ├── corrupt_cifar10
+ ├── corrupt_cifar100
+ ├── svhn
+ ├── tinyimagenet
+ ├── tinyimagenet_resize
+ ├── wilds_animals
+ │   └── iwildcam_v2.0
+ └── wilds_camelyon
+     └── camelyon17_v1.0
 ```
 
 ### Training
@@ -123,20 +123,20 @@ dropout samples
 raw_logits.npz
 Nx(d+2)
 
-  0, 1, ...                 d-1,   d,      d+1
---------------------------------------------------------
+  0, 1, ...                 d─1,   d,      d+1
+┌───────────────────────────────┬───────┬─────────────┐
 |           logits_1            | label | dataset_idx |
---------------------------------------------------------
+├───────────────────────────────┼───────┼─────────────┤
 |           logits_2            | label | dataset_idx |
---------------------------------------------------------
+├───────────────────────────────┼───────┼─────────────┤
 |           logits_3            | label | dataset_idx |
---------------------------------------------------------
+└───────────────────────────────┴───────┴─────────────┘
 .
 .
 .
---------------------------------------------------------
+┌───────────────────────────────┬───────┬─────────────┐
 |           logits_N            | label | dataset_idx |
---------------------------------------------------------
+└───────────────────────────────┴───────┴─────────────┘
 ```
 
 ```
@@ -148,40 +148,40 @@ Nx1
 raw_logits_dist.npz
 NxdxM
 
-  0, 1, ...                  d-1
----------------------------------
+  0, 1, ...                  d─1
+┌───────────────────────────────┐
 |   logits_1 (Dropout Sample 1) |
 |   logits_1 (Dropout Sample 2) |
 |               .               |
 |               .               |
 |               .               |
 |   logits_1 (Dropout Sample M) |
----------------------------------
+├───────────────────────────────┤
 |   logits_2 (Dropout Sample 1) |
 |   logits_2 (Dropout Sample 2) |
 |               .               |
 |               .               |
 |               .               |
 |   logits_2 (Dropout Sample M) |
----------------------------------
+├───────────────────────────────┤
 |   logits_3 (Dropout Sample 1) |
 |   logits_3 (Dropout Sample 2) |
 |               .               |
 |               .               |
 |               .               |
 |   logits_3 (Dropout Sample M) |
----------------------------------
+└───────────────────────────────┘
                 .
                 .
                 .
----------------------------------
+┌───────────────────────────────┐
 |   logits_N (Dropout Sample 1) |
 |   logits_N (Dropout Sample 2) |
 |               .               |
 |               .               |
 |               .               |
 |   logits_N (Dropout Sample M) |
----------------------------------
+└───────────────────────────────┘
 ```
 
 ```
