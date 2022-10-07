@@ -1,5 +1,18 @@
 # FD-Shifts
 
+<!--toc:start-->
+
+- [FD-Shifts](#fd-shifts)
+  - [Installation](#installation)
+  - [Usage](#usage)
+    - [Data Folder Requirements](#data-folder-requirements)
+    - [Training](#training)
+    - [Inference](#inference)
+    - [Analysis](#analysis)
+  - [Acknowledgements](#acknowledgements)
+
+<!--toc:end-->
+
 ![overview](./docs/new_overview.png)
 
 If you use fd-shifts please cite our [paper]()
@@ -123,10 +136,12 @@ Nx(d+2)
 |           logits_N            | label | dataset_idx |
 --------------------------------------------------------
 ```
+
 ```
 external_confids.npz
 Nx1
 ```
+
 ```
 raw_logits_dist.npz
 NxdxM
