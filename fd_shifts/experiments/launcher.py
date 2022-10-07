@@ -124,7 +124,7 @@ def launch(
     # results_valid: bool,
     mode: str,
     dry_run: bool,
-    run: int | None,
+    run_nr: int | None,
     rew: float | None,
     # precision_study: bool,
     # local: bool,
@@ -228,10 +228,10 @@ def launch(
                 _experiments,
             )
         )
-    if run is not None:
+    if run_nr is not None:
         _experiments = list(
             filter(
-                lambda experiment: experiment.run == run,
+                lambda experiment: experiment.run == run_nr,
                 _experiments,
             )
         )
@@ -364,7 +364,7 @@ def main(args):
         # results_valid=args.results_valid,
         mode=args.mode,
         dry_run=args.dry_run,
-        run=args.run,
+        run_nr=args.run,
         rew=args.reward,
         # precision_study=args.precision_study,
         # local=args.local,
