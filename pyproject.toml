@@ -54,9 +54,8 @@ launcher = [
 ]
 
 [project.scripts]
-# TODO: Check entry points
-fd_shifts = "fd_shifts.exec:main"
-fd_shifts-launcher = "fd_shifts.experiments.launcher:main"
+fd_shifts = "fd_shifts.cli:main"
+_fd_shifts_exec = "fd_shifts.exec:main"
 
 
 [tool.setuptools.dynamic]
