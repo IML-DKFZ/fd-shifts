@@ -9,6 +9,7 @@ from pathlib import Path
 
 from pssh.clients import SSHClient
 from pssh.exceptions import Timeout
+import rich
 from rich.pretty import pprint
 from rich.progress import Progress
 
@@ -20,8 +21,8 @@ BASH_LOCAL_COMMAND = r"""
 bash -c 'set -o pipefail; {command} |& tee -a "./logs/{log_file_name}.log"'
 """
 
-BASH_BASE_COMMAND = r"""
 # _fd_shifts_exec --config-path=$EXPERIMENT_ROOT_DIR/{config_path}/hydra/ --config-name=config exp.mode={mode} trainer.batch_size={batch_size}
+BASH_BASE_COMMAND = r"""
 _fd_shifts_exec {overrides} exp.mode={mode}
 """
 
@@ -74,16 +75,17 @@ async def run(_experiments: list[experiments.Experiment], mode: str):
         log_file_name = f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{str(experiment.to_path()).replace('/', '_').replace('.','_')}"
 
         cmd = BASH_BASE_COMMAND.format(
-            overrides=" ".join("{k}={v}" for k, v in experiment.overrides().items()),
+            overrides=" ".join(f"{k}={v}" for k, v in experiment.overrides().items()),
             mode=mode,
         ).strip()
 
-        cmd = BASH_LOCAL_COMMAND.format(command=cmd, log_file_name=log_file_name)
+        cmd = BASH_LOCAL_COMMAND.format(
+            command=cmd, log_file_name=log_file_name
+        ).strip()
 
         # cmd = f"echo '{log_file_name}'; sleep 1"
-        pprint(cmd)
 
-        # queue.put_nowait(cmd)
+        queue.put_nowait(cmd)
 
     with Progress() as progress:
         progress_task_id = progress.add_task("Test", total=len(_experiments))
@@ -229,8 +231,7 @@ def launch(
     if precision_study:
         _experiments = list(
             filter(
-                lambda experiment: "precision_study"
-                in str(experiment.group_dir)
+                lambda experiment: "precision_study" in str(experiment.group_dir)
                 and "64" not in str(experiment.group_dir),
                 _experiments,
             )
@@ -238,32 +239,29 @@ def launch(
     else:
         _experiments = list(
             filter(
-                lambda experiment: "precision_study"
-                not in str(experiment.group_dir),
+                lambda experiment: "precision_study" not in str(experiment.group_dir),
                 _experiments,
             )
         )
 
     # if not ignore_running:
-        # jobs = get_jobs()
+    # jobs = get_jobs()
 
-        # _experiments = list(
-        #     filter(lambda e: not is_experiment_running(e, jobs), _experiments)
-        # )
+    # _experiments = list(
+    #     filter(lambda e: not is_experiment_running(e, jobs), _experiments)
+    # )
 
-    pprint(
-        list(
-            map(
-                lambda exp: exp.to_path(),
-                _experiments,
-            )
-        )
-    )
+    print("Launching:")
+    for exp in map(
+        lambda exp: str(exp.to_path()),
+        _experiments,
+    ):
+        rich.print(exp)
 
     if not dry_run:
-        if local:
-            # run(_experiments, mode)
-            asyncio.run(run(_experiments, mode))
+        # if local:
+        # run(_experiments, mode)
+        asyncio.run(run(_experiments, mode))
         # else:
         #     submit(_experiments, mode)
 
