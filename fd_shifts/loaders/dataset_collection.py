@@ -154,7 +154,7 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
         "dermoscopyallcorrgaunoihighhigh": DermoscopyAllDataset,
         "dermoscopyallcorrelastichigh": DermoscopyAllDataset,
         "dermoscopyallcorrelastichighhigh": DermoscopyAllDataset,
-        "isic_2020": Isic2020Dataset,
+        "dermoscopy_isic_2020": DermoscopyAllDataset,
         "ph2": Ph2Dataset,
         "d7p": D7pDataset,
         "dermoscopyallham10000multi": DermoscopyAllDataset,
@@ -618,7 +618,16 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
             else:
                 cor = ""
             df.iloc[i, df.columns.get_loc("filepath")] = start + cor + "." + end
-
+        # to make iid testset and corruption sets the same images (and we use part of iid for val)
+        # images used in val need to be removed from corr. This is necessary here because of small set sizes
+        # I assume the "tenPercent" split from abstract dataloader
+        # but there is currently a bug where the iid test is [:-split] in the raw outputs
+        # so basically the last images are never used neither in val
+        # not in iid. Because I can not figure it out currently the corruptions are adjusted to this.
+        if "corr" in name:
+            length_test = len(df)
+            split = int(length_test * 0.1)
+            df = df.iloc[:-split]
         pass_kwargs = {"csv": df, "train": train, "transform": transform}
         return dataset_factory[name](**pass_kwargs)
 
