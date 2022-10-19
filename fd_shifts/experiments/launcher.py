@@ -14,6 +14,7 @@ from rich.pretty import pprint
 from rich.progress import Progress
 
 from fd_shifts import experiments, logger
+from fd_shifts.experiments.cluster import submit
 from fd_shifts.experiments.sync import sync_to_remote
 from fd_shifts.experiments.validation import ValidationResult
 
@@ -116,6 +117,7 @@ def launch(
     dataset: str | None,
     dropout: int | None,
     model: str | None,
+    backbone: str | None,
     exclude_model: str | None,
     # model_exists: bool,
     # config_exists: bool,
@@ -128,6 +130,7 @@ def launch(
     rew: float | None,
     # precision_study: bool,
     # local: bool,
+    cluster: bool,
     # ignore_running: bool,
     # jobs_list: list[str] | None,
     name: str | None,
@@ -142,9 +145,9 @@ def launch(
     )
 
     # HACK: Temporarily turn off special vit runs
-    _experiments = list(
-        filter(lambda e: not (e.model != "vit" and e.backbone == "vit"), _experiments)
-    )
+    # _experiments = list(
+    #     filter(lambda e: not (e.model != "vit" and e.backbone == "vit"), _experiments)
+    # )
 
     # if jobs_list is not None:
     #     _experiments = list(
@@ -244,6 +247,14 @@ def launch(
             )
         )
 
+    if backbone is not None:
+        _experiments = list(
+            filter(
+                lambda experiment: experiment.backbone == backbone,
+                _experiments,
+            )
+        )
+
     if exclude_model is not None:
         _experiments = list(
             filter(
@@ -295,8 +306,11 @@ def launch(
 
     if not dry_run:
         # if local:
+        if cluster:
+            submit(_experiments, mode)
         # run(_experiments, mode)
-        asyncio.run(run(_experiments, mode))
+        else:
+            asyncio.run(run(_experiments, mode))
         # else:
         #     submit(_experiments, mode)
 
@@ -317,6 +331,7 @@ def add_arguments(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--model", default=None, type=str, choices=("vit", "dg", "devries", "confidnet")
     )
+    parser.add_argument("--backbone", default=None, type=str, choices=("vit",))
     parser.add_argument(
         "--exclude-model",
         default=None,
@@ -334,7 +349,7 @@ def add_arguments(parser: argparse.ArgumentParser):
         default="train_test",
         choices=("test", "train", "train_test", "analysis"),
     )
-    # parser.add_argument("--local", action="store_true")
+    parser.add_argument("--cluster", action="store_true")
     # parser.add_argument("--ignore-running", action="store_true")
     # parser.add_argument("--jobs-list", default=None, type=Path)
 
@@ -356,6 +371,7 @@ def main(args):
         dataset=args.dataset,
         dropout=args.dropout,
         model=args.model,
+        backbone=args.backbone,
         exclude_model=args.exclude_model,
         # config_exists=args.config_exists,
         # model_exists=args.model_exists,
@@ -367,7 +383,7 @@ def main(args):
         run_nr=args.run,
         rew=args.reward,
         # precision_study=args.precision_study,
-        # local=args.local,
+        cluster=args.cluster,
         # ignore_running=args.ignore_running,
         # jobs_list=jobs_list,
         name=args.name,

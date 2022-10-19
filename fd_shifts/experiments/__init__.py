@@ -34,9 +34,11 @@ class Experiment:
                 model = "deepgamblers"
             case "vit":
                 model = self.model
-                dataset = dataset + "_384"
             case _:
                 model = self.model
+
+        if self.backbone == "vit":
+            dataset = dataset + "_384"
 
         overrides = {
             "data": dataset + "_data",
@@ -53,15 +55,45 @@ class Experiment:
         if self.model == "confidnet":
             match dataset:
                 case "breeds":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [300, 500]
+                    overrides["trainer.callbacks.training_stages.milestones"] = [
+                        300,
+                        500,
+                    ]
                 case "cifar10" | "cifar100" | "super_cifar100":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [250, 450]
+                    overrides["trainer.callbacks.training_stages.milestones"] = [
+                        250,
+                        450,
+                    ]
                 case "svhn" | "svhn_openset":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [100, 300]
+                    overrides["trainer.callbacks.training_stages.milestones"] = [
+                        100,
+                        300,
+                    ]
                 case "wilds_animals" | "wilds_animals_openset":
                     overrides["trainer.callbacks.training_stages.milestones"] = [12, 17]
                 case "wilds_camelyon":
                     overrides["trainer.callbacks.training_stages.milestones"] = [5, 8]
+                case _:
+                    pass
+
+        if self.backbone == "vit" and dataset in (
+            "cifar100_384",
+            "super_cifar100_384",
+            "wilds_animals_384",
+            "wilds_animals_openset_384",
+        ):
+            overrides["trainer.batch_size"] = 512
+        elif self.backbone == "vit":
+            overrides["trainer.batch_size"] = 128
+
+        if self.backbone == "vit":
+            match model:
+                case "deepgamblers":
+                    overrides["model.network.name"] = "vit"
+                case "devries":
+                    overrides["model.network.backbone"] = "vit"
+                case "confidnet":
+                    overrides["model.network.backbone"] = "vit"
                 case _:
                     pass
 

@@ -3,6 +3,7 @@ import asyncio
 import json
 import subprocess
 import sys
+from typing import Any
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -23,9 +24,13 @@ bsub -gpu num=1:j_exclusive=yes:gmem={gmem}\
     -u 'till.bungert@dkfz-heidelberg.de' \
     -B {nodes} \
     -R "select[hname!='e230-dgx2-2']" \
-    -g /t974t/test \
+    -g /t974t/train \
     -J "{name}" \
     bash -li -c 'set -o pipefail; echo $LSB_JOBID && {command} |& tee -a "/home/t974t/logs/$LSB_JOBID.log"'
+"""
+
+BASH_BASE_COMMAND = r"""
+_fd_shifts_exec {overrides} exp.mode={mode}
 """
 
 
@@ -123,7 +128,16 @@ def get_gmem(mode: str, model: str):
                     return "33G"
 
 
-def submit(_experiments: list[ValidationResult], mode: str):
+def update_overrides(overrides: dict[str, Any]) -> dict[str, Any]:
+    if overrides["trainer.batch_size"] > 128:
+        accum = overrides["trainer.batch_size"] // 128
+        overrides["trainer.batch_size"] = 128
+        overrides["trainer.accumulate_grad_batches"] = accum
+
+    return overrides
+
+
+def submit(_experiments: list[experiments.Experiment], mode: str):
     if len(_experiments) == 0:
         print("Nothing to run")
         return
@@ -131,20 +145,25 @@ def submit(_experiments: list[ValidationResult], mode: str):
     client = SSHClient("odcf-worker01.inet.dkfz-heidelberg.de")
 
     for experiment in _experiments:
-        sync_to_remote(experiment.experiment.to_path())
+        # sync_to_remote(experiment.to_path())
 
+        # cmd = BASH_BASE_COMMAND.format(
+        #     config_path=experiment.to_path().relative_to("fd-shifts"),
+        #     batch_size=get_batch_size(
+        #         experiment.dataset, experiment.model, mode
+        #     ),
+        #     mode=mode,
+        # ).strip()
+        overrides = update_overrides(experiment.overrides())
         cmd = BASH_BASE_COMMAND.format(
-            config_path=experiment.experiment.to_path().relative_to("fd-shifts"),
-            batch_size=get_batch_size(
-                experiment.experiment.dataset, experiment.experiment.model, mode
-            ),
+            overrides=" ".join(f"{k}={v}" for k, v in overrides.items()),
             mode=mode,
         ).strip()
         cmd = BASH_BSUB_COMMAND.format(
-            name=experiment.experiment.to_path().relative_to("fd-shifts"),
+            name=experiment.to_path().relative_to("fd-shifts"),
             command=cmd,
             nodes=get_nodes(mode),
-            gmem=get_gmem(mode, experiment.experiment.model),
+            gmem=get_gmem(mode, experiment.model),
         ).strip()
 
         print(cmd)
