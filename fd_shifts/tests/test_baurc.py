@@ -16,8 +16,8 @@ Outputs:
 Test Cases:
     If correct = 1, B-AURC == 0
     If correct = 0, B-AURC == 1000 (or value close due to calculation of Area under Curve)
-    If per class accuracies eqaul and random order of class, and class equal prevalance: B-AURC ~ AURC
-    If p.c.a. equal and r.o. and class imbalance: B-AURC ~ AURC
+    If per class accuracies (p.c.a) equal and random confidence (r.c.) of class, and class equal prevalance: B-AURC ~ AURC
+    If p.c.a. equal and r.c.  and class imbalance: B-AURC ~ AURC
     If p.c.a. better for low prev class: B~AURC < AURC
     If p.c.a. worse for low prev class: B~AURC > AURC
     If p.c.a. worse for low prev class, but low prev class in beginning (e.g. lower confidence): B~AURC(front) < B-AURC(random)
