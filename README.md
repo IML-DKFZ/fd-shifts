@@ -2,10 +2,29 @@
 
 ![overview](./docs/new_overview.png)
 
+Reliable application of machine learning-based decision systems in the wild is
+one of the major challenges currently investigated by the field. A large portion
+of established approaches aims to detect erroneous predictions by means of
+assigning confidence scores. This confidence may be obtained by either
+quantifying the model's predictive uncertainty, learning explicit scoring
+functions, or assessing whether the input is in line with the training
+distribution. Curiously, while these approaches all state to address the same
+eventual goal of detecting failures of a classifier upon real-life application,
+they currently constitute largely separated research fields with individual
+evaluation protocols, which either exclude a substantial part of relevant
+methods or ignore large parts of relevant failure sources. In this work, we
+systematically reveal current pitfalls caused by these inconsistencies and
+derive requirements for a holistic and realistic evaluation of failure
+detection. To demonstrate the relevance of this unified perspective, we present
+a large-scale empirical study for the first time enabling benchmarking
+confidence scoring functions w.r.t all relevant methods and failure sources. The
+revelation of a simple softmax response baseline as the overall best performing
+method underlines the drastic shortcomings of current evaluation in the
+abundance of publicized research on confidence scoring.
+
 If you use fd-shifts please cite our [paper]()
 
 ```
-
 ```
 
 ## Table Of Contents
@@ -29,7 +48,8 @@ If you use fd-shifts please cite our [paper]()
 pip install https://github.com/iml-dkfz/failure-detection-benchmark
 ```
 
-If you have issues with cuda, install a recent PyTorch version according to their website.
+If you have issues with cuda, install a recent PyTorch version according to
+their website.
 
 ## Usage
 
@@ -55,26 +75,26 @@ source .env
 
 ### Data Folder Requirements
 
-For the predefined experiments we expect the data to be in the following folder structure relative
-to the folder you set for `$DATASET_ROOT_DIR`.
+For the predefined experiments we expect the data to be in the following folder
+structure relative to the folder you set for `$DATASET_ROOT_DIR`.
 
 ```
- <$DATASET_ROOT_DIR>
- ├── breeds
- │   └── ILSVRC ⇒ ../imagenet/ILSVRC
- ├── imagenet
- │   ├── ILSVRC
- ├── cifar10
- ├── cifar100
- ├── corrupt_cifar10
- ├── corrupt_cifar100
- ├── svhn
- ├── tinyimagenet
- ├── tinyimagenet_resize
- ├── wilds_animals
- │   └── iwildcam_v2.0
- └── wilds_camelyon
-     └── camelyon17_v1.0
+<$DATASET_ROOT_DIR>
+├── breeds
+│   └── ILSVRC ⇒ ../imagenet/ILSVRC
+├── imagenet
+│   ├── ILSVRC
+├── cifar10
+├── cifar100
+├── corrupt_cifar10
+├── corrupt_cifar100
+├── svhn
+├── tinyimagenet
+├── tinyimagenet_resize
+├── wilds_animals
+│   └── iwildcam_v2.0
+└── wilds_camelyon
+    └── camelyon17_v1.0
 ```
 
 ### Training
@@ -107,17 +127,19 @@ Check out `fd_shifts launch --help` for more filtering options.
 
 ### Inference
 
-To run inference for one of the experiments, append `--mode=test` to any of the commands above.
+To run inference for one of the experiments, append `--mode=test` to any of the
+commands above.
 
 ### Analysis
 
-To run analysis for some of the predefined experiments, set `--mode=analysis` in any of the commands
-above.
+To run analysis for some of the predefined experiments, set `--mode=analysis` in
+any of the commands above.
 
-To run analysis over an already available set of model outputs the outputs have to be in the following format:
+To run analysis over an already available set of model outputs the outputs have
+to be in the following format:
 
-For a classifier with `d` outputs and `N` samples in total (over all tested datasets) and for `M`
-dropout samples
+For a classifier with `d` outputs and `N` samples in total (over all tested
+datasets) and for `M` dropout samples
 
 ```
 raw_logits.npz
@@ -191,8 +213,9 @@ NxM
 
 You may also use the `ExperimentData` class to load your data in another way.
 You also have to provide an adequate config, where all test datasets and query
-parameters are set. Check out the config files in `fd_shifts/configs` including the dataclasses.
-Importantly, the `dataset_idx` has to match up with the list of datasets you provide and whether or
-not `val_tuning` is set. If `val_tuning` is set, the validation set takes over `dataset_idx=0`.
+parameters are set. Check out the config files in `fd_shifts/configs` including
+the dataclasses. Importantly, the `dataset_idx` has to match up with the list of
+datasets you provide and whether or not `val_tuning` is set. If `val_tuning` is
+set, the validation set takes over `dataset_idx=0`.
 
 ## Acknowledgements
