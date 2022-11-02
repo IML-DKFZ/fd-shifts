@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import field
 from enum import Enum, auto
 from pathlib import Path
@@ -10,7 +11,7 @@ import pl_bolts
 import torch
 from hydra.core.config_store import ConfigStore
 from hydra.core.hydra_config import HydraConfig
-from hydra_zen import ZenField, builds
+from hydra_zen import ZenField, builds  # type: ignore
 from omegaconf import DictConfig
 from omegaconf.omegaconf import MISSING, OmegaConf
 from pydantic import validator

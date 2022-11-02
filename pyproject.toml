@@ -6,66 +6,68 @@ build-backend = "setuptools.build_meta"
 name = "fd_shifts"
 dynamic = ["version"]
 dependencies = [
-    "albumentations>=1.0.3",
-    "deepdiff",
-    "hydra-colorlog>=1.1.0",
-    "hydra-core>=1.1.1",
-    "hydra-zen",
-    "imageio>=2.9.0",
-    "ipython",
-    "loguru",
-    "matplotlib>=3.3.4",
-    "numpy>=1.22.2",
-    "ogb>=1.3.1",
-    "omegaconf>=2.1.1",
-    "pandas>=1.2.3",
-    "protobuf<=3.20.0",
-    "pydantic==1.9.2",
-    "pytorch-lightning-bolts>=0.3.2",
-    "pytorch-lightning==1.6.5",
-    "rich>=10.7.0",
-    "robustness @ https://github.com/MadryLab/robustness/archive/master.tar.gz",
-    "scikit-image>=0.18.2",
-    "scikit-learn>=0.24.2",
-    "scipy>=1.6.1",
-    "seaborn>=0.11.1",
-    "tensorboard>=2.4.1",
-    "timm==0.5.4",
-    "toml>=0.10.2",
-    "torch==1.11.0",
-    "torchmetrics>=0.2.0",
-    "torchvision>=0.12.0",
-    "tqdm>=4.62.0",
-    "typing_extensions>=4.1.1",
-    "wilds>=1.1.0",
+  "albumentations>=1.0.3",
+  "deepdiff",
+  "hydra-colorlog>=1.1.0",
+  "hydra-core>=1.1.1",
+  "hydra-zen",
+  "imageio>=2.9.0",
+  "ipython",
+  "loguru",
+  "matplotlib>=3.3.4",
+  "numpy>=1.22.2",
+  "ogb>=1.3.1",
+  "omegaconf>=2.1.1",
+  "pandas>=1.2.3",
+  "protobuf<=3.20.0",
+  "pydantic==1.9.2",
+  "pytorch-lightning-bolts>=0.3.2",
+  "pytorch-lightning==1.6.5",
+  "rich>=10.7.0",
+  "robustness @ https://github.com/MadryLab/robustness/archive/master.tar.gz",
+  "scikit-image>=0.18.2",
+  "scikit-learn>=0.24.2",
+  "scipy>=1.6.1",
+  "seaborn>=0.11.1",
+  "tensorboard>=2.4.1",
+  "timm==0.5.4",
+  "toml>=0.10.2",
+  "torch==1.11.0",
+  "torchmetrics>=0.2.0",
+  "torchvision>=0.12.0",
+  "tqdm>=4.62.0",
+  "typing_extensions>=4.1.1",
+  "wilds>=1.1.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "syrupy",
-    "nbdime",
-    "pylint",
-    "black",
-    "debugpy",
+  "pytest",
+  "syrupy",
+  "nbdime",
+  "pylint",
+  "black",
+  "debugpy",
 ]
 launcher = [
-    "parallel-ssh"
+  "parallel-ssh",
 ]
 
 [project.scripts]
 fd_shifts = "fd_shifts.cli:main"
 _fd_shifts_exec = "fd_shifts.exec:main"
 
-
 [tool.setuptools.dynamic]
-version = {attr = "fd_shifts.version.version"}
+version = { attr = "fd_shifts.version.version" }
 
 [tool.setuptools.packages]
 find = {}
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml"]
+
+[tool.isort]
+profile = "black"
 
 [tool.pyright]
 reportOptionalSubscript = "warning"
@@ -78,24 +80,23 @@ reportOptionalOperand = "warning"
 [tool.pytest.ini_options]
 xfail_strict = true
 filterwarnings = [
-    'ignore:fields may not start with an underscore:RuntimeWarning',
-    # Ignore tensorboard deprecation warnings
-    'ignore:distutils:DeprecationWarning',
-    'ignore:Call to deprecated create function:DeprecationWarning',
-    # Ignore timm deprecation warnings
-    'ignore:.*is deprecated and will be removed in Pillow 10:DeprecationWarning',
-    'ignore:torch.distributed._sharded_tensor will be deprecated, use torch.distributed._shard.sharded_tensor instead:DeprecationWarning',
-    # Ignore lightning_bolts optional dependencies warnings
-    'ignore:You want to use:UserWarning',
+  'ignore:fields may not start with an underscore:RuntimeWarning',
+  # Ignore tensorboard deprecation warnings
+  'ignore:distutils:DeprecationWarning',
+  'ignore:Call to deprecated create function:DeprecationWarning',
+  # Ignore timm deprecation warnings
+  'ignore:.*is deprecated and will be removed in Pillow 10:DeprecationWarning',
+  'ignore:torch.distributed._sharded_tensor will be deprecated, use torch.distributed._shard.sharded_tensor instead:DeprecationWarning',
+  # Ignore lightning_bolts optional dependencies warnings
+  'ignore:You want to use:UserWarning',
 ]
 
-[tool.pylint.main]
+[tool.pylint]
 extension-pkg-allow-list = [
-    "numpy",
-    "torch"
+  "numpy",
+  "torch",
 ]
 
-[tool.pylint.logging]
 # The type of string formatting that logging methods do. `old` means using %
 # formatting, `new` is for `{}` formatting.
 logging-format-style = "new"
@@ -104,20 +105,70 @@ logging-format-style = "new"
 # function parameter format.
 logging-modules = ["logging", "loguru"]
 
-[tool.pylint."messages control"]
 disable = [
-    "raw-checker-failed",
-    "bad-inline-option",
-    "locally-disabled",
-    "file-ignored",
-    "suppressed-message",
-    "useless-suppression",
-    "deprecated-pragma",
-    "use-symbolic-message-instead",
-    "missing-module-docstring",
-    "missing-class-docstring",
-    "missing-function-docstring",
+  "raw-checker-failed",
+  "bad-inline-option",
+  "locally-disabled",
+  "file-ignored",
+  "suppressed-message",
+  "useless-suppression",
+  "deprecated-pragma",
+  "use-symbolic-message-instead",
+  "missing-module-docstring",
 ]
 
-[tool.pylint.design]
 max-args = 10
+ignore-paths = [
+  "fd_shifts/models/networks/residual_flows/*",
+  "fd_shifts/tests/*",
+]
+
+[tool.mypy]
+# cache_dir = .mypy_cache/normal
+warn_unused_configs = true
+warn_redundant_casts = true
+show_error_codes = true
+show_column_numbers = true
+check_untyped_defs = true
+follow_imports = "skip"
+# color_output = false
+exclude = [
+    'fd_shifts/models/networks/residual_flows/.*',
+    'fd_shifts/tests/.*',
+]
+
+warn_unused_ignores = true
+
+files = [
+  "fd_shifts",
+]
+
+python_version = "3.10"
+
+[[tool.mypy.overrides]]
+module = [
+  "albumentations.*",
+  "timm.*",
+  "tensorflow.*",
+  "tensorboard.*",
+  "matplotlib.*",
+  # "numpy.*",
+  "multiprocessing.*",
+  "torchvision.*",
+  "scipy.*",
+  "IPython.*",
+  "skimage.*",
+  "mypy.*",
+  "usort.*",
+  "sklearn.*",
+  "hydra_zen.*",
+  "hydra_zen",
+  "deepdiff.*",
+  "cv2.*",
+  "pl_bolts.*",
+  "seaborn",
+  "pssh.*",
+  "wilds.*",
+  "robustness.*",
+]
+ignore_missing_imports = true
