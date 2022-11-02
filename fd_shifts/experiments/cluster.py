@@ -1,20 +1,23 @@
 import argparse
 import asyncio
 import json
+import re
 import subprocess
 import sys
-from typing import Any
 import urllib.request
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from pssh.clients import SSHClient
 from pssh.exceptions import Timeout
+from rich import print
 from rich.pretty import pprint
 from rich.progress import Progress
+from rich.syntax import Syntax
 
 from fd_shifts import experiments, logger
-from fd_shifts.experiments.sync import sync_to_remote
+from fd_shifts.experiments.sync import sync_to_dir_remote
 from fd_shifts.experiments.validation import ValidationResult
 
 BASH_BSUB_COMMAND = r"""
@@ -26,7 +29,7 @@ bsub -gpu num=1:j_exclusive=yes:gmem={gmem}\
     -R "select[hname!='e230-dgx2-2']" \
     -g /t974t/train \
     -J "{name}" \
-    bash -li -c 'set -o pipefail; echo $LSB_JOBID && {command} |& tee -a "/home/t974t/logs/$LSB_JOBID.log"'
+    bash -li -c 'set -o pipefail; echo $LSB_JOBID && source .envrc && {command} |& tee -a "/home/t974t/logs/$LSB_JOBID.log"'
 """
 
 BASH_BASE_COMMAND = r"""
@@ -129,15 +132,15 @@ def get_gmem(mode: str, model: str):
 
 
 def update_overrides(overrides: dict[str, Any]) -> dict[str, Any]:
-    if overrides["trainer.batch_size"] > 128:
-        accum = overrides["trainer.batch_size"] // 128
-        overrides["trainer.batch_size"] = 128
+    if overrides["trainer.batch_size"] > 64:
+        accum = overrides["trainer.batch_size"] // 64
+        overrides["trainer.batch_size"] = 64
         overrides["trainer.accumulate_grad_batches"] = accum
 
     return overrides
 
 
-def submit(_experiments: list[experiments.Experiment], mode: str):
+def submit(_experiments: list[experiments.Experiment], mode: str, dry_run: bool):
     if len(_experiments) == 0:
         print("Nothing to run")
         return
@@ -145,48 +148,78 @@ def submit(_experiments: list[experiments.Experiment], mode: str):
     client = SSHClient("odcf-worker01.inet.dkfz-heidelberg.de")
 
     for experiment in _experiments:
-        # sync_to_remote(experiment.to_path())
+        try:
+            if path := experiment.overrides().get(
+                "trainer.callbacks.training_stages.pretrained_backbone_path"
+            ):
+                sync_to_dir_remote(
+                    path.replace("${EXPERIMENT_ROOT_DIR%/}/", "fd-shifts/"),
+                    dry_run=dry_run,
+                )
 
-        # cmd = BASH_BASE_COMMAND.format(
-        #     config_path=experiment.to_path().relative_to("fd-shifts"),
-        #     batch_size=get_batch_size(
-        #         experiment.dataset, experiment.model, mode
-        #     ),
-        #     mode=mode,
-        # ).strip()
-        overrides = update_overrides(experiment.overrides())
-        cmd = BASH_BASE_COMMAND.format(
-            overrides=" ".join(f"{k}={v}" for k, v in overrides.items()),
-            mode=mode,
-        ).strip()
-        cmd = BASH_BSUB_COMMAND.format(
-            name=experiment.to_path().relative_to("fd-shifts"),
-            command=cmd,
-            nodes=get_nodes(mode),
-            gmem=get_gmem(mode, experiment.model),
-        ).strip()
+            # cmd = BASH_BASE_COMMAND.format(
+            #     config_path=experiment.to_path().relative_to("fd-shifts"),
+            #     batch_size=get_batch_size(
+            #         experiment.dataset, experiment.model, mode
+            #     ),
+            #     mode=mode,
+            # ).strip()
+            overrides = update_overrides(experiment.overrides())
+            cmd = BASH_BASE_COMMAND.format(
+                overrides=" ".join(f"{k}={v}" for k, v in overrides.items()),
+                mode=mode,
+            ).strip()
 
-        print(cmd)
+            print(
+                Syntax(
+                    re.sub(r"([^,]) ", "\\1 \\\n\t", cmd),
+                    "bash",
+                    word_wrap=True,
+                    background_color="default",
+                )
+            )
 
-        with client.open_shell(read_timeout=1) as shell:
-            shell.run("cd failure-detection-benchmark")
-            shell.run("source .envrc")
-            shell.run(cmd)
+            cmd = BASH_BSUB_COMMAND.format(
+                name=experiment.to_path().relative_to("fd-shifts"),
+                command=cmd,
+                nodes=get_nodes(mode),
+                gmem=get_gmem(mode, experiment.model),
+            ).strip()
 
-            try:
-                for line in shell.stdout:
-                    pprint(line)
-            except Timeout:
-                pass
+            print(
+                Syntax(
+                    cmd,
+                    "bash",
+                    word_wrap=True,
+                    background_color="default",
+                )
+            )
 
-            try:
-                for line in shell.stderr:
-                    pprint(line)
-            except Timeout:
-                pass
+            if dry_run:
+                continue
 
-        for line in shell.stdout:
-            pprint(line)
+            with client.open_shell(read_timeout=1) as shell:
+                shell.run("cd failure-detection-benchmark")
+                shell.run("source .envrc")
+                shell.run(cmd)
 
-        for line in shell.stderr:
-            pprint(line)
+                try:
+                    for line in shell.stdout:
+                        print(line)
+                except Timeout:
+                    pass
+
+                try:
+                    for line in shell.stderr:
+                        print(line)
+                except Timeout:
+                    pass
+
+            for line in shell.stdout:
+                print(line)
+
+            for line in shell.stderr:
+                print(line)
+
+        except subprocess.CalledProcessError:
+            continue

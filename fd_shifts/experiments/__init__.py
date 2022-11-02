@@ -54,25 +54,26 @@ class Experiment:
 
         if self.model == "confidnet":
             match dataset:
-                case "breeds":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [
-                        300,
-                        500,
-                    ]
-                case "cifar10" | "cifar100" | "super_cifar100":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [
-                        250,
-                        450,
-                    ]
-                case "svhn" | "svhn_openset":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [
-                        100,
-                        300,
-                    ]
-                case "wilds_animals" | "wilds_animals_openset":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [12, 17]
-                case "wilds_camelyon":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [5, 8]
+                case "breeds" | "breeds_384":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[300, 500]"'
+                case "cifar10" | "cifar100" | "super_cifar100" | "cifar10_384" | "cifar100_384" | "super_cifar100_384":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[250, 450]"'
+                case "svhn" | "svhn_openset" | "svhn_384" | "svhn_openset_384":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[100, 300]"'
+                case "wilds_animals" | "wilds_animals_openset" | "wilds_animals_384" | "wilds_animals_openset_384":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[12, 17]"'
+                case "wilds_camelyon" | "wilds_camelyon_384":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[5, 8]"'
                 case _:
                     pass
 
@@ -90,10 +91,23 @@ class Experiment:
             match model:
                 case "deepgamblers":
                     overrides["model.network.name"] = "vit"
+                    overrides["model.fc_dim"] = 768
                 case "devries":
                     overrides["model.network.backbone"] = "vit"
                 case "confidnet":
                     overrides["model.network.backbone"] = "vit"
+                    overrides["model.fc_dim"] = 768
+                    overrides[
+                        "trainer.callbacks.training_stages.pretrained_backbone_path"
+                    ] = (
+                        "${EXPERIMENT_ROOT_DIR%/}/"
+                        + (
+                            str(self.to_path())
+                            .replace("modelconfidnet", "modelvit")
+                            .replace("fd-shifts/", "")
+                        )
+                        + "/version_0/last.ckpt"
+                    )
                 case _:
                     pass
 

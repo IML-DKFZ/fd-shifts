@@ -25,7 +25,7 @@ def main():
     launch_parser.set_defaults(command=launcher.main)
 
     reporting_parser = subparsers.add_parser("reporting")
-    reporting_parser.set_defaults(command=lambda _: reporting.main("./reporting"))
+    reporting_parser.set_defaults(command=lambda _: reporting.main("./results"))
 
     args = parser.parse_args()
     args.command(args)

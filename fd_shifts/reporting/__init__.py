@@ -355,6 +355,8 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
         selection_df.groupby(fixed_columns)[metric].idxmin()
     ]
 
+    print(selection_df[selection_df.model == "dg"])
+
     data = data[
         data.apply(
             lambda row: filter_row(
@@ -440,7 +442,7 @@ def main(base_path: str | Path):
     data_dir: Path = Path(base_path).expanduser().resolve()
     data_dir.mkdir(exist_ok=True, parents=True)
 
-    gather_data(data_dir)
+    # gather_data(data_dir)
 
     data, exp_names = load_data(data_dir)
 
@@ -449,20 +451,20 @@ def main(base_path: str | Path):
     data = filter_best_lr(data)
     data = filter_best_hparams(data)
 
-    data = filter_unused(data)
-    data = rename_confids(data)
-    data = rename_studies(data)
-
-    plot_rank_style(data, "cifar10", "aurc", data_dir)
-    vit_v_cnn_box(data, data_dir)
-
-    data = tables.aggregate_over_runs(data)
-    data = str_format_metrics(data)
-
-    print(data)
-
-    paper_results(data, "aurc", False, data_dir)
-    paper_results(data, "ece", False, data_dir)
-    paper_results(data, "failauc", True, data_dir)
-    paper_results(data, "accuracy", True, data_dir)
-    paper_results(data, "fail-NLL", False, data_dir)
+    # data = filter_unused(data)
+    # data = rename_confids(data)
+    # data = rename_studies(data)
+    #
+    # plot_rank_style(data, "cifar10", "aurc", data_dir)
+    # vit_v_cnn_box(data, data_dir)
+    #
+    # data = tables.aggregate_over_runs(data)
+    # data = str_format_metrics(data)
+    #
+    # print(data)
+    #
+    # paper_results(data, "aurc", False, data_dir)
+    # paper_results(data, "ece", False, data_dir)
+    # paper_results(data, "failauc", True, data_dir)
+    # paper_results(data, "accuracy", True, data_dir)
+    # paper_results(data, "fail-NLL", False, data_dir)

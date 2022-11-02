@@ -1,21 +1,17 @@
 import argparse
 import asyncio
 import json
-import subprocess
-import sys
-import urllib.request
+import re
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import rich
-from pssh.clients import SSHClient
-from pssh.exceptions import Timeout
-from rich.pretty import pprint
-from rich.progress import Progress
+from rich.syntax import Syntax
 
 from fd_shifts import experiments, logger
 from fd_shifts.experiments.cluster import submit
-from fd_shifts.experiments.sync import sync_to_remote
+# from fd_shifts.experiments.sync import sync_to_remote
 from fd_shifts.experiments.validation import ValidationResult
 
 BASH_LOCAL_COMMAND = r"""
@@ -39,7 +35,7 @@ def parse_validation_file(validation_file: Path) -> list[ValidationResult]:
     return _experiments
 
 
-async def worker(name, queue: asyncio.Queue[str], progress: Progress, task_id):
+async def worker(name, queue: asyncio.Queue[str]): #, progress: Progress, task_id):
     while True:
         # Get a "work item" out of the queue.
         cmd = await queue.get()
@@ -60,11 +56,21 @@ async def worker(name, queue: asyncio.Queue[str], progress: Progress, task_id):
         # print(data.decode("utf-8"))
 
         # Notify the queue that the "work item" has been processed.
-        progress.advance(task_id)
+        # progress.advance(task_id)
         queue.task_done()
 
 
-async def run(_experiments: list[experiments.Experiment], mode: str):
+def update_overrides(overrides: dict[str, Any]) -> dict[str, Any]:
+    batch_size = 32
+    if overrides["trainer.batch_size"] > batch_size:
+        accum = overrides["trainer.batch_size"] // batch_size
+        overrides["trainer.batch_size"] = batch_size
+        overrides["trainer.accumulate_grad_batches"] = accum
+
+    return overrides
+
+
+async def run(_experiments: list[experiments.Experiment], mode: str, dry_run: bool):
     if len(_experiments) == 0:
         print("Nothing to run")
         return
@@ -77,38 +83,53 @@ async def run(_experiments: list[experiments.Experiment], mode: str):
     for experiment in _experiments:
         log_file_name = f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{str(experiment.to_path()).replace('/', '_').replace('.','_')}"
 
+        overrides = update_overrides(experiment.overrides())
+
         cmd = BASH_BASE_COMMAND.format(
-            overrides=" ".join(f"{k}={v}" for k, v in experiment.overrides().items()),
+            overrides=" ".join(f"{k}={v}" for k, v in overrides.items()),
             mode=mode,
         ).strip()
+
+        print(
+            Syntax(
+                re.sub(r"([^,]) ", "\\1 \\\n\t", cmd),
+                "bash",
+                word_wrap=True,
+                background_color="default",
+            )
+        )
 
         cmd = BASH_LOCAL_COMMAND.format(
             command=cmd, log_file_name=log_file_name
         ).strip()
+        print(Syntax(cmd, "bash", word_wrap=True, background_color="default"))
+        if not dry_run:
+            queue.put_nowait(cmd)
 
-        # cmd = f"echo '{log_file_name}'; sleep 1"
+        break
 
-        queue.put_nowait(cmd)
+    if queue.empty():
+        return
 
-    with Progress() as progress:
-        progress_task_id = progress.add_task("Test", total=len(_experiments))
+    # with Progress() as progress:
+    #     progress_task_id = progress.add_task("Test", total=len(_experiments))
 
-        tasks = []
-        # TODO: Flag for n_workers
-        for i in range(1):
-            task = asyncio.create_task(
-                worker(f"worker-{i}", queue, progress, progress_task_id)
-            )
-            tasks.append(task)
+    tasks = []
+    # TODO: Flag for n_workers
+    for i in range(1):
+        task = asyncio.create_task(
+            worker(f"worker-{i}", queue) #, progress, progress_task_id)
+        )
+        tasks.append(task)
 
-        # Wait until the queue is fully processed.
-        await queue.join()
+    # Wait until the queue is fully processed.
+    await queue.join()
 
-        # Cancel our worker tasks.
-        for task in tasks:
-            task.cancel()
-        # Wait until all worker tasks are cancelled.
-        await asyncio.gather(*tasks, return_exceptions=True)
+    # Cancel our worker tasks.
+    for task in tasks:
+        task.cancel()
+    # Wait until all worker tasks are cancelled.
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 
 def launch(
@@ -304,13 +325,11 @@ def launch(
     ):
         rich.print(exp)
 
-    if not dry_run:
-        # if local:
-        if cluster:
-            submit(_experiments, mode)
-        # run(_experiments, mode)
-        else:
-            asyncio.run(run(_experiments, mode))
+    if cluster:
+        submit(_experiments, mode, dry_run)
+    # run(_experiments, mode)
+    else:
+        asyncio.run(run(_experiments, mode, dry_run))
         # else:
         #     submit(_experiments, mode)
 
