@@ -44,12 +44,12 @@ If you use fd-shifts please cite our [paper]()
 
 ## Installation
 
-```bash
-pip install https://github.com/iml-dkfz/failure-detection-benchmark
-```
+1. **Install an appropriate version of [PyTorch](https://pytorch.org/)**
 
-If you have issues with cuda, install a recent PyTorch version according to
-their website.
+2. **Install FD-Shifts**
+   ```bash
+   pip install https://github.com/iml-dkfz/failure-detection-benchmark
+   ```
 
 ## Usage
 
