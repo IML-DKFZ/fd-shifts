@@ -1,26 +1,27 @@
-# FD-Shifts
+<!-- # FD-Shifts -->
+![logo](./docs/fd_shifts_logo.svg)
 
 ![overview](./docs/new_overview.png)
 
-Reliable application of machine learning-based decision systems in the wild is
-one of the major challenges currently investigated by the field. A large portion
-of established approaches aims to detect erroneous predictions by means of
-assigning confidence scores. This confidence may be obtained by either
-quantifying the model's predictive uncertainty, learning explicit scoring
-functions, or assessing whether the input is in line with the training
-distribution. Curiously, while these approaches all state to address the same
-eventual goal of detecting failures of a classifier upon real-life application,
-they currently constitute largely separated research fields with individual
-evaluation protocols, which either exclude a substantial part of relevant
-methods or ignore large parts of relevant failure sources. In this work, we
-systematically reveal current pitfalls caused by these inconsistencies and
-derive requirements for a holistic and realistic evaluation of failure
-detection. To demonstrate the relevance of this unified perspective, we present
-a large-scale empirical study for the first time enabling benchmarking
-confidence scoring functions w.r.t all relevant methods and failure sources. The
-revelation of a simple softmax response baseline as the overall best performing
-method underlines the drastic shortcomings of current evaluation in the
-abundance of publicized research on confidence scoring.
+> Reliable application of machine learning-based decision systems in the wild is
+> one of the major challenges currently investigated by the field. A large portion
+> of established approaches aims to detect erroneous predictions by means of
+> assigning confidence scores. This confidence may be obtained by either
+> quantifying the model's predictive uncertainty, learning explicit scoring
+> functions, or assessing whether the input is in line with the training
+> distribution. Curiously, while these approaches all state to address the same
+> eventual goal of detecting failures of a classifier upon real-life application,
+> they currently constitute largely separated research fields with individual
+> evaluation protocols, which either exclude a substantial part of relevant
+> methods or ignore large parts of relevant failure sources. In this work, we
+> systematically reveal current pitfalls caused by these inconsistencies and
+> derive requirements for a holistic and realistic evaluation of failure
+> detection. To demonstrate the relevance of this unified perspective, we present
+> a large-scale empirical study for the first time enabling benchmarking
+> confidence scoring functions w.r.t all relevant methods and failure sources. The
+> revelation of a simple softmax response baseline as the overall best performing
+> method underlines the drastic shortcomings of current evaluation in the
+> abundance of publicized research on confidence scoring.
 
 If you use fd-shifts please cite our [paper]()
 
@@ -44,9 +45,14 @@ If you use fd-shifts please cite our [paper]()
 
 ## Installation
 
-1. **Install an appropriate version of [PyTorch](https://pytorch.org/)**
+It is recommended to install FD-Shifts in its own environment (venv, conda environment, ...).
 
-2. **Install FD-Shifts**
+1. **Install an appropriate version of [PyTorch](https://pytorch.org/).** Check that CUDA is
+   available and that the CUDA toolkit version is compatible with your hardware.
+
+2. **Install FD-Shifts.** This will pull in all dependencies including some version of PyTorch, it
+   is strongly recommended that you install a compatible version of PyTorch beforehand. This will
+   also make the `fd_shifts` cli available to you.
    ```bash
    pip install https://github.com/iml-dkfz/failure-detection-benchmark
    ```
