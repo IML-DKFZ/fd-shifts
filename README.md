@@ -1,7 +1,9 @@
 <!-- # FD-Shifts -->
-![logo](./docs/fd_shifts_logo.svg)
+<p align="center"><img src="./docs/fd_shifts_logo.svg"></p>
 
-![overview](./docs/new_overview.png)
+---
+
+<p align="center"><img src="./docs/new_overview.png"></p>
 
 > Reliable application of machine learning-based decision systems in the wild is
 > one of the major challenges currently investigated by the field. A large portion
