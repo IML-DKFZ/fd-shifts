@@ -17,6 +17,9 @@ _model_factory: dict[str, type[pl.LightningModule]] = {
     "vit_model": vit_model.net,
 }
 
+def register_model(model_name: str, model: type[pl.LightningModule]) -> None:
+    _model_factory[model_name] = model
+
 
 def get_model(model_name: str) -> type[pl.LightningModule]:
     """
