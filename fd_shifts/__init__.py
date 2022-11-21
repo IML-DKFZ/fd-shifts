@@ -2,6 +2,7 @@ import logging
 import warnings
 from functools import reduce
 from random import randint
+from types import FrameType
 from typing import TypeVar
 
 from loguru import logger
@@ -25,9 +26,10 @@ warnings.filterwarnings(
 )
 
 
-# Replace python logging everywhere
 class InterceptHandler(logging.Handler):
-    def emit(self, record):
+    """Replace python logging everywhere"""
+
+    def emit(self, record):  # type: ignore
         # Get corresponding Loguru level if it exists
         try:
             level = logger.level(record.levelname).name
@@ -35,10 +37,12 @@ class InterceptHandler(logging.Handler):
             level = record.levelno
 
         # Find caller from where originated the logged message
-        frame: logging.FrameType = logging.currentframe()
+        frame: FrameType = logging.currentframe()
         depth: int = 2
         while frame.f_code.co_filename == logging.__file__:
-            frame = frame.f_back
+            if (_frame := frame.f_back) is None:
+                break
+            frame = _frame
             depth += 1
 
         logger.opt(depth=depth, exception=record.exc_info).log(
