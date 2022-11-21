@@ -275,10 +275,10 @@ class Analysis:
         self.cfg = cf
 
         # HACK: OpenSet runs currently output all classes, but only train on in-classes
-        holdout_classes: list | None = (
+        self.holdout_classes: list | None = (
             kwargs.get("out_classes") if (kwargs := cf.data.kwargs) else None
         )
-        self.experiment_data = ExperimentData.from_experiment(path, cf, holdout_classes)
+        self.experiment_data = ExperimentData.from_experiment(path, cf, self.holdout_classes)
 
         self.method_dict["query_confids"] = self.cfg.eval.confidence_measures.test
         if self.experiment_data.external_confids is None:
@@ -355,6 +355,13 @@ class Analysis:
                 "val_tuning", self
             ):
                 self.perform_study("val_tuning", study_data)
+
+        if self.holdout_classes is not None:
+            for study_name, study_data in get_study_iterator("openset")(
+                "openset", self
+            ):
+                self.perform_study(study_name, study_data)
+            return
 
         for query_study, _ in self.query_studies:
             for study_name, study_data in get_study_iterator(query_study)(
@@ -450,7 +457,7 @@ class Analysis:
         performance_metrics = {}
         num_classes = self.num_classes
         if "nll" in self.query_performance_metrics:
-            if "new_class" in self.study_name:
+            if "new_class" in self.study_name or "openset" in self.study_name:
                 performance_metrics["nll"] = None
             else:
                 y_one_hot = np.eye(num_classes)[labels.astype("int")]
@@ -460,7 +467,7 @@ class Analysis:
         if "accuracy" in self.query_performance_metrics:
             performance_metrics["accuracy"] = np.sum(correct) / correct.size
         if "brier_score" in self.query_performance_metrics:
-            if "new_class" in self.study_name:
+            if "new_class" in self.study_name or "openset" in self.study_name:
                 performance_metrics["brier_score"] = None
             else:
                 y_one_hot = np.eye(num_classes)[labels.astype("int")]  # [b, classes]

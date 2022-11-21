@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 _filter_funcs = {}
 
 
-
 def register_filter_func(name: str) -> Callable:
     def _inner_wrapper(func: Callable) -> Callable:
         _filter_funcs[name] = func
@@ -77,7 +76,10 @@ def iterate_in_class_study_data(
 ) -> Iterator[Tuple[str, "ExperimentData"]]:
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     for in_class_set in getattr(analysis.query_studies, study_name):
-        study_data = filter_func(analysis.experiment_data, in_class_set,)
+        study_data = filter_func(
+            analysis.experiment_data,
+            in_class_set,
+        )
 
         yield f"{study_name}_{in_class_set}", study_data
 
@@ -168,6 +170,88 @@ def iterate_new_class_study_data(
             yield f"{study_name}_{new_class_set}_{mode}", study_data
 
 
+@register_filter_func("openset")
+def filter_openset_study_data(
+    data: "ExperimentData",
+    iid_set_name: str,
+    holdout_classes: list[int],
+    mode: str = "proposed_mode",
+) -> "ExperimentData":
+    # TODO: Make this more pretty
+    select_ix_in = np.argwhere(np.isin(data.labels, holdout_classes, invert=True))[:, 0]
+    select_ix_out = np.argwhere(np.isin(data.labels, holdout_classes))[:, 0]
+
+    assert data.correct is not None
+
+    correct = deepcopy(data.correct)
+    correct[select_ix_out] = 0
+    if mode == "original_mode":
+        correct[
+            select_ix_in
+        ] = 1  # nice to see so visual how little practical sense the current protocol makes!
+    labels = deepcopy(data.labels)
+    # labels[select_ix_out] = -99
+
+    select_ix_all = np.argwhere(
+        np.isin(data.labels, holdout_classes)
+        | (np.isin(data.labels, holdout_classes, invert=True) & (correct == 1))
+    )[
+        :, 0
+    ]  # de-select incorrect inlier predictions.
+
+    mcd_correct = deepcopy(data.mcd_correct)
+    if mcd_correct is not None:
+        mcd_correct[select_ix_out] = 0
+        if mode == "original_mode":
+            mcd_correct[select_ix_in] = 1
+
+        select_ix_all_mcd = np.argwhere(
+            np.isin(data.labels, holdout_classes)
+            | (np.isin(data.labels, holdout_classes, invert=True) & (mcd_correct == 1))
+        )[:, 0]
+    else:
+        select_ix_all_mcd = None
+
+    def __filter_if_exists(data: npt.NDArray[Any] | None, mask):
+        if data is not None:
+            return data[mask]
+
+        return None
+
+    return data.__class__(
+        softmax_output=data.softmax_output[select_ix_all],
+        logits=__filter_if_exists(data.logits, select_ix_all),
+        labels=labels[select_ix_all],
+        dataset_idx=data.dataset_idx[select_ix_all],
+        mcd_softmax_dist=__filter_if_exists(data.mcd_softmax_dist, select_ix_all_mcd),
+        mcd_logits_dist=__filter_if_exists(data.mcd_logits_dist, select_ix_all_mcd),
+        external_confids=__filter_if_exists(data.external_confids, select_ix_all),
+        mcd_external_confids_dist=__filter_if_exists(
+            data.mcd_external_confids_dist, select_ix_all_mcd
+        ),
+        config=data.config,
+        _correct=__filter_if_exists(correct, select_ix_all),
+        _mcd_correct=__filter_if_exists(mcd_correct, select_ix_all_mcd),
+    )
+
+
+@register_study_iterator("openset")
+def iterate_openset_study_data(
+    study_name: str, analysis: "Analysis"
+) -> Iterator[Tuple[str, "ExperimentData"]]:
+    filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
+    for mode in ["original_mode", "proposed_mode"]:
+
+        study_data = filter_func(
+            analysis.experiment_data,
+            analysis.query_studies.iid_study,
+            analysis.holdout_classes,
+            mode,
+        )
+
+        yield f"{study_name}_{mode}", study_data
+
+
 @register_filter_func("noise_study")
 def filter_noise_study_data(
     data: "ExperimentData", dataset_name: str, noise_level: int = 1
@@ -208,9 +292,7 @@ def filter_noise_study_data(
         softmax_output=__filter_intensity_2d(
             data.softmax_output, select_ix, noise_level
         ),
-        logits=__filter_intensity_2d(
-            data.logits, select_ix, noise_level
-        ),
+        logits=__filter_intensity_2d(data.logits, select_ix, noise_level),
         labels=__filter_intensity_1d(data.labels, select_ix, noise_level),
         dataset_idx=__filter_intensity_1d(data.dataset_idx, select_ix, noise_level),
         external_confids=__filter_intensity_1d(
@@ -237,11 +319,14 @@ def iterate_noise_study_data(
     for noise_set in getattr(analysis.query_studies, study_name):
         for intensity_level in range(5):
             logger.debug(
-                "starting noise study with intensitiy level %s", intensity_level + 1,
+                "starting noise study with intensitiy level %s",
+                intensity_level + 1,
             )
 
             study_data = filter_func(
-                analysis.experiment_data, noise_set, intensity_level,
+                analysis.experiment_data,
+                noise_set,
+                intensity_level,
             )
 
             yield f"{study_name}_{intensity_level + 1}", study_data
