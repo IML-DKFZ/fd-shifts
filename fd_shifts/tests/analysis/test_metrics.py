@@ -627,3 +627,4 @@ def test_failnll(stats_cache: metrics.StatsCache, expected: ExpectedType):
 
     score = metrics.failnll(stats_cache)
     np.testing.assert_almost_equal(score, expected)
+
