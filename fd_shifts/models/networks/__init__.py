@@ -1,49 +1,74 @@
-from fd_shifts.models.networks import svhn_small_conv
-from fd_shifts.models.networks import mnist_small_conv
-from fd_shifts.models.networks import mnist_mlp
-from fd_shifts.models.networks import vgg16
-from fd_shifts.models.networks import confidnet
-from fd_shifts.models.networks import devries_network
-from fd_shifts.models.networks import vgg
-from fd_shifts.models.networks import zhang_network
-from fd_shifts.models.networks import resnet50_imagenet
-from fd_shifts.models.networks import vgg_devries
-from fd_shifts.models.networks import dgvgg
-from fd_shifts.models.networks import vit
+from __future__ import annotations
 
-# TODO: Error handling
-# TODO: Make explicit arguments
-# TODO: Throw out unused networks
-# TODO: Make easily extendable -> registry
+from abc import ABCMeta, abstractmethod
+from typing import Callable, TypeAlias, TypeVar, TYPE_CHECKING
+
+from torch import nn
+
+if TYPE_CHECKING:
+    from fd_shifts import configs
+    from fd_shifts.models.networks import network
+
+    NetworkFactoryType: TypeAlias = Callable[
+        [
+            configs.Config,
+        ],
+        network.Network,
+    ]
 
 
-# Available models
-_network_factory = {
-    "svhn_small_conv": svhn_small_conv.SmallConv,  # todo make explciit arguments!!
-    "mnist_small_conv": mnist_small_conv.SmallConv,  # todo make explciit arguments!!
-    "mnist_mlp": mnist_mlp.MLP,  # todo make explciit arguments!!
-    # "vgg16": vgg16.VGG16, # todo make explciit arguments!!
-    "confidnet_and_enc": confidnet.ConfidNetAndEncoder,  # todo make explciit arguments!!
-    "devries_and_enc": devries_network.DeVriesAndEncoder,  # todo make explciit arguments!!
-    "vgg13": vgg.VGG,  # todo make explciit arguments!!
-    "vgg16": vgg.VGG,  # todo make explciit arguments!!
-    "vgg_old": vgg16.VGG16,  # todo make explciit arguments!!
-    "vgg_devries": vgg_devries.VGG13,  # todo make explciit arguments!!
-    "zhang_and_enc": zhang_network.ZhangAndEncoder,  # todo make explciit arguments!!
-    "zhang_backbone": zhang_network.ZhangBackbone,  # todo make explciit arguments!!
-    "resnet50": resnet50_imagenet.resnet50,  # todo make explciit arguments!!
-    "dgvgg": dgvgg.VGG,  # todo make explciit arguments!!
-    "vit": vit.ViT,
-}
+def _get_network_factory() -> dict[str, NetworkFactoryType]:
+    # Available models
+    from fd_shifts.models.networks import (
+        confidnet,
+        devries_network,
+        dgvgg,
+        mnist_mlp,
+        mnist_small_conv,
+        resnet50_imagenet,
+        svhn_small_conv,
+        vgg,
+        vgg16,
+        vgg_devries,
+        vit,
+        zhang_network,
+    )
 
-def get_network(network_name):
+    return {
+        "svhn_small_conv": svhn_small_conv.SmallConv,
+        # "mnist_small_conv": mnist_small_conv.SmallConv,
+        # "mnist_mlp": mnist_mlp.MLP,
+        "confidnet_and_enc": confidnet.ConfidNetAndEncoder,
+        "devries_and_enc": devries_network.DeVriesAndEncoder,
+        "vgg13": vgg.VGG,
+        "vgg16": vgg.VGG,
+        # "vgg_old": vgg16.VGG16,
+        # "vgg_devries": vgg_devries.VGG13,
+        # "zhang_and_enc": zhang_network.ZhangAndEncoder,
+        # "zhang_backbone": zhang_network.ZhangBackbone,
+        "resnet50": resnet50_imagenet.resnet50,
+        # "dgvgg": dgvgg.VGG,
+        "vit": vit.ViT,
+    }
+
+
+def get_network(network_name: str) -> NetworkFactoryType:
     """
-    Return a new instance of a backbone
-    """
-    return _network_factory[network_name]
+    Args:
+        network_name (str): name of the network
 
-def network_exists(network_name):
+    Returns:
+        a new instance of a backbone
     """
-    Return a new instance of a backbone
+    return _get_network_factory()[network_name]
+
+
+def network_exists(network_name: str) -> bool:
     """
-    return network_name in _network_factory
+    Args:
+        network_name (str): name of the network
+
+    Returns:
+        whether the network exists or not
+    """
+    return network_name in _get_network_factory()

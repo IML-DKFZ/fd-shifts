@@ -1,12 +1,16 @@
+from __future__ import annotations
 import torch
 from torch import Tensor
 import torch.nn as nn
 from torch.hub import load_state_dict_from_url
-from typing import Type, Any, Callable, Union, List, Optional
+from typing import TYPE_CHECKING, Type, Any, Callable, Union, List, Optional
 import torch.nn.functional as F
 
+from fd_shifts.models.networks.network import Network, DropoutEnablerMixin
 from fd_shifts import logger
 
+if TYPE_CHECKING:
+    from fd_shifts.configs import Config
 
 def conv3x3(
     in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1
@@ -168,7 +172,7 @@ class Bottleneck(nn.Module):
         return out
 
 
-class ResNet(nn.Module):
+class ResNet(Network):
     def __init__(
         self,
         block: Type[Union[BasicBlock, Bottleneck]],
@@ -183,7 +187,7 @@ class ResNet(nn.Module):
     ) -> None:
         super(ResNet, self).__init__()
 
-        self.encoder = ResNetEncoder(
+        self._encoder = ResNetEncoder(
             block,
             layers,
             zero_init_residual,
@@ -193,7 +197,15 @@ class ResNet(nn.Module):
             norm_layer,
             dropout_rate,
         )
-        self.classifier = ResNetClassifier(block, num_classes)
+        self._classifier = ResNetClassifier(block, num_classes)
+
+    @property
+    def encoder(self) -> DropoutEnablerMixin:
+        return self._encoder
+
+    @property
+    def classifier(self) -> nn.Module:
+        return self._classifier
 
     def forward(self, x):
         x = self.encoder(x)
@@ -213,7 +225,7 @@ class ResNetClassifier(nn.Module):
         return x
 
 
-class ResNetEncoder(nn.Module):
+class ResNetEncoder(DropoutEnablerMixin):
     def __init__(
         self,
         block: Type[Union[BasicBlock, Bottleneck]],
@@ -407,7 +419,7 @@ def _resnet(
 
 
 def resnet50(
-    cf, pretrained: bool = False, progress: bool = True, **kwargs: Any
+    cf: Config, pretrained: bool = False, progress: bool = True, **kwargs: Any
 ) -> ResNet:
     r"""ResNet-50 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.

@@ -5,7 +5,8 @@ import torch.nn as nn
 import torch
 from torch.autograd import Variable
 
-from fd_shifts import logger
+from fd_shifts import configs, logger
+from fd_shifts.models.networks.network import Network, DropoutEnablerMixin
 
 
 cfg = {
@@ -57,14 +58,22 @@ cfg = {
 }
 
 
-class VGG(nn.Module):
-    def __init__(self, cf):
+class VGG(Network):
+    def __init__(self, cf: configs.Config):
         super(VGG, self).__init__()
         num_classes = cf.data.num_classes
         if cf.eval.ext_confid_name == "dg":
             num_classes += 1
-        self.encoder = Encoder(cf)
-        self.classifier = Classifier(cf.model.fc_dim, num_classes)
+        self._encoder = Encoder(cf)
+        self._classifier = Classifier(cf.model.fc_dim, num_classes)
+
+    @property
+    def encoder(self) -> DropoutEnablerMixin:
+        return self._encoder
+
+    @property
+    def classifier(self) -> nn.Module:
+        return self._classifier
 
     def forward(self, x):
         out = self.encoder(x)
@@ -72,8 +81,8 @@ class VGG(nn.Module):
         return pred
 
 
-class Encoder(nn.Module):
-    def __init__(self, cf):
+class Encoder(DropoutEnablerMixin):
+    def __init__(self, cf: configs.Config):
         super(Encoder, self).__init__()
         name = (
             cf.model.network.name

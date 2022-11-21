@@ -1,3 +1,4 @@
+from pytorch_lightning import Callback
 from pytorch_lightning.callbacks import (GPUStatsMonitor, LearningRateMonitor,
                                          ModelCheckpoint, RichProgressBar)
 from fd_shifts import configs, logger
@@ -8,7 +9,7 @@ from fd_shifts.models.callbacks import confid_monitor, training_stages
 # TODO: Handle configs better
 
 
-def get_callbacks(cfg: configs.Config):
+def get_callbacks(cfg: configs.Config) -> list[Callback]:
     """
     Return all queried callbacks
     """
