@@ -15,7 +15,7 @@ from hydra.core.config_store import ConfigStore
 from hydra_zen import builds  # type: ignore
 from omegaconf import DictConfig, OmegaConf
 from omegaconf.omegaconf import MISSING
-from pydantic import validator
+from pydantic import ConfigDict, validator
 from pydantic.dataclasses import dataclass
 from typing_extensions import dataclass_transform
 
@@ -79,7 +79,7 @@ def defer_validation(original_class: type[ConfigT]) -> type[ConfigT]:
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class OutputPathsConfig(_IterableMixin):
     """Where outputs are stored"""
 
@@ -91,7 +91,7 @@ class OutputPathsConfig(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class OutputPathsPerMode(_IterableMixin):
     """Container for per-mode output paths"""
 
@@ -100,7 +100,7 @@ class OutputPathsPerMode(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class ExperimentConfig(_IterableMixin):
     """Main experiment config"""
 
@@ -124,7 +124,7 @@ class ExperimentConfig(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class LRSchedulerConfig:
     """Base class for LR scheduler configuration"""
 
@@ -151,7 +151,7 @@ LinearWarmupCosineAnnealingLR = builds(
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class OptimizerConfig:
     """Base class for optimizer configuration"""
 
@@ -160,7 +160,7 @@ class OptimizerConfig:
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class SGD(OptimizerConfig):
     """Configuration for SGD optimizer"""
 
@@ -174,7 +174,7 @@ class SGD(OptimizerConfig):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class TrainerConfig(_IterableMixin):
     """Main configuration for PyTorch Lightning Trainer"""
 
@@ -220,7 +220,7 @@ class TrainerConfig(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class NetworkConfig(_IterableMixin):
     """Model Network configuration"""
 
@@ -247,7 +247,7 @@ class NetworkConfig(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class ModelConfig(_IterableMixin):
     """Model Configuration"""
 
@@ -279,7 +279,7 @@ class ModelConfig(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class PerfMetricsConfig(_IterableMixin):
     """Performance Metrics Configuration"""
 
@@ -297,7 +297,7 @@ class PerfMetricsConfig(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class ConfidMetricsConfig(_IterableMixin):
     """Confidence Metrics Configuration"""
 
@@ -351,7 +351,7 @@ class ConfidMetricsConfig(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class ConfidMeasuresConfig(_IterableMixin):
     """Confidence Measures Configuration"""
 
@@ -375,7 +375,7 @@ class ConfidMeasuresConfig(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class QueryStudiesConfig(_IterableMixin):
     """Query Studies Configuration"""
 
@@ -402,7 +402,7 @@ class QueryStudiesConfig(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class EvalConfig(_IterableMixin):
     """Evaluation Configuration container"""
 
@@ -428,7 +428,7 @@ class EvalConfig(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class TestConfig(_IterableMixin):
     """Inference time configuration"""
 
@@ -448,7 +448,7 @@ class TestConfig(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class DataConfig(_IterableMixin):
     """Dataset Configuration"""
 
@@ -464,7 +464,7 @@ class DataConfig(_IterableMixin):
 
 
 @defer_validation
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class Config(_IterableMixin):
     """Main Configuration Class"""
 
