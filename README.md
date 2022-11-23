@@ -28,6 +28,7 @@
 If you use fd-shifts please cite our [paper]()
 
 ```
+
 ```
 
 ## Table Of Contents
@@ -226,4 +227,17 @@ the dataclasses. Importantly, the `dataset_idx` has to match up with the list of
 datasets you provide and whether or not `val_tuning` is set. If `val_tuning` is
 set, the validation set takes over `dataset_idx=0`.
 
+### Extending
+
+To learn about extending FD-Shifts with your own models, datasets and confidence scoring functions
+check out the [tutorial on extending FD-Shifts](./docs/extending_fd-shifts.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iml-dkfz/fd-shifts/blob/main/docs/extending_fd-shifts.ipynb).
+
 ## Acknowledgements
+
+<br>
+
+<p align="left">
+  <img src="https://polybox.ethz.ch/index.php/s/I6VJEPrCDW9zbEE/download" width="190"> &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://polybox.ethz.ch/index.php/s/kqDrOTTIzPFYPU7/download" width="91"> &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Deutsches_Krebsforschungszentrum_Logo.svg/1200px-Deutsches_Krebsforschungszentrum_Logo.svg.png" width="270"> &nbsp;&nbsp;&nbsp;&nbsp;
+</p>
