@@ -608,6 +608,10 @@ def dataset_exists(name: str):
     return name in _dataset_factory
 
 
+def register_dataset(name: str, dataset):
+    _dataset_factory[name] = dataset
+
+
 def get_dataset(name, root, train, download, transform, kwargs):
     """
     Return a new instance of dataset loader

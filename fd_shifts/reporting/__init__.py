@@ -7,7 +7,11 @@ import pandas as pd
 from fd_shifts.experiments import Experiment, get_all_experiments
 from fd_shifts.reporting import tables
 from fd_shifts.reporting.plots import plot_rank_style, vit_v_cnn_box
-from fd_shifts.reporting.tables import paper_results
+from fd_shifts.reporting.tables import (
+    paper_results,
+    rank_comparison_metric,
+    rank_comparison_mode,
+)
 
 # TODO: Refactor the rest
 # TODO: Add error handling
@@ -99,14 +103,18 @@ def gather_data(data_dir: Path):
             dframe.to_csv(data_dir / f"{dataset}vit.csv")
 
 
-def load_file(path: Path) -> pd.DataFrame:
+def load_file(path: Path, experiment_override: str | None = None) -> pd.DataFrame:
     result = pd.read_csv(path)
 
     if not isinstance(result, pd.DataFrame):
         raise FileNotFoundError
 
     result = (
-        result.assign(experiment=path.stem)
+        result.assign(
+            experiment=experiment_override
+            if experiment_override is not None
+            else path.stem
+        )
         .dropna(subset=["name", "model"])
         .drop_duplicates(subset=["name", "study", "model", "network", "confid"])
     )
@@ -138,8 +146,13 @@ def load_data(data_dir: Path):
 
     data = data.query(
         'not ((experiment.str.contains("super_cifar100")'
-        'or experiment.str.contains("openset"))'
+        # 'or experiment.str.contains("openset"))'
+        ")"
         'and not (study == "iid_study"))'
+    )
+
+    data = data.query(
+        'not (experiment.str.contains("openset")' 'and study.str.contains("iid_study"))'
     )
 
     data = data.assign(study=data.experiment + "_" + data.study)
@@ -164,33 +177,37 @@ def load_data(data_dir: Path):
         ),
     )
 
-    data = data.assign(
-        study=data.study.mask(
-            data.experiment == "svhn_openset",
-            "svhn_openset_study",
-        )
-    )
-
-    data = data.assign(
-        study=data.study.mask(
-            data.experiment == "svhn_opensetvit",
-            "svhnvit_openset_study",
-        )
-    )
-
-    data = data.assign(
-        study=data.study.mask(
-            data.experiment == "animals_openset",
-            "animals_openset_study",
-        )
-    )
-
-    data = data.assign(
-        study=data.study.mask(
-            data.experiment == "animals_opensetvit",
-            "animalsvit_openset_study",
-        )
-    )
+    # data = data.assign(
+    #     study=data.study.mask(
+    #         data.experiment == "svhn_openset",
+    #         "svhn_openset_study",
+    #     )
+    # )
+    #
+    # data = data.assign(
+    #     study=data.study.mask(
+    #         data.experiment == "svhn_opensetvit",
+    #         data[data.experiment == "svhn_opensetvit"].study.str.replace(
+    #             "svhn_openset", "svhnvit_openset"
+    #         ),
+    #     )
+    # )
+    #
+    # data = data.assign(
+    #     study=data.study.mask(
+    #         data.experiment == "animals_openset",
+    #         "animals_openset_study",
+    #     )
+    # )
+    #
+    # data = data.assign(
+    #     study=data.study.mask(
+    #         data.experiment == "animals_opensetvit",
+    #         data[data.experiment == "animals_opensetvit"].study.str.replace(
+    #             "animals_openset", "animalsvit_openset"
+    #         ),
+    #     )
+    # )
 
     data = data.assign(ece=data.ece.mask(data.ece < 0))
 
@@ -355,7 +372,7 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
         selection_df.groupby(fixed_columns)[metric].idxmin()
     ]
 
-    print(selection_df[selection_df.model == "dg"])
+    # print(selection_df[selection_df.model == "dg"])
 
     data = data[
         data.apply(
@@ -434,7 +451,7 @@ def str_format_metrics(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def main(base_path: str | Path):
-    pd.set_option("display.max_rows", 100)
+    pd.set_option("display.max_rows", None)
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
     pd.set_option("display.max_colwidth", None)
@@ -451,20 +468,23 @@ def main(base_path: str | Path):
     data = filter_best_lr(data)
     data = filter_best_hparams(data)
 
-    # data = filter_unused(data)
-    # data = rename_confids(data)
-    # data = rename_studies(data)
-    #
+    data = filter_unused(data)
+    data = rename_confids(data)
+    data = rename_studies(data)
+
     # plot_rank_style(data, "cifar10", "aurc", data_dir)
     # vit_v_cnn_box(data, data_dir)
-    #
-    # data = tables.aggregate_over_runs(data)
-    # data = str_format_metrics(data)
-    #
-    # print(data)
-    #
-    # paper_results(data, "aurc", False, data_dir)
-    # paper_results(data, "ece", False, data_dir)
-    # paper_results(data, "failauc", True, data_dir)
-    # paper_results(data, "accuracy", True, data_dir)
-    # paper_results(data, "fail-NLL", False, data_dir)
+
+    data = tables.aggregate_over_runs(data)
+    data = str_format_metrics(data)
+
+    paper_results(data, "aurc", False, data_dir)
+    paper_results(data, "aurc", False, data_dir, True)
+    paper_results(data, "ece", False, data_dir)
+    paper_results(data, "failauc", True, data_dir)
+    paper_results(data, "accuracy", True, data_dir)
+    paper_results(data, "fail-NLL", False, data_dir)
+
+    rank_comparison_metric(data, data_dir)
+    rank_comparison_mode(data, data_dir)
+    rank_comparison_mode(data, data_dir, False)

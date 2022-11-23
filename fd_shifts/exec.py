@@ -21,7 +21,7 @@ configs.init()
 
 
 def train(
-    cf: configs.Config, progress: RichProgressBar, subsequent_testing: bool = False
+    cf: configs.Config, progress: RichProgressBar = RichProgressBar(), subsequent_testing: bool = False
 ) -> None:
     """
     perform the training routine for a given fold. saves plots and selected parameters to the experiment dir
@@ -114,7 +114,7 @@ def train(
         test(cf, progress)
 
 
-def test(cf: configs.Config, progress: RichProgressBar) -> None:
+def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> None:
     if "best" in cf.test.selection_criterion and cf.test.only_latest_version is False:
         ckpt_path = exp_utils.get_path_to_best_ckpt(
             cf.exp.dir, cf.test.selection_criterion, cf.test.selection_mode
