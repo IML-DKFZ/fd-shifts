@@ -14,3 +14,4 @@ scripts
 launcher
 typings
 experiments.json
+_version.py
