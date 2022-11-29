@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fd_shifts"
 dynamic = ["version"]
+requires-python = ">=3.10"
 dependencies = [
   "albumentations>=1.0.3",
   "deepdiff",
