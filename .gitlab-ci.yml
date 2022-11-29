@@ -5,4 +5,4 @@ pytest:
   - python --version
   - pip install .[dev]
   script:
-  - python -m pytest -W ignore -m "not memory_heavy and not requires_data" -vv
+  - python -m pytest -W ignore -m "not memory_heavy and not requires_data"
