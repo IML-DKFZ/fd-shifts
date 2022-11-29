@@ -23,7 +23,7 @@ class MyModel(pl.LightningModule):
     pass
 
 
-def test_register_model():
+def test_register_model(mock_env_if_missing):
     configs.init()
 
     config = configs.Config.with_defaults()

@@ -41,7 +41,7 @@ def test_api_and_main_same(mock_env_if_missing) -> None:
         f"python fd_shifts/exec.py study={study} data={data}_data exp.mode=debug",
         shell=True,
         capture_output=True,
-        check=False,
+        check=True,
     ).stderr.decode("utf-8")
 
     config_yaml = _extract_config_from_cli_stderr(output)
