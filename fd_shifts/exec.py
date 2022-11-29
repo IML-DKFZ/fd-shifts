@@ -146,7 +146,6 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
         logger=False,
         callbacks=[progress] + get_callbacks(cf),
         replace_sampler_ddp=False,
-        accelerator=None,
     )
     trainer.test(model=module, datamodule=datamodule)
     analysis.main(
