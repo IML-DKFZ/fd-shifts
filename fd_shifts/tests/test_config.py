@@ -4,11 +4,22 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
 from deepdiff import DeepDiff
 from omegaconf import DictConfig, OmegaConf
 from rich import print
 
 from fd_shifts import configs
+
+
+@pytest.fixture
+def mock_env_if_missing(monkeypatch) -> None:
+    monkeypatch.setenv(
+        "EXPERIMENT_ROOT_DIR", os.getenv("EXPERIMENT_ROOT_DIR", default="./experiments")
+    )
+    monkeypatch.setenv(
+        "DATASET_ROOT_DIR", os.getenv("DATASET_ROOT_DIR", default="./data")
+    )
 
 
 def _extract_config_from_cli_stderr(output: str) -> str:
@@ -22,7 +33,7 @@ def to_dict(obj):
     return json.loads(json.dumps(obj, default=lambda o: getattr(o, "__dict__", str(o))))
 
 
-def test_api_and_main_same() -> None:
+def test_api_and_main_same(mock_env_if_missing) -> None:
     study = "deepgamblers"
     data = "svhn"
 

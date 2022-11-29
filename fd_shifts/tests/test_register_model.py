@@ -1,23 +1,27 @@
+import os
 from collections.abc import Iterable
+
 import pydantic
-from rich import print
-from fd_shifts import models, configs
+import pytest
 import pytorch_lightning as pl
+from rich import print
 
-def _enable_validation(conf):
-    if hasattr(conf, "__pydantic_run_validation__"):
-        conf.__pydantic_run_validation__ = True
+from fd_shifts import configs, models
 
-    if not isinstance(conf, Iterable):
-        return
 
-    for _, v in conf:
-        if hasattr(v, "__pydantic_run_validation__"):
-            _enable_validation(v)
+@pytest.fixture
+def mock_env_if_missing(monkeypatch) -> None:
+    monkeypatch.setenv(
+        "EXPERIMENT_ROOT_DIR", os.getenv("EXPERIMENT_ROOT_DIR", default="./experiments")
+    )
+    monkeypatch.setenv(
+        "DATASET_ROOT_DIR", os.getenv("DATASET_ROOT_DIR", default="./data")
+    )
 
 
 class MyModel(pl.LightningModule):
     pass
+
 
 def test_register_model():
     configs.init()
