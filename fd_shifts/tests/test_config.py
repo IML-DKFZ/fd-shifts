@@ -41,8 +41,10 @@ def test_api_and_main_same(mock_env_if_missing) -> None:
         f"python fd_shifts/exec.py study={study} data={data}_data exp.mode=debug",
         shell=True,
         capture_output=True,
-        check=True,
+        check=False,
     ).stderr.decode("utf-8")
+
+    print(output)
 
     config_yaml = _extract_config_from_cli_stderr(output)
     config_cli = OmegaConf.to_container(OmegaConf.create(config_yaml))
