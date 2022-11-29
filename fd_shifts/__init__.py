@@ -8,7 +8,7 @@ from typing import TypeVar
 from loguru import logger
 from omegaconf import OmegaConf
 
-from .version import version
+from .version import get_version
 
 warnings.filterwarnings(
     "ignore", "You want to use `wandb` which is not installed yet", UserWarning
@@ -52,7 +52,7 @@ class InterceptHandler(logging.Handler):
 
 logging.basicConfig(handlers=[InterceptHandler()], level=logging.WARNING)
 
-OmegaConf.register_new_resolver("fd_shifts.version", version)
+OmegaConf.register_new_resolver("fd_shifts.version", get_version)
 OmegaConf.register_new_resolver("fd_shifts.random_seed", lambda: randint(0, 1_000_000))
 OmegaConf.register_new_resolver(
     "fd_shifts.if_else", lambda cond, a, b: a if cond else b

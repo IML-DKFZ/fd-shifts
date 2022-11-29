@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -57,8 +57,8 @@ launcher = [
 fd_shifts = "fd_shifts.cli:main"
 _fd_shifts_exec = "fd_shifts.exec:main"
 
-[tool.setuptools.dynamic]
-version = { attr = "fd_shifts.version.version" }
+[tool.setuptools_scm]
+write_to = "fd_shifts/_version.py"
 
 [tool.setuptools.packages]
 find = {}
