@@ -46,6 +46,7 @@ dev = [
   "pytest",
   "syrupy",
   "nbdime",
+  "nbmake",
   "pylint",
   "black",
   "debugpy",
