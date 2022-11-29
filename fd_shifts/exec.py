@@ -74,7 +74,7 @@ def train(
     )
 
     max_steps = cf.trainer.num_steps if hasattr(cf.trainer, "num_steps") else None
-    accelerator = cf.trainer.accelerator if hasattr(cf.trainer, "accelerator") else None
+    # accelerator = cf.trainer.accelerator if hasattr(cf.trainer, "accelerator") else None
     accumulate_grad_batches = (
         cf.trainer.accumulate_grad_batches
         if hasattr(cf.trainer, "accumulate_grad_batches")
@@ -82,7 +82,9 @@ def train(
     )
 
     trainer = pl.Trainer(
-        gpus=-1,
+        # gpus=-1,
+        accelerator="auto",
+        devices="auto",
         logger=[tb_logger, csv_logger],
         max_epochs=cf.trainer.num_epochs,
         max_steps=max_steps,
@@ -97,7 +99,6 @@ def train(
         # limit_train_batches=50,
         limit_val_batches=0 if cf.trainer.do_val is False else 1.0,
         # replace_sampler_ddp=False,
-        accelerator=accelerator,
         gradient_clip_val=1,
         accumulate_grad_batches=accumulate_grad_batches,
     )
@@ -139,7 +140,9 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
         os.makedirs(cf.test.dir)
 
     trainer = pl.Trainer(
-        gpus=-1,
+        # gpus=-1,
+        accelerator="auto",
+        devices="auto",
         logger=False,
         callbacks=[progress] + get_callbacks(cf),
         replace_sampler_ddp=False,
