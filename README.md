@@ -3,8 +3,6 @@
 
 ---
 
-<p align="center"><img src="./docs/new_overview.png"></p>
-
 > Reliable application of machine learning-based decision systems in the wild is
 > one of the major challenges currently investigated by the field. A large portion
 > of established approaches aims to detect erroneous predictions by means of
@@ -25,30 +23,59 @@
 > method underlines the drastic shortcomings of current evaluation in the
 > abundance of publicized research on confidence scoring.
 
+<p align="center">
+    <figure class="image">
+        <img src="./docs/new_overview.png">
+        <figcaption style="font-size: small;">
+        Holistic perspective on failure detection. Detecting failures should be seen in the
+        context of the overarching goal of preventing silent failures of a classifier, which includes two tasks:
+        preventing failures in the first place as measured by the "robustness" of a classifier (Task 1), and
+        detecting the non-prevented failures by means of CSFs (Task 2, focus of this work). For failure
+        prevention across distribution shifts, a consistent task formulation exists (featuring accuracy as the
+        primary evaluation metric) and various benchmarks have been released covering a large variety of
+        realistic shifts (e.g. image corruption shifts, sub-class shifts, or domain shifts). In contrast, progress in
+        the subsequent task of detecting the non-prevented failures by means of CSFs is currently obstructed
+        by three pitfalls: 1) A diverse and inconsistent set of evaluation protocols for CSFs exists (MisD, SC,
+        PUQ, OoD-D) impeding comprehensive competition. 2) Only a fraction of the spectrum of realistic
+        distribution shifts and thus potential failure sources is covered diminishing the practical relevance
+        of evaluation. 3) The task formulation in OoD-D fundamentally deviates from the stated purpose
+        of detecting classification failures. Overall, the holistic perspective on failure detection reveals an
+        obvious need for a unified and comprehensive evaluation protocol, in analogy to current robustness
+        benchmarks, to make classifiers fit for safety-critical applications. Abbreviations: CSF: Confidence
+        Scoring Function, OoD-D: Out-of-Distribution Detection, MisD: Misclassification Detection, PUQ:
+        Predictive Uncertainty Quantification, SC: Selective Classification
+        </figcaption>
+    </figure>
+</p>
+
+## Citing This Work
+
 If you use fd-shifts please cite our [paper]()
 
-```
-
+```bibtex
+@inproceedings{Jaeger2022ACT,
+  title={A Call to Reflect on Evaluation Practices for Failure Detection in Image Classification},
+  author={Paul F. Jaeger and Carsten T. Luth and Lukas Klein and Till J. Bungert},
+  year={2022}
+}
 ```
 
 ## Table Of Contents
 
 <!--toc:start-->
-
-- [FD-Shifts](#fd-shifts)
-  - [Installation](#installation)
-  - [Usage](#usage)
-    - [Data Folder Requirements](#data-folder-requirements)
-    - [Training](#training)
-    - [Inference](#inference)
-    - [Analysis](#analysis)
-  - [Acknowledgements](#acknowledgements)
-
+- [Installation](#installation)
+- [How to Integrate Your Own Usecase](#how-to-integrate-your-own-usecase)
+- [Reproducing our results](#reproducing-our-results)
+  - [Data Folder Requirements](#data-folder-requirements)
+  - [Training](#training)
+  - [Inference](#inference)
+  - [Analysis](#analysis)
+- [Acknowledgements](#acknowledgements)
 <!--toc:end-->
 
 ## Installation
 
-It is recommended to install FD-Shifts in its own environment (venv, conda environment, ...).
+**FD-Shifts requires Python version 3.10 or later.** It is recommended to install FD-Shifts in its own environment (venv, conda environment, ...).
 
 1. **Install an appropriate version of [PyTorch](https://pytorch.org/).** Check that CUDA is
    available and that the CUDA toolkit version is compatible with your hardware.
@@ -57,10 +84,15 @@ It is recommended to install FD-Shifts in its own environment (venv, conda envir
    is strongly recommended that you install a compatible version of PyTorch beforehand. This will
    also make the `fd_shifts` cli available to you.
    ```bash
-   pip install https://github.com/iml-dkfz/failure-detection-benchmark
+   pip install https://github.com/iml-dkfz/fd-shifts
    ```
 
-## Usage
+## How to Integrate Your Own Usecase
+
+To learn about extending FD-Shifts with your own models, datasets and confidence scoring functions
+check out the [tutorial on extending FD-Shifts](./docs/extending_fd-shifts.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iml-dkfz/fd-shifts/blob/main/docs/extending_fd-shifts.ipynb).
+
+## Reproducing our results
 
 To use `fd_shifts` you need to set the following environment variables
 
@@ -226,11 +258,6 @@ parameters are set. Check out the config files in `fd_shifts/configs` including
 the dataclasses. Importantly, the `dataset_idx` has to match up with the list of
 datasets you provide and whether or not `val_tuning` is set. If `val_tuning` is
 set, the validation set takes over `dataset_idx=0`.
-
-### Extending
-
-To learn about extending FD-Shifts with your own models, datasets and confidence scoring functions
-check out the [tutorial on extending FD-Shifts](./docs/extending_fd-shifts.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iml-dkfz/fd-shifts/blob/main/docs/extending_fd-shifts.ipynb).
 
 ## Acknowledgements
 
