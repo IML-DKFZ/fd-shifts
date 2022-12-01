@@ -78,7 +78,8 @@ If you use fd-shifts please cite our [paper]()
 **FD-Shifts requires Python version 3.10 or later.** It is recommended to install FD-Shifts in its own environment (venv, conda environment, ...).
 
 1. **Install an appropriate version of [PyTorch](https://pytorch.org/).** Check that CUDA is
-   available and that the CUDA toolkit version is compatible with your hardware.
+   available and that the CUDA toolkit version is compatible with your hardware. 
+   The currently necessary version of [pytorch is v.1.11.0](https://pytorch.org/get-started/previous-versions/#v1110). Testing and Development was done with the pytorch version using CUDA 11.3.
 
 2. **Install FD-Shifts.** This will pull in all dependencies including some version of PyTorch, it
    is strongly recommended that you install a compatible version of PyTorch beforehand. This will
