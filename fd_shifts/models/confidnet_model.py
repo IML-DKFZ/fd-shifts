@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from fd_shifts import configs
 
 
-# mypy: allow_subclassing_any
 class Module(pl.LightningModule):
     """
 
@@ -231,10 +230,7 @@ class Module(pl.LightningModule):
             softmax = F.softmax(outputs[0], dim=1)
             pred_confid = torch.sigmoid(outputs[1])
             tcp = softmax.gather(1, y.unsqueeze(1))
-            # print("CHECK PRED CONFID", pred_confid.mean(), pred_confid.min(), pred_confid.max())
-            # print("CHECK TCP", tcp.mean(), tcp.min(), tcp.max())
-            # print(pred_confid[0].item(), y[0].item(), tcp[0].item(), softmax[0])
-            loss = F.mse_loss(pred_confid, tcp)  # self.loss_mse(pred_confid, tcp) #
+            loss = F.mse_loss(pred_confid, tcp)
             return {
                 "loss": loss,
                 "softmax": softmax,
@@ -248,16 +244,9 @@ class Module(pl.LightningModule):
             _, pred_confid = self.network(x)
             pred_confid = torch.sigmoid(pred_confid)
             tcp = softmax.gather(1, y.unsqueeze(1))
-            loss = F.mse_loss(pred_confid, tcp)  # self.loss_mse(pred_confid, tcp) #
+            loss = F.mse_loss(pred_confid, tcp)
 
             softmax_dist = None
-            # if self.current_epoch == self.num_epochs - 1:
-            #     # save mcd output for psuedo-test if actual test is with mcd.
-            #     if any("mcd" in cfd for cfd in self.query_confids["test"]):
-            #         softmax_dist, _ = self.mcd_eval_forward(x=x,
-            #                                              n_samples=self.monitor_mcd_samples,
-            #                                              )
-            #
             return {
                 "loss": loss,
                 "softmax": softmax,

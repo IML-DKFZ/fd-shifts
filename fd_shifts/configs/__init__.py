@@ -11,7 +11,6 @@ import pl_bolts
 import torch
 from hydra.core.config_store import ConfigStore
 
-# mypy: warn-unused-ignores=False
 from hydra_zen import builds  # type: ignore
 from omegaconf import DictConfig, OmegaConf
 from omegaconf.omegaconf import MISSING
@@ -412,7 +411,6 @@ class EvalConfig(_IterableMixin):
 
     monitor_plots: list[str] = field(
         default_factory=lambda: [
-            # "overconfidence",
             "hist_per_confid",
         ]
     )
@@ -483,6 +481,17 @@ class Config(_IterableMixin):
     def with_defaults(
         cls, study: str = "deepgamblers", data: str = "cifar10", mode: Mode = Mode.debug
     ) -> Config:
+        """Create a config object with populated defaults
+
+        Args:
+            cls (type): this class
+            study: (str): the study to take defaults from
+            data: (str): the dataset to take defaults from
+            mode: (Mode): the running mode
+
+        Returns:
+            the populated config object
+        """
         base_config = OmegaConf.load(
             Path(__file__).parent.parent / "configs" / "config.yaml"
         )
@@ -523,12 +532,6 @@ class Config(_IterableMixin):
         Returns:
             version
         """
-        # if version != fd_shifts.version():
-        #     raise ValueError(
-        #         f"This config was created with version {version} of fd-shifts. "
-        #         f"You are on {fd_shifts.version()}."
-        #     )
-
         return version
 
 

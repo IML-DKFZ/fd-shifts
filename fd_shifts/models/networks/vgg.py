@@ -105,7 +105,7 @@ class Encoder(DropoutEnablerMixin):
                 layers += [
                     nn.Conv2d(
                         in_channels, x, kernel_size=3, padding=1
-                    ),  # , padding_mode="reflect"
+                    ),
                     nn.BatchNorm2d(x),
                     nn.ReLU(inplace=True),
                 ]
@@ -161,7 +161,6 @@ class Flatten(nn.Module):
         So what it does is that given any input with input.size(0) # of batches,
         will flatten to be 1 * nb_elements.
         """
-        # out = out.view(out.size(0), -1)
         batch_size = input.size(0)
         out = input.view(batch_size, -1)
-        return out  # (batch_size, *size)
+        return out

@@ -22,8 +22,6 @@ class ViT(Network):
 class Encoder(DropoutEnablerMixin):
     def __init__(self, cf: configs.Config):
         super().__init__()
-        # name = cf.model.network.name if "vit" in cf.model.network.name else cf.model.network.backbone
-        # print("Init VGG type:{}".format(name))
         num_classes = cf.data.num_classes
         if cf.eval.ext_confid_name == "dg":
             num_classes += 1
@@ -54,9 +52,6 @@ class Encoder(DropoutEnablerMixin):
         x = self.model.forward_features(x)
         return x
 
-    # def load_state_dict(self, state_dict, strict=True):
-    #     print(state_dict)
-    #     self.model.load_state_dict(state_dict, strict)
 
 
 class Classifier(nn.Module):

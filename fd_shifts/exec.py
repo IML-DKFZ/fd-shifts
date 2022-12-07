@@ -21,7 +21,9 @@ configs.init()
 
 
 def train(
-    cf: configs.Config, progress: RichProgressBar = RichProgressBar(), subsequent_testing: bool = False
+    cf: configs.Config,
+    progress: RichProgressBar = RichProgressBar(),
+    subsequent_testing: bool = False,
 ) -> None:
     """
     perform the training routine for a given fold. saves plots and selected parameters to the experiment dir
@@ -33,7 +35,6 @@ def train(
     if cf.exp.global_seed is not None:
         exp_utils.set_seed(cf.exp.global_seed)
         cf.trainer.benchmark = False
-        # train_deterministic_flag = True
         logger.info(
             "setting seed {}, benchmark to False for deterministic training.".format(
                 cf.exp.global_seed
@@ -44,17 +45,16 @@ def train(
     cf.exp.version = exp_utils.get_next_version(cf.exp.dir)
     if cf.trainer.resume_from_ckpt:
         cf.exp.version -= 1
-        resume_ckpt_path = exp_utils.get_resume_ckpt_path(cf)
+        resume_ckpt_path = exp_utils._get_resume_ckpt_path(cf)
         logger.info("resuming previous training:", resume_ckpt_path)
 
     if cf.trainer.resume_from_ckpt_confidnet:
         cf.exp.version -= 1
         cf.trainer.callbacks.training_stages.pretrained_confidnet_path = (
-            exp_utils.get_resume_ckpt_path(cf)
+            exp_utils._get_resume_ckpt_path(cf)
         )
         logger.info("resuming previous training:", resume_ckpt_path)
 
-    # TODO: Don't hard-code number of total classes and number of holdout classes
     if "openset" in cf.data.dataset:
         cf.data.kwargs["out_classes"] = cf.data.kwargs.get(
             "out_classes",
@@ -68,13 +68,11 @@ def train(
         name=cf.exp.name,
         default_hp_metric=False,
     )
-    # cf.exp.version = tb_logger.version
     csv_logger = CSVLogger(
         save_dir=str(cf.exp.group_dir), name=cf.exp.name, version=cf.exp.version
     )
 
     max_steps = cf.trainer.num_steps if hasattr(cf.trainer, "num_steps") else None
-    # accelerator = cf.trainer.accelerator if hasattr(cf.trainer, "accelerator") else None
     accumulate_grad_batches = (
         cf.trainer.accumulate_grad_batches
         if hasattr(cf.trainer, "accumulate_grad_batches")
@@ -82,7 +80,6 @@ def train(
     )
 
     trainer = pl.Trainer(
-        # gpus=-1,
         accelerator="auto",
         devices="auto",
         logger=[tb_logger, csv_logger],
@@ -94,11 +91,8 @@ def train(
         check_val_every_n_epoch=cf.trainer.val_every_n_epoch,
         fast_dev_run=cf.trainer.fast_dev_run,
         num_sanity_val_steps=5,
-        # amp_level="O0",
         deterministic=train_deterministic_flag,
-        # limit_train_batches=50,
         limit_val_batches=0 if cf.trainer.do_val is False else 1.0,
-        # replace_sampler_ddp=False,
         gradient_clip_val=1,
         accumulate_grad_batches=accumulate_grad_batches,
     )
@@ -107,23 +101,26 @@ def train(
         "logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version)
     )
     trainer.fit(model=model, datamodule=datamodule)
-    # analysis.main(in_path=cf.exp.version_dir,
-    #               out_path=cf.exp.version_dir,
-    #               query_studies={"iid_study": cf.data.dataset})
 
     if subsequent_testing:
         test(cf, progress)
 
 
 def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> None:
+    """Run inference
+
+    Args:
+        cf (configs.Config): configuration object to run inference on
+        progress: (RichProgressBar): global progress bar
+    """
     if "best" in cf.test.selection_criterion and cf.test.only_latest_version is False:
-        ckpt_path = exp_utils.get_path_to_best_ckpt(
+        ckpt_path = exp_utils._get_path_to_best_ckpt(
             cf.exp.dir, cf.test.selection_criterion, cf.test.selection_mode
         )
     else:
         logger.info("CHECK cf.exp.dir", cf.exp.dir)
         cf.exp.version = exp_utils.get_most_recent_version(cf.exp.dir)
-        ckpt_path = exp_utils.get_resume_ckpt_path(cf)
+        ckpt_path = exp_utils._get_resume_ckpt_path(cf)
 
     logger.info(
         "testing model from checkpoint: {} from model selection tpye {}".format(
@@ -140,7 +137,6 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
         os.makedirs(cf.test.dir)
 
     trainer = pl.Trainer(
-        # gpus=-1,
         accelerator="auto",
         devices="auto",
         logger=False,
@@ -157,18 +153,18 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
         cf=cf,
     )
 
-    # fix str bug
-    # test resuming by testing a second time in the same dir
-    # how to print the tested epoch into csv log?
-
 
 @hydra.main(config_path="configs", config_name="config")
 def main(dconf: DictConfig) -> None:
+    """main entry point for running anything with a Trainer
+
+    Args:
+        dconf (DictConfig): config passed in by hydra
+    """
     multiprocessing.set_start_method("spawn")
 
     reconfigure(stderr=True, force_terminal=True)
     progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
-    # progress._console = console
     logger.remove()  # Remove default 'stderr' handler
 
     # We need to specify end=''" as log message already ends with \n (thus the lambda function)
@@ -201,7 +197,6 @@ def main(dconf: DictConfig) -> None:
         _fix_metadata(dconf)
         conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
 
-        # with set_validation(configs.Config, False):
         conf.__pydantic_validate_values__()
 
         if conf.exp.mode == configs.Mode.train:
@@ -211,7 +206,7 @@ def main(dconf: DictConfig) -> None:
 
             if conf.trainer.resume_from_ckpt_confidnet:
                 conf.exp.version -= 1
-            conf.data.num_workers = exp_utils.get_allowed_n_proc_DA(
+            conf.data.num_workers = exp_utils._get_allowed_n_proc_DA(
                 conf.data.num_workers
             )
 
@@ -227,11 +222,10 @@ def main(dconf: DictConfig) -> None:
 
             if conf.trainer.resume_from_ckpt_confidnet:
                 conf.exp.version -= 1
-            conf.data.num_workers = exp_utils.get_allowed_n_proc_DA(
+            conf.data.num_workers = exp_utils._get_allowed_n_proc_DA(
                 conf.data.num_workers
             )
 
-            # conf.validate()
             conf.__pydantic_validate_values__()
             logger.info(OmegaConf.to_yaml(conf))
             train(conf, progress, subsequent_testing=True)
@@ -241,7 +235,7 @@ def main(dconf: DictConfig) -> None:
                 "best" in conf.test.selection_criterion
                 and conf.test.only_latest_version is False
             ):
-                ckpt_path = exp_utils.get_path_to_best_ckpt(
+                ckpt_path = exp_utils._get_path_to_best_ckpt(
                     conf.exp.dir,
                     conf.test.selection_criterion,
                     conf.test.selection_mode,
@@ -249,27 +243,12 @@ def main(dconf: DictConfig) -> None:
             else:
                 logger.info("CHECK conf.exp.dir", conf.exp.dir)
                 conf.exp.version = exp_utils.get_most_recent_version(conf.exp.dir)
-                ckpt_path = exp_utils.get_resume_ckpt_path(conf)
-            # conf.validate()
+                ckpt_path = exp_utils._get_resume_ckpt_path(conf)
             conf.__pydantic_validate_values__()
             logger.info(OmegaConf.to_yaml(conf))
             test(conf, progress)
 
         elif conf.exp.mode == configs.Mode.analysis:
-            # if (
-            #     "best" in conf.test.selection_criterion
-            #     and conf.test.only_latest_version is False
-            # ):
-            #     ckpt_path = exp_utils.get_path_to_best_ckpt(
-            #         conf.exp.dir,
-            #         conf.test.selection_criterion,
-            #         conf.test.selection_mode,
-            #     )
-            # else:
-            #     logger.info("CHECK conf.exp.dir", conf.exp.dir)
-            #     conf.exp.version = exp_utils.get_most_recent_version(conf.exp.dir)
-            #     ckpt_path = exp_utils.get_resume_ckpt_path(conf)
-
             conf.__pydantic_validate_values__()
             logger.info(OmegaConf.to_yaml(conf))
             analysis.main(

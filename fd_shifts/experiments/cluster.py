@@ -65,13 +65,6 @@ def is_experiment_running(
 def get_batch_size(dataset: str, model: str, mode: str):
     match mode:
         case "test":
-            # if model == "vit":
-            #     return 80
-            #
-            # if dataset in ["wilds_animals", "animals", "breeds"]:
-            #     return 128
-            #
-            # return 512
             if model == "vit":
                 return 80
 
@@ -120,14 +113,12 @@ def get_gmem(mode: str, model: str):
                 case "vit":
                     return "33G"
                 case _:
-                    # return "10.7G"
                     return "33G"
         case _:
             match model:
                 case "vit":
                     return "33G"
                 case _:
-                    # return "10.7G"
                     return "33G"
 
 
@@ -157,13 +148,6 @@ def submit(_experiments: list[experiments.Experiment], mode: str, dry_run: bool)
                     dry_run=dry_run,
                 )
 
-            # cmd = BASH_BASE_COMMAND.format(
-            #     config_path=experiment.to_path().relative_to("fd-shifts"),
-            #     batch_size=get_batch_size(
-            #         experiment.dataset, experiment.model, mode
-            #     ),
-            #     mode=mode,
-            # ).strip()
             overrides = update_overrides(experiment.overrides())
             cmd = BASH_BASE_COMMAND.format(
                 overrides=" ".join(f"{k}={v}" for k, v in overrides.items()),

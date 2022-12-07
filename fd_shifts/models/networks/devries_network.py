@@ -10,10 +10,10 @@ class DeVriesAndEncoder(networks.network.Network):
 
         network = networks.get_network(cf.model.network.backbone)(
             cf
-        )  # todo make arguments explcit!
+        )
         self._encoder = network.encoder
         self._classifier = network.classifier
-        self.devries_net = DeVriesNet(cf)  # todo make arguments explcit!
+        self.devries_net = DeVriesNet(cf)
 
     @property
     def encoder(self) -> networks.network.DropoutEnablerMixin:

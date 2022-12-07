@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
 
 def _get_network_factory() -> dict[str, NetworkFactoryType]:
-    # Available models
     from fd_shifts.models.networks import (
         confidnet,
         devries_network,

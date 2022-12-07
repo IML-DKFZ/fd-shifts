@@ -13,11 +13,7 @@ from fd_shifts.reporting.tables import (
     rank_comparison_mode,
 )
 
-# TODO: Refactor the rest
-# TODO: Add error handling
-# TODO: Implement sanity checks on final result table
 
-# TODO: Take this from config
 DATASETS = (
     "svhn",
     "cifar10",
@@ -66,6 +62,11 @@ def _filter_experiment_by_dataset(experiments: list[Experiment], dataset: str):
 
 
 def gather_data(data_dir: Path):
+    """Collect all csv files from experiments into one location
+
+    Args:
+        data_dir (Path): where to collect to
+    """
     experiment_dir = Path(os.environ["EXPERIMENT_ROOT_DIR"])
     experiments = get_all_experiments()
 
@@ -104,6 +105,19 @@ def gather_data(data_dir: Path):
 
 
 def load_file(path: Path, experiment_override: str | None = None) -> pd.DataFrame:
+    """Load experiment result csv into dataframe and set experiment accordingly
+
+    Args:
+        path (Path): path to csv file
+        experiment_override (str | None): use this experiment instead of inferring it from the file
+
+    Returns:
+        Dataframe created from csv including some cleanup
+
+    Raises:
+        FileNotFoundError: if the file at path does not exist
+        RuntimeError: if loading does not result in a dataframe
+    """
     result = pd.read_csv(path)
 
     if not isinstance(result, pd.DataFrame):
@@ -125,7 +139,15 @@ def load_file(path: Path, experiment_override: str | None = None) -> pd.DataFram
     return result
 
 
-def load_data(data_dir: Path):
+def load_data(data_dir: Path) -> tuple[pd.DataFrame, list[str]]:
+    """
+    Args:
+        data_dir (Path): the directory where all experiment results are
+
+    Returns:
+        dataframe with all experiments and list of experiments that were loaded
+
+    """
     data = pd.concat(
         [
             load_file(path)
@@ -146,7 +168,6 @@ def load_data(data_dir: Path):
 
     data = data.query(
         'not ((experiment.str.contains("super_cifar100")'
-        # 'or experiment.str.contains("openset"))'
         ")"
         'and not (study == "iid_study"))'
     )
@@ -177,38 +198,6 @@ def load_data(data_dir: Path):
         ),
     )
 
-    # data = data.assign(
-    #     study=data.study.mask(
-    #         data.experiment == "svhn_openset",
-    #         "svhn_openset_study",
-    #     )
-    # )
-    #
-    # data = data.assign(
-    #     study=data.study.mask(
-    #         data.experiment == "svhn_opensetvit",
-    #         data[data.experiment == "svhn_opensetvit"].study.str.replace(
-    #             "svhn_openset", "svhnvit_openset"
-    #         ),
-    #     )
-    # )
-    #
-    # data = data.assign(
-    #     study=data.study.mask(
-    #         data.experiment == "animals_openset",
-    #         "animals_openset_study",
-    #     )
-    # )
-    #
-    # data = data.assign(
-    #     study=data.study.mask(
-    #         data.experiment == "animals_opensetvit",
-    #         data[data.experiment == "animals_opensetvit"].study.str.replace(
-    #             "animals_openset", "animalsvit_openset"
-    #         ),
-    #     )
-    # )
-
     data = data.assign(ece=data.ece.mask(data.ece < 0))
 
     exp_names = list(
@@ -221,7 +210,7 @@ def load_data(data_dir: Path):
     return data, exp_names
 
 
-def extract_hparam(
+def _extract_hparam(
     name: pd.Series, regex: str, default: str | None = None
 ) -> pd.Series:
 
@@ -230,8 +219,18 @@ def extract_hparam(
 
 
 def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
+    """Create columns for hyperparameters from experiment names
+
+    Args:
+        data (pd.DataFrame): experiment data
+
+    Returns:
+        experiment data with additional columns
+    """
     data = data.assign(
-        backbone=lambda data: extract_hparam(data.name, r"bb([a-z0-9]+)(_small_conv)?"),
+        backbone=lambda data: _extract_hparam(
+            data.name, r"bb([a-z0-9]+)(_small_conv)?"
+        ),
         # Prefix model name with vit_ if it is a vit model
         # If it isn't a vit model, model is the first part of the name
         model=lambda data: data["backbone"]
@@ -240,12 +239,11 @@ def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
         + data.model.where(
             data.backbone == "vit", data.name.str.split("_", expand=True)[0]
         ),
-        run=lambda data: extract_hparam(data.name, r"run([0-9]+)"),
-        dropout=lambda data: extract_hparam(data.name, r"do([01])"),
-        rew=lambda data: extract_hparam(data.name, r"rew([0-9.]+)"),
-        lr=lambda data: extract_hparam(data.name, r"lr([0-9.]+)", "0.1"),
+        run=lambda data: _extract_hparam(data.name, r"run([0-9]+)"),
+        dropout=lambda data: _extract_hparam(data.name, r"do([01])"),
+        rew=lambda data: _extract_hparam(data.name, r"rew([0-9.]+)"),
+        lr=lambda data: _extract_hparam(data.name, r"lr([0-9.]+)", "0.1"),
         # Encode every detail into confid name
-        # TODO: Should probably not be needed
         _confid=data.confid,
         confid=lambda data: data.model
         + "_"
@@ -263,16 +261,20 @@ def filter_best_lr(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFrame:
     """
     for every study (which encodes dataset) and confidence (which encodes other stuff)
     select all runs with the best avg combo of reward and dropout
-    (maybe learning rate? should actually have been selected before)
+
+    Args:
+        data (pd.DataFrame): experiment data
+        metric (str): metric to select best from
+
+    Returns:
+        filtered data
     """
 
-    def filter_row(row, selection_df, optimization_columns, fixed_columns):
+    def _filter_row(row, selection_df, optimization_columns, fixed_columns):
         if "openset" in row["study"]:
             return True
         if "superclasses" in row["study"]:
             return True
-        # if "mcd_mls" in row["confid"]:
-        #     return True
         if "vit" not in row["model"]:
             return True
         temp = selection_df[
@@ -294,7 +296,7 @@ def filter_best_lr(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFrame:
         "model",
         "rew",
         "dropout",
-    ]  # TODO: Merge these as soon as the first tuple doesn't encode everything anymore
+    ]
     optimization_columns = ["lr"]
     aggregation_columns = ["run", metric]
 
@@ -315,7 +317,7 @@ def filter_best_lr(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFrame:
 
     data = data[
         data.apply(
-            lambda row: filter_row(
+            lambda row: _filter_row(
                 row, selection_df, optimization_columns, fixed_columns
             ),
             axis=1,
@@ -329,10 +331,16 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
     """
     for every study (which encodes dataset) and confidence (which encodes other stuff)
     select all runs with the best avg combo of reward and dropout
-    (maybe learning rate? should actually have been selected before)
+
+    Args:
+        data (pd.DataFrame): experiment data
+        metric (str): metric to select best from
+
+    Returns:
+        filtered data
     """
 
-    def filter_row(row, selection_df, optimization_columns, fixed_columns):
+    def _filter_row(row, selection_df, optimization_columns, fixed_columns):
         if "openset" in row["study"]:
             return True
         temp = selection_df[
@@ -352,8 +360,7 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
         "experiment",
         "_confid",
         "model",
-    ]  # TODO: Merge these as soon as the first tuple doesn't encode everything anymore
-    # optimization_columns = ["lr", "rew", "dropout"]
+    ]
     optimization_columns = ["rew", "dropout"]
     aggregation_columns = ["run", metric]
 
@@ -372,11 +379,9 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
         selection_df.groupby(fixed_columns)[metric].idxmin()
     ]
 
-    # print(selection_df[selection_df.model == "dg"])
-
     data = data[
         data.apply(
-            lambda row: filter_row(
+            lambda row: _filter_row(
                 row, selection_df, optimization_columns, fixed_columns
             ),
             axis=1,
@@ -409,11 +414,30 @@ def _confid_string_to_name(confid: pd.Series) -> pd.Series:
 
 
 def rename_confids(data: pd.DataFrame) -> pd.DataFrame:
+    """Encode model info in the confid name
+
+    Args:
+        data (pd.DataFrame): experiment data
+
+    Returns:
+        experiment data with renamed confids
+    """
     data = data.assign(confid=_confid_string_to_name(data.model + "_" + data._confid))
     return data
 
 
 def rename_studies(data: pd.DataFrame) -> pd.DataFrame:
+    """Remove redundant info from study names.
+
+    You should have transfered that info to other places using the other functions in this module
+    beforehand.
+
+    Args:
+        data (pd.DataFrame): experiment data
+
+    Returns:
+        experiment data with renamed confids
+    """
     data = data.assign(
         study=data.study.str.replace("tinyimagenet_384", "tinyimagenet_resize")
         .str.replace("vit", "")
@@ -422,18 +446,25 @@ def rename_studies(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def filter_unused(data: pd.DataFrame) -> pd.DataFrame:
+def _filter_unused(data: pd.DataFrame) -> pd.DataFrame:
     data = data[
         (~data.confid.str.contains("waic"))
         & (~data.confid.str.contains("devries_mcd"))
         & (~data.confid.str.contains("devries_det"))
         & (~data.confid.str.contains("_sv"))
-        # & (~data.confid.str.contains("_mi"))
     ]
     return data
 
 
 def str_format_metrics(data: pd.DataFrame) -> pd.DataFrame:
+    """Format metrics to strings with appropriate precision
+
+    Args:
+        data (pd.DataFrame): experiment data
+
+    Returns:
+        experiment data with formatted metrics
+    """
     data = data.rename(columns={"fail-NLL": "failNLL"})
 
     data = data.assign(
@@ -451,6 +482,11 @@ def str_format_metrics(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def main(base_path: str | Path):
+    """Main entrypoint for CLI report generation
+
+    Args:
+        base_path (str | Path): path where experiment data lies
+    """
     pd.set_option("display.max_rows", None)
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
@@ -459,7 +495,7 @@ def main(base_path: str | Path):
     data_dir: Path = Path(base_path).expanduser().resolve()
     data_dir.mkdir(exist_ok=True, parents=True)
 
-    # gather_data(data_dir)
+    gather_data(data_dir)
 
     data, exp_names = load_data(data_dir)
 
@@ -468,12 +504,12 @@ def main(base_path: str | Path):
     data = filter_best_lr(data)
     data = filter_best_hparams(data)
 
-    data = filter_unused(data)
+    data = _filter_unused(data)
     data = rename_confids(data)
     data = rename_studies(data)
 
-    # plot_rank_style(data, "cifar10", "aurc", data_dir)
-    # vit_v_cnn_box(data, data_dir)
+    plot_rank_style(data, "cifar10", "aurc", data_dir)
+    vit_v_cnn_box(data, data_dir)
 
     data = tables.aggregate_over_runs(data)
     data = str_format_metrics(data)

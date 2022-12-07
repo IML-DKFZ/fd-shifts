@@ -5,7 +5,6 @@ from rich import print
 from rich.syntax import Syntax
 
 BASH_RSYNC_COMMAND = r"""
-# rsync --relative /home/t974t/NetworkDrives/E130-Personal/Bungert/./{dir}/ odcf-worker01:/dkfz/cluster/gpu/checkpoints/OE0612/t974t/ --exclude='*.npz*' -azzhuv --info=progress2
 rsync --relative /media/experiments/./{dir}/ odcf-worker01:/dkfz/cluster/gpu/checkpoints/OE0612/t974t/ --include='*/' --include='last.ckpt' --exclude='*' -azzhuv --info=progress2
 """
 

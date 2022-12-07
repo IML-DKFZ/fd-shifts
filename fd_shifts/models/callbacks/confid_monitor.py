@@ -18,6 +18,36 @@ DTYPES = {
 
 
 class ConfidMonitor(Callback):
+    """Callback to save confids and logits to disk
+
+    Attributes: 
+        sync_dist: 
+        cfg: 
+        output_dtype: 
+        num_epochs: 
+        num_classes: 
+        fast_dev_run: 
+        tensorboard_hparams: 
+        query_performance_metrics: 
+        query_confid_metrics: 
+        query_monitor_plots: 
+        query_confids: 
+        output_paths: 
+        version_dir: 
+        val_every_n_epoch: 
+        running_test_softmax: 
+        running_test_softmax_dist: 
+        running_test_labels: 
+        running_test_dataset_idx: 
+        running_test_external_confids: 
+        running_test_external_confids_dist: 
+        running_confid_stats: 
+        running_perf_stats: 
+        running_train_correct_sum_sanity: 
+        running_val_correct_sum_sanity: 
+        running_train_correct_sum_sanity: 
+        running_val_correct_sum_sanity: 
+    """
     def __init__(self, cf: configs.Config):
         self.sync_dist = True if torch.cuda.device_count() > 1 else False
 
@@ -30,7 +60,7 @@ class ConfidMonitor(Callback):
         self.num_classes = cf.data.num_classes
         self.fast_dev_run = cf.trainer.fast_dev_run
 
-        self.tensorboard_hparams = eval_utils.get_tb_hparams(cf)
+        self.tensorboard_hparams = eval_utils._get_tb_hparams(cf)
         self.query_performance_metrics = cf.eval.performance_metrics
         self.query_confid_metrics = cf.eval.confid_metrics
         self.query_monitor_plots = cf.eval.monitor_plots
@@ -73,7 +103,7 @@ class ConfidMonitor(Callback):
             )
             pl_module.loggers[0].log_hyperparams(
                 self.tensorboard_hparams, hp_metrics
-            )  # , {"hp/metric_1": 0, "hp/metric_2": 0})
+            )
 
     def on_train_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
@@ -195,8 +225,6 @@ class ConfidMonitor(Callback):
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
 
-        # todo organize in dicts / factories instead of if else statements?
-
         tmp_correct = None
         loss = outputs["loss"]
         softmax = outputs["softmax"]
@@ -220,7 +248,6 @@ class ConfidMonitor(Callback):
                     tmp_correct = (torch.argmax(softmax, dim=1) == y).type(
                         torch.ByteTensor
                     )
-                    # print(tmp_correct.sum())
                     self.running_perf_stats["val"]["accuracy"].append(
                         tmp_correct.sum() / tmp_correct.numel()
                     )

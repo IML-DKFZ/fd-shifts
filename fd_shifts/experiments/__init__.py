@@ -176,29 +176,6 @@ class Experiment:
 def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
     _experiments = []
 
-    # ViT Hyperparameter sweep
-    # if with_hyperparameter_sweep:
-    #     _experiments.extend(
-    #         Experiment.from_iterables(
-    #             group_dir=Path("fd-shifts/vit"),
-    #             datasets=(
-    #                 "cifar10",
-    #                 "cifar100",
-    #                 "super_cifar100",
-    #                 "svhn",
-    #                 "breeds",
-    #                 "wilds_animals",
-    #                 "wilds_camelyon",
-    #             ),
-    #             models=("vit",),
-    #             backbones=("vit",),
-    #             dropouts=(0, 1),
-    #             runs=(0,),
-    #             rewards=(0,),
-    #             learning_rates=(3e-2, 1e-2, 3e-3, 1e-3, 3e-4, 1e-4),
-    #         )
-    #     )
-
     # ViT Best lr runs
     _experiments.extend(
         Experiment.from_iterables(

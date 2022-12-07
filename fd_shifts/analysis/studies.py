@@ -8,9 +8,6 @@ import numpy.typing as npt
 
 from . import logger
 
-# TODO: Better error handling
-# FIX: Move noise study destructuring to the dataset
-
 if TYPE_CHECKING:
     from fd_shifts.analysis import Analysis, ExperimentData
 
@@ -18,6 +15,14 @@ _filter_funcs = {}
 
 
 def register_filter_func(name: str) -> Callable:
+    """Decorator to register a new filter function
+
+    Args:
+        name (str): name to register under
+
+    Returns:
+        registered callable
+    """
     def _inner_wrapper(func: Callable) -> Callable:
         _filter_funcs[name] = func
         return func
@@ -25,7 +30,15 @@ def register_filter_func(name: str) -> Callable:
     return _inner_wrapper
 
 
-def get_filter_function(study_name: str):
+def get_filter_function(study_name: str) -> Callable:
+    """Get the filter callable registered under study_name
+
+    Args:
+        study_name (str): name of the study
+
+    Returns:
+        callable
+    """
     if study_name not in _filter_funcs:
         return _filter_funcs["*"]
 
@@ -36,6 +49,14 @@ _study_iterators = {}
 
 
 def register_study_iterator(name: str) -> Callable:
+    """Decorator to register a new study iterator
+
+    Args:
+        name (str): name to register under
+
+    Returns:
+        registered callable
+    """
     def _inner_wrapper(func: Callable) -> Callable:
         _study_iterators[name] = func
         return func
@@ -43,7 +64,15 @@ def register_study_iterator(name: str) -> Callable:
     return _inner_wrapper
 
 
-def get_study_iterator(study_name: str):
+def get_study_iterator(study_name: str) -> Callable:
+    """Get the study iterator registered under confid_name
+
+    Args:
+        study_name (str): name of the study
+
+    Returns:
+        callable
+    """
     if study_name not in _study_iterators:
         return _study_iterators["*"]
 
@@ -52,6 +81,15 @@ def get_study_iterator(study_name: str):
 
 @register_filter_func("*")
 def filter_data(data: "ExperimentData", dataset_name: str) -> "ExperimentData":
+    """Filter experiment data by dataset
+
+    Args:
+        data (ExperimentData): unfiltered experiment data
+        dataset_name (str): dataset to filter by
+
+    Returns:
+        filtered experiment data
+    """
     return data.filter_dataset_by_name(dataset_name)
 
 
@@ -59,6 +97,15 @@ def filter_data(data: "ExperimentData", dataset_name: str) -> "ExperimentData":
 def iterate_default_study(
     study_name: str, analysis: "Analysis"
 ) -> Iterator[Tuple[str, "ExperimentData"]]:
+    """Generic iterator over filtered experiment data based on studies to run
+
+    Args:
+        study_name (str): name of the study
+        analysis (Analysis): analysis wrapper object
+
+    Yields:
+        tuples of study names and filtered data
+    """
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     study_data = filter_func(
         analysis.experiment_data,
@@ -74,6 +121,15 @@ def iterate_default_study(
 def iterate_in_class_study_data(
     study_name: str, analysis: "Analysis"
 ) -> Iterator[Tuple[str, "ExperimentData"]]:
+    """Iterator over filtered experiment data based on sub-class shift datasets
+
+    Args:
+        study_name (str): name of the study
+        analysis (Analysis): analysis wrapper object
+
+    Yields:
+        tuples of study names and filtered data
+    """
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     for in_class_set in getattr(analysis.query_studies, study_name):
         study_data = filter_func(
@@ -91,7 +147,17 @@ def filter_new_class_study_data(
     dataset_name: str,
     mode: str = "proposed_mode",
 ) -> "ExperimentData":
-    # TODO: Make this more pretty
+    """Filter experiment data by new-class dataset and set correct array
+
+    Args:
+        data (ExperimentData): unfiltered experiment data
+        iid_set_name (str): iid dataset
+        dataset_name (str): dataset to filter by
+        mode (str): handling of iid missclassifications
+
+    Returns:
+        filtered experiment data
+    """
     iid_set_ix = data.dataset_name_to_idx(iid_set_name)
     new_class_set_ix = data.dataset_name_to_idx(dataset_name)
 
@@ -156,6 +222,15 @@ def filter_new_class_study_data(
 def iterate_new_class_study_data(
     study_name: str, analysis: "Analysis"
 ) -> Iterator[Tuple[str, "ExperimentData"]]:
+    """Iterator over filtered experiment data based on new-class shift datasets
+
+    Args:
+        study_name (str): name of the study
+        analysis (Analysis): analysis wrapper object
+
+    Yields:
+        tuples of study names and filtered data
+    """
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     for new_class_set in getattr(analysis.query_studies, study_name):
         for mode in ["original_mode", "proposed_mode"]:
@@ -177,7 +252,17 @@ def filter_openset_study_data(
     holdout_classes: list[int],
     mode: str = "proposed_mode",
 ) -> "ExperimentData":
-    # TODO: Make this more pretty
+    """Filter experiment data by openset dataset and set correct array
+
+    Args:
+        data (ExperimentData): unfiltered experiment data
+        iid_set_name (str): iid dataset
+        holdout_classes (list[int]): classes that were not trained on
+        mode (str): handling of iid missclassifications
+
+    Returns:
+        filtered experiment data
+    """
     select_ix_in = np.argwhere(np.isin(data.labels, holdout_classes, invert=True))[:, 0]
     select_ix_out = np.argwhere(np.isin(data.labels, holdout_classes))[:, 0]
 
@@ -190,7 +275,6 @@ def filter_openset_study_data(
             select_ix_in
         ] = 1  # nice to see so visual how little practical sense the current protocol makes!
     labels = deepcopy(data.labels)
-    # labels[select_ix_out] = -99
 
     select_ix_all = np.argwhere(
         np.isin(data.labels, holdout_classes)
@@ -239,6 +323,15 @@ def filter_openset_study_data(
 def iterate_openset_study_data(
     study_name: str, analysis: "Analysis"
 ) -> Iterator[Tuple[str, "ExperimentData"]]:
+    """Iterator over filtered experiment data based on openset datasets
+
+    Args:
+        study_name (str): name of the study
+        analysis (Analysis): analysis wrapper object
+
+    Yields:
+        tuples of study names and filtered data
+    """
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     for mode in ["original_mode", "proposed_mode"]:
 
@@ -256,6 +349,16 @@ def iterate_openset_study_data(
 def filter_noise_study_data(
     data: "ExperimentData", dataset_name: str, noise_level: int = 1
 ) -> "ExperimentData":
+    """Filter experiment data by corruption shift dataset
+
+    Args:
+        data (ExperimentData): unfiltered experiment data
+        dataset_name (str): dataset to filter by
+        noise_level (int): level of corruption
+
+    Returns:
+        filtered experiment data
+    """
     noise_set_ix = data.dataset_name_to_idx(dataset_name)
 
     select_ix = np.argwhere(data.dataset_idx == noise_set_ix)[:, 0]
@@ -315,6 +418,15 @@ def filter_noise_study_data(
 def iterate_noise_study_data(
     study_name: str, analysis: "Analysis"
 ) -> Iterator[Tuple[str, "ExperimentData"]]:
+    """Iterator over filtered experiment data based on corruption shift datasets
+
+    Args:
+        study_name (str): name of the study
+        analysis (Analysis): analysis wrapper object
+
+    Yields:
+        tuples of study names and filtered data
+    """
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     for noise_set in getattr(analysis.query_studies, study_name):
         for intensity_level in range(5):

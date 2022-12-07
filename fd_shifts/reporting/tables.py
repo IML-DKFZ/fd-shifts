@@ -80,66 +80,15 @@ LATEX_TABLE_TEMPLATE_LANDSCAPE = r"""
 \end{document}
 """
 
-
-_sanity_checks: dict[str, list[Callable]] = {}
-
-
-def register_sanity_check(metric: str):
-    def _inner_func(func: Callable) -> Callable:
-        if not metric in _sanity_checks:
-            _sanity_checks[metric] = []
-        _sanity_checks[metric].append(func)
-        return func
-
-    return _inner_func
-
-
-def str_to_float(x: str):
-    try:
-        return float(x)
-    except:
-        return None
-
-
-# @register_sanity_check("aurc")
-def check_binary_class_msr_pe_equal(table: pd.DataFrame):
-    # TODO: Broken for current test data
-    return (
-        table.loc[("MSR", "CNN"), ("CAMELYON", "iid", "")]
-        == table.loc[("PE", "CNN"), ("CAMELYON", "iid", "")]
-    ) and (
-        table.loc[("MSR", "ViT"), ("CAMELYON", "iid", "")]
-        == table.loc[("PE", "ViT"), ("CAMELYON", "iid", "")]
-    )
-
-
-# @register_sanity_check("accuracy")
-def check_accuracy_valid_range(table: pd.DataFrame):
-    tmp = table.applymap(str_to_float)
-    return ((tmp > 0) & (tmp < 100)).all()
-
-
-# @register_sanity_check("aurc")
-def check_aurc_valid_range(table: pd.DataFrame):
-    tmp = table.applymap(str_to_float)
-    return ((tmp > 0) & (tmp < 1000)).all()
-
-
-# @register_sanity_check("ece")
-def check_ece_valid_range(table: pd.DataFrame):
-    tmp = table.applymap(str_to_float)
-    return ((tmp > 0) & (tmp < 1)).all()
-
-
-def sanity_check(table: pd.DataFrame, metric: str):
-    if not metric in _sanity_checks:
-        return
-
-    for check in _sanity_checks[metric]:
-        assert check(table)
-
-
 def aggregate_over_runs(data: pd.DataFrame) -> pd.DataFrame:
+    """Compute means over equivalent runs
+
+    Args:
+        data (pd.DataFrame): experiment data
+
+    Returns:
+        aggregated experiment data
+    """
     fixed_columns = ["study", "confid"]
     metrics_columns = ["accuracy", "aurc", "ece", "failauc", "fail-NLL"]
 
@@ -324,13 +273,24 @@ def _reorder_confids(data: pd.DataFrame) -> pd.DataFrame:
     data = data.reindex(labels=_study_list, level=0).sort_index(
         level=1, sort_remaining=False
     )
-    # print(data)
     return data
 
 
 def build_results_table(
     data: pd.DataFrame, metric: str, original_mode: bool = False, paper_filter: bool = True
 ) -> pd.DataFrame:
+    """Create results table from aggregated and cleaned experiment data
+
+    Args:
+        data (pd.DataFrame): experiment data
+        metric (str): metric to report
+        original_mode (bool): whether to report proposed or original handling of id
+            misclassifications
+        paper_filter (bool): whether to apply filters that are specific to the publication
+
+    Returns:
+        results table
+    """
     results_table = _create_results_pivot(data, metric, original_mode)
     if paper_filter:
         results_table = _aggregate_noise_studies(results_table, metric)
@@ -396,39 +356,8 @@ def _add_rank_columns(data: pd.DataFrame, ascending: bool = True) -> pd.DataFram
             ]
             .rank(axis=0, ascending=ascending, numeric_only=True, method="min"),
         )
-        # .sum(axis=1, level=0)
     )
-    # _rank_table = _rank_table.mask(
-    #     _rank_table.apply(
-    #         lambda row: row.index.get_level_values(1).str.contains("ViT"), axis=0
-    #     ),
-    #     _rank_table.applymap(float)
-    #     .loc[
-    #         _rank_table.index[
-    #             _rank_table.index.get_level_values(1).str.contains("ViT")
-    #         ],
-    #         _rank_table.columns,
-    #     ]
-    #     .rank(axis=0, ascending=True, numeric_only=True),
-    # ).mask(
-    #     _rank_table.apply(
-    #         lambda row: ~row.index.get_level_values(1).str.contains("ViT"), axis=0
-    #     ),
-    #     _rank_table.applymap(float)
-    #     .loc[
-    #         _rank_table.index[
-    #             ~_rank_table.index.get_level_values(1).str.contains("ViT")
-    #         ],
-    #         _rank_table.columns,
-    #     ]
-    #     .rank(axis=0, ascending=True, numeric_only=True),
-    # )
 
-    # print(_rank_table)
-    # for column in _rank_table.columns:
-    #     data[(column, "rank", "")] = _rank_table[column]
-    # data = _reorder_studies(data)
-    # print(data)
     return _rank_table
 
 
@@ -439,10 +368,18 @@ def paper_results(
     out_dir: Path,
     rank_cols: bool = False,
 ):
+    """Create colored results table in tex format
+
+    Args:
+        data (pd.DataFrame): cleaned up experiment data
+        metric (str): metric to report
+        invert (bool): whether for this metric lower is better or not
+        out_dir (Path): where to save the output to
+        rank_cols: (bool): whether to report ranks instead of absolute values
+    """
     _formatter = (
         lambda x: f"{x:>3.2f}"[:4] if "." in f"{x:>3.2f}"[:3] else f"{x:>3.2f}"[:3]
     )
-    # _print_original_mode(data, metric)
     results_table = build_results_table(data, metric)
     cmap = "Oranges_r" if invert else "Oranges"
 
@@ -457,7 +394,6 @@ def paper_results(
         columns=_dataset_to_display_name,
         level=0,
     )
-    # print(results_table.astype(float))
 
     sanity_check(results_table, metric)
 
@@ -466,7 +402,6 @@ def paper_results(
         lambda val: round(val, 2)
         if val < 10
         else round(val, 1)
-        # lambda val: round(val, 4) if val < 10 else round(val, 3)
     )
 
     gmap_vit = _compute_gmap(
@@ -516,134 +451,7 @@ def paper_results(
             _formatter,
             na_rep="*",
         )
-        # .format(
-        #     lambda x: f"{x:>3.4f}"[:6] if "." in f"{x:>3.4f}"[:5] else f"{x:>3.4f}"[:5],
-        #     na_rep="*",
-        # )
     )
-
-    # with open(out_dir / f"paper_results_{metric}.csv", "w") as f:
-    #     f.write(
-    #         ltex.data.applymap(
-    #             lambda x: f"{x:>3.2f}"[:4]
-    #             if "." in f"{x:>3.2f}"[:3]
-    #             else f"{x:>3.2f}"[:3]
-    #         ).to_csv()
-    #     )
-    # with open(out_dir / f"paper_results_{metric}.html", "w") as f:
-    #     f.write(
-    #         ltex.set_table_styles(
-    #             [
-    #                 {
-    #                     "selector": "th",
-    #                     "props": [
-    #                         ("font-size", "16pt"),
-    #                         ("border-style", "solid"),
-    #                         ("border-width", "2px"),
-    #                         ("margin", "0px"),
-    #                         ("border-collapse", "collapse"),
-    #                         ("border-spacing", "0"),
-    #                     ],
-    #                 },
-    #                 {
-    #                     "selector": "td",
-    #                     "props": [
-    #                         ("font-size", "16pt"),
-    #                         ("border", "1px solid black"),
-    #                         ("margin", "0px"),
-    #                         ("border-collapse", "collapse"),
-    #                         ("border-spacing", "0"),
-    #                     ],
-    #                 },
-    #                 {
-    #                     "selector": "thead",
-    #                     "props": [
-    #                         ("font-size", "16pt"),
-    #                         ("border", "1px solid black"),
-    #                         ("margin", "0px"),
-    #                         ("border-collapse", "collapse"),
-    #                         ("border-spacing", "0"),
-    #                     ],
-    #                 },
-    #                 {
-    #                     "selector": "tbody",
-    #                     "props": [
-    #                         ("font-size", "16pt"),
-    #                         ("border", "1px solid black"),
-    #                         ("margin", "0px"),
-    #                         ("border-collapse", "collapse"),
-    #                         ("border-spacing", "0"),
-    #                     ],
-    #                 },
-    #                 {
-    #                     "selector": "",
-    #                     "props": [
-    #                         ("font-size", "16pt"),
-    #                         ("border", "1px solid black"),
-    #                         ("margin", "0px"),
-    #                         ("border-collapse", "collapse"),
-    #                         ("border-spacing", "0"),
-    #                     ],
-    #                 },
-    #             ]
-    #         )
-    #         .set_properties(
-    #             **{
-    #                 "font-size": "16pt",
-    #                 "font-family": "Victor Mono",
-    #                 "padding": "1rem",
-    #                 "border": "1px solid black",
-    #                 "margin": "0px",
-    #                 "border-collapse": "collapse",
-    #                 "border-spacing": "0",
-    #                 # "background-color": "white",
-    #                 # "color": "black",
-    #                 "text-align": "center",
-    #             }
-    #         )
-    #         .set_table_styles(
-    #             {
-    #                 ("iWildCam", "iid", "",): [
-    #                     {"selector": "th", "props": "border-left: 4px solid black"},
-    #                     {"selector": "td", "props": "border-left: 4px solid black"},
-    #                 ],
-    #                 ("BREEDS", "iid", "",): [
-    #                     {"selector": "th", "props": "border-left: 4px solid black"},
-    #                     {"selector": "td", "props": "border-left: 4px solid black"},
-    #                 ],
-    #                 ("CAMELYON", "iid", "",): [
-    #                     {"selector": "th", "props": "border-left: 4px solid black"},
-    #                     {"selector": "td", "props": "border-left: 4px solid black"},
-    #                 ],
-    #                 ("CIFAR-100", "iid", "",): [
-    #                     {"selector": "th", "props": "border-left: 4px solid black"},
-    #                     {"selector": "td", "props": "border-left: 4px solid black"},
-    #                 ],
-    #                 ("CIFAR-10", "iid", "",): [
-    #                     {"selector": "th", "props": "border-left: 4px solid black"},
-    #                     {"selector": "td", "props": "border-left: 4px solid black"},
-    #                 ],
-    #                 ("SVHN", "iid", "",): [
-    #                     {"selector": "th", "props": "border-left: 4px solid black"},
-    #                     {"selector": "td", "props": "border-left: 4px solid black"},
-    #                 ],
-    #             },
-    #             overwrite=False,
-    #             axis=0,
-    #         )
-    #         .set_table_styles(
-    #             {
-    #                 ("PE", "CNN",): [
-    #                     {"selector": "tr", "props": "border-spacing: 1rem"},
-    #                     {"selector": "th", "props": "border-spacing: 1rem"},
-    #                     {"selector": "td", "props": "border-spacing: 1rem"},
-    #                 ],
-    #             },
-    #             overwrite=False,
-    #             axis=1,
-    #         )
-    #         .to_html()
-    #     )
 
     ltex.data.columns = ltex.data.columns.set_names(
         ["\\multicolumn{1}{c}{}", "study", "ncs-data set"]
@@ -676,7 +484,6 @@ def paper_results(
     ) as f:
         f.write(ltex)
 
-    # TODO: Make this toggleable
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
         shutil.copy2(
@@ -699,25 +506,23 @@ def paper_results(
 
 
 def rank_comparison_metric(data: pd.DataFrame, out_dir: Path):
+    """Create colored results table in tex format to compare ranking between metrics
+
+    Args:
+        data (pd.DataFrame): cleaned up experiment data
+        out_dir (Path): where to save the output to
+    """
     aurc_table = build_results_table(data, "aurc")
     aurc_table = _add_rank_columns(aurc_table)
     aurc_table.columns = pd.MultiIndex.from_tuples(
         map(lambda t: t + (r"$\alpha$",), aurc_table.columns)
-        # map(lambda t: t + (r"AURC",), aurc_table.columns)
     )
 
     failauc_table = build_results_table(data, "failauc")
     failauc_table = _add_rank_columns(failauc_table, False)
     failauc_table.columns = pd.MultiIndex.from_tuples(
         map(lambda t: t + (r"$\beta$",), failauc_table.columns)
-        # map(lambda t: t + (r"AUROCf",), failauc_table.columns)
     )
-    #
-    # nll_table = build_results_table(data, "fail-NLL")
-    # nll_table = _add_rank_columns(nll_table)
-    # nll_table.columns = pd.MultiIndex.from_tuples(
-    #     map(lambda t: t + (r"$\gamma$",), nll_table.columns)
-    # )
 
     results_table = pd.concat((aurc_table, failauc_table), axis=1)
     results_table = _reorder_studies(results_table, add_level=[r"$\alpha$", r"$\beta$"])
@@ -735,7 +540,6 @@ def rank_comparison_metric(data: pd.DataFrame, out_dir: Path):
         lambda val: round(val, 2)
         if val < 10
         else round(val, 1)
-        # lambda val: round(val, 4) if val < 10 else round(val, 3)
     )
 
     gmap_vit = _compute_gmap(
@@ -810,7 +614,6 @@ def rank_comparison_metric(data: pd.DataFrame, out_dir: Path):
     ltex = list(filter(lambda line: line != r"\toprule", ltex.splitlines()))
 
     # No separators in first header row
-    # ltex[1] = ltex[1].replace("?", "")
 
     # Remove last separator in second header row
     # (this is just `replace("?", "", 1)`, but from the right)
@@ -827,7 +630,6 @@ def rank_comparison_metric(data: pd.DataFrame, out_dir: Path):
     with open(out_dir / f"rank_metric_comparison.tex", "w") as f:
         f.write(ltex)
 
-    # TODO: Make this toggleable
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
         shutil.copy2(
@@ -849,6 +651,14 @@ def rank_comparison_metric(data: pd.DataFrame, out_dir: Path):
 
 
 def rank_comparison_mode(data: pd.DataFrame, out_dir: Path, rank: bool = True):
+    """Create colored results table in tex format to compare ranking between handling of iid
+    missclassifications
+
+    Args:
+        data (pd.DataFrame): cleaned up experiment data
+        out_dir (Path): where to save the output to
+        rank: (bool): whether to report ranks instead of absolute values
+    """
     prop_table = build_results_table(data, "failauc", original_mode=False)
     if rank:
         prop_table = _add_rank_columns(prop_table, False)
@@ -867,10 +677,8 @@ def rank_comparison_mode(data: pd.DataFrame, out_dir: Path, rank: bool = True):
     )
 
     results_table = pd.concat((prop_table, orig_table), axis=1)
-    # results_table = results_table.sort_index(axis=1)
     results_table = results_table[list(filter(lambda t: "ncs" in t[1], results_table.columns))]
     results_table = _reorder_studies(results_table, add_level=["P", "O"])
-    # print(results_table)
 
     if rank:
         _formatter = lambda x: f"{int(x):>3d}"
@@ -889,7 +697,6 @@ def rank_comparison_mode(data: pd.DataFrame, out_dir: Path, rank: bool = True):
         lambda val: round(val, 2)
         if val < 10
         else round(val, 1)
-        # lambda val: round(val, 4) if val < 10 else round(val, 3)
     )
 
     gmap_vit = _compute_gmap(
@@ -952,8 +759,6 @@ def rank_comparison_mode(data: pd.DataFrame, out_dir: Path, rank: bool = True):
         column_format=(
             "ll?"
             + 1 * "*{2}{r}h"
-            # + 2 * "*{2}{r}h"
-            # + 2 * "*{2}{r}h"
             + 3 * "*{2}{r}h"
             + 3 * "*{2}{r}h"
             + 3 * "*{2}{r}h" + "*{2}{r}"
@@ -964,7 +769,6 @@ def rank_comparison_mode(data: pd.DataFrame, out_dir: Path, rank: bool = True):
     ltex = list(filter(lambda line: line != r"\toprule", ltex.splitlines()))
 
     # No separators in first header row
-    # ltex[1] = ltex[1].replace("?", "")
 
     # Remove last separator in second header row
     # (this is just `replace("?", "", 1)`, but from the right)
@@ -981,7 +785,6 @@ def rank_comparison_mode(data: pd.DataFrame, out_dir: Path, rank: bool = True):
     with open(out_dir / f"{'rank_' if rank else ''}mode_comparison.tex", "w") as f:
         f.write(ltex)
 
-    # TODO: Make this toggleable
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
         shutil.copy2(

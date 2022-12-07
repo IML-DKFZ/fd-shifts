@@ -1,19 +1,21 @@
 import pytorch_lightning as pl
 
-from fd_shifts.models import (
-    confidnet_model,
-    devries_model,
-    vit_model,
-)
+from fd_shifts.models import confidnet_model, devries_model, vit_model
 
-# Available models
 _model_factory: dict[str, type[pl.LightningModule]] = {
     "confidnet_model": confidnet_model.Module,
     "devries_model": devries_model.net,
     "vit_model": vit_model.net,
 }
 
+
 def register_model(model_name: str, model: type[pl.LightningModule]) -> None:
+    """Register a new model class
+
+    Args:
+        model_name (str):
+        model (type[pl.LightningModule]):
+    """
     _model_factory[model_name] = model
 
 

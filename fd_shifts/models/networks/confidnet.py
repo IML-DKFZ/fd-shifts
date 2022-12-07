@@ -10,10 +10,10 @@ class ConfidNetAndEncoder(networks.network.Network):
 
         network = networks.get_network(cf.model.network.backbone)(
             cf
-        )  # todo make arguments explcit!
+        )
         self._encoder = network.encoder
         self._classifier = network.classifier
-        self.confid_net = ConfidNet(cf)  # todo make arguments explcit!
+        self.confid_net = ConfidNet(cf)
 
     @property
     def encoder(self) -> networks.network.DropoutEnablerMixin:

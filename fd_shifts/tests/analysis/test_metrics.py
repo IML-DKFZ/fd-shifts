@@ -9,7 +9,6 @@ from fd_shifts.analysis import metrics
 ArrayType = npt.NDArray[np.floating]
 ExpectedType = float | ArrayType | type[BaseException]
 
-# NOTE: Normalization?
 N_SAMPLES = 100
 N_BINS = 20
 
@@ -84,11 +83,8 @@ stats_caches = {
     },
 }
 
-# TODO: Integration tests?
-
 
 def test_stats_cache():
-    # raise NotImplementedError
     pass
 
 
@@ -139,8 +135,6 @@ def test_stats_cache():
     (stats_caches["some_nan_correct"]["some_nan_confid"], np.nan),
 ])
 def test_failauc(stats_cache: metrics.StatsCache, expected: ExpectedType):
-    # fpr, tpr = stats_cache.roc_curve_stats
-    # return skm.auc(fpr, tpr)
     if isinstance(expected, type):
         with pytest.raises(expected):
             metrics.failauc(stats_cache)
@@ -198,8 +192,6 @@ def test_failauc(stats_cache: metrics.StatsCache, expected: ExpectedType):
     (stats_caches["some_nan_correct"]["some_nan_confid"], np.nan),
 ])
 def test_fpr_at_95_tpr(stats_cache: metrics.StatsCache, expected: ExpectedType):
-    # fpr, tpr = stats_cache.roc_curve_stats
-    # return np.min(fpr[np.argwhere(tpr >= 0.9495)])
     if isinstance(expected, type):
         with pytest.raises(expected):
             metrics.fpr_at_95_tpr(stats_cache)
@@ -257,14 +249,6 @@ def test_fpr_at_95_tpr(stats_cache: metrics.StatsCache, expected: ExpectedType):
     (stats_caches["some_nan_correct"]["some_nan_confid"], np.nan),
 ])
 def test_failap_suc(stats_cache: metrics.StatsCache, expected: ExpectedType):
-    # return cast(
-    #     float,
-    #     skm.average_precision_score(
-    #         stats_cache.correct,
-    #         stats_cache.confids,
-    #         pos_label=1,
-    #     ),
-    # )
     if isinstance(expected, type):
         with pytest.raises(expected):
             metrics.failap_suc(stats_cache)
@@ -322,12 +306,6 @@ def test_failap_suc(stats_cache: metrics.StatsCache, expected: ExpectedType):
     (stats_caches["some_nan_correct"]["some_nan_confid"], np.nan),
 ])
 def test_failap_err(stats_cache: metrics.StatsCache, expected: ExpectedType):
-    # return cast(
-    #     float,
-    #     skm.average_precision_score(
-    #         stats_cache.correct, -stats_cache.confids, pos_label=0
-    #     ),
-    # )
     if isinstance(expected, type):
         with pytest.raises(expected):
             metrics.failap_err(stats_cache)
@@ -379,11 +357,6 @@ def test_failap_err(stats_cache: metrics.StatsCache, expected: ExpectedType):
     (stats_caches["some_nan_correct"]["some_nan_confid"], np.nan),
 ])
 def test_aurc(stats_cache: metrics.StatsCache, expected: ExpectedType):
-    # _, risks, weights = stats_cache.rc_curve_stats
-    # return (
-    #     sum([(risks[i] + risks[i + 1]) * 0.5 * weights[i] for i in range(len(weights))])
-    #     * AURC_DISPLAY_SCALE
-    # )
     if isinstance(expected, type):
         with pytest.raises(expected):
             metrics.aurc(stats_cache)
@@ -441,9 +414,6 @@ def test_aurc(stats_cache: metrics.StatsCache, expected: ExpectedType):
     (stats_caches["some_nan_correct"]["some_nan_confid"], np.nan),
 ])
 def test_eaurc(stats_cache: metrics.StatsCache, expected: ExpectedType):
-    # err = np.mean(stats_cache.residuals)
-    # kappa_star_aurc = err + (1 - err) * (np.log(1 - err + np.finfo(err.dtype).eps))
-    # return aurc(stats_cache) - kappa_star_aurc * AURC_DISPLAY_SCALE
     if isinstance(expected, type):
         with pytest.raises(expected):
             metrics.eaurc(stats_cache)
@@ -501,7 +471,6 @@ def test_eaurc(stats_cache: metrics.StatsCache, expected: ExpectedType):
     (stats_caches["some_nan_correct"]["some_nan_confid"], np.nan),
 ])
 def test_maximum_calibration_error(stats_cache: metrics.StatsCache, expected: ExpectedType):
-    # return (stats_cache.bin_discrepancies).max()
     if isinstance(expected, type):
         with pytest.raises(expected):
             metrics.maximum_calibration_error(stats_cache)
@@ -553,11 +522,9 @@ def test_maximum_calibration_error(stats_cache: metrics.StatsCache, expected: Ex
     (stats_caches["some_nan_correct"]["some_nan_confid"], np.nan),
 ])
 def test_expected_calibration_error(stats_cache: metrics.StatsCache, expected: ExpectedType):
-    # """See reference
-    # https://github.com/tensorflow/probability/blob/v0.16.0/tensorflow_probability/python/stats/calibration.py#L258-L319
-    # """
-    # prob_total, _, _ = stats_cache.calibration_stats
-    # return np.dot(stats_cache.bin_discrepancies, prob_total)
+    """See reference
+    https://github.com/tensorflow/probability/blob/v0.16.0/tensorflow_probability/python/stats/calibration.py#L258-L319
+    """
     if isinstance(expected, type):
         with pytest.raises(expected):
             metrics.expected_calibration_error(stats_cache)
@@ -615,10 +582,6 @@ def test_expected_calibration_error(stats_cache: metrics.StatsCache, expected: E
     (stats_caches["some_nan_correct"]["some_nan_confid"], np.nan),
 ])
 def test_failnll(stats_cache: metrics.StatsCache, expected: ExpectedType):
-    # return -np.mean(
-    #     stats_cache.correct * np.log(stats_cache.confids + 1e-7)
-    #     + (1 - stats_cache.correct) * np.log(1 - stats_cache.confids + 1e-7)
-    # )
     if isinstance(expected, type):
         with pytest.raises(expected):
             metrics.failnll(stats_cache)

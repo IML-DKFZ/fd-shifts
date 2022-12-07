@@ -22,15 +22,15 @@ if TYPE_CHECKING:
 
 
 class net(pl.LightningModule):
+    """Vision Transformer module"""
+
     def __init__(self, cfg: configs.Config):
         super().__init__()
 
         self.save_hyperparameters()
-        # self.config.update(cfg.__dict__)
 
         self.config = cfg
 
-        # TODO: Should use network
         self.model = timm.create_model(
             "vit_base_patch16_224_in21k",
             pretrained=True,
@@ -63,7 +63,6 @@ class net(pl.LightningModule):
                 layer[1].train()
 
     def mcd_eval_forward(self, x, n_samples):
-        # self.model.encoder.eval_mcdropout = True
         self.enable_dropout()
 
         softmax_list = []
@@ -71,7 +70,6 @@ class net(pl.LightningModule):
         for _ in range(n_samples - len(softmax_list)):
             z = self.model.forward_features(x)
             probs = self.model.head(z)
-            # softmax = torch.softmax(probs, dim=1)
             maha = None
             if any("ext" in cfd for cfd in self.query_confids.test):
                 zm = z[:, None, :] - self.mean
@@ -84,7 +82,10 @@ class net(pl.LightningModule):
 
         self.disable_dropout()
 
-        return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1) if len(conf_list) else None
+        return (
+            torch.cat(softmax_list, dim=2),
+            torch.cat(conf_list, dim=1) if len(conf_list) else None,
+        )
 
     def forward(self, x):
         return self.model(x)
@@ -188,11 +189,7 @@ class net(pl.LightningModule):
 
         mean = torch.stack(mean, dim=0)
         self.mean = mean.type_as(self.model.head.weight)
-        self.icov = torch.inverse(
-            torch.cov(all_z.type_as(
-                self.model.head.weight
-            ).T)
-        )
+        self.icov = torch.inverse(torch.cov(all_z.type_as(self.model.head.weight).T))
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
@@ -215,18 +212,19 @@ class net(pl.LightningModule):
             )
 
         self.test_results = {
-            # "softmax": torch.softmax(probs, dim=1),
             "logits": probs,
             "labels": y,
             "confid": maha,
-            # "softmax_dist": softmax_dist,
             "logits_dist": logits_dist,
             "confid_dist": confid_dist,
         }
 
     def configure_optimizers(self):
         optim = hydra.utils.instantiate(
-            self.config.trainer.optimizer, _convert_="all", _partial_=False, params=self.model.parameters()
+            self.config.trainer.optimizer,
+            _convert_="all",
+            _partial_=False,
+            params=self.model.parameters(),
         )
 
         lr_sched = {

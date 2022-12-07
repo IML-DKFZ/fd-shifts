@@ -1,17 +1,21 @@
 import io
 import os
 import pickle
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple, TypeVar
 
 import numpy as np
+import torchvision
 from PIL import Image
-from robustness.tools.breeds_helpers import (ClassHierarchy, make_entity13,
-                                             print_dataset_info)
+from robustness.tools.breeds_helpers import (
+    ClassHierarchy,
+    make_entity13,
+    print_dataset_info,
+)
 from robustness.tools.folder import ImageFolder
 from robustness.tools.helpers import get_label_mapping
+from torch.utils.data import Dataset
 from torchvision import datasets
-from torchvision.datasets.utils import (check_integrity,
-                                        download_and_extract_archive)
+from torchvision.datasets.utils import check_integrity, download_and_extract_archive
 from wilds.datasets.camelyon17_dataset import Camelyon17Dataset
 from wilds.datasets.iwildcam_dataset import IWildCamDataset
 from wilds.datasets.wilds_dataset import WILDSSubset
@@ -20,12 +24,11 @@ from fd_shifts import logger
 from fd_shifts.analysis import eval_utils
 from fd_shifts.loaders import breeds_hierarchies
 
-# TODO: Handle configs better
-# TODO: Refactor a bit
-
 
 class SuperCIFAR100(datasets.VisionDataset):
-    """`CIFAR10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset.
+    """Super`CIFAR10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset.
+
+    This holds out subclasses
 
     Args:
         root (string): Root directory of dataset where directory
@@ -153,7 +156,7 @@ class SuperCIFAR100(datasets.VisionDataset):
         if self.train:
             self.targets = list(
                 np.array(self.coarse_targets)[train_data_ix]
-            )  # massive speedup compared to list comprehension
+            )
             self.data = self.data[train_data_ix]
         else:
             self.targets = list(np.array(self.coarse_targets)[holdout_data_ix])
@@ -227,7 +230,9 @@ class SuperCIFAR100(datasets.VisionDataset):
 
 
 class CorruptCIFAR(datasets.VisionDataset):
-    """`CIFAR10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset.
+    """Corrupt`CIFAR10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset.
+
+    This adds corruptions
 
     Args:
         root (string): Root directory of dataset where directory
@@ -268,18 +273,14 @@ class CorruptCIFAR(datasets.VisionDataset):
             "elastic_transform",
             "fog",
             "frost",
-            # "gaussian_blur",
             "gaussian_noise",
             "glass_blur",
             "impulse_noise",
             "jpeg_compression",
             "motion_blur",
             "pixelate",
-            # "saturate",
             "shot_noise",
             "snow",
-            # "spatter",
-            # "speckle_noise",
             "zoom_blur",
         ]
 
@@ -357,12 +358,6 @@ class BREEDImageNet(ImageFolder):
         else:
             custom_grouping = test_subclasses
 
-        #
-        # print_dataset_info(superclasses,
-        #                    subclass_split,
-        #                    label_map,
-        #                    ClassHierarchy(kwargs["info_dir_path"]).LEAF_NUM_TO_NAME)
-
         label_mapping = get_label_mapping("custom_imagenet", custom_grouping)
 
         super().__init__(
@@ -373,8 +368,6 @@ class BREEDImageNet(ImageFolder):
             label_mapping=label_mapping,
         )
 
-        # todo: split samples here in train and iid test and do the "else" above as ood test like in wilds.
-        # todo check if class still uniformly distributed without shuffling before splitting!
         if split == "train" or split == "id_test":
             rng = np.random.default_rng(12345)
             self.sampels = rng.shuffle(self.samples)
@@ -419,8 +412,6 @@ class BREEDImageNet(ImageFolder):
         return sample, target
 
 
-#
-#
 class WILDSAnimals(IWildCamDataset):
     def __init__(self, root, train, download, transform):
         super().__init__(
@@ -480,8 +471,6 @@ class WILDSCamelyon(Camelyon17Dataset):
         Output:
             - subset (WILDSSubset): A (potentially subsampled) subset of the WILDSDataset.
         """
-        # np.random.seed(42)
-        # np.random.shuffle(indices)
         if split not in self.split_dict:
             raise ValueError(f"Split {split} not found in dataset's split_dict.")
         split_mask = self.split_array == self.split_dict[split]
@@ -562,15 +551,7 @@ class SVHNOpenSet(datasets.SVHN):
             self.labels = self.labels[~np.isin(self.labels, self.out_classes)]
 
 
-# import matplotlib.pyplot as plt
-# image, label = self.data[index], self.targets[index]
-# if self.transform is not None:
-#     transformed = self.transform(image=image)
-#     image = transformed["image"]
-# plt.imshow(  image.permute(1, 2, 0)  )
-# plt.show()
-
-_dataset_factory = {
+_dataset_factory: dict[str, type] = {
     "svhn": datasets.SVHN,
     "svhn_384": datasets.SVHN,
     "svhn_openset": SVHNOpenSet,
@@ -604,17 +585,48 @@ _dataset_factory = {
 }
 
 
-def dataset_exists(name: str):
+def dataset_exists(name: str) -> bool:
+    """Check if dataset with name is registered
+
+    Args:
+        name (str): name of the dataset
+
+    Returns:
+        True if it exists
+    """
     return name in _dataset_factory
 
 
-def register_dataset(name: str, dataset):
+def register_dataset(name: str, dataset: type) -> None:
+    """Register a new dataset
+
+    Args:
+        name (str): name to register under
+        dataset (type): dataset class to register
+    """
     _dataset_factory[name] = dataset
 
 
-def get_dataset(name, root, train, download, transform, kwargs):
-    """
-    Return a new instance of dataset loader
+def get_dataset(
+    name: str,
+    root: str,
+    train: bool,
+    download: bool,
+    transform: Callable,
+    kwargs: dict[str, Any],
+) -> Any:
+    """Return a new instance of a dataset
+
+    Args:
+        name (str): name of the dataset
+        root (str): where it is stored on disk
+        train (bool): whether to load the train split
+        download (bool): whether to attempt to download if it is not in root
+        transform (Callable): transforms to apply to loaded data
+        kwargs (dict[str, Any]): other kwargs to pass on
+
+    Returns:
+        dataset instance
     """
     pass_kwargs = {
         "root": root,
@@ -655,7 +667,6 @@ def get_dataset(name, root, train, download, transform, kwargs):
         }
 
     if "wilds" in name:
-        # because i only have a binary train flag atm, but 3 possible splits, I needan extra dataset name for the ood_test.
         if name == "wilds_animals":
             split = "train" if train else "id_test"
         elif name == "wilds_animals_ood_test":

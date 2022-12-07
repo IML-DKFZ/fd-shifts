@@ -26,7 +26,7 @@ def _extract_config_from_cli_stderr(output: str) -> str:
     _, _, config_yaml = output.partition("BEGIN CONFIG")
     config_yaml, _, _ = config_yaml.partition("END CONFIG")
 
-    return config_yaml  # .strip()
+    return config_yaml
 
 
 def to_dict(obj):

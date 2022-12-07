@@ -1,17 +1,17 @@
 from pathlib import Path
-from matplotlib import transforms
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib import transforms
 
 from fd_shifts.reporting import tables
 
 
-def make_rank_df(dff: pd.DataFrame):
-    select_df = dff  # [~dff.confid.str.startswith("VIT")]
+def _make_rank_df(dff: pd.DataFrame):
+    select_df = dff
     rank_df = select_df.rank(na_option="keep", numeric_only=True, ascending=False)
 
     confid = dff.index.get_level_values(0)
@@ -25,7 +25,7 @@ def make_rank_df(dff: pd.DataFrame):
     return rank_df
 
 
-def make_color_dict(rank_df: pd.DataFrame):
+def _make_color_dict(rank_df: pd.DataFrame):
     colors = [
         "tab:blue",
         "green",
@@ -65,14 +65,21 @@ def make_color_dict(rank_df: pd.DataFrame):
     return color_dict
 
 
-def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
-    # dff = _aggregate_over_runs(data)
+def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path) -> None:
+    """Plot confid results over shifts
+
+    Args:
+        data (pd.DataFrame): cleaned experiment data
+        exp (str): experiment (dataset) to consider
+        metric (str): metric to consider
+        out_dir (Path): where to save the created figure to
+    """
     dff = tables.aggregate_over_runs(data)
     dff = tables.build_results_table(dff, metric)
-    rank_df = make_rank_df(dff)
-    color_dict = make_color_dict(rank_df)
+    rank_df = _make_rank_df(dff)
+    color_dict = _make_color_dict(rank_df)
 
-    def fix_studies(n):
+    def _fix_studies(n):
         n = n.replace(exp + "_", "")
         n = n.replace("_proposed_mode", "")
         n = n.replace("_", "-")
@@ -87,8 +94,8 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
 
     studies_dict = {
         "iid-study": "iid",
-        "sub-class-shift": "sub",  # sub
-        "corruption-shift-1": "cor1",  # cor
+        "sub-class-shift": "sub",
+        "corruption-shift-1": "cor1",
         "corruption-shift-2": "cor2",
         "corruption-shift-3": "cor3",
         "corruption-shift-4": "cor4",
@@ -101,7 +108,6 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
 
     metric_dict = {
         "aurc": "AURC",
-        # "failauc": "AUROC",
         "failauc": "$\\mathrm{AUROC}_f$",
         "ece": "ECE",
         "accuracy": "accuracy",
@@ -116,27 +122,6 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
         "svhn": "SVHN",
     }
 
-    studies0 = [
-        "iid-study",  # iid
-    ]
-    studies1 = [
-        #         "sub-class-shift",  # sub
-        "corruption-shift-1",  # cor
-        "corruption-shift-2",
-        "corruption-shift-3",
-        "corruption-shift-4",
-        "corruption-shift-5",
-    ]
-    studies2 = [
-        #         "new-class-shift-cifar10",  # s-ncs (includes openset)
-        #         # 'new-class-shift-cifar10-original-mode',
-        #         "new-class-shift-cifar100",  # ns-ncs
-        #         # 'new-class-shift-cifar100-original-mode',
-        #         "new-class-shift-svhn",
-        #         # 'new-class-shift-svhn-original-mode',
-        #         "new-class-shift-tinyimagenet",
-        #         # 'new-class-shift-tinyimagenet-original-mode'
-    ]
     scale = 10
     f, axes = plt.subplots(nrows=1, ncols=2, figsize=(6 * scale, 2.0 * scale * 1.2))
     fontsize = 48
@@ -161,13 +146,10 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
             "DG-Res",
             "DG-MCD-MSR",
         ]
-        #     print(data.confid)
         plot_data = plot_data[plot_data.confid.str.replace("VIT-", "").isin(confids)]
-        # plot_data = plot_data[~(plot_data.confid.isin(["VIT-Devries et al.", "VIT-ConfidNet", "VIT-DG-Res", "VIT-DG-Res"]))]
         plot_data = plot_data[plot_data.confid.str.startswith("VIT")]
-        # print(plot_data.confid)
         plot_data.confid = plot_data.confid.str.replace("VIT-", "")
-        plot_data["study"] = plot_data.study.apply(fix_studies)
+        plot_data["study"] = plot_data.study.apply(_fix_studies)
         plot_data = plot_data[plot_data.study.isin(studies0 + studies1 + studies2)]
         plot_data0 = plot_data[plot_data.study.isin(studies0)]
         plot_data0 = plot_data0.groupby(["confid", "study"]).mean().reset_index()
@@ -206,9 +188,6 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
         twin0 = axs.twinx()
         twin0.yaxis.tick_left()
         twin0.spines["left"].set_position(("data", x1[0]))
-        #         twin1 = axs.twinx()
-        #         twin1.yaxis.tick_left()
-        #         twin1.spines["left"].set_position(("data", x2[0]))
         for c in plot_data0["confid"]:
             confid_data0 = plot_data0[plot_data0["confid"] == c][
                 ["study", metric]
@@ -216,9 +195,6 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
             confid_data1 = plot_data1[plot_data1["confid"] == c][
                 ["study", metric]
             ].reset_index()
-            #             confid_data2 = plot_data2[plot_data2["confid"] == c][
-            #                 ["study", metric]
-            #             ].reset_index()
             axs.plot(
                 x0,
                 confid_data0[metric],
@@ -235,14 +211,6 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
                 linewidth=3.1,
                 ms=18,
             )
-            #             twin1.plot(
-            #                 x2,
-            #                 confid_data2[metric],
-            #                 color=color_dict[c],
-            #                 marker="o",
-            #                 linewidth=3.1,
-            #                 ms=18,
-            #             )
             patch = patches.ConnectionPatch(
                 xyA=(x0[-1], confid_data0[metric].iloc[-1]),
                 xyB=(x1[0], confid_data1[metric].iloc[0]),
@@ -256,20 +224,6 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
                 color=color_dict[c],
             )
             twin0.add_artist(patch)
-            #             patch = patches.ConnectionPatch(
-            #                 xyA=(x1[-1], confid_data1[metric].iloc[-1]),
-            #                 xyB=(x2[0], confid_data2[metric].iloc[0]),
-            #                 coordsA="data",
-            #                 coordsB="data",
-            #                 axesA=twin0,
-            #                 axesB=twin1,
-            #                 arrowstyle="-",
-            #                 linestyle=":",
-            #                 linewidth=3.1,
-            #                 color=color_dict[c],
-            #             )
-            #             twin1.add_artist(patch)
-            # logger.info((-0.2, ranked_confids.index(c)/(len(ranked_confids) - 1)))
             axs.annotate(
                 xy=(0, confid_data0[metric].iloc[0]),
                 xytext=(-0.1, ranked_confids.index(c) / (len(ranked_confids) - 1)),
@@ -285,7 +239,6 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
                     relpos=(1, 0.5),
                 ),
                 zorder=1,
-                # bbox=dict(facecolor=color_dict[c], edgecolor='None', alpha=0.5 ),
                 bbox=dict(
                     facecolor="None", edgecolor=color_dict[c], alpha=1, linewidth=3.1
                 ),
@@ -297,7 +250,6 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
             + list(plot_data2.study.unique())
         )
         axs.set_xticks(np.concatenate((x0, x1, x2)))
-        #     axs.set_xticklabels(studies, rotation=90)
         axs.set_xticklabels([studies_dict[s] for s in studies], fontsize=fontsize)
         axs.set_xlim(0, x1[-1] + 0.5)
 
@@ -305,7 +257,6 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
 
         ylim0[0] -= 0.07 * (ylim0[1] - ylim0[0])
         ylim0[1] += 0.07 * (ylim0[1] - ylim0[0])
-        # print(ylim0)
         axs.set_ylim(ylim0)
         axs.set_ylabel(metric_dict[metric], fontsize=1.6 * fontsize)
         axs.yaxis.set_label_position("right")
@@ -339,39 +290,26 @@ def plot_rank_style(data: pd.DataFrame, exp: str, metric: str, out_dir: Path):
         twin0.spines["right"].set_linewidth(0)
         twin0.spines["right"].set_color("k")
         twin0.spines["right"].set_zorder(0.5)
-        # twin0.grid(True, transform=transforms.Affine2D().translate(0.5, 0))
         twin0.grid(False)
         for label in twin0.get_xticklabels() + twin0.get_yticklabels():
             label.set_fontsize(fontsize)
             label.set_bbox(dict(facecolor="white", edgecolor="None", alpha=0.75))
 
-    #         ylim2 = [plot_data2[metric].min(), plot_data2[metric].max()]
-    #         ylim2[0] -= 0.07 * (ylim2[1] - ylim2[0])
-    #         ylim2[1] += 0.07 * (ylim2[1] - ylim2[0])
-    #         twin1.set_ylim(ylim2)
-    #         twin1.set_axisbelow(False)
-    #         twin1.spines["left"].set_linewidth(4)
-    #         twin1.spines["left"].set_color("k")
-    #         twin1.spines["left"].set_zorder(0.5)
-    #         twin1.spines["right"].set_linewidth(4)
-    #         twin1.spines["right"].set_color("k")
-    #         twin1.spines["right"].set_zorder(0.5)
-    #         twin1.grid(False)
-    #         for label in twin1.get_xticklabels() + twin1.get_yticklabels():
-    #             label.set_fontsize(18)
-    #             label.set_bbox(dict(facecolor="white", edgecolor="None", alpha=0.75))
-
     plt.tight_layout()
     plt.savefig(out_dir / f"main_plot.png")
-    # plt.show()
-    # plt.close(f)
 
 
-def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
+def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path) -> None:
+    """Create plots that compare ViT to CNN results
+
+    Args:
+        data (pd.DataFrame): cleaned experiment data
+        out_dir (Path): where to save the figures to
+    """
     dff = tables.aggregate_over_runs(data)
     dff = tables.build_results_table(dff, "aurc")
-    rank_df = make_rank_df(dff)
-    color_dict = make_color_dict(rank_df)
+    rank_df = _make_rank_df(dff)
+    color_dict = _make_color_dict(rank_df)
 
     meanprops = dict(linestyle="-", linewidth=6, color="k", alpha=1, zorder=99)
     whiskerprops = dict(linestyle="-", linewidth=0)
@@ -383,7 +321,7 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
         "cifar100",
         "cifar10",
         "svhn",
-    ]  # exp_names
+    ]
     cross_mode = False
     scale = 15
     sns.set_style("whitegrid")
@@ -408,25 +346,9 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
 
     studies = [
         "iid-study",
-        # 'sub-class-shift',
-        # 'corruption-shift-1',
-        # 'corruption-shift-2',
-        # 'corruption-shift-3',
-        # 'corruption-shift-4',
-        # 'corruption-shift-5',
-        # 'new-class-shift-cifar10',
-        # 'new-class-shift-cifar10-original-mode',
-        # 'new-class-shift-cifar100',
-        # 'new-class-shift-cifar100-original-mode',
-        # 'new-class-shift-svhn',
-        # 'new-class-shift-svhn-original-mode',
-        # 'new-class-shift-tinyimagenet',
-        # 'new-class-shift-tinyimagenet-original-mode'
     ]
 
-    # print(df)
-
-    def fix_studies(n):
+    def _fix_studies(n):
         n = n.replace("^.*?_", "")
         n = n.replace("_proposed_mode", "")
         n = n.replace("_", "-")
@@ -445,7 +367,7 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
     for axs, metric in zip(axes, ["aurc", "ece", "failauc", "accuracy"]):
         plot_data = data[["study", "confid", "run", metric]][
             (data.study.str.contains("iid"))
-        ]  # & (~df.confid.str.contains("DG"))]
+        ]
 
         y = metric
         tmp_data = plot_data.assign(
@@ -467,7 +389,6 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
             "PE",
             "MAHA",
         ]
-        #     print(data.confid)
         tmp_data = tmp_data[plot_data.confid.str.replace("VIT-", "").isin(confids)]
         tmp_data = tmp_data[
             ~(
@@ -476,39 +397,10 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
                 )
             )
         ]
-        #     logger.info(data.dataset)
         plot_colors = [color_dict[conf] for conf in tmp_data.confid.unique().tolist()]
-        # print(plot_colors)
         palette = sns.color_palette(plot_colors)
-        # print(plot_colors)
-        # print(data.confid.unique().tolist())
         sns.set_palette(palette)
 
-        # print(data[~data[dim].str.startswith("VIT")])
-
-        # order = data[dim].str.replace("VIT-", "").sort_values().unique()
-
-        # if not "noise" in study or "noise_study_3" in study:
-        # print(study)
-        # sns.stripplot(
-        #     ax=saxs[yix],
-        #     x=data[~data[dim].str.startswith("VIT")][dim],
-        #     y=metric,
-        #     data=data[~data[dim].str.startswith("VIT")],
-        #     s=scale * 1.6,
-        #     label=dim,
-        #     order=order,
-        # )
-        # sns.stripplot(
-        #     ax=saxs[yix],
-        #     x=data[data[dim].str.startswith("VIT")][dim].str.replace("VIT-", ""),
-        #     y=metric,
-        #     data=data[data[dim].str.startswith("VIT")],
-        #     s=scale * 1.6,
-        #     label=dim,
-        #     marker='X',
-        #     order=order,
-        # )
         for i, exp in enumerate(plot_exps):
             axs_ = axs.twinx()
             axs_.yaxis.tick_left()
@@ -519,7 +411,6 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
                 y=metric,
                 hue="backbone",
                 data=tmp_data[tmp_data.dataset == exp].sort_values("backbone"),
-                # medianprops=dict(alpha=0),
                 medianprops=meanprops,
                 saturation=1,
                 showbox=True,
@@ -528,8 +419,6 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
                 whiskerprops=whiskerprops,
                 showmeans=True,
                 meanprops=dict(alpha=0),
-                # meanprops=meanprops,
-                # meanline=True,
                 order=plot_exps,
                 boxprops=dict(alpha=0.5),
             )
@@ -550,28 +439,12 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path):
             else:
                 axs_.yaxis.set_label_position("left")
                 axs_.set_ylabel(metric_dict[metric])
-        # axs[yix].set_xticklabels("")
         axs.set_xticklabels([dataset_dict[exp] for exp in plot_exps])
 
-        # axs.set_title(fix_studies(study), pad=35)
         axs.set_ylabel(metric_dict[metric])
         axs.set_xlabel("")
         axs.yaxis.set_visible(False)
         axs.grid(False)
 
-    # lim0 = data[metric].mean() - data[metric].std()
-    # lim1 = data[metric].mean() + data[metric].std()
-    # saxs[yix].set_ylim(lim0, lim1)
-    # if yix == 0:
-    #     saxs[yix].set_ylabel(metric)
-
-    # if yix == 5:
-    #     axs[yix].axis("off")
-    #     axs[yix-1].legend()
-
-    # if "iid" in study and metric == "aurc":
-    #     axs[xix, yix].set_ylim(4, 8)
-    # if "iid" in study and metric == "failauc":
-    #     axs[xix, yix].set_ylim(0.90, 0.96)
     plt.tight_layout()
     plt.savefig(out_dir / f"vit_v_cnn.png")

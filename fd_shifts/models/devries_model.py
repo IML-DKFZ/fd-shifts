@@ -18,6 +18,28 @@ if TYPE_CHECKING:
 
 
 class net(pl.LightningModule):
+    """
+
+    Attributes:
+        optimizer_cfgs:
+        lr_scheduler_cfgs:
+        query_confids:
+        num_epochs:
+        num_classes:
+        nll_loss:
+        cross_entropy_loss:
+        lmbda:
+        budget:
+        test_conf_scaling:
+        ext_confid_name:
+        imagenet_weights_path:
+        model:
+        test_mcd_samples:
+        monitor_mcd_samples:
+        test_results:
+        loaded_epoch:
+    """
+
     def __init__(self, cf: configs.Config):
         super(net, self).__init__()
 
@@ -59,9 +81,7 @@ class net(pl.LightningModule):
                 "save_dg_backbone_path"
             )
 
-        self.model = get_network(cf.model.network.name)(
-            cf
-        )  # todo make explciit arguments in factory!!
+        self.model = get_network(cf.model.network.name)(cf)
 
         self.test_mcd_samples = cf.model.test_mcd_samples
         self.monitor_mcd_samples = cf.model.monitor_mcd_samples
@@ -70,7 +90,6 @@ class net(pl.LightningModule):
         return self.model(x)
 
     def mcd_eval_forward(self, x, n_samples):
-        # self.model.encoder.eval_mcdropout = True
         self.model.encoder.enable_dropout()
 
         softmax_list = []
@@ -94,16 +113,6 @@ class net(pl.LightningModule):
 
         return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
 
-    # def on_train_epoch_start(self):
-
-    # if self.current_epoch == self.pretrain_epochs and self.ext_confid_name == "dg" and self.load_dg_backbone_path is not None:
-    #
-    #     loaded_ckpt = torch.load(self.load_dg_backbone_path)
-    #     loaded_state_dict = loaded_ckpt["state_dict"]
-    #     # self.load_state_dict(loaded_state_dict, strict=True)
-    #     self.load_from_checkpoint(self.load_dg_backbone_path)
-    #     print("loaded pretrained dg backbone from {}".format(self.load_dg_backbone_path))
-
     def on_epoch_end(self):
 
         if (
@@ -123,7 +132,7 @@ class net(pl.LightningModule):
                 self.imagenet_weights_path
             )
 
-        if self.current_epoch > 0:  # check if resumed training
+        if self.current_epoch > 0:
             tqdm.write("stepping scheduler after resume...")
             self.trainer.lr_schedulers[0]["scheduler"].step()
 
@@ -141,14 +150,15 @@ class net(pl.LightningModule):
             confidence = torch.sigmoid(confidence)
             pred_original = F.softmax(logits, dim=1)
             labels_onehot = torch.nn.functional.one_hot(y, num_classes=self.num_classes)
-            # print(x.mean().item(), logits.mean().item())
             # Make sure we don't have any numerical instability
             eps = 1e-12
             pred_original = torch.clamp(pred_original, 0.0 + eps, 1.0 - eps)
             confidence = torch.clamp(confidence, 0.0 + eps, 1.0 - eps)
 
             # Randomly set half of the confidences to 1 (i.e. no hints)
-            b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).to(self.device)
+            b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).to(
+                self.device
+            )
             conf = confidence * b + (1 - b)
             pred_new = pred_original * conf.expand_as(pred_original) + labels_onehot * (
                 1 - conf.expand_as(labels_onehot)
@@ -159,7 +169,6 @@ class net(pl.LightningModule):
             confidence_loss = torch.mean(-torch.log(confidence))
 
             loss = xentropy_loss + (self.lmbda * confidence_loss)
-            # print(self.lmbda, confidence_loss.item())
             if self.budget > confidence_loss:
                 self.lmbda = self.lmbda / 1.01
             elif self.budget <= confidence_loss:
@@ -170,26 +179,21 @@ class net(pl.LightningModule):
             softmax = F.softmax(logits, dim=1)
             pred_original, reservation = softmax[:, :-1], softmax[:, -1]
             confidence = 1 - reservation.unsqueeze(1)
-            # print("CHECK CONF", confidence.mean().item(), confidence.std().item(), confidence.min().item(), confidence.max().item())
             if self.current_epoch >= self.pretrain_epochs and self.reward > -1:
                 gain = torch.gather(
                     pred_original, dim=1, index=y.unsqueeze(1)
                 ).squeeze()
                 doubling_rate = (gain.add(reservation.div(self.reward))).log()
                 loss = -doubling_rate.mean().unsqueeze(0)
-                # print(x.mean().item(), logits.mean().item(), logits.min().item(), logits.max().item(),
-                #       loss.mean().item(), "CHECK")
             else:
                 loss = self.cross_entropy_loss(logits[:, :-1], y)
-                # print(x.mean().item(), logits.mean().item(), logits.min().item(), logits.max().item(),
-                #       loss.mean().item(), "CHECK")
 
         return {
             "loss": loss,
             "softmax": pred_original,
             "labels": y,
             "confid": confidence.squeeze(1),
-        }  # ,"imgs":x
+        }
 
     def training_step_end(self, batch_parts):
         batch_parts["loss"] = batch_parts["loss"].mean()
@@ -211,7 +215,9 @@ class net(pl.LightningModule):
             confidence = torch.clamp(confidence, 0.0 + eps, 1.0 - eps)
 
             # Randomly set half of the confidences to 1 (i.e. no hints)
-            b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).to(self.device)
+            b = torch.bernoulli(torch.Tensor(confidence.size()).uniform_(0, 1)).to(
+                self.device
+            )
             conf = confidence * b + (1 - b)
             pred_new = pred_original * conf.expand_as(pred_original) + labels_onehot * (
                 1 - conf.expand_as(labels_onehot)
@@ -237,8 +243,6 @@ class net(pl.LightningModule):
             else:
                 loss = self.cross_entropy_loss(outputs[:, :-1], y)
 
-        # print(self.lmbda, confidence_loss.item())
-        # print(x.mean(), pred_original.std())
         return {
             "loss": loss,
             "softmax": pred_original,
@@ -253,7 +257,6 @@ class net(pl.LightningModule):
         x, y = batch
         if self.ext_confid_name == "devries":
             logits, confidence = self.model(x)
-            # softmax = F.softmax(logits, dim=1)
             confidence = torch.sigmoid(confidence).squeeze(1)
         elif self.ext_confid_name == "dg":
             outputs = self.model(x)
@@ -268,59 +271,16 @@ class net(pl.LightningModule):
             logits_dist, confid_dist = self.mcd_eval_forward(
                 x=x, n_samples=self.test_mcd_samples
             )
-            # print(softmax_dist.std(1).mean(), confid_dist.std(1).mean(), confid_dist[0])
 
         self.test_results = {
-            # "softmax": softmax,
             "logits": logits,
             "labels": y,
             "confid": confidence,
-            # "softmax_dist": softmax_dist,
             "logits_dist": logits_dist,
             "confid_dist": confid_dist,
         }
 
     def configure_optimizers(self):
-        # optimizers = [
-        #     torch.optim.SGD(
-        #         self.model.parameters(),
-        #         lr=self.optimizer_cfgs.lr,
-        #         momentum=self.optimizer_cfgs.momentum,
-        #         nesterov=self.optimizer_cfgs.nesterov,
-        #         weight_decay=self.optimizer_cfgs.weight_decay,
-        #     )
-        # ]
-        #
-        # schedulers = []
-        # if self.lr_scheduler_cfgs.name == "MultiStep":
-        #     schedulers = [
-        #         torch.optim.lr_scheduler.MultiStepLR(
-        #             optimizers[0],
-        #             milestones=self.lr_scheduler_cfgs.milestones,
-        #             gamma=self.lr_scheduler_cfgs.gamma,
-        #             verbose=True,
-        #         )
-        #     ]
-        # elif self.lr_scheduler_cfgs.name == "CosineAnnealing":
-        #     schedulers = [
-        #         torch.optim.lr_scheduler.CosineAnnealingLR(
-        #             optimizers[0], T_max=self.lr_scheduler_cfgs.max_epochs, verbose=True
-        #         )
-        #     ]
-        # elif self.lr_scheduler_cfgs.name == "LinearWarmupCosineAnnealing":
-        #     num_batches = (
-        #         len(self.train_dataloader()) / self.trainer.accumulate_grad_batches
-        #     )
-        #     schedulers = [
-        #         {
-        #             "scheduler": pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR(
-        #                 optimizer=optimizers[0],
-        #                 max_epochs=self.lr_scheduler_cfgs.max_epochs * num_batches,
-        #                 warmup_epochs=self.lr_scheduler_cfgs.warmup_epochs,
-        #             ),
-        #             "interval": "step",
-        #         }
-        #     ]
         optimizers = [
             hydra.utils.instantiate(self.optimizer_cfgs, _partial_=True)(
                 self.model.parameters()

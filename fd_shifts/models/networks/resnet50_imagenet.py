@@ -428,7 +428,6 @@ def resnet50(
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    # todo add cf pretrained here from cf
     num_classes = cf.data.num_classes
     if cf.eval.ext_confid_name == "dg":
         num_classes += 1
