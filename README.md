@@ -4,24 +4,25 @@
 ---
 
 > Reliable application of machine learning-based decision systems in the wild is
-> one of the major challenges currently investigated by the field. A large portion
-> of established approaches aims to detect erroneous predictions by means of
-> assigning confidence scores. This confidence may be obtained by either
-> quantifying the model's predictive uncertainty, learning explicit scoring
-> functions, or assessing whether the input is in line with the training
+> one of the major challenges currently investigated by the field. A large
+> portion of established approaches aims to detect erroneous predictions by
+> means of assigning confidence scores. This confidence may be obtained by
+> either quantifying the model's predictive uncertainty, learning explicit
+> scoring functions, or assessing whether the input is in line with the training
 > distribution. Curiously, while these approaches all state to address the same
-> eventual goal of detecting failures of a classifier upon real-life application,
-> they currently constitute largely separated research fields with individual
-> evaluation protocols, which either exclude a substantial part of relevant
-> methods or ignore large parts of relevant failure sources. In this work, we
-> systematically reveal current pitfalls caused by these inconsistencies and
-> derive requirements for a holistic and realistic evaluation of failure
-> detection. To demonstrate the relevance of this unified perspective, we present
-> a large-scale empirical study for the first time enabling benchmarking
-> confidence scoring functions w.r.t all relevant methods and failure sources. The
-> revelation of a simple softmax response baseline as the overall best performing
-> method underlines the drastic shortcomings of current evaluation in the
-> abundance of publicized research on confidence scoring.
+> eventual goal of detecting failures of a classifier upon real-life
+> application, they currently constitute largely separated research fields with
+> individual evaluation protocols, which either exclude a substantial part of
+> relevant methods or ignore large parts of relevant failure sources. In this
+> work, we systematically reveal current pitfalls caused by these
+> inconsistencies and derive requirements for a holistic and realistic
+> evaluation of failure detection. To demonstrate the relevance of this unified
+> perspective, we present a large-scale empirical study for the first time
+> enabling benchmarking confidence scoring functions w.r.t all relevant methods
+> and failure sources. The revelation of a simple softmax response baseline as
+> the overall best performing method underlines the drastic shortcomings of
+> current evaluation in the abundance of publicized research on confidence
+> scoring.
 
 <p align="center">
     <figure class="image">
@@ -54,15 +55,21 @@ If you use fd-shifts please cite our [paper]()
 
 ```bibtex
 @inproceedings{Jaeger2022ACT,
-  title={A Call to Reflect on Evaluation Practices for Failure Detection in Image Classification},
-  author={Paul F. Jaeger and Carsten T. Luth and Lukas Klein and Till J. Bungert},
-  year={2022}
+  doi = {10.48550/ARXIV.2211.15259},
+  url = {https://arxiv.org/abs/2211.15259},
+  author = {Jaeger, Paul F. and Lüth, Carsten T. and Klein, Lukas and Bungert, Till J.},
+  keywords = {Computer Vision and Pattern Recognition (cs.CV), Machine Learning (cs.LG), FOS: Computer and information sciences, FOS: Computer and information sciences},
+  title = {A Call to Reflect on Evaluation Practices for Failure Detection in Image Classification},
+  publisher = {arXiv},
+  year = {2022},
+  copyright = {arXiv.org perpetual, non-exclusive license}
 }
 ```
 
 ## Table Of Contents
 
 <!--toc:start-->
+
 - [Installation](#installation)
 - [How to Integrate Your Own Usecase](#how-to-integrate-your-own-usecase)
 - [Reproducing our results](#reproducing-our-results)
@@ -71,27 +78,34 @@ If you use fd-shifts please cite our [paper]()
   - [Inference](#inference)
   - [Analysis](#analysis)
 - [Acknowledgements](#acknowledgements)
+
 <!--toc:end-->
 
 ## Installation
 
-**FD-Shifts requires Python version 3.10 or later.** It is recommended to install FD-Shifts in its own environment (venv, conda environment, ...).
+**FD-Shifts requires Python version 3.10 or later.** It is recommended to
+install FD-Shifts in its own environment (venv, conda environment, ...).
 
-1. **Install an appropriate version of [PyTorch](https://pytorch.org/).** Check that CUDA is
-   available and that the CUDA toolkit version is compatible with your hardware. 
-   The currently necessary version of [pytorch is v.1.11.0](https://pytorch.org/get-started/previous-versions/#v1110). Testing and Development was done with the pytorch version using CUDA 11.3.
+1. **Install an appropriate version of [PyTorch](https://pytorch.org/).** Check
+   that CUDA is available and that the CUDA toolkit version is compatible with
+   your hardware. The currently necessary version of
+   [pytorch is v.1.11.0](https://pytorch.org/get-started/previous-versions/#v1110).
+   Testing and Development was done with the pytorch version using CUDA 11.3.
 
-2. **Install FD-Shifts.** This will pull in all dependencies including some version of PyTorch, it
-   is strongly recommended that you install a compatible version of PyTorch beforehand. This will
-   also make the `fd_shifts` cli available to you.
+2. **Install FD-Shifts.** This will pull in all dependencies including some
+   version of PyTorch, it is strongly recommended that you install a compatible
+   version of PyTorch beforehand. This will also make the `fd_shifts` cli
+   available to you.
    ```bash
    pip install https://github.com/iml-dkfz/fd-shifts
    ```
 
 ## How to Integrate Your Own Usecase
 
-To learn about extending FD-Shifts with your own models, datasets and confidence scoring functions
-check out the [tutorial on extending FD-Shifts](./docs/extending_fd-shifts.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iml-dkfz/fd-shifts/blob/main/docs/extending_fd-shifts.ipynb).
+To learn about extending FD-Shifts with your own models, datasets and confidence
+scoring functions check out the
+[tutorial on extending FD-Shifts](./docs/extending_fd-shifts.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iml-dkfz/fd-shifts/blob/main/docs/extending_fd-shifts.ipynb).
 
 ## Reproducing our results
 
