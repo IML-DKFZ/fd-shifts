@@ -1,10 +1,16 @@
-from pathlib import Path
-import subprocess
+from importlib.metadata import PackageNotFoundError, version
 
-VERSION = "0.0.1"
 
-def _git_rev():
-    return subprocess.check_output(['git', 'describe', '--always'], cwd=Path(__file__).parent).rstrip().decode('utf8')
+def get_version() -> str:
+    """Error handled wrapper around importlib's version
 
-def version():
-    return f"{VERSION}+{_git_rev()}"
+    Returns:
+        the installed version of fd_shifts
+    """
+    try:
+        return version("fd_shifts")
+    except PackageNotFoundError:
+        # package is not installed
+        import setuptools_scm
+
+        return setuptools_scm.get_version(root="..", relative_to=__file__)

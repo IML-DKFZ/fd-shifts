@@ -11,16 +11,11 @@ from sklearn import metrics as skm
 from sklearn.calibration import calibration_curve
 from torchmetrics import Metric
 
-from .metrics import StatsCache, get_metric_function
 from . import logger
-
-# BUG: Replace -1 as a failure marker
-# NOTE: Use NaN? Explicitly error? Clearer warning?
-# TODO: Better error handling in general
-# TODO: Clean this up
+from .metrics import StatsCache, get_metric_function
 
 
-def get_tb_hparams(cf):
+def _get_tb_hparams(cf):
 
     hparams_collection = {"fold": cf.exp.fold}
     return {k: v for k, v in hparams_collection.items() if k in cf.eval.tb_hparams}
@@ -115,14 +110,13 @@ def monitor_eval(
 
         out_plots["default_plot"] = f
 
-    # print(out_metrics)
     return out_metrics, out_plots
 
 
 class ConfidEvaluator:
     def __init__(self, confids, correct, query_metrics, query_plots, bins):
-        self.confids = confids[~ np.isnan(confids)]
-        self.correct = correct[~ np.isnan(confids)]
+        self.confids = confids[~np.isnan(confids)]
+        self.correct = correct[~np.isnan(confids)]
         self.query_metrics = query_metrics
         self.query_plots = query_plots
         self.bins = bins
@@ -141,14 +135,22 @@ class ConfidEvaluator:
         out_metrics = {}
         if "failauc" in self.query_metrics or "fpr@95tpr" in self.query_metrics:
             if "failauc" in self.query_metrics:
-                out_metrics["failauc"] = get_metric_function("failauc")(self.stats_cache)
+                out_metrics["failauc"] = get_metric_function("failauc")(
+                    self.stats_cache
+                )
             if "fpr@95tpr" in self.query_metrics:
-                out_metrics["fpr@95tpr"] = get_metric_function("fpr@95tpr")(self.stats_cache)
+                out_metrics["fpr@95tpr"] = get_metric_function("fpr@95tpr")(
+                    self.stats_cache
+                )
 
         if "failap_suc" in self.query_metrics:
-            out_metrics["failap_suc"] = get_metric_function("failap_suc")(self.stats_cache)
+            out_metrics["failap_suc"] = get_metric_function("failap_suc")(
+                self.stats_cache
+            )
         if "failap_err" in self.query_metrics:
-            out_metrics["failap_err"] = get_metric_function("failap_err")(self.stats_cache)
+            out_metrics["failap_err"] = get_metric_function("failap_err")(
+                self.stats_cache
+            )
 
         if "aurc" in self.query_metrics or "e-aurc" in self.query_metrics:
             if self.rc_curve is None:
@@ -192,19 +194,13 @@ class ConfidEvaluator:
 
         if "fail-NLL" in self.query_metrics:
             out_metrics["fail-NLL"] = get_metric_function("fail-NLL")(self.stats_cache)
-            logger.debug("CHECK FAIL NLL: \n{}\n{}", self.confids.max(), self.confids.min())
+            logger.debug(
+                "CHECK FAIL NLL: \n{}\n{}", self.confids.max(), self.confids.min()
+            )
 
         return out_metrics
 
     def get_plot_stats_per_confid(self):
-
-        # "calibration",
-        # "overconfidence",
-        # "roc_curve",
-        # "prc_curve",
-        # "rc_curve",
-        # "hist_per_confid"
-
         plot_stats_dict = {}
 
         if "roc_curve" in self.query_plots:
@@ -258,7 +254,7 @@ class ConfidEvaluator:
         )
 
     def get_calibration_stats(self):
-        calib_confids = np.clip(self.confids, 0, 1)  # necessary for waic
+        calib_confids = np.clip(self.confids, 0, 1)
         self.bin_accs, self.bin_confids = calibration_curve(
             self.correct, calib_confids, n_bins=self.bins
         )
@@ -287,13 +283,18 @@ class ConfidEvaluator:
         return b
 
     def get_val_risk_scores(self, rstar, delta, no_bound_mode=False):
-        # A function to calculate the risk bound proposed in the paper, the algorithm is based on algorithm 1 from the paper.
-        # Input: rstar - the requested risk bound
-        #       delta - the desired delta
-        #       kappa - rating function over the points (higher values is more confident prediction)
-        #       residuals - a vector of the residuals of the samples 0 is correct prediction and 1 corresponding to an error
-        #       split - is a boolean controls whether to split train and test
-        # Output - [theta, bound] (also prints latex text for the tables in the paper)
+        """A function to calculate the risk bound proposed in the paper, the algorithm is based on algorithm 1 from the paper.
+
+        Args:
+            rstar (): the requested risk bound
+            delta (): the desired delta
+            kappa (): rating function over the points (higher values is more confident prediction)
+            residuals (): a vector of the residuals of the samples 0 is correct prediction and 1 corresponding to an error
+            split (): is a boolean controls whether to split train and test
+
+        Returns:
+            [theta, bound] (also prints latex text for the tables in the paper)
+        """
 
         val_risk_scores = {}
         probs = self.confids
@@ -308,7 +309,6 @@ class ConfidEvaluator:
         deltahat = delta / math.ceil(math.log2(m))
 
         for q in range(math.ceil(math.log2(m)) + 1):
-            # the for runs log(m)+1 iterations but actually the bound calculated on only log(m) different candidate thetas
             mid = math.ceil((a + b) / 2)
 
             mi = len(FY[probs_idx_sorted[mid:]])
@@ -420,7 +420,7 @@ class ConfidPlotter:
         handles = np.array([h for l in legend_info for h in l[0]])[ixs]
         f.legend(handles, labels, loc="upper right", prop={"size": 10 * self.fig_scale})
 
-        f.tight_layout()  # this is slow af
+        f.tight_layout()
         return f
 
     def plot_hist_per_confid(self, confid_key):
@@ -689,9 +689,6 @@ def RC_curve(residuals, confidence):
     # aurc is computed as a weighted average over risk scores analogously to the average precision score.
     aurc = sum([a * w for a, w in zip(risks, weights)])
 
-    # TODO: Switch to new aurc calculation
-    # aurc = sum([(risks[i] + risks[i+1]) * 0.5 * weights[i] for i in range(len(weights)) ])
-
     # compute e-aurc
     err = np.mean(residuals)
     kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
@@ -714,7 +711,6 @@ class BrierScore(Metric):
 
     def update(self, preds: torch.Tensor, target: torch.Tensor):
         # update metric states
-        #      preds, target = self._input_format(preds, target)
 
         y_one_hot = torch.nn.functional.one_hot(target, num_classes=self.num_classes)
         assert preds.shape == y_one_hot.shape
@@ -738,7 +734,13 @@ def clean_logging(log_dir):
 
 def plot_input_imgs(x, y, out_path):
 
-    logger.debug("{}\n{}\n{}\n{}", x.mean().item(), x.std().item(), x.min().item(), x.max().item())
+    logger.debug(
+        "{}\n{}\n{}\n{}",
+        x.mean().item(),
+        x.std().item(),
+        x.min().item(),
+        x.max().item(),
+    )
     f, axs = plt.subplots(nrows=4, ncols=4, figsize=(10, 10))
     for ix in range(len(f.axes)):
         ax = f.axes[ix]
@@ -778,7 +780,6 @@ def qual_plot(fp_dict, fn_dict, out_path):
 
         col += 1
 
-    # plt.tight_layout()
     plt.subplots_adjust(wspace=0.23, hspace=0.4)
     f.savefig(out_path)
     plt.close()
@@ -825,11 +826,6 @@ def ThresholdPlot(plot_dict):
             label="incorrect",
         )
 
-        # max_y_data = np.max([np.max(n_correct), np.max(n_incorrect)])
-        # self.ax.vlines(np.mean(confids[np.argwhere(correct == 0)]), ymin=0, ymax=max_y_data, color="r", linestyles="-", label="incorrect mean")
-        # self.ax.vlines(np.median(confids[np.argwhere(correct == 0)]), ymin=0, ymax=max_y_data, color="r", linestyles="--", label="incorrect median")
-        # self.ax.vlines(np.mean(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_y_data, color="g", linestyles="-", label="correct mean")
-        # self.ax.vlines(np.median(confids[np.argwhere(correct == 1)]), ymin=0, ymax=max_y_data, color="g", linestyles="--", label="correct median")
         for idx, dt in enumerate(delta_threshs):
             logger.debug("drawing line", idx, dt, delta_threshs, deltas)
             axs[ix].vlines(

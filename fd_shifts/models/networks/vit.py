@@ -1,11 +1,14 @@
 import torch
 import torch.nn as nn
 import timm
+from fd_shifts import configs
+
+from fd_shifts.models.networks.network import DropoutEnablerMixin, Network
 
 
-class ViT(nn.Module):
-    def __init__(self, cf):
-        super(ViT, self).__init__()
+class ViT(Network):
+    def __init__(self, cf: configs.Config):
+        super().__init__()
 
         self.encoder = Encoder(cf)
         self.classifier = Classifier(self.encoder.model.head)
@@ -16,11 +19,9 @@ class ViT(nn.Module):
         return pred
 
 
-class Encoder(nn.Module):
-    def __init__(self, cf):
-        super(Encoder, self).__init__()
-        # name = cf.model.network.name if "vit" in cf.model.network.name else cf.model.network.backbone
-        # print("Init VGG type:{}".format(name))
+class Encoder(DropoutEnablerMixin):
+    def __init__(self, cf: configs.Config):
+        super().__init__()
         num_classes = cf.data.num_classes
         if cf.eval.ext_confid_name == "dg":
             num_classes += 1
@@ -51,14 +52,11 @@ class Encoder(nn.Module):
         x = self.model.forward_features(x)
         return x
 
-    # def load_state_dict(self, state_dict, strict=True):
-    #     print(state_dict)
-    #     self.model.load_state_dict(state_dict, strict)
 
 
 class Classifier(nn.Module):
-    def __init__(self, module):
-        super(Classifier, self).__init__()
+    def __init__(self, module: nn.Module):
+        super().__init__()
         self.module = module
 
     def forward(self, x):

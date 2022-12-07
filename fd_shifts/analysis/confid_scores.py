@@ -11,8 +11,6 @@ if TYPE_CHECKING:
 
 EXTERNAL_CONFIDS = ["ext", "bpd", "maha", "tcp", "dg", "devries"]
 
-# TODO: Add better error handling/reporting
-
 ArrayType = npt.NDArray[np.floating]
 T = TypeVar(
     "T", Callable[[ArrayType], ArrayType], Callable[[ArrayType, ArrayType], ArrayType]
@@ -20,12 +18,10 @@ T = TypeVar(
 
 
 def _assert_softmax_finite(softmax: npt.NDArray[np.number]):
-    # TODO: Decide whether this should assert or propagate nan
     assert np.isfinite(softmax).all(), "NaN or INF in softmax output"
 
 
 def _assert_softmax_numerically_stable(softmax: ArrayType):
-    # TODO: Assert on acceptable error rate?
     msr = softmax.max(axis=1)
     errors = (msr == 1) & ((softmax > 0) & (softmax < 1)).any(axis=1)
 
@@ -40,6 +36,15 @@ def _assert_softmax_numerically_stable(softmax: ArrayType):
 
 
 def validate_softmax(func: T) -> T:
+    """Decorator to validate softmax before computing stuff
+
+    Args:
+        func (T): callable to decorate
+
+    Returns:
+        decorated callable
+    """
+
     def _inner_wrapper(*args: ArrayType) -> ArrayType:
         for arg in args:
             _assert_softmax_finite(arg)
@@ -61,6 +66,15 @@ _confid_funcs = {}
 
 
 def register_confid_func(name: str) -> Callable:
+    """Decorator to register a new confidence scoring function
+
+    Args:
+        name (str): name to register under
+
+    Returns:
+        registered callable
+    """
+
     def _inner_wrapper(func: Callable) -> Callable:
         _confid_funcs[name] = func
         return func
@@ -68,11 +82,27 @@ def register_confid_func(name: str) -> Callable:
     return _inner_wrapper
 
 
-def confid_function_exists(confid_name):
+def confid_function_exists(confid_name: str) -> bool:
+    """Check if confidence scoring function exists
+
+    Args:
+        confid_name (str): name of the CSF
+
+    Returns:
+        True if it exists, False otherwise
+    """
     return confid_name in _confid_funcs
 
 
-def get_confid_function(confid_name):
+def get_confid_function(confid_name) -> Callable:
+    """Get the CSF callable registered under confid_name
+
+    Args:
+        confid_name (str): name of the CSF
+
+    Returns:
+        callable
+    """
     if not confid_function_exists(confid_name):
         raise NotImplementedError(f"Function for {confid_name} not implemented.")
 
@@ -85,6 +115,14 @@ def get_confid_function(confid_name):
 def maximum_softmax_probability(
     softmax: ArrayType,
 ) -> ArrayType:
+    """Maximum softmax probability CSF/Maximum logit score CSF
+
+    Args:
+        softmax (ArrayType): array-like containing softmaxes or logits of shape NxD
+
+    Returns:
+        maximum score array of shape N
+    """
     return np.max(softmax, axis=1)
 
 
@@ -94,24 +132,56 @@ def maximum_softmax_probability(
 def mcd_maximum_softmax_probability(
     mcd_softmax_mean: ArrayType, _: ArrayType
 ) -> ArrayType:
+    """Maximum softmax probability CSF/Maximum logit score CSF for MCD
+
+    Args:
+        mcd_softmax_mean (ArrayType): array-like containing mean softmaxes or logits of shape NxD
+
+    Returns:
+        maximum score array of shape N
+    """
     return np.max(mcd_softmax_mean, axis=1)
 
 
 @register_confid_func("det_pe")
 @validate_softmax
 def predictive_entropy(softmax: ArrayType) -> ArrayType:
+    """Predictive entropy CSF
+
+    Args:
+        softmax (ArrayType): array-like containing softmaxes of shape NxD
+
+    Returns:
+        pe score array of shape N
+    """
     return np.sum(softmax * (-np.log(softmax + np.finfo(softmax.dtype).eps)), axis=1)
 
 
 @register_confid_func("mcd_pe")
 @validate_softmax
 def mcd_predictive_entropy(mcd_softmax_mean: ArrayType, _: ArrayType) -> ArrayType:
+    """Predictive entropy CSF for MCD
+
+    Args:
+        mcd_softmax_mean (ArrayType): array-like containing mean softmaxes of shape NxD
+
+    Returns:
+        pe score array of shape N
+    """
     return predictive_entropy(mcd_softmax_mean)
 
 
 @register_confid_func("mcd_ee")
 @validate_softmax
 def expected_entropy(_: ArrayType, mcd_softmax_dist: ArrayType) -> ArrayType:
+    """Expected entropy over MCD data CSF
+
+    Args:
+        mcd_softmax_dist (ArrayType): array-like containing distribution of softmaxes of shape NxMxD
+
+    Returns:
+        ee score array of shape N
+    """
     return np.mean(
         np.sum(
             mcd_softmax_dist
@@ -126,6 +196,15 @@ def expected_entropy(_: ArrayType, mcd_softmax_dist: ArrayType) -> ArrayType:
 def mutual_information(
     mcd_softmax_mean: ArrayType, mcd_softmax_dist: ArrayType
 ) -> ArrayType:
+    """Mutual information over MCD data CSF
+
+    Args:
+        mcd_softmax_mean (ArrayType): array-like containing mean of softmaxes of shape NxD
+        mcd_softmax_dist (ArrayType): array-like containing distribution of softmaxes of shape NxMxD
+
+    Returns:
+        mi score array of shape N
+    """
     return predictive_entropy(mcd_softmax_mean) - expected_entropy(
         mcd_softmax_mean, mcd_softmax_dist
     )
@@ -134,6 +213,14 @@ def mutual_information(
 @register_confid_func("mcd_sv")
 @validate_softmax
 def softmax_variance(_: ArrayType, mcd_softmax_dist: ArrayType) -> ArrayType:
+    """Softmax variance over MCD data CSF
+
+    Args:
+        mcd_softmax_dist (ArrayType): array-like containing distribution of softmaxes of shape NxMxD
+
+    Returns:
+        sv score array of shape N
+    """
     return np.mean(np.std(mcd_softmax_dist, axis=2), axis=(1))
 
 
@@ -162,6 +249,14 @@ def ext_waic(mcd_softmax_mean: ArrayType, mcd_softmax_dist: ArrayType) -> ArrayT
 @register_confid_func("dg_mcd")
 @register_confid_func("devries_mcd")
 def mcd_ext(mcd_softmax_mean: ArrayType, _: ArrayType) -> ArrayType:
+    """Dummy function for consistent handling of already computed confidences
+
+    Args:
+        mcd_softmax_mean (ArrayType): array-like containing already computed confidences
+
+    Returns:
+        unchanged confidences
+    """
     return mcd_softmax_mean
 
 
@@ -175,10 +270,24 @@ def mcd_ext(mcd_softmax_mean: ArrayType, _: ArrayType) -> ArrayType:
 @register_confid_func("dg")
 @register_confid_func("devries")
 def ext_confid(softmax: ArrayType) -> ArrayType:
+    """Dummy function for consistent handling of already computed confidences
+
+    Args:
+        softmax (ArrayType): array-like containing already computed confidences
+
+    Returns:
+        unchanged confidences
+    """
     return softmax
 
 
 class ConfidScore:
+    """Wrapper class handling CSF selection and handing over function args
+
+    Attributes: 
+        confid_func: 
+        analysis: 
+    """
     def __init__(
         self,
         study_data: ExperimentData,
@@ -245,7 +354,7 @@ class ConfidScore:
 
     @property
     def metrics(self) -> dict[Any, Any]:
-        return self.analysis.compute_performance_metrics(*self.performance_args)
+        return self.analysis._compute_performance_metrics(*self.performance_args)
 
 
 _combine_opts = {
@@ -268,6 +377,13 @@ def parse_secondary_confid(query_confid: str, analysis: Analysis):
 
 
 class SecondaryConfidScore:
+    """Wrapper class handling CSF selection and handing over function args for CSFs computed on top
+    of precomputed confidence scores
+
+    Attributes: 
+        confid_func: 
+        analysis: 
+    """
     def __init__(
         self, study_data: ExperimentData, query_confid: str, analysis: Analysis
     ):
@@ -294,4 +410,4 @@ class SecondaryConfidScore:
 
     @property
     def metrics(self) -> dict[Any, Any]:
-        return self.analysis.compute_performance_metrics(*self.performance_args)
+        return self.analysis._compute_performance_metrics(*self.performance_args)

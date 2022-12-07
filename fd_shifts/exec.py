@@ -1,17 +1,14 @@
 import os
-from pathlib import Path
 import random
-import sys
 from typing import cast
 
 import hydra
 import pytorch_lightning as pl
-from rich import get_console, reconfigure
 import torch
 from omegaconf import DictConfig, OmegaConf
-from pytorch_lightning.callbacks import RichProgressBar
+from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBar
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
-from rich.console import Console
+from rich import get_console, reconfigure
 from torch import multiprocessing
 
 from fd_shifts import analysis, configs, logger
@@ -20,14 +17,14 @@ from fd_shifts.models import get_model
 from fd_shifts.models.callbacks import get_callbacks
 from fd_shifts.utils import exp_utils
 
-# TODO: Handle better configs
-# TODO: Handle mode better
-# TODO: Log git commit
-
 configs.init()
 
 
-def train(cf: configs.Config, progress: RichProgressBar, subsequent_testing=False):
+def train(
+    cf: configs.Config,
+    progress: RichProgressBar = RichProgressBar(),
+    subsequent_testing: bool = False,
+) -> None:
     """
     perform the training routine for a given fold. saves plots and selected parameters to the experiment dir
     specified in the configs.
@@ -38,7 +35,6 @@ def train(cf: configs.Config, progress: RichProgressBar, subsequent_testing=Fals
     if cf.exp.global_seed is not None:
         exp_utils.set_seed(cf.exp.global_seed)
         cf.trainer.benchmark = False
-        # train_deterministic_flag = True
         logger.info(
             "setting seed {}, benchmark to False for deterministic training.".format(
                 cf.exp.global_seed
@@ -49,36 +45,34 @@ def train(cf: configs.Config, progress: RichProgressBar, subsequent_testing=Fals
     cf.exp.version = exp_utils.get_next_version(cf.exp.dir)
     if cf.trainer.resume_from_ckpt:
         cf.exp.version -= 1
-        resume_ckpt_path = exp_utils.get_resume_ckpt_path(cf)
+        resume_ckpt_path = exp_utils._get_resume_ckpt_path(cf)
         logger.info("resuming previous training:", resume_ckpt_path)
 
     if cf.trainer.resume_from_ckpt_confidnet:
         cf.exp.version -= 1
         cf.trainer.callbacks.training_stages.pretrained_confidnet_path = (
-            exp_utils.get_resume_ckpt_path(cf)
+            exp_utils._get_resume_ckpt_path(cf)
         )
         logger.info("resuming previous training:", resume_ckpt_path)
 
-    # TODO: Don't hard-code number of total classes and number of holdout classes
     if "openset" in cf.data.dataset:
-        cf.data.kwargs["out_classes"] = cf.data.kwargs.get("out_classes", random.sample(
-            range(cf.data.num_classes), int(0.4 * cf.data.num_classes))
+        cf.data.kwargs["out_classes"] = cf.data.kwargs.get(
+            "out_classes",
+            random.sample(range(cf.data.num_classes), int(0.4 * cf.data.num_classes)),
         )
 
     datamodule = AbstractDataLoader(cf)
     model = get_model(cf.model.name)(cf)
     tb_logger = TensorBoardLogger(
-        save_dir=cf.exp.group_dir,
+        save_dir=str(cf.exp.group_dir),
         name=cf.exp.name,
         default_hp_metric=False,
     )
-    cf.exp.version = tb_logger.version
     csv_logger = CSVLogger(
-        save_dir=cf.exp.group_dir, name=cf.exp.name, version=cf.exp.version
+        save_dir=str(cf.exp.group_dir), name=cf.exp.name, version=cf.exp.version
     )
 
     max_steps = cf.trainer.num_steps if hasattr(cf.trainer, "num_steps") else None
-    accelerator = cf.trainer.accelerator if hasattr(cf.trainer, "accelerator") else None
     accumulate_grad_batches = (
         cf.trainer.accumulate_grad_batches
         if hasattr(cf.trainer, "accumulate_grad_batches")
@@ -86,7 +80,8 @@ def train(cf: configs.Config, progress: RichProgressBar, subsequent_testing=Fals
     )
 
     trainer = pl.Trainer(
-        gpus=-1,
+        accelerator="auto",
+        devices="auto",
         logger=[tb_logger, csv_logger],
         max_epochs=cf.trainer.num_epochs,
         max_steps=max_steps,
@@ -96,12 +91,8 @@ def train(cf: configs.Config, progress: RichProgressBar, subsequent_testing=Fals
         check_val_every_n_epoch=cf.trainer.val_every_n_epoch,
         fast_dev_run=cf.trainer.fast_dev_run,
         num_sanity_val_steps=5,
-        # amp_level="O0",
         deterministic=train_deterministic_flag,
-        # limit_train_batches=50,
         limit_val_batches=0 if cf.trainer.do_val is False else 1.0,
-        # replace_sampler_ddp=False,
-        accelerator=accelerator,
         gradient_clip_val=1,
         accumulate_grad_batches=accumulate_grad_batches,
     )
@@ -110,23 +101,26 @@ def train(cf: configs.Config, progress: RichProgressBar, subsequent_testing=Fals
         "logging training to: {}, version: {}".format(cf.exp.dir, cf.exp.version)
     )
     trainer.fit(model=model, datamodule=datamodule)
-    # analysis.main(in_path=cf.exp.version_dir,
-    #               out_path=cf.exp.version_dir,
-    #               query_studies={"iid_study": cf.data.dataset})
 
     if subsequent_testing:
         test(cf, progress)
 
 
-def test(cf: configs.Config, progress: RichProgressBar):
+def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> None:
+    """Run inference
+
+    Args:
+        cf (configs.Config): configuration object to run inference on
+        progress: (RichProgressBar): global progress bar
+    """
     if "best" in cf.test.selection_criterion and cf.test.only_latest_version is False:
-        ckpt_path = exp_utils.get_path_to_best_ckpt(
+        ckpt_path = exp_utils._get_path_to_best_ckpt(
             cf.exp.dir, cf.test.selection_criterion, cf.test.selection_mode
         )
     else:
         logger.info("CHECK cf.exp.dir", cf.exp.dir)
         cf.exp.version = exp_utils.get_most_recent_version(cf.exp.dir)
-        ckpt_path = exp_utils.get_resume_ckpt_path(cf)
+        ckpt_path = exp_utils._get_resume_ckpt_path(cf)
 
     logger.info(
         "testing model from checkpoint: {} from model selection tpye {}".format(
@@ -142,14 +136,12 @@ def test(cf: configs.Config, progress: RichProgressBar):
     if not os.path.exists(cf.test.dir):
         os.makedirs(cf.test.dir)
 
-    accelerator = cf.trainer.accelerator if hasattr(cf.trainer, "accelerator") else None
     trainer = pl.Trainer(
-        gpus=-1,
+        accelerator="auto",
+        devices="auto",
         logger=False,
         callbacks=[progress] + get_callbacks(cf),
         replace_sampler_ddp=False,
-        # accelerator="ddp",
-        accelerator=None,
     )
     trainer.test(model=module, datamodule=datamodule)
     analysis.main(
@@ -161,18 +153,18 @@ def test(cf: configs.Config, progress: RichProgressBar):
         cf=cf,
     )
 
-    # fix str bug
-    # test resuming by testing a second time in the same dir
-    # how to print the tested epoch into csv log?
-
 
 @hydra.main(config_path="configs", config_name="config")
-def main(dconf: DictConfig):
+def main(dconf: DictConfig) -> None:
+    """main entry point for running anything with a Trainer
+
+    Args:
+        dconf (DictConfig): config passed in by hydra
+    """
     multiprocessing.set_start_method("spawn")
 
     reconfigure(stderr=True, force_terminal=True)
     progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
-    # progress._console = console
     logger.remove()  # Remove default 'stderr' handler
 
     # We need to specify end=''" as log message already ends with \n (thus the lambda function)
@@ -183,42 +175,82 @@ def main(dconf: DictConfig):
         enqueue=True,
         level="DEBUG",
         backtrace=True,
-        diagnose=True
+        diagnose=True,
     )
 
     try:
         # NOTE: Needed because hydra does not set this if we load a previous experiment
         dconf._metadata.object_type = configs.Config
 
-        def fix_metadata(cfg: DictConfig):
+        def _fix_metadata(cfg: DictConfig) -> None:
             if hasattr(cfg, "_target_"):
-                cfg._metadata.object_type = getattr(configs, cfg._target_.split(".")[-1])
-            for k, v in cfg.items():
+                cfg._metadata.object_type = getattr(
+                    configs, cfg._target_.split(".")[-1]
+                )
+            for _, v in cfg.items():
                 match v:
-                    case DictConfig():
-                        fix_metadata(v)
+                    case DictConfig():  # type: ignore
+                        _fix_metadata(v)
                     case _:
                         pass
 
-        fix_metadata(dconf)
-
+        _fix_metadata(dconf)
         conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
-        conf.validate()
-        # sys.stdout = exp_utils.Logger(conf.exp.log_path)
-        # sys.stderr = exp_utils.Logger(conf.exp.log_path)
-        logger.info(OmegaConf.to_yaml(conf))
-        conf.data.num_workers = exp_utils.get_allowed_n_proc_DA(conf.data.num_workers)
+
+        conf.__pydantic_validate_values__()
 
         if conf.exp.mode == configs.Mode.train:
+            conf.exp.version = exp_utils.get_next_version(conf.exp.dir)
+            if conf.trainer.resume_from_ckpt:
+                conf.exp.version -= 1
+
+            if conf.trainer.resume_from_ckpt_confidnet:
+                conf.exp.version -= 1
+            conf.data.num_workers = exp_utils._get_allowed_n_proc_DA(
+                conf.data.num_workers
+            )
+
+            conf.__pydantic_validate_values__()
+            logger.info(OmegaConf.to_yaml(conf))
+
             train(conf, progress)
 
-        if conf.exp.mode == configs.Mode.train_test:
+        elif conf.exp.mode == configs.Mode.train_test:
+            conf.exp.version = exp_utils.get_next_version(conf.exp.dir)
+            if conf.trainer.resume_from_ckpt:
+                conf.exp.version -= 1
+
+            if conf.trainer.resume_from_ckpt_confidnet:
+                conf.exp.version -= 1
+            conf.data.num_workers = exp_utils._get_allowed_n_proc_DA(
+                conf.data.num_workers
+            )
+
+            conf.__pydantic_validate_values__()
+            logger.info(OmegaConf.to_yaml(conf))
             train(conf, progress, subsequent_testing=True)
 
-        if conf.exp.mode == configs.Mode.test:
+        elif conf.exp.mode == configs.Mode.test:
+            if (
+                "best" in conf.test.selection_criterion
+                and conf.test.only_latest_version is False
+            ):
+                ckpt_path = exp_utils._get_path_to_best_ckpt(
+                    conf.exp.dir,
+                    conf.test.selection_criterion,
+                    conf.test.selection_mode,
+                )
+            else:
+                logger.info("CHECK conf.exp.dir", conf.exp.dir)
+                conf.exp.version = exp_utils.get_most_recent_version(conf.exp.dir)
+                ckpt_path = exp_utils._get_resume_ckpt_path(conf)
+            conf.__pydantic_validate_values__()
+            logger.info(OmegaConf.to_yaml(conf))
             test(conf, progress)
 
-        if conf.exp.mode == configs.Mode.analysis:
+        elif conf.exp.mode == configs.Mode.analysis:
+            conf.__pydantic_validate_values__()
+            logger.info(OmegaConf.to_yaml(conf))
             analysis.main(
                 in_path=conf.test.dir,
                 out_path=conf.test.dir,
@@ -227,6 +259,9 @@ def main(dconf: DictConfig):
                 threshold_plot_confid=None,
                 cf=conf,
             )
+        else:
+            conf.__pydantic_validate_values__()
+            logger.info("BEGIN CONFIG\n{}\nEND CONFIG", OmegaConf.to_yaml(conf))
     except Exception as e:
         logger.exception(e)
         raise e

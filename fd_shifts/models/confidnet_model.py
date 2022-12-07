@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import hydra
 import pytorch_lightning as pl
@@ -11,17 +12,46 @@ from tqdm import tqdm
 
 from fd_shifts import logger
 from fd_shifts.models.networks import get_network
+from fd_shifts.models.networks.resnet50_imagenet import ResNetEncoder
 
 if TYPE_CHECKING:
     from fd_shifts import configs
 
 
-class net(pl.LightningModule):
+class Module(pl.LightningModule):
+    """
+
+    Attributes:
+        conf:
+        test_mcd_samples:
+        monitor_mcd_samples:
+        learning_rate:
+        learning_rate_confidnet:
+        learning_rate_confidnet_finetune:
+        lr_scheduler:
+        momentum:
+        weight_decay:
+        query_confids:
+        num_epochs:
+        pretrained_backbone_path:
+        pretrained_confidnet_path:
+        confidnet_lr_scheduler:
+        imagenet_weights_path:
+        loss_ce:
+        loss_mse:
+        ext_confid_name:
+        network:
+        backbone:
+        training_stage:
+        test_results:
+        loaded_epoch:
+    """
+
     def __init__(self, cf: configs.Config):
-        super(net, self).__init__()
+        super().__init__()
 
         self.save_hyperparameters()
-        self.cf = cf
+        self.conf = cf
 
         self.test_mcd_samples = cf.model.test_mcd_samples
         self.monitor_mcd_samples = cf.model.monitor_mcd_samples
@@ -40,48 +70,66 @@ class net(pl.LightningModule):
                 "Initializing custom Model Selector. {}",
                 cf.trainer.callbacks["model_checkpoint"],
             )
-            self.selection_metrics = (
-                cf.trainer.callbacks["model_checkpoint"]["selection_metric"]
-            )
+            self.selection_metrics = cf.trainer.callbacks["model_checkpoint"][
+                "selection_metric"
+            ]
             self.selection_modes = cf.trainer.callbacks["model_checkpoint"]["mode"]
             self.test_selection_criterion = cf.test.selection_criterion
-        self.pretrained_backbone_path = (
-            cf.trainer.callbacks["training_stages"]["pretrained_backbone_path"]
-        )
-        self.pretrained_confidnet_path = (
-            cf.trainer.callbacks["training_stages"]["pretrained_confidnet_path"]
-        )
-        self.confidnet_lr_scheduler = (
-            cf.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"]
-        )
+        self.pretrained_backbone_path = cf.trainer.callbacks["training_stages"][
+            "pretrained_backbone_path"
+        ]
+        self.pretrained_confidnet_path = cf.trainer.callbacks["training_stages"][
+            "pretrained_confidnet_path"
+        ]
+        self.confidnet_lr_scheduler = cf.trainer.callbacks["training_stages"][
+            "confidnet_lr_scheduler"
+        ]
         self.imagenet_weights_path = cf.model.network.imagenet_weights_path
 
         self.loss_ce = nn.CrossEntropyLoss()
         self.loss_mse = nn.MSELoss(reduction="sum")
         self.ext_confid_name = cf.eval.ext_confid_name
 
-        self.network = get_network(cf.model.network.name)(
-            cf
-        )  # todo make explciit arguemnts in factory!!
-        self.backbone = get_network(cf.model.network.backbone)(
-            cf
-        )  # todo make explciit arguemnts in factory!!
-        self.training_stage = 0  # will be iincreased by TrainingStages callback
+        self.network = get_network(cf.model.network.name)(cf)
 
-    def forward(self, x):
+        assert (backbone_name := cf.model.network.backbone)
+        self.backbone = get_network(backbone_name)(cf)
+
+        self.training_stage = 0
+
+        self.test_results: dict[str, torch.Tensor | None] = {}
+
+    # pylint: disable=arguments-differ
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x (torch.Tensor): batch of images
+
+        Returns:
+            Predicted probabilities
+        """
         return self.network(x)
 
-    def mcd_eval_forward(self, x, n_samples):
-        # self.model.encoder.eval_mcdropout = True
+    def mcd_eval_forward(
+        self, x: torch.Tensor, n_samples: int
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+
+        """
+        Args:
+            x (torch.Tensor): batch of images
+            n_samples (int): number of montecarlo dropout samples to draw
+
+        Returns:
+            batch of samples of predicted probabilities
+        """
         self.network.encoder.enable_dropout()
         self.backbone.encoder.enable_dropout()
 
-        softmax_list = []
-        conf_list = []
+        softmax_list: list[torch.Tensor] = []
+        conf_list: list[torch.Tensor] = []
         for _ in range(n_samples - len(softmax_list)):
             logits = self.backbone(x)
             _, confidence = self.network(x)
-            softmax = F.softmax(logits, dim=1)
             confidence = torch.sigmoid(confidence).squeeze(1)
             softmax_list.append(logits.unsqueeze(2))
             conf_list.append(confidence.unsqueeze(1))
@@ -91,9 +139,10 @@ class net(pl.LightningModule):
 
         return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
 
-    def on_train_start(self):
-        # what if resume? is this called before checkpoint?
-        if self.imagenet_weights_path:
+    def on_train_start(self) -> None:
+        if self.imagenet_weights_path and isinstance(
+            self.backbone.encoder, ResNetEncoder
+        ):
             self.backbone.encoder.load_pretrained_imagenet_params(
                 self.imagenet_weights_path
             )
@@ -102,7 +151,20 @@ class net(pl.LightningModule):
             tqdm.write(str(ix))
             tqdm.write(str(x[1]))
 
-    def training_step(self, batch, batch_idx):
+    def training_step(
+        self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int
+    ) -> dict[str, torch.Tensor | None]:
+        """
+        Args:
+            batch (tuple[torch.Tensor, torch.Tensor]): one batch of images and labels
+            batch_idx (int): index of current batch
+
+        Returns:
+            dict containing loss, softmax, labels and confidences
+
+        Raises:
+            ValueError: if somehow the training stage goes beyond 2
+        """
         if self.training_stage == 0:
             x, y = batch
             logits = self.backbone(x)
@@ -116,77 +178,7 @@ class net(pl.LightningModule):
             softmax = F.softmax(outputs[0], dim=1)
             pred_confid = torch.sigmoid(outputs[1])
             tcp = softmax.gather(1, y.unsqueeze(1))
-            # print("CHECK PRED CONFID", pred_confid.mean(), pred_confid.min(), pred_confid.max())
-            # print("CHECK TCP", tcp.mean(), tcp.min(), tcp.max())
-            # print(pred_confid[0].item(), y[0].item(), tcp[0].item(), softmax[0])
-            loss = F.mse_loss(pred_confid, tcp)  # self.loss_mse(pred_confid, tcp) #
-            return {
-                "loss": loss,
-                "softmax": softmax,
-                "labels": y,
-                "confid": pred_confid.squeeze(1),
-            }
-
-        if self.training_stage == 2:
-            x, y = batch
-            softmax = F.softmax(self.backbone(x), dim=1)
-            softmax2, pred_confid = self.network(x)
-            pred_confid = torch.sigmoid(pred_confid)
-            tcp = softmax.gather(1, y.unsqueeze(1))
-            # print("CHECK PRED CONFID", pred_confid.mean(), pred_confid.min(), pred_confid.max())
-            # print("CHECK TCP", tcp.mean(), tcp.min(), tcp.max())
-            # print(pred_confid[0].item(), y[0].item(), tcp[0].item(), softmax[0])
-            loss = F.mse_loss(pred_confid, tcp)  # self.loss_mse(pred_confid, tcp) #
-            return {
-                "loss": loss,
-                "softmax": softmax,
-                "labels": y,
-                "confid": pred_confid.squeeze(1),
-            }
-
-    def training_step_end(self, batch_parts):
-        batch_parts["loss"] = batch_parts["loss"].mean()
-        return batch_parts
-
-    # def on_after_backward(self):
-    #
-    #     if self.global_step % 100 == 0 or 1 == 1:
-    #         for ix, x in enumerate(self.backbone.named_parameters()):
-    #             if x[1].grad is not None:
-    #                 print("GRAD BACKBONE", x[0], x[1].grad.mean())
-    #         for ix, x in enumerate(self.network.encoder.named_parameters()):
-    #             if x[1].grad is not None:
-    #                 print("GRAD CONFID ENCODER", x[0],  x[1].grad.mean())
-    #             # if any(x[1].grad):
-    #             #     print("CONFID ENCODER GRAD")
-    #
-    #         for ix, x in enumerate(self.network.confid_net.named_parameters()):
-    #             if x[1].grad is not None:
-    #                 print("GRAD CONFIDNET",  x[0], x[1].grad.mean())
-    #
-    #         for ix, x in enumerate(self.named_modules()):
-    #             if x[1].training is False:
-    #                 print("TRAIN", x[0])
-
-    def validation_step(self, batch, batch_idx):
-
-        if self.training_stage == 0:
-            x, y = batch
-            logits = self.backbone(x)
-            loss = self.loss_ce(logits, y)
-            softmax = F.softmax(logits, dim=1)
-            return {"loss": loss, "softmax": softmax, "labels": y, "confid": None}
-
-        if self.training_stage == 1:
-            x, y = batch
-            outputs = self.network(x)
-            softmax = F.softmax(outputs[0], dim=1)
-            pred_confid = torch.sigmoid(outputs[1])
-            tcp = softmax.gather(1, y.unsqueeze(1))
-            # print("CHECK PRED CONFID", pred_confid.mean(), pred_confid.min(), pred_confid.max())
-            # print("CHECK TCP", tcp.mean(), tcp.min(), tcp.max())
-            # print(pred_confid[0].item(), y[0].item(), tcp[0].item(), softmax[0])
-            loss = F.mse_loss(pred_confid, tcp)  # self.loss_mse(pred_confid, tcp) #
+            loss = F.mse_loss(pred_confid, tcp)
             return {
                 "loss": loss,
                 "softmax": softmax,
@@ -200,16 +192,61 @@ class net(pl.LightningModule):
             _, pred_confid = self.network(x)
             pred_confid = torch.sigmoid(pred_confid)
             tcp = softmax.gather(1, y.unsqueeze(1))
-            loss = F.mse_loss(pred_confid, tcp)  # self.loss_mse(pred_confid, tcp) #
+            loss = F.mse_loss(pred_confid, tcp)
+            return {
+                "loss": loss,
+                "softmax": softmax,
+                "labels": y,
+                "confid": pred_confid.squeeze(1),
+            }
+
+        raise ValueError("There is no training stage larger than 2")
+
+    def validation_step(
+        self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int
+    ) -> dict[str, torch.Tensor | None]:
+        """
+        Args:
+            batch (tuple[torch.Tensor, torch.Tensor]): one batch of images and labels
+            batch_idx (int): index of current batch
+
+        Returns:
+            dict containing loss, softmax, labels and confidences
+
+        Raises:
+            ValueError: if somehow the training stage goes beyond 2
+        """
+
+        if self.training_stage == 0:
+            x, y = batch
+            logits = self.backbone(x)
+            loss = self.loss_ce(logits, y)
+            softmax = F.softmax(logits, dim=1)
+            return {"loss": loss, "softmax": softmax, "labels": y, "confid": None}
+
+        if self.training_stage == 1:
+            x, y = batch
+            outputs = self.network(x)
+            softmax = F.softmax(outputs[0], dim=1)
+            pred_confid = torch.sigmoid(outputs[1])
+            tcp = softmax.gather(1, y.unsqueeze(1))
+            loss = F.mse_loss(pred_confid, tcp)
+            return {
+                "loss": loss,
+                "softmax": softmax,
+                "labels": y,
+                "confid": pred_confid.squeeze(1),
+            }
+
+        if self.training_stage == 2:
+            x, y = batch
+            softmax = F.softmax(self.backbone(x), dim=1)
+            _, pred_confid = self.network(x)
+            pred_confid = torch.sigmoid(pred_confid)
+            tcp = softmax.gather(1, y.unsqueeze(1))
+            loss = F.mse_loss(pred_confid, tcp)
 
             softmax_dist = None
-            # if self.current_epoch == self.num_epochs - 1:
-            #     # save mcd output for psuedo-test if actual test is with mcd.
-            #     if any("mcd" in cfd for cfd in self.query_confids["test"]):
-            #         softmax_dist, _ = self.mcd_eval_forward(x=x,
-            #                                              n_samples=self.monitor_mcd_samples,
-            #                                              )
-            #
             return {
                 "loss": loss,
                 "softmax": softmax,
@@ -218,14 +255,17 @@ class net(pl.LightningModule):
                 "confid": pred_confid.squeeze(1),
             }
 
-    def validation_step_end(self, batch_parts):
-        return batch_parts
+        raise ValueError("There is no training stage larger than 2")
 
-    def test_step(self, batch, batch_idx, *args):
+    def test_step(
+        self,
+        batch: tuple[torch.Tensor, torch.Tensor],
+        batch_idx: int,
+        dataloader_id: int | None = None,
+    ) -> None:
         x, y = batch
 
         logits = self.backbone(x)
-        softmax = F.softmax(logits, dim=1)
         _, pred_confid = self.network(x)
         pred_confid = torch.sigmoid(pred_confid).squeeze(1)
 
@@ -238,76 +278,37 @@ class net(pl.LightningModule):
             )
 
         self.test_results = {
-            # "softmax": softmax,
-            # "softmax_dist": softmax_dist,
             "logits": logits,
             "logits_dist": logits_dist,
             "labels": y,
             "confid": pred_confid,
             "confid_dist": pred_confid_dist,
         }
-        # print("CHECK TEST NORM", x.mean(), x.std(), args)
-        # print("CHECK Monitor Accuracy", (softmax.argmax(1) == y).sum()/y.numel())
 
-    def configure_optimizers(self):
-        # optimizers = [
-        #     torch.optim.SGD(
-        #         self.backbone.parameters(),
-        #         lr=self.learning_rate,
-        #         momentum=self.momentum,
-        #         weight_decay=self.weight_decay,
-        #     )
-        # ]
-        # schedulers = []
-        # if self.lr_scheduler is not None:
-        #     if self.lr_scheduler.name == "MultiStep":
-        #         print("initializing MultiStep scheduler...")
-        #         # lighting only steps schedulre during validation. so milestones need to be divisible by val_every_n_epoch
-        #         normed_milestones = [
-        #             m / self.trainer.check_val_every_n_epoch
-        #             for m in self.lr_scheduler.milestones
-        #         ]
-        #         schedulers.append(
-        #             torch.optim.lr_scheduler.MultiStepLR(
-        #                 optimizer=optimizers[0],
-        #                 milestones=normed_milestones,
-        #                 verbose=True,
-        #             )
-        #         )
-        #
-        #     if self.lr_scheduler.name == "CosineAnnealing":
-        #         # only works with check_val_every_n_epoch = 1
-        #         print(
-        #             "initializing COsineAnnealing scheduler...",
-        #             self.lr_scheduler.max_epochs,
-        #         )
-        #         schedulers.append(
-        #             {
-        #                 "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
-        #                     optimizer=optimizers[0],
-        #                     T_max=self.lr_scheduler.max_epochs,
-        #                     verbose=True,
-        #                 ),
-        #                 "name": "backbone_sgd",
-        #             }
-        #         )
+    def configure_optimizers(
+        self,
+    ) -> tuple[
+        list[torch.optim.Optimizer], list[torch.optim.lr_scheduler._LRScheduler]
+    ]:
         optimizers = [
-            hydra.utils.instantiate(self.cf.trainer.optimizer, _partial_=True)(
+            hydra.utils.instantiate(self.conf.trainer.optimizer, _partial_=True)(
                 self.backbone.parameters()
             )
         ]
 
         schedulers = [
-            hydra.utils.instantiate(self.cf.trainer.lr_scheduler)(optimizer=optimizers[0])
+            hydra.utils.instantiate(self.conf.trainer.lr_scheduler)(
+                optimizer=optimizers[0]
+            )
         ]
 
         return optimizers, schedulers
 
-    def on_load_checkpoint(self, checkpoint):
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         self.loaded_epoch = checkpoint["epoch"]
         logger.info("loading checkpoint at epoch {}".format(self.loaded_epoch))
 
-    def load_only_state_dict(self, path):
+    def load_only_state_dict(self, path: str | Path) -> None:
         ckpt = torch.load(path)
         logger.info("loading checkpoint from epoch {}".format(ckpt["epoch"]))
         self.load_state_dict(ckpt["state_dict"], strict=True)

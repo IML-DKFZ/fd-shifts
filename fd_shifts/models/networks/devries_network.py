@@ -1,18 +1,27 @@
-import fd_shifts.models.networks as networks
 from torch import nn
 from torch.nn import functional as F
 
+import fd_shifts.models.networks as networks
 
-class DeVriesAndEncoder(nn.Module):
+
+class DeVriesAndEncoder(networks.network.Network):
     def __init__(self, cf):
         super().__init__()
 
         network = networks.get_network(cf.model.network.backbone)(
             cf
-        )  # todo make arguments explcit!
-        self.encoder = network.encoder
-        self.classifier = network.classifier
-        self.devries_net = DeVriesNet(cf)  # todo make arguments explcit!
+        )
+        self._encoder = network.encoder
+        self._classifier = network.classifier
+        self.devries_net = DeVriesNet(cf)
+
+    @property
+    def encoder(self) -> networks.network.DropoutEnablerMixin:
+        return self._encoder
+
+    @property
+    def classifier(self) -> nn.Module:
+        return self._classifier
 
     def forward(self, x):
 

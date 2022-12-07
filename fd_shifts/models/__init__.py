@@ -1,30 +1,41 @@
-from fd_shifts.models import det_mcd_model
-from fd_shifts.models import confidnet_model
-from fd_shifts.models import zhang_model
-from fd_shifts.models import devries_model
-from fd_shifts.models import vit_model
+import pytorch_lightning as pl
 
-# TODO: Make all models work the same
-# TODO: Add some validation
+from fd_shifts.models import confidnet_model, devries_model, vit_model
 
-# Available models
-_model_factory = {
-    "det_mcd_model": det_mcd_model.net,
-    "confidnet_model": confidnet_model.net,
-    "zhang_model": zhang_model.net,
+_model_factory: dict[str, type[pl.LightningModule]] = {
+    "confidnet_model": confidnet_model.Module,
     "devries_model": devries_model.net,
     "vit_model": vit_model.net,
 }
 
 
-def get_model(model_name):
+def register_model(model_name: str, model: type[pl.LightningModule]) -> None:
+    """Register a new model class
+
+    Args:
+        model_name (str):
+        model (type[pl.LightningModule]):
     """
-    Return a new instance of model
+    _model_factory[model_name] = model
+
+
+def get_model(model_name: str) -> type[pl.LightningModule]:
+    """
+    Args:
+        model_name (str): name as string
+
+    Returns:
+        a new instance of model
     """
     return _model_factory[model_name]
 
-def model_exists(model_name):
+
+def model_exists(model_name: str) -> bool:
     """
-    Return a new instance of model
+    Args:
+        model_name (str): name as string
+
+    Returns:
+        a new instance of model
     """
     return model_name in _model_factory

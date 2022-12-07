@@ -15,8 +15,6 @@ from typing_extensions import ParamSpec
 
 from . import logger
 
-# TODO: Better error handling
-
 AURC_DISPLAY_SCALE = 1000
 
 _metric_funcs = {}
@@ -26,6 +24,14 @@ P = ParamSpec("P")
 
 
 def may_raise_sklearn_exception(func: Callable[P, T]) -> Callable[P, T]:
+    """Decorator to handle sklearn exceptions
+
+    Args:
+        func (Callable[P, T]): function that may raise sklearn exception
+
+    Returns:
+        wrapped function 
+    """
     @logger.catch(ValueError, level=logging.DEBUG, default=np.nan)
     def _inner_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
         return func(*args, **kwargs)
@@ -96,12 +102,11 @@ class StatsCache:
         """Adapted from
         https://github.com/scikit-learn/scikit-learn/blob/7e1e6d09b/sklearn/calibration.py#L869
         """
-        calib_confids = np.clip(self.confids, 0, 1)  # necessary for waic
+        calib_confids = np.clip(self.confids, 0, 1)
 
         n_bins = self.n_bins
         y_true = sku.column_or_1d(self.correct)
         y_prob = sku.column_or_1d(calib_confids)
-        # check_consistent_length(y_true, y_prob)
 
         if y_prob.min() < 0 or y_prob.max() > 1:
             raise ValueError(
@@ -138,6 +143,14 @@ class StatsCache:
 
 
 def register_metric_func(name: str) -> Callable:
+    """Decorator to register a new metric function
+
+    Args:
+        name (str): name to register under
+
+    Returns:
+        registered callable
+    """
     def _inner_wrapper(func: Callable) -> Callable:
         _metric_funcs[name] = func
         return func
@@ -145,11 +158,27 @@ def register_metric_func(name: str) -> Callable:
     return _inner_wrapper
 
 
-def metric_function_exists(metric_name: str):
+def metric_function_exists(metric_name: str) -> bool:
+    """Check if metric function exists
+
+    Args:
+        metric_name (str): name of the metric function
+
+    Returns:
+        True if it exists, False otherwise
+    """
     return metric_name in _metric_funcs
 
 
 def get_metric_function(metric_name: str) -> Callable[[StatsCache], float]:
+    """Get the metric function callable registered under metric_name
+
+    Args:
+        metric_name (str): name of the metric function
+
+    Returns:
+        callable
+    """
     if not metric_function_exists(metric_name):
         return _metric_funcs["*"]
 
@@ -159,6 +188,14 @@ def get_metric_function(metric_name: str) -> Callable[[StatsCache], float]:
 @register_metric_func("failauc")
 @may_raise_sklearn_exception
 def failauc(stats_cache: StatsCache) -> float:
+    """AUROC_f metric function
+
+    Args:
+        stats_cache (StatsCache): StatsCache object
+
+    Returns:
+        metric value
+    """
     fpr, tpr = stats_cache.roc_curve_stats
     return skm.auc(fpr, tpr)
 
@@ -166,6 +203,14 @@ def failauc(stats_cache: StatsCache) -> float:
 @register_metric_func("fpr@95tpr")
 @may_raise_sklearn_exception
 def fpr_at_95_tpr(stats_cache: StatsCache) -> float:
+    """False Positive Rate at 95% true positive rate metric function
+
+    Args:
+        stats_cache (StatsCache): StatsCache object
+
+    Returns:
+        metric value
+    """
     fpr, tpr = stats_cache.roc_curve_stats
     return np.min(fpr[np.argwhere(tpr >= 0.9495)])
 
@@ -173,6 +218,14 @@ def fpr_at_95_tpr(stats_cache: StatsCache) -> float:
 @register_metric_func("failap_suc")
 @may_raise_sklearn_exception
 def failap_suc(stats_cache: StatsCache) -> float:
+    """Average Precision for success metric function
+
+    Args:
+        stats_cache (StatsCache): StatsCache object
+
+    Returns:
+        metric value
+    """
     return cast(
         float,
         skm.average_precision_score(
@@ -185,7 +238,15 @@ def failap_suc(stats_cache: StatsCache) -> float:
 
 @register_metric_func("failap_err")
 @may_raise_sklearn_exception
-def failap_err(stats_cache: StatsCache):
+def failap_err(stats_cache: StatsCache) -> float:
+    """Average Precision for error metric function
+
+    Args:
+        stats_cache (StatsCache): StatsCache object
+
+    Returns:
+        metric value
+    """
     return cast(
         float,
         skm.average_precision_score(
@@ -196,7 +257,15 @@ def failap_err(stats_cache: StatsCache):
 
 @register_metric_func("aurc")
 @may_raise_sklearn_exception
-def aurc(stats_cache: StatsCache):
+def aurc(stats_cache: StatsCache) -> float:
+    """AURC metric function
+
+    Args:
+        stats_cache (StatsCache): StatsCache object
+
+    Returns:
+        metric value
+    """
     _, risks, weights = stats_cache.rc_curve_stats
     return (
         sum([(risks[i] + risks[i + 1]) * 0.5 * weights[i] for i in range(len(weights))])
@@ -206,7 +275,15 @@ def aurc(stats_cache: StatsCache):
 
 @register_metric_func("e-aurc")
 @may_raise_sklearn_exception
-def eaurc(stats_cache: StatsCache):
+def eaurc(stats_cache: StatsCache) -> float:
+    """eAURC metric function
+
+    Args:
+        stats_cache (StatsCache): StatsCache object
+
+    Returns:
+        metric value
+    """
     err = np.mean(stats_cache.residuals)
     kappa_star_aurc = err + (1 - err) * (np.log(1 - err + np.finfo(err.dtype).eps))
     return aurc(stats_cache) - kappa_star_aurc * AURC_DISPLAY_SCALE
@@ -214,15 +291,31 @@ def eaurc(stats_cache: StatsCache):
 
 @register_metric_func("mce")
 @may_raise_sklearn_exception
-def maximum_calibration_error(stats_cache: StatsCache):
+def maximum_calibration_error(stats_cache: StatsCache) -> float:
+    """Maximum Calibration Error metric function
+
+    Args:
+        stats_cache (StatsCache): StatsCache object
+
+    Returns:
+        metric value
+    """
     return (stats_cache.bin_discrepancies).max()
 
 
 @register_metric_func("ece")
 @may_raise_sklearn_exception
-def expected_calibration_error(stats_cache: StatsCache):
-    """See reference
+def expected_calibration_error(stats_cache: StatsCache) -> float:
+    """Expected Calibration Error metric function
+
+    See reference
     https://github.com/tensorflow/probability/blob/v0.16.0/tensorflow_probability/python/stats/calibration.py#L258-L319
+
+    Args:
+        stats_cache (StatsCache): StatsCache object
+
+    Returns:
+        metric value
     """
     prob_total, _, _ = stats_cache.calibration_stats
     return np.dot(stats_cache.bin_discrepancies, prob_total)
@@ -230,7 +323,15 @@ def expected_calibration_error(stats_cache: StatsCache):
 
 @register_metric_func("fail-NLL")
 @may_raise_sklearn_exception
-def failnll(stats_cache: StatsCache):
+def failnll(stats_cache: StatsCache) -> float:
+    """NLL metric function
+
+    Args:
+        stats_cache (StatsCache): StatsCache object
+
+    Returns:
+        metric value
+    """
     return -np.mean(
         stats_cache.correct * np.log(stats_cache.confids + 1e-7)
         + (1 - stats_cache.correct) * np.log(1 - stats_cache.confids + 1e-7)

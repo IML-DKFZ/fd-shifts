@@ -34,9 +34,11 @@ class Experiment:
                 model = "deepgamblers"
             case "vit":
                 model = self.model
-                dataset = dataset + "_384"
             case _:
                 model = self.model
+
+        if self.backbone == "vit":
+            dataset = dataset + "_384"
 
         overrides = {
             "data": dataset + "_data",
@@ -52,16 +54,60 @@ class Experiment:
 
         if self.model == "confidnet":
             match dataset:
-                case "breeds":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [300, 500]
-                case "cifar10" | "cifar100" | "super_cifar100":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [250, 450]
-                case "svhn" | "svhn_openset":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [100, 300]
-                case "wilds_animals" | "wilds_animals_openset":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [12, 17]
-                case "wilds_camelyon":
-                    overrides["trainer.callbacks.training_stages.milestones"] = [5, 8]
+                case "breeds" | "breeds_384":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[300, 500]"'
+                case "cifar10" | "cifar100" | "super_cifar100" | "cifar10_384" | "cifar100_384" | "super_cifar100_384":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[250, 450]"'
+                case "svhn" | "svhn_openset" | "svhn_384" | "svhn_openset_384":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[100, 300]"'
+                case "wilds_animals" | "wilds_animals_openset" | "wilds_animals_384" | "wilds_animals_openset_384":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[12, 17]"'
+                case "wilds_camelyon" | "wilds_camelyon_384":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[5, 8]"'
+                case _:
+                    pass
+
+        if self.backbone == "vit" and dataset in (
+            "cifar100_384",
+            "super_cifar100_384",
+            "wilds_animals_384",
+            "wilds_animals_openset_384",
+        ):
+            overrides["trainer.batch_size"] = 512
+        elif self.backbone == "vit":
+            overrides["trainer.batch_size"] = 128
+
+        if self.backbone == "vit":
+            match model:
+                case "deepgamblers":
+                    overrides["model.network.name"] = "vit"
+                    overrides["model.fc_dim"] = 768
+                case "devries":
+                    overrides["model.network.backbone"] = "vit"
+                case "confidnet":
+                    overrides["model.network.backbone"] = "vit"
+                    overrides["model.fc_dim"] = 768
+                    overrides[
+                        "trainer.callbacks.training_stages.pretrained_backbone_path"
+                    ] = (
+                        "${EXPERIMENT_ROOT_DIR%/}/"
+                        + (
+                            str(self.to_path())
+                            .replace("modelconfidnet", "modelvit")
+                            .replace("fd-shifts/", "")
+                        )
+                        + "/version_0/last.ckpt"
+                    )
                 case _:
                     pass
 
@@ -129,29 +175,6 @@ class Experiment:
 
 def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
     _experiments = []
-
-    # ViT Hyperparameter sweep
-    # if with_hyperparameter_sweep:
-    #     _experiments.extend(
-    #         Experiment.from_iterables(
-    #             group_dir=Path("fd-shifts/vit"),
-    #             datasets=(
-    #                 "cifar10",
-    #                 "cifar100",
-    #                 "super_cifar100",
-    #                 "svhn",
-    #                 "breeds",
-    #                 "wilds_animals",
-    #                 "wilds_camelyon",
-    #             ),
-    #             models=("vit",),
-    #             backbones=("vit",),
-    #             dropouts=(0, 1),
-    #             runs=(0,),
-    #             rewards=(0,),
-    #             learning_rates=(3e-2, 1e-2, 3e-3, 1e-3, 3e-4, 1e-4),
-    #         )
-    #     )
 
     # ViT Best lr runs
     _experiments.extend(

@@ -1,21 +1,23 @@
-import torch
-from torch.utils.data.sampler import SubsetRandomSampler
-import pytorch_lightning as pl
-from omegaconf import OmegaConf
-from fd_shifts import configs
-from fd_shifts.utils.aug_utils import transforms_collection
-from fd_shifts.loaders.dataset_collection import get_dataset
-from sklearn.model_selection import KFold
-import fd_shifts.configs.data as data_configs
+import logging
 import os
 import pickle
-import numpy as np
 from copy import deepcopy
-import logging
 
-# TODO: Go over this and make it less presumptuous
+import numpy as np
+import pytorch_lightning as pl
+import torch
+from omegaconf import OmegaConf
+from sklearn.model_selection import KFold
+from torch.utils.data.sampler import SubsetRandomSampler
+
+import fd_shifts.configs.data as data_configs
+from fd_shifts import configs
+from fd_shifts.loaders.dataset_collection import get_dataset
+from fd_shifts.utils.aug_utils import transforms_collection
+
 
 class AbstractDataLoader(pl.LightningDataModule):
+    """Data module class for combination of multiple datasets for testing with shifts"""
     def __init__(self, cf: configs.Config, no_norm_flag=False):
 
         super().__init__()
@@ -42,7 +44,9 @@ class AbstractDataLoader(pl.LightningDataModule):
             for key, values in self.query_studies.items():
                 if key != "iid_study" and values is not None:
                     self.external_test_sets.extend(list(values))
-            logging.debug("CHECK flat list of external datasets %s", self.external_test_sets)
+            logging.debug(
+                "CHECK flat list of external datasets %s", self.external_test_sets
+            )
 
             if len(self.external_test_sets) > 0:
                 self.external_test_configs = {}
@@ -87,7 +91,9 @@ class AbstractDataLoader(pl.LightningDataModule):
                         and aug_key == "normalize"
                         and self.assim_ood_norm_flag
                     ):
-                        logging.debug("assimilating norm of ood dataset to iid test set...")
+                        logging.debug(
+                            "assimilating norm of ood dataset to iid test set..."
+                        )
                         aug_param = query_augs["test"]["normalize"]
                         augmentations.append(transforms_collection[aug_key](aug_param))
 
@@ -96,7 +102,9 @@ class AbstractDataLoader(pl.LightningDataModule):
             self.augmentations[datasplit_k] = transforms_collection["compose"](
                 augmentations
             )
-        logging.debug("CHECK AUGMETNATIONS %s, %s", self.assim_ood_norm_flag, self.augmentations)
+        logging.debug(
+            "CHECK AUGMETNATIONS %s, %s", self.assim_ood_norm_flag, self.augmentations
+        )
 
     def setup(self, stage=None):
 
@@ -188,7 +196,9 @@ class AbstractDataLoader(pl.LightningDataModule):
             self.query_studies is not None and "iid_study" not in self.query_studies
         ):
             self.test_datasets.append(self.iid_test_set)
-            logging.debug("Adding internal test dataset. %s", len(self.test_datasets[-1]))
+            logging.debug(
+                "Adding internal test dataset. %s", len(self.test_datasets[-1])
+            )
 
         if self.query_studies is not None and len(self.external_test_sets) > 0:
             for ext_set in self.external_test_sets:
@@ -223,11 +233,9 @@ class AbstractDataLoader(pl.LightningDataModule):
                 self.test_datasets.append(tmp_external_set)
                 logging.debug("Len external Test data: %s", len(self.test_datasets[-1]))
 
-        # val_split: None, repro_confidnet, devries, cv
         if (
             self.val_split is None
             or self.val_split == "devries"
-            or self.val_split == "zhang"
         ):
             val_idx = []
             train_idx = []
@@ -239,7 +247,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             indices = list(range(num_train))
             split = int(
                 np.floor(0.1 * num_train)
-            )  # they had valid_size at 0.1 in experiments
+            )
             np.random.seed(42)
             np.random.shuffle(indices)
             train_idx, val_idx = indices[split:], indices[:split]
@@ -289,7 +297,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             val_loader = []
             for ix, test_dataset in enumerate(
                 self.test_datasets[:2]
-            ):  # only iid test set and first ood set.
+            ):
                 val_loader.append(
                     torch.utils.data.DataLoader(
                         test_dataset,
@@ -312,18 +320,14 @@ class AbstractDataLoader(pl.LightningDataModule):
 
     def test_dataloader(
         self,
-    ):  # todo missing val sampler for val_tuning in cv mode! only devries mode implemented for val tuning!
+    ):
         test_loaders = []
         for ix, test_dataset in enumerate(self.test_datasets):
-            # sampler = torch.utils.data.distributed.DistributedSampler(
-            #     test_dataset, shuffle=False
-            # )
             test_loaders.append(
                 torch.utils.data.DataLoader(
                     test_dataset,
                     batch_size=self.batch_size,
                     shuffle=False,
-                    # sampler=sampler,
                     pin_memory=self.pin_memory,
                     num_workers=self.num_workers,
                 )

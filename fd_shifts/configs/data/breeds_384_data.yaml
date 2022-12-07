@@ -2,7 +2,7 @@
 
 data:
   dataset: breeds
-  data_dir: /gpu/data/OE0612/jaegerp/${data.dataset}
+  data_dir: ${oc.env:DATASET_ROOT_DIR}/${data.dataset}
   pin_memory: True
   img_size: [384, 384, 3]
   num_workers: 24

@@ -1,16 +1,22 @@
 import os
-import torch
 import random
-import numpy as np
-import sys
-import pytorch_lightning as pl
 import subprocess
+import sys
 from pathlib import Path
+
+import numpy as np
+import pytorch_lightning as pl
+import torch
 
 from fd_shifts import logger
 
 
-def set_seed(seed):
+def set_seed(seed: int) -> None:
+    """Set all seeds
+
+    Args:
+        seed (int): seed to use
+    """
     logger.warning("SETTING GLOBAL SEED")
     pl.seed_everything(seed)
     torch.manual_seed(seed)
@@ -22,9 +28,16 @@ def set_seed(seed):
     os.environ["PYTHONHASHSEED"] = str(seed)
 
 
-def get_next_version(exp_dir):
-    # get best.ckpt of experiment. if split over multiple runs (e.g. due to resuming), still find the best.ckpt.
-    # if there are multiple overall runs in the folder select the latest.
+def get_next_version(exp_dir: str) -> int:
+    """get best.ckpt of experiment. if split over multiple runs (e.g. due to resuming), still find the best.ckpt.
+    if there are multiple overall runs in the folder select the latest.
+
+    Args:
+        exp_dir (str): directory of the experiment
+
+    Returns:
+        the next unused version number
+    """
     ver_list = [int(x.split("_")[1]) for x in os.listdir(exp_dir) if "version_" in x]
     if len(ver_list) == 0:
         return 0
@@ -32,9 +45,16 @@ def get_next_version(exp_dir):
     return max_ver + 1
 
 
-def get_most_recent_version(exp_dir):
-    # get best.ckpt of experiment. if split over multiple runs (e.g. due to resuming), still find the best.ckpt.
-    # if there are multiple overall runs in the folder select the latest.
+def get_most_recent_version(exp_dir: str) -> int:
+    """get best.ckpt of experiment. if split over multiple runs (e.g. due to resuming), still find the best.ckpt.
+    if there are multiple overall runs in the folder select the latest.
+
+    Args:
+        exp_dir (str): directory of the experiment
+
+    Returns:
+        the most recently used version number
+    """
     ver_list = [int(x.split("_")[1]) for x in os.listdir(exp_dir) if "version_" in x]
     logger.debug(ver_list)
     if len(ver_list) == 0:
@@ -43,7 +63,7 @@ def get_most_recent_version(exp_dir):
     return max_ver
 
 
-def get_resume_ckpt_path(cf):
+def _get_resume_ckpt_path(cf):
     if (dict(cf.model).get("network") is not None) and (
         dict(cf.model.network).get("load_dg_backbone_path") is not None
     ):
@@ -62,7 +82,7 @@ def get_resume_ckpt_path(cf):
         return resume_ckpt
 
 
-def get_path_to_best_ckpt(exp_dir, selection_criterion, selection_mode):
+def _get_path_to_best_ckpt(exp_dir, selection_criterion, selection_mode):
     path_list = []
     for r, d, f in os.walk(exp_dir):
         path_list.extend([os.path.join(r, x) for x in f if selection_criterion in x])
@@ -80,7 +100,7 @@ def get_path_to_best_ckpt(exp_dir, selection_criterion, selection_mode):
             return path_list[scores_list.index(max(scores_list))]
 
 
-def get_allowed_n_proc_DA(default_value):
+def _get_allowed_n_proc_DA(default_value: int) -> int:
     hostname = subprocess.getoutput(["hostname"])
     if hostname in ["hdf19-gpu16", "hdf19-gpu17", "e230-AMDworkstation"]:
         logger.info("SETTING N WORKERS TO 16")
@@ -107,11 +127,13 @@ def get_allowed_n_proc_DA(default_value):
         return 32
 
     else:
-        logger.info("HOSTNAME COULD NOT BE IDENTIFIED. LEAVING N_WORKERS AT DEFAULT VALUE")
+        logger.info(
+            "HOSTNAME COULD NOT BE IDENTIFIED. LEAVING N_WORKERS AT DEFAULT VALUE"
+        )
         return default_value
 
 
-class Logger(object):
+class Logger:
     def __init__(self, file_path):
         self.terminal = sys.stdout
         self.log = open(file_path, "a")

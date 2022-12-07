@@ -1,16 +1,18 @@
+from pytorch_lightning import Callback
 from pytorch_lightning.callbacks import (GPUStatsMonitor, LearningRateMonitor,
                                          ModelCheckpoint, RichProgressBar)
 from fd_shifts import configs, logger
 
 from fd_shifts.models.callbacks import confid_monitor, training_stages
 
-# TODO: Add error handling
-# TODO: Handle configs better
 
+def get_callbacks(cfg: configs.Config) -> list[Callback]:
+    """Dynamically get needed callbacks
+    Args:
+        cfg (configs.Config): config object
 
-def get_callbacks(cfg: configs.Config):
-    """
-    Return all queried callbacks
+    Returns:
+        all queried callbacks
     """
 
     out_cb_list = []
@@ -42,7 +44,7 @@ def get_callbacks(cfg: configs.Config):
         if k == "confid_monitor":
             out_cb_list.append(
                 confid_monitor.ConfidMonitor(cfg)
-            )  # todo explciit arguments!!!
+            )
 
         if k == "training_stages":
             out_cb_list.append(
@@ -54,8 +56,6 @@ def get_callbacks(cfg: configs.Config):
 
         if k == "learning_rate_monitor":
             out_cb_list.append(LearningRateMonitor(logging_interval="epoch"))
-            # out_cb_list.append(GPUStatsMonitor())
 
-    # out_cb_list.append(RichProgressBar())
 
     return out_cb_list

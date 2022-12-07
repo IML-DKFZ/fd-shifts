@@ -14,3 +14,7 @@ scripts
 launcher
 typings
 experiments.json
+_version.py
+
+data_folder/
+experiments_folder/

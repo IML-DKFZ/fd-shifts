@@ -21,15 +21,8 @@ from fd_shifts.analysis import PlattScaling, confid_scores, metrics
 BASE_PATH = Path("/media/experiments/")
 
 
-def get_experiments() -> list[experiments.Experiment]:
+def _get_experiments() -> list[experiments.Experiment]:
     _experiments = experiments.get_all_experiments()
-
-    # return list(
-    #     filter(
-    #         lambda experiment: "precision_study32" in str(experiment.group_dir),
-    #         _experiments,
-    #     )
-    # )
 
     _experiments = list(
         filter(
@@ -84,37 +77,31 @@ def get_experiments() -> list[experiments.Experiment]:
             filter(
                 lambda experiment: experiment.dataset == "wilds_camelyon"
                 and experiment.model == "vit",
-                # and experiment.learning_rate in (1e-3, 3e-3),
                 _experiments,
             ),
             filter(
                 lambda experiment: experiment.dataset == "cifar10"
                 and experiment.model == "vit",
-                # and experiment.learning_rate in (1e-2, 3e-4),
                 _experiments,
             ),
             filter(
                 lambda experiment: experiment.dataset == "svhn"
                 and experiment.model == "vit",
-                # and experiment.learning_rate == 0.01,
                 _experiments,
             ),
             filter(
                 lambda experiment: experiment.dataset == "wilds_animals"
                 and experiment.model == "vit",
-                # and experiment.learning_rate in (1e-3, 3e-3),
                 _experiments,
             ),
             filter(
                 lambda experiment: experiment.dataset == "cifar100"
                 and experiment.model == "vit",
-                # and experiment.learning_rate in (1e-2, 3e-4),
                 _experiments,
             ),
             filter(
                 lambda experiment: experiment.dataset == "breeds"
                 and experiment.model == "vit",
-                # and experiment.learning_rate in (1e-2, 3e-4),
                 _experiments,
             ),
         )
@@ -122,13 +109,13 @@ def get_experiments() -> list[experiments.Experiment]:
     return res
 
 
-def get_error_rate(softmax: npt.NDArray):
+def _get_error_rate(softmax: npt.NDArray):
     msr = softmax.max(axis=1)
-    errors = msr == 1  # & ((softmax > 0) & (softmax < 1)).any(axis=1)
+    errors = msr == 1
     return errors.mean() * 100
 
 
-def print_32bit_error_16bit_ok(data: npt.NDArray):
+def _print_32bit_error_16bit_ok(data: npt.NDArray):
     data32 = data.astype(np.float32)
     softmax32 = spc.softmax(data32, axis=1)
     msr32 = softmax32.max(axis=1)
@@ -145,25 +132,11 @@ def print_32bit_error_16bit_ok(data: npt.NDArray):
     print(f"16bit Softmax:\n{softmax16[errors32 & (~errors16)][0]}")
 
 
-def load_metrics() -> pd.DataFrame:
+def _load_metrics() -> pd.DataFrame:
     confids = ["det_mcp"]
     result_frame = []
     _dtype = {16: np.float16, 32: np.float32, 64: np.float64}
-    for experiment in get_experiments():
-        # paths = list((BASE_PATH / experiment.to_path()).glob("**/*.csv"))
-        # if len(paths) == 0:
-        #     continue
-        # data = pd.concat(map(pd.read_csv, paths))
-        # data = data.assign(
-        #     model=experiment.model,
-        #     dataset=experiment.dataset,
-        #     precision=str(experiment.group_dir.stem)[-2:] + "bit",
-        #     dropout=experiment.dropout,
-        #     run=experiment.run,
-        #     error_rate=get_error_rate(experiment),
-        # )
-        # data = data[data.study == "iid_study"]
-        # data = data[data.dropout == 1]
+    for experiment in _get_experiments():
         path = BASE_PATH / experiment.to_path() / "test_results" / "raw_logits.npz"
         print(f"Loading {path}")
 
@@ -177,12 +150,11 @@ def load_metrics() -> pd.DataFrame:
         label = data[:, -2]
         data = data[:, :-2]
 
-        # print_32bit_error_16bit_ok(data[dataset_idx == 1])
 
         for precision in _dtype.keys():
             _data = data.astype(_dtype[precision])
             _softmax = spc.softmax(_data, axis=1)
-            error_rate = get_error_rate(_softmax)
+            error_rate = _get_error_rate(_softmax)
 
             # only use iid test set (dataset_idx == 1)
             softmax = _softmax[dataset_idx == 1]
@@ -221,9 +193,14 @@ def load_metrics() -> pd.DataFrame:
 
 
 def precision_study(base_path: str | Path):
+    """Create report table from precision study results
+
+    Args:
+        base_path (str | Path):
+    """
     base_path = "./results"
     data_dir: Path = Path(base_path).expanduser().resolve()
-    data = load_metrics()
+    data = _load_metrics()
     fixed_columns = [
         "model",
         "dataset",
@@ -239,20 +216,7 @@ def precision_study(base_path: str | Path):
     ]
     mean = data.groupby(fixed_columns).mean().reset_index()
     std = data.groupby(fixed_columns).std().reset_index()
-    # print(mean)
 
-    # out_table = mean[(mean.confid == "det_mcp") & (mean.dropout == 1)][
-    #     ["model", "dataset", "precision", "error_rate", "aurc"]
-    # ]
-    # out_table = out_table.assign(
-    #     error_rate=out_table["error_rate"]
-    #     .apply(lambda val: f"(${val:.2f} \\pm ")
-    #     .str.cat(
-    #         std[(mean.confid == "det_mcp") & (mean.dropout == 1)]["error_rate"].apply(
-    #             lambda val: f"{val:.2f}$)\\%"
-    #         )
-    #     )
-    # )
     out_table = pd.concat(
         [
             mean[(mean.confid == "det_mcp") & (mean.dropout == 1)].pivot(
@@ -285,7 +249,6 @@ def precision_study(base_path: str | Path):
     )
     out_table = out_table.applymap(
         lambda x: f"{x:>3.3f}"[:5] if "." in f"{x:>3.3f}"[:4] else f"{x:>3.3f}"[:4],
-        # na_rep="*",
     )
     out_table = out_table.drop(columns=[("Accuracy", "32bit"), ("Accuracy", "64bit")])
     out_table.columns = out_table.columns.map(
@@ -305,9 +268,11 @@ def precision_study(base_path: str | Path):
     ]
 
     print(out_table.index)
-    def key(t: pd.Index):
+
+    def _key(t: pd.Index):
         return t.map(lambda x: dset_order.index(x))
-    out_table = out_table.sort_index(level=1, key=key)
+
+    out_table = out_table.sort_index(level=1, key=_key)
     out_table = out_table.sort_index(level=0, sort_remaining=False)
     print(out_table.index)
 
@@ -328,7 +293,6 @@ def precision_study(base_path: str | Path):
 
     # Remove last separator in second header row
     # (this is just `replace("?", "", 1)`, but from the right)
-    # ltex[2] = ltex[2][: ltex[2].rfind("?")] + ltex[2][ltex[2].rfind("?") + 1 :]
 
     # Insert empty row before ViT part
     i = ltex.index(next((x for x in ltex if "ViT" in x)))
@@ -339,7 +303,6 @@ def precision_study(base_path: str | Path):
     with open(data_dir / f"precision_study.tex", "w") as f:
         f.write(ltex)
 
-    # TODO: Make this toggleable
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
         shutil.copy2(

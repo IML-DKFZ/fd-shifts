@@ -21,23 +21,6 @@ transforms_collection = {
     "lighting": lambda x: Lighting(),
     "cutout": lambda x: Cutout(length=x),
 }
-#
-# transforms_collection = {
-#     "compose": lambda x: A.Compose(x),
-#     "to_tensor": ToTensorV2,
-#     "normalize": lambda x: A.Normalize(mean=x[0], std=x[1]),
-#     "pad": lambda x: A.PadIfNeeded(min_height=x[0], min_width=x[1], border_mode=cv2.BORDER_CONSTANT, value=0),
-#     "random_crop": lambda x: A.RandomCrop(height=x[0], width=x[1]),
-#     "center_crop": lambda x: A.CenterCrop(height=x[0], width=x[1]),
-#     "randomresizecrop": lambda x: A.RandomSizedCrop(min_max_height=x[0], height=x[1], width=x[2], w2h_ratio=1),
-#     "flip": lambda x: A.Flip() if x else None,
-#     "hflip": lambda x: A.HorizontalFlip() if x else None,
-#     "resize": lambda x: A.Resize(height=x[0], width=x[1]),
-#     "rotate": lambda x: A.Rotate(limit=x),
-#     "color_jitter": lambda x: A.ColorJitter(
-#         brightness=x[0], contrast=x[1], saturation=x[2], hue=x[3]
-#     ),
-# }
 
 
 class Lighting(object):

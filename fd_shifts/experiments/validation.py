@@ -17,7 +17,6 @@ import numpy as np
 from deepdiff import DeepDiff
 from hydra import compose, initialize_config_module
 from hydra.core.hydra_config import HydraConfig
-# from loguru._logger import Logger
 from omegaconf import DictConfig, ListConfig, OmegaConf
 from rich import get_console
 from rich.progress import Progress
@@ -56,7 +55,6 @@ def is_experiment_running(
     return running
 
 
-# BASE_PATH = Path("~/Experiments/").expanduser()
 NETWORK_DRIVES_PATH = Path("~/NetworkDrives/E130-Personal/Bungert/").expanduser()
 BASE_PATH = Path("/media/experiments/")
 
@@ -144,7 +142,7 @@ def apply_to_conf(func: Callable[[str], str], obj: T) -> T:
             return obj
 
 
-def validate_config(experiment: Experiment, config_path: Path):  # , logger: Logger):
+def validate_config(experiment: Experiment, config_path: Path):
     dconf = OmegaConf.load(config_path)
 
     dconf = apply_to_conf(lambda s: s.replace(r"${env:", r"${oc.env:"), dconf)
@@ -222,7 +220,6 @@ def validate_config(experiment: Experiment, config_path: Path):  # , logger: Log
             )
             del dconf.trainer.lr_scheduler.name
         case _:
-            # raise NotImplementedError
             pass
 
     if hasattr(dconf.trainer, "optimizer"):
@@ -234,7 +231,6 @@ def validate_config(experiment: Experiment, config_path: Path):  # , logger: Log
                 dconf.trainer.optimizer.lr = dconf.trainer.optimizer.learning_rate
                 del dconf.trainer.optimizer.learning_rate
             case _:
-                # raise NotImplementedError
                 pass
 
     else:
@@ -303,7 +299,6 @@ def validate_config(experiment: Experiment, config_path: Path):  # , logger: Log
     if not hasattr(dconf.model, "fc_dim"):
         dconf.model.fc_dim = schema.model.fc_dim
 
-    # FIX: needs checking
     if hasattr(dconf.model, "avg_pool"):
         schema.model.avg_pool = dconf.model.avg_pool
     else:
@@ -413,17 +408,12 @@ def validate_config(experiment: Experiment, config_path: Path):  # , logger: Log
         )
 
         if config_diff:
-            # logs.append(
-            #     "Changes to default config: \n{}",
-            #     config_diff.pretty(),
-            # )
             result = False
         else:
             result = True
 
         backup_path = config_path.with_suffix(".yaml.bak")
         if backup_path.is_file():
-            # logs.append("Backup config exists, not overwriting config")
             pass
         else:
             config_path.rename(backup_path)
@@ -432,59 +422,13 @@ def validate_config(experiment: Experiment, config_path: Path):  # , logger: Log
         return conf, result
 
     except Exception as exception:
-        # logs.append(
-        #     DeepDiff(
-        #         OmegaConf.to_container(schema),
-        #         OmegaConf.to_container(dconf),
-        #         ignore_order=True,
-        #         exclude_paths={
-        #             "root['data']['num_workers']",
-        #             "root['data']['data_dir']",
-        #             "root['eval']['confid_metrics']['train']",
-        #             "root['eval']['confid_metrics']['val']",
-        #             "root['eval']['confidence_measures']['val']",
-        #             "root['eval']['confidence_measures']['train']",
-        #             "root['exp']['crossval_ids_path']",
-        #             "root['exp']['dir']",
-        #             "root['exp']['global_seed']",
-        #             "root['exp']['group_dir']",
-        #             "root['exp']['group_name']",
-        #             "root['exp']['log_path']",
-        #             "root['exp']['mode']",
-        #             "root['exp']['name']",
-        #             "root['exp']['output_paths']",
-        #             "root['exp']['version']",
-        #             "root['exp']['version_dir']",
-        #             "root['hydra']['run']['dir']",
-        #             "root['model']['confidnet_fc_dim']",
-        #             "root['model']['dg_reward']",
-        #             "root['model']['fc_dim']",
-        #             "root['model']['network']['imagenet_weights_path']",
-        #             "root['model']['network']['name']",
-        #             "root['model']['network']['save_dg_backbone_path']",
-        #             "root['test']['best_ckpt_path']",
-        #             "root['test']['cf_path']",
-        #             "root['test']['dir']",
-        #             "root['test']['external_confids_output_path']",
-        #             "root['test']['raw_output_path']",
-        #             "root['trainer']['dg_pretrain_epochs']",
-        #             "root['trainer']['do_val']",
-        #             "root['trainer']['lr_scheduler']['T_max']",
-        #             "root['trainer']['lr_scheduler']['max_epochs']",
-        #             "root['trainer']['num_epochs']",
-        #             "root['trainer']['num_steps']",
-        #             "root['trainer']['optimizer']",
-        #             "root['trainer']['val_every_n_epoch']",
-        #         },
-        #     ).pretty()
-        # )
         raise exception
 
 
 def validate_outputs(
     experiment: Experiment,
     conf: configs.Config,
-    path: Path,  # logger: Logger
+    path: Path,
 ):
     logs = []
     _outputs = [path / "test_results" / "raw_logits.npz"]
@@ -507,8 +451,6 @@ def validate_outputs(
 
     result = True
     for output in _outputs:
-        # if not output.is_file():
-        #     output = SECOND_DRIVE_PATH / output.relative_to(BASE_PATH)
 
         if not output.is_file():
             output = NETWORK_DRIVES_PATH / output.relative_to(BASE_PATH)
@@ -522,7 +464,6 @@ def validate_outputs(
 
             logs.append(f"{output} exists")
 
-            # HACK: Should only be temporary
             age_valid = True
             if output.stat().st_mtime < datetime(2022, 8, 1).timestamp():
                 logs.append(f"{output} is old")
@@ -560,7 +501,7 @@ def validate_outputs(
 def validate_results(
     experiment: Experiment,
     conf: configs.Config,
-    path: Path,  # logger: Logger
+    path: Path,
 ):
     _paths: list[Path] = []
 
@@ -607,7 +548,6 @@ def validate_results(
             result = is_file and result
             continue
 
-        # HACK: Should only be temporary
         age_valid = True
         if p.stat().st_mtime < datetime(2022, 8, 1).timestamp():
             logs.append(f"{p} is old")
@@ -627,46 +567,32 @@ def validate_experiment(experiment: Experiment, jobs: list[dict[str, str]]):
 
     validation_result.has_job = is_experiment_running(validation_result, jobs)
 
-    # logger = fd_shifts.logs.append(experiment=str(experiment.to_path()))
 
-    # with logs.append():
     if config_path.is_file():
-        # logs.append("Config exists")
         validation_result.config_exists = True
 
         conf, validation_result.config_valid = validate_config(
             experiment,
-            config_path,  # logger
+            config_path,
         )
 
         if len(list(path.glob("**/last.ckpt"))) > 0:
-            #     conf.exp.version = exp_utils.get_most_recent_version(path)
-            #
-            #     module = get_model(conf.model.name)(conf)
-            #     state_dict = torch.load(
-            #         path / f"version_{conf.exp.version}" / "last.ckpt",
-            #         map_location="cpu",
-            #     )
-            #     module.load_state_dict(state_dict["state_dict"], strict=True)
-            #     del module, state_dict
-
             validation_result.model_exists = True
 
     else:
-        # logs.append("Config does not exist")
         return validation_result
 
     validation_result.outputs_valid, _logs = validate_outputs(
         experiment,
         conf,
-        path,  # logger
+        path,
     )
     validation_result.logs.extend(_logs)
 
     validation_result.results_valid, _logs = validate_results(
         experiment,
         conf,
-        path,  # logger
+        path,
     )
     validation_result.logs.extend(_logs)
 
@@ -676,40 +602,7 @@ def validate_experiment(experiment: Experiment, jobs: list[dict[str, str]]):
 
 
 if __name__ == "__main__":
-    # console = Console(stderr=True)
     console = get_console()
-    # fd_shifts.logs.append()  # Remove default 'stderr' handler
-
-    # format_log = (
-    #     "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-    #     "<level>{level: <8}</level> | "
-    #     "<cyan>{extra[experiment]}</cyan> - <level>{message}</level>"
-    # )
-    #
-    # # We need to specify end=''" as log message already ends with \n (thus the lambda function)
-    # # Also forcing 'colorize=True' otherwise Loguru won't recognize that the sink support colors
-    # fd_shifts.logs.append(
-    #     lambda m: console.print(m, end="", markup=False, highlight=False),
-    #     colorize=True,
-    #     enqueue=True,
-    #     level="INFO",
-    #     format=format_log,
-    # )
-    # fd_shifts.logs.append(
-    #     "{time}_validation.log", enqueue=True, level="INFO", format=format_log
-    # )
-    #
-    # _logs = {}
-    #
-    # def sink(message):
-    #     exp = message.record["extra"]["experiment"]
-    #
-    #     if not exp in _logs:
-    #         _logs[exp] = []
-    #
-    #     _logs[exp].append(message)
-    #
-    # fd_shifts.logs.append(sink, enqueue=True, level="INFO")
 
     validation_results = {}
 
@@ -721,7 +614,6 @@ if __name__ == "__main__":
         )
     )
 
-    # HACK: Temporarily turn off special vit runs
     experiments = list(
         filter(lambda e: not (e.model != "vit" and e.backbone == "vit"), experiments)
     )
@@ -733,9 +625,6 @@ if __name__ == "__main__":
         task_id = progress.add_task("[cyan]Working...", total=n_experiments)
         with Pool(
             processes=16,
-            # initializer=set_logger,
-            # initargs=(logger,),
-            # maxtasksperchild=1,
         ) as pool:
             for valres in pool.imap(
                 partial(validate_experiment, jobs=jobs),

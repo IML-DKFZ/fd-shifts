@@ -1,16 +1,21 @@
+from __future__ import annotations
+
+import torch
 from torch import nn
 from torch.nn import functional as F
-import torch
+
+from fd_shifts import configs
+from fd_shifts.models.networks.network import DropoutEnablerMixin, Network
 
 
 class Conv2dSame(nn.Module):
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        bias=True,
-        padding_layer=nn.ReflectionPad2d,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        bias: bool = True,
+        padding_layer: nn.Module = nn.ReflectionPad2d,
     ):
         super().__init__()
         ka = kernel_size // 2
@@ -24,15 +29,23 @@ class Conv2dSame(nn.Module):
         return self.net(x)
 
 
-class SmallConv(nn.Module):
-    def __init__(self, cf):
-        super(SmallConv, self).__init__()
+class SmallConv(Network):
+    def __init__(self, cf: configs.Config):
+        super().__init__()
         num_classes = cf.data.num_classes
         if cf.eval.ext_confid_name == "dg":
             num_classes += 1
 
-        self.encoder = Encoder(cf)
-        self.classifier = Classifier(cf.model.fc_dim, num_classes)
+        self._encoder = Encoder(cf)
+        self._classifier = Classifier(cf.model.fc_dim, num_classes)
+
+    @property
+    def encoder(self) -> Encoder:
+        return self._encoder
+
+    @property
+    def classifier(self) -> Classifier:
+        return self._classifier
 
     def forward(self, x):
 
@@ -42,9 +55,9 @@ class SmallConv(nn.Module):
         return x
 
 
-class Encoder(nn.Module):
-    def __init__(self, cf):
-        super(Encoder, self).__init__()
+class Encoder(DropoutEnablerMixin):
+    def __init__(self, cf: configs.Config):
+        super().__init__()
 
         self.img_size = cf.data.img_size
         self.fc_dim = cf.model.fc_dim
@@ -107,13 +120,13 @@ class Encoder(nn.Module):
 
         return x
 
-    def disable_dropout(self):
+    def disable_dropout(self) -> None:
 
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].eval()
 
-    def enable_dropout(self):
+    def enable_dropout(self) -> None:
 
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
@@ -121,8 +134,8 @@ class Encoder(nn.Module):
 
 
 class Classifier(nn.Module):
-    def __init__(self, fc_dim, num_classes):
-        super(Classifier, self).__init__()
+    def __init__(self, fc_dim: int, num_classes: int):
+        super().__init__()
 
         self.fc2 = nn.Linear(fc_dim, num_classes)
 

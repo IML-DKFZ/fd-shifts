@@ -5,7 +5,8 @@ import torch.nn as nn
 import torch
 from torch.autograd import Variable
 
-from fd_shifts import logger
+from fd_shifts import configs, logger
+from fd_shifts.models.networks.network import Network, DropoutEnablerMixin
 
 
 cfg = {
@@ -57,14 +58,22 @@ cfg = {
 }
 
 
-class VGG(nn.Module):
-    def __init__(self, cf):
+class VGG(Network):
+    def __init__(self, cf: configs.Config):
         super(VGG, self).__init__()
         num_classes = cf.data.num_classes
         if cf.eval.ext_confid_name == "dg":
             num_classes += 1
-        self.encoder = Encoder(cf)
-        self.classifier = Classifier(cf.model.fc_dim, num_classes)
+        self._encoder = Encoder(cf)
+        self._classifier = Classifier(cf.model.fc_dim, num_classes)
+
+    @property
+    def encoder(self) -> DropoutEnablerMixin:
+        return self._encoder
+
+    @property
+    def classifier(self) -> nn.Module:
+        return self._classifier
 
     def forward(self, x):
         out = self.encoder(x)
@@ -72,8 +81,8 @@ class VGG(nn.Module):
         return pred
 
 
-class Encoder(nn.Module):
-    def __init__(self, cf):
+class Encoder(DropoutEnablerMixin):
+    def __init__(self, cf: configs.Config):
         super(Encoder, self).__init__()
         name = (
             cf.model.network.name
@@ -96,7 +105,7 @@ class Encoder(nn.Module):
                 layers += [
                     nn.Conv2d(
                         in_channels, x, kernel_size=3, padding=1
-                    ),  # , padding_mode="reflect"
+                    ),
                     nn.BatchNorm2d(x),
                     nn.ReLU(inplace=True),
                 ]
@@ -152,7 +161,6 @@ class Flatten(nn.Module):
         So what it does is that given any input with input.size(0) # of batches,
         will flatten to be 1 * nb_elements.
         """
-        # out = out.view(out.size(0), -1)
         batch_size = input.size(0)
         out = input.view(batch_size, -1)
-        return out  # (batch_size, *size)
+        return out
