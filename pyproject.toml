@@ -51,6 +51,11 @@ dev = [
   "black",
   "debugpy",
 ]
+docs = [
+  "jupyterlab",
+  "notebook",
+  "ipykernel",
+]
 launcher = [
   "parallel-ssh",
 ]
