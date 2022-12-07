@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from copy import deepcopy
 from dataclasses import field
 from enum import Enum, auto
 from pathlib import Path
@@ -10,7 +11,6 @@ from typing import TYPE_CHECKING, Any, Iterator, Optional, TypeVar
 import pl_bolts
 import torch
 from hydra.core.config_store import ConfigStore
-
 from hydra_zen import builds  # type: ignore
 from omegaconf import DictConfig, OmegaConf
 from omegaconf.omegaconf import MISSING
@@ -21,6 +21,7 @@ from typing_extensions import dataclass_transform
 from fd_shifts import models
 from fd_shifts.analysis import confid_scores, metrics
 from fd_shifts.loaders import dataset_collection
+from fd_shifts.utils import exp_utils
 
 from ..models import networks
 
@@ -476,6 +477,57 @@ class Config(_IterableMixin):
 
     eval: EvalConfig = EvalConfig()
     test: TestConfig = TestConfig()
+
+    def update_experiment(self, name: str):
+        config = deepcopy(self)
+        group_name = config.data.dataset
+        group_dir = config.exp.group_dir.parent / group_name
+        exp_dir = group_dir / name
+        exp_dir.mkdir(exist_ok=True, parents=True)
+        version = exp_utils.get_next_version(exp_dir)
+
+        config.exp = ExperimentConfig(
+            group_name=group_name,
+            name=name,
+            mode=Mode.train,
+            fold=0,
+            crossval_n_folds=0,
+            global_seed=1234,
+            version=version,
+            work_dir=os.getcwd(),
+            data_root_dir=os.getenv("DATASET_ROOT_DIR"),
+            group_dir=group_dir,
+            dir=exp_dir,
+            version_dir=exp_dir / f"version_{version}",
+            output_paths=OutputPathsPerMode(
+                test=OutputPathsConfig(
+                    raw_output=exp_dir / "test_results" / "raw_logits.npz",
+                    raw_output_dist=exp_dir / "test_results" / "raw_logits_dist.npz",
+                    external_confids=exp_dir / "test_results" / "external_confids.npz",
+                    external_confids_dist=exp_dir
+                    / "test_results"
+                    / "external_confids_dist.npz",
+                )
+            ),
+        )
+
+        config.test = TestConfig(
+            name="test_results",
+            dir=exp_dir / "test_results",
+            cf_path=exp_dir / "hydra/config.yaml",
+            selection_criterion="latest",
+            best_ckpt_path=exp_dir / f"version_{version}/latest.ckpt",
+            only_latest_version=True,
+            devries_repro_ood_split=False,
+            assim_ood_norm_flag=False,
+            iid_set_split="devries",
+            raw_output_path="raw_logits.npz",
+            external_confids_output_path="external_confids.npz",
+            selection_mode="max",
+            output_precision=64,
+        )
+
+        return config
 
     @classmethod
     def with_defaults(
