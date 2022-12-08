@@ -1,5 +1,19 @@
 <!-- # FD-Shifts -->
-<p align="center"><img src="./docs/fd_shifts_logo.svg"></p>
+<p align="center">
+    <img src="./docs/fd_shifts_logo.svg">
+    <br/>
+</p>
+
+<p align="center">
+    <img alt="GitHub Workflow Status" src="https://img.shields.io/github/workflow/status/IML-DKFZ/fd-shifts/PyTest?label=tests">
+    <a href="https://github.com/IML-DKFZ/fd-shifts/blob/main/LICENSE">
+    <img alt="GitHub" src="https://img.shields.io/github/license/IML-DKFZ/fd-shifts">
+    </a>
+    <a href="https://github.com/IML-DKFZ/fd-shifts/releases">
+        <img alt="GitHub release" src="https://img.shields.io/github/release/IML-DKFZ/fd-shifts.svg">
+    </a>
+    <a href="https://zenodo.org/badge/latestdoi/570145779"><img src="https://zenodo.org/badge/570145779.svg" alt="DOI"></a>
+</p>
 
 ---
 
