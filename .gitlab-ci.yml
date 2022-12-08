@@ -4,6 +4,7 @@ pytest:
   before_script:
   - python --version
   - pip install .[dev]
+  - python -m ipykernel install --user --name py310
   script:
   - python -m pytest -W ignore -m "not memory_heavy and not requires_data"
   - python -m pytest -W ignore --nbmake ./docs
