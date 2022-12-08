@@ -97,7 +97,7 @@ install FD-Shifts in its own environment (venv, conda environment, ...).
    version of PyTorch beforehand. This will also make the `fd_shifts` cli
    available to you.
    ```bash
-   pip install https://github.com/iml-dkfz/fd-shifts
+   pip install git+https://github.com/iml-dkfz/fd-shifts.git
    ```
 
 ## How to Integrate Your Own Usecase
