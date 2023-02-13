@@ -65,18 +65,16 @@
 
 ## Citing This Work
 
-If you use fd-shifts please cite our [paper]()
+If you use fd-shifts please cite our [paper](https://openreview.net/pdf?id=YnkGMIh0gvX)
 
 ```bibtex
-@inproceedings{Jaeger2022ACT,
-  doi = {10.48550/ARXIV.2211.15259},
-  url = {https://arxiv.org/abs/2211.15259},
-  author = {Jaeger, Paul F. and Lüth, Carsten T. and Klein, Lukas and Bungert, Till J.},
-  keywords = {Computer Vision and Pattern Recognition (cs.CV), Machine Learning (cs.LG), FOS: Computer and information sciences, FOS: Computer and information sciences},
-  title = {A Call to Reflect on Evaluation Practices for Failure Detection in Image Classification},
-  publisher = {arXiv},
-  year = {2022},
-  copyright = {arXiv.org perpetual, non-exclusive license}
+@inproceedings{
+    jaeger2023a,
+    title={A Call to Reflect on Evaluation Practices for Failure Detection in Image Classification},
+    author={Paul F Jaeger and Carsten Tim L{\"u}th and Lukas Klein and Till J. Bungert},
+    booktitle={International Conference on Learning Representations},
+    year={2023},
+    url={https://openreview.net/forum?id=YnkGMIh0gvX}
 }
 ```
 
