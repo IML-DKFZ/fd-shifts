@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-    <img alt="GitHub Workflow Status" src="https://img.shields.io/github/workflow/status/IML-DKFZ/fd-shifts/PyTest?label=tests">
+    <img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/IML-DKFZ/fd-shifts/pytest.yml?branch=main&label=tests">
     <a href="https://github.com/IML-DKFZ/fd-shifts/blob/main/LICENSE">
     <img alt="GitHub" src="https://img.shields.io/github/license/IML-DKFZ/fd-shifts">
     </a>
