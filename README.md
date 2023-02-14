@@ -193,6 +193,20 @@ fd_shifts launch --name=fd-shifts/svhn_paper_sweep/devries_bbsvhn_small_conv_do1
 
 Check out `fd_shifts launch --help` for more filtering options.
 
+### Model Weights
+
+All pretrained model weights used for the benchmark can be found on Zenodo under the following links:
+
+- [iWildCam-2020-Wilds](https://zenodo.org/record/7620946)
+- [iWildCam-2020-Wilds (OpenSet Training)](https://zenodo.org/record/7621150)
+- [BREEDS-ENTITY-13](https://zenodo.org/record/7621249)
+- [CAMELYON-17-Wilds](https://zenodo.org/record/7621456)
+- [CIFAR-100](https://zenodo.org/record/7622086)
+- [CIFAR-100 (superclasses)](https://zenodo.org/record/7622116)
+- [CIFAR-10](https://zenodo.org/record/7622047)
+- [SVHN](https://zenodo.org/record/7622152)
+- [SVHN (OpenSet Training)](https://zenodo.org/record/7622177)
+
 ### Inference
 
 To run inference for one of the experiments, append `--mode=test` to any of the
