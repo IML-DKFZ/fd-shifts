@@ -87,6 +87,7 @@ If you use fd-shifts please cite our [paper](https://openreview.net/pdf?id=YnkGM
 - [Reproducing our results](#reproducing-our-results)
   - [Data Folder Requirements](#data-folder-requirements)
   - [Training](#training)
+  - [Model Weights](#model-weights)
   - [Inference](#inference)
   - [Analysis](#analysis)
 - [Acknowledgements](#acknowledgements)
