@@ -220,9 +220,6 @@ def launch(
 
 
 def add_arguments(parser: argparse.ArgumentParser):
-    sub_parsers = parser.add_subparsers()
-
-
     parser.add_argument("--dataset", default=None, type=str)
     parser.add_argument("--dropout", default=None, type=int, choices=(0, 1))
     parser.add_argument(

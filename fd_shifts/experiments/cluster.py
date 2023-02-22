@@ -123,7 +123,7 @@ def get_gmem(mode: str, model: str):
 
 
 def update_overrides(overrides: dict[str, Any]) -> dict[str, Any]:
-    if overrides["trainer.batch_size"] > 64:
+    if overrides.get("trainer.batch_size", -1) > 64:
         accum = overrides["trainer.batch_size"] // 64
         overrides["trainer.batch_size"] = 64
         overrides["trainer.accumulate_grad_batches"] = accum
