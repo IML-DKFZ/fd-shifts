@@ -166,6 +166,8 @@ structure relative to the folder you set for `$DATASET_ROOT_DIR`.
     └── camelyon17_v1.0
 ```
 
+For information regarding where to download these datasets from and what you have to do with them please check out [the documentation](./docs/datasets.md).
+
 ### Training
 
 To get a list of all fully qualified names for all experiments in the paper, use
