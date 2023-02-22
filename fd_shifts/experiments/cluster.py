@@ -9,8 +9,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from pssh.clients import SSHClient
-from pssh.exceptions import Timeout
 from rich import print
 from rich.pretty import pprint
 from rich.progress import Progress
@@ -132,6 +130,14 @@ def update_overrides(overrides: dict[str, Any]) -> dict[str, Any]:
 
 
 def submit(_experiments: list[experiments.Experiment], mode: str, dry_run: bool):
+    try:
+        from pssh.clients import SSHClient
+        from pssh.exceptions import Timeout
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "You need to run pip install parallel-ssh to submit to the cluster"
+        ) from exc
+
     if len(_experiments) == 0:
         print("Nothing to run")
         return
