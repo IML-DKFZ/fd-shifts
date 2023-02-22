@@ -56,7 +56,7 @@ async def worker(name, queue: asyncio.Queue[str]):
 
 def update_overrides(overrides: dict[str, Any]) -> dict[str, Any]:
     batch_size = 32
-    if overrides["trainer.batch_size"] > batch_size:
+    if overrides.get("trainer.batch_size", -1) > 64:
         accum = overrides["trainer.batch_size"] // batch_size
         overrides["trainer.batch_size"] = batch_size
         overrides["trainer.accumulate_grad_batches"] = accum
