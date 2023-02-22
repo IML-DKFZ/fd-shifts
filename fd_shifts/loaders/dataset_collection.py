@@ -415,7 +415,7 @@ class BREEDImageNet(ImageFolder):
 class WILDSAnimals(IWildCamDataset):
     def __init__(self, root, train, download, transform):
         super().__init__(
-            version=None, root_dir=root, download=False, split_scheme="official"
+            version=None, root_dir=root, download=True, split_scheme="official"
         )
 
         logger.debug("CHECK ROOT !!! {}", root)
@@ -457,7 +457,7 @@ class myWILDSSubset(WILDSSubset):
 class WILDSCamelyon(Camelyon17Dataset):
     def __init__(self, root, train, download, transform):
         super().__init__(
-            version=None, root_dir=root, download=False, split_scheme="official"
+            version=None, root_dir=root, download=True, split_scheme="official"
         )
 
     def get_subset(self, split, frac=1.0, transform=None):
@@ -492,7 +492,7 @@ class WILDSAnimalsOpenSet(IWildCamDataset):
         self, root, train, download, transform, out_classes: list[int] = [0, 1, 2, 3]
     ):
         super().__init__(
-            version=None, root_dir=root, download=False, split_scheme="official"
+            version=None, root_dir=root, download=True, split_scheme="official"
         )
         self.out_classes = out_classes
 
