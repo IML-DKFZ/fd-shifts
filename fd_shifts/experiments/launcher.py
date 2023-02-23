@@ -54,17 +54,16 @@ async def worker(name, queue: asyncio.Queue[str]):
         queue.task_done()
 
 
-def update_overrides(overrides: dict[str, Any]) -> dict[str, Any]:
-    batch_size = 32
-    if overrides.get("trainer.batch_size", -1) > 64:
-        accum = overrides["trainer.batch_size"] // batch_size
-        overrides["trainer.batch_size"] = batch_size
+def update_overrides(overrides: dict[str, Any], max_batch_size: int = 32) -> dict[str, Any]:
+    if overrides.get("trainer.batch_size", -1) > max_batch_size:
+        accum = overrides["trainer.batch_size"] // max_batch_size
+        overrides["trainer.batch_size"] = max_batch_size
         overrides["trainer.accumulate_grad_batches"] = accum
 
     return overrides
 
 
-async def run(_experiments: list[experiments.Experiment], mode: str, dry_run: bool):
+async def run(_experiments: list[experiments.Experiment], mode: str, dry_run: bool, max_batch_size: int = 32):
     if len(_experiments) == 0:
         print("Nothing to run")
         return
@@ -77,7 +76,7 @@ async def run(_experiments: list[experiments.Experiment], mode: str, dry_run: bo
     for experiment in _experiments:
         log_file_name = f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{str(experiment.to_path()).replace('/', '_').replace('.','_')}"
 
-        overrides = update_overrides(experiment.overrides())
+        overrides = update_overrides(experiment.overrides(), max_batch_size)
 
         cmd = BASH_BASE_COMMAND.format(
             overrides=" ".join(f"{k}={v}" for k, v in overrides.items()),
@@ -135,6 +134,7 @@ def launch(
     rew: float | None,
     cluster: bool,
     name: str | None,
+    max_batch_size: int,
 ):
     _experiments = experiments.get_all_experiments()
 
@@ -216,7 +216,7 @@ def launch(
     if cluster:
         submit(_experiments, mode, dry_run)
     else:
-        asyncio.run(run(_experiments, mode, dry_run))
+        asyncio.run(run(_experiments, mode, dry_run, max_batch_size))
 
 
 def add_arguments(parser: argparse.ArgumentParser):
@@ -244,6 +244,7 @@ def add_arguments(parser: argparse.ArgumentParser):
     parser.add_argument("--cluster", action="store_true")
 
     parser.add_argument("--name", default=None, type=str)
+    parser.add_argument("--max-batch-size", default=32, type=int)
 
     return parser
 
@@ -263,6 +264,7 @@ def main(args):
         rew=args.reward,
         cluster=args.cluster,
         name=args.name,
+        max_batch_size=args.max_batch_size,
     )
 
 
