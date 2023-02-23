@@ -154,7 +154,7 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
     )
 
 
-@hydra.main(config_path="configs", config_name="config")
+@hydra.main(config_path="configs", config_name="config", version_base="1.1")
 def main(dconf: DictConfig) -> None:
     """main entry point for running anything with a Trainer
 
