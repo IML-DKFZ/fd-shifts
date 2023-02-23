@@ -173,7 +173,9 @@ class Experiment:
         )
 
 
-def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
+def get_all_experiments(
+    with_hyperparameter_sweep=False, with_vit_special_runs=False
+) -> list[Experiment]:
     _experiments = []
 
     # ViT Best lr runs
@@ -750,6 +752,13 @@ def get_all_experiments(with_hyperparameter_sweep=True) -> list[Experiment]:
             rewards=(0,),
         )
     )
+
+    if not with_vit_special_runs:
+        _experiments = list(
+            filter(
+                lambda exp: not (exp.backbone == "vit" and exp.model != "vit"), _experiments
+            )
+        )
 
     return _experiments
 
