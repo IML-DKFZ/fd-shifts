@@ -16,7 +16,7 @@ from fd_shifts.loaders.dataset_collection import get_dataset
 from fd_shifts.utils.aug_utils import transforms_collection
 
 
-class AbstractDataLoader(pl.LightningDataModule):
+class FDShiftsDataLoader(pl.LightningDataModule):
     """Data module class for combination of multiple datasets for testing with shifts"""
 
     def __init__(self, cf: configs.Config, no_norm_flag=False):

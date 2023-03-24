@@ -12,7 +12,7 @@ from rich import get_console, reconfigure
 from torch import multiprocessing
 
 from fd_shifts import analysis, configs, logger
-from fd_shifts.loaders.abstract_loader import AbstractDataLoader
+from fd_shifts.loaders.data_loader import FDShiftsDataLoader
 from fd_shifts.models import get_model
 from fd_shifts.models.callbacks import get_callbacks
 from fd_shifts.utils import exp_utils
@@ -61,7 +61,7 @@ def train(
             random.sample(range(cf.data.num_classes), int(0.4 * cf.data.num_classes)),
         )
 
-    datamodule = AbstractDataLoader(cf)
+    datamodule = FDShiftsDataLoader(cf)
     model = get_model(cf.model.name)(cf)
     tb_logger = TensorBoardLogger(
         save_dir=str(cf.exp.group_dir),
@@ -131,7 +131,7 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
 
     module = get_model(cf.model.name)(cf)
     module.load_only_state_dict(ckpt_path)
-    datamodule = AbstractDataLoader(cf)
+    datamodule = FDShiftsDataLoader(cf)
 
     if not os.path.exists(cf.test.dir):
         os.makedirs(cf.test.dir)

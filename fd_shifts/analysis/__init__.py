@@ -800,9 +800,9 @@ class Analysis:
         )
 
     def _get_dataloader(self):
-        from fd_shifts.loaders.abstract_loader import AbstractDataLoader
+        from fd_shifts.loaders.data_loader import FDShiftsDataLoader
 
-        dm = AbstractDataLoader(self.cfg, no_norm_flag=True)
+        dm = FDShiftsDataLoader(self.cfg, no_norm_flag=True)
         dm.prepare_data()
         dm.setup()
         self.test_dataloaders = dm.test_dataloader()
