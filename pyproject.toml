@@ -85,6 +85,9 @@ reportOptionalContextManager = "warning"
 reportOptionalOperand = "warning"
 
 [tool.pytest.ini_options]
+addopts = [
+  "--import-mode=importlib",
+]
 xfail_strict = true
 filterwarnings = [
   'ignore:fields may not start with an underscore:RuntimeWarning',
