@@ -1,3 +1,5 @@
+import importlib
+from torchvision import transforms
 import albumentations as A
 import cv2
 import numpy as np
@@ -5,7 +7,8 @@ import torch
 from albumentations.pytorch import ToTensorV2
 from torchvision import transforms
 
-transforms_collection = {
+
+_transforms_collection: dict[str, type] = {
     "compose": lambda x: transforms.Compose(x),
     "to_tensor": transforms.ToTensor(),
     "normalize": lambda x: transforms.Normalize(x[0], x[1]),
@@ -21,6 +24,33 @@ transforms_collection = {
     "lighting": lambda x: Lighting(),
     "cutout": lambda x: Cutout(length=x),
 }
+
+
+def is_registered_transform(name: str) -> bool:
+    """"""
+    return name in _transforms_collection
+
+
+def register_transform(name: str, transform: type) -> None:
+    """"""
+    _transforms_collection[name] = transform
+
+
+def get_transform(name: str, *args, **kwargs):
+    """"""
+    if is_registered_transform(name):
+        return _transforms_collection[name](*args, **kwargs)
+    else:
+        try:
+            module, class_name = name.rsplit(".", 1)
+            return getattr(importlib.import_module(module, package=None), class_name)(
+                *args, **kwargs
+            )
+        except ImportError as err:
+            raise ValueError(
+                f"Invalid transform '{name}'. New transforms can be registered via "
+                "'register_transform'."
+            ) from err
 
 
 class Lighting(object):

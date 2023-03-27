@@ -13,7 +13,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 import fd_shifts.configs.data as data_configs
 from fd_shifts import configs
 from fd_shifts.loaders.dataset_collection import get_dataset
-from fd_shifts.utils.aug_utils import transforms_collection
+from fd_shifts.utils.aug_utils import get_transform
 
 
 class FDShiftsDataLoader(pl.LightningDataModule):
@@ -82,7 +82,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             if datasplit_v is not None:
                 for aug_key, aug_param in datasplit_v.items():
                     if aug_key == "to_tensor":
-                        augmentations.append(transforms_collection[aug_key])
+                        augmentations.append(get_transform(aug_key))
                     elif aug_key == "normalize" and no_norm_flag is True:
                         pass
                     elif (
@@ -94,13 +94,11 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                             "assimilating norm of ood dataset to iid test set..."
                         )
                         aug_param = query_augs["test"]["normalize"]
-                        augmentations.append(transforms_collection[aug_key](aug_param))
+                        augmentations.append(get_transform(aug_key, aug_param))
 
                     else:
-                        augmentations.append(transforms_collection[aug_key](aug_param))
-            self.augmentations[datasplit_k] = transforms_collection["compose"](
-                augmentations
-            )
+                        augmentations.append(get_transform(aug_key, aug_param))
+            self.augmentations[datasplit_k] = get_transform("compose", augmentations)
         logging.debug(
             "CHECK AUGMETNATIONS %s, %s", self.assim_ood_norm_flag, self.augmentations
         )
