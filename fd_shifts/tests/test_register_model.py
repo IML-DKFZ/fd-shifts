@@ -7,16 +7,7 @@ import pytorch_lightning as pl
 from rich import print
 
 from fd_shifts import configs, models
-
-
-@pytest.fixture
-def mock_env_if_missing(monkeypatch) -> None:
-    monkeypatch.setenv(
-        "EXPERIMENT_ROOT_DIR", os.getenv("EXPERIMENT_ROOT_DIR", default="./experiments")
-    )
-    monkeypatch.setenv(
-        "DATASET_ROOT_DIR", os.getenv("DATASET_ROOT_DIR", default="./data")
-    )
+from fd_shifts.tests.utils import mock_env_if_missing
 
 
 class MyModel(pl.LightningModule):
