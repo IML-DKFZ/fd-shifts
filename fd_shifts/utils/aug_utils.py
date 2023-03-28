@@ -39,6 +39,8 @@ def register_transform(name: str, transform: type) -> None:
 def get_transform(name: str, *args, **kwargs):
     """"""
     if is_registered_transform(name):
+        if name == "to_tensor":
+            return _transforms_collection[name]
         return _transforms_collection[name](*args, **kwargs)
     else:
         try:

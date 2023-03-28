@@ -81,9 +81,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             augmentations, aug_after = [], []
             if datasplit_v is not None:
                 for aug_key, aug_param in datasplit_v.items():
-                    if aug_key == "to_tensor":
-                        augmentations.append(get_transform(aug_key))
-                    elif aug_key == "normalize" and no_norm_flag is True:
+                    if aug_key == "normalize" and no_norm_flag is True:
                         pass
                     elif (
                         "external" in datasplit_k
