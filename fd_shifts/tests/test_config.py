@@ -10,16 +10,7 @@ from omegaconf import DictConfig, OmegaConf
 from rich import print
 
 from fd_shifts import configs
-
-
-@pytest.fixture
-def mock_env_if_missing(monkeypatch) -> None:
-    monkeypatch.setenv(
-        "EXPERIMENT_ROOT_DIR", os.getenv("EXPERIMENT_ROOT_DIR", default="./experiments")
-    )
-    monkeypatch.setenv(
-        "DATASET_ROOT_DIR", os.getenv("DATASET_ROOT_DIR", default="./data")
-    )
+from fd_shifts.tests.utils import mock_env_if_missing
 
 
 def _extract_config_from_cli_stderr(output: str) -> str:

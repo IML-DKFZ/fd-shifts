@@ -15,6 +15,7 @@ launcher
 typings
 experiments.json
 _version.py
+.coverage
 
 data_folder/
 experiments_folder/
