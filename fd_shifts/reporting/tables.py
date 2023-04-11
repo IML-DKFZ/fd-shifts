@@ -1,7 +1,7 @@
-from itertools import product
 import shutil
 import subprocess
 import tempfile
+from itertools import product
 from pathlib import Path
 from typing import Callable
 
@@ -79,6 +79,7 @@ LATEX_TABLE_TEMPLATE_LANDSCAPE = r"""
 \end{landscape}
 \end{document}
 """
+
 
 def aggregate_over_runs(data: pd.DataFrame) -> pd.DataFrame:
     """Compute means over equivalent runs
@@ -196,7 +197,9 @@ _study_list = [
 ]
 
 
-def _reorder_studies(table: pd.DataFrame, add_level: list[str] | None = None) -> pd.DataFrame:
+def _reorder_studies(
+    table: pd.DataFrame, add_level: list[str] | None = None
+) -> pd.DataFrame:
     """Reorder studies that are in a well-defind order for publication, append others to the end"""
     ordered_columns = [
         ("animals", "iid", ""),
@@ -231,7 +234,9 @@ def _reorder_studies(table: pd.DataFrame, add_level: list[str] | None = None) ->
     ]
 
     if add_level is not None:
-        ordered_columns = list(map(lambda t: t[0] + (t[1],), product(ordered_columns, add_level)))
+        ordered_columns = list(
+            map(lambda t: t[0] + (t[1],), product(ordered_columns, add_level))
+        )
 
     all_columns = list(table.columns)
     ordered_columns = list(filter(lambda c: c in all_columns, ordered_columns)) + list(
@@ -277,7 +282,10 @@ def _reorder_confids(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_results_table(
-    data: pd.DataFrame, metric: str, original_mode: bool = False, paper_filter: bool = True
+    data: pd.DataFrame,
+    metric: str,
+    original_mode: bool = False,
+    paper_filter: bool = True,
 ) -> pd.DataFrame:
     """Create results table from aggregated and cleaned experiment data
 
@@ -334,28 +342,26 @@ def _add_rank_columns(data: pd.DataFrame, ascending: bool = True) -> pd.DataFram
     print("_add_rank_columns")
     print(data.columns)
 
-    _rank_table = (
-        data.mask(
-            data.apply(
-                lambda row: row.index.get_level_values(1).str.contains("ViT"), axis=0
-            ),
-            data.applymap(float)
-            .loc[
-                data.index[data.index.get_level_values(1).str.contains("ViT")],
-                data.columns,
-            ]
-            .rank(axis=0, ascending=ascending, numeric_only=True, method="min"),
-        ).mask(
-            data.apply(
-                lambda row: ~row.index.get_level_values(1).str.contains("ViT"), axis=0
-            ),
-            data.applymap(float)
-            .loc[
-                data.index[~data.index.get_level_values(1).str.contains("ViT")],
-                data.columns,
-            ]
-            .rank(axis=0, ascending=ascending, numeric_only=True, method="min"),
-        )
+    _rank_table = data.mask(
+        data.apply(
+            lambda row: row.index.get_level_values(1).str.contains("ViT"), axis=0
+        ),
+        data.applymap(float)
+        .loc[
+            data.index[data.index.get_level_values(1).str.contains("ViT")],
+            data.columns,
+        ]
+        .rank(axis=0, ascending=ascending, numeric_only=True, method="min"),
+    ).mask(
+        data.apply(
+            lambda row: ~row.index.get_level_values(1).str.contains("ViT"), axis=0
+        ),
+        data.applymap(float)
+        .loc[
+            data.index[~data.index.get_level_values(1).str.contains("ViT")],
+            data.columns,
+        ]
+        .rank(axis=0, ascending=ascending, numeric_only=True, method="min"),
     )
 
     return _rank_table
@@ -399,9 +405,7 @@ def paper_results(
 
     # Render table
     results_table = results_table.astype(float).applymap(
-        lambda val: round(val, 2)
-        if val < 10
-        else round(val, 1)
+        lambda val: round(val, 2) if val < 10 else round(val, 1)
     )
 
     gmap_vit = _compute_gmap(
@@ -537,9 +541,7 @@ def rank_comparison_metric(data: pd.DataFrame, out_dir: Path):
     # Render table
     cmap = "Oranges"
     results_table = results_table.astype(float).applymap(
-        lambda val: round(val, 2)
-        if val < 10
-        else round(val, 1)
+        lambda val: round(val, 2) if val < 10 else round(val, 1)
     )
 
     gmap_vit = _compute_gmap(
@@ -606,7 +608,8 @@ def rank_comparison_metric(data: pd.DataFrame, out_dir: Path):
             + 2 * "*{2}{r}h"
             + 6 * "*{2}{r}h"
             + 5 * "*{2}{r}h"
-            + 4 * "*{2}{r}h" + "*{2}{r}"
+            + 4 * "*{2}{r}h"
+            + "*{2}{r}"
         ),
     )
 
@@ -677,7 +680,9 @@ def rank_comparison_mode(data: pd.DataFrame, out_dir: Path, rank: bool = True):
     )
 
     results_table = pd.concat((prop_table, orig_table), axis=1)
-    results_table = results_table[list(filter(lambda t: "ncs" in t[1], results_table.columns))]
+    results_table = results_table[
+        list(filter(lambda t: "ncs" in t[1], results_table.columns))
+    ]
     results_table = _reorder_studies(results_table, add_level=["P", "O"])
 
     if rank:
@@ -694,9 +699,7 @@ def rank_comparison_mode(data: pd.DataFrame, out_dir: Path, rank: bool = True):
 
     # Render table
     results_table = results_table.astype(float).applymap(
-        lambda val: round(val, 2)
-        if val < 10
-        else round(val, 1)
+        lambda val: round(val, 2) if val < 10 else round(val, 1)
     )
 
     gmap_vit = _compute_gmap(
@@ -761,7 +764,8 @@ def rank_comparison_mode(data: pd.DataFrame, out_dir: Path, rank: bool = True):
             + 1 * "*{2}{r}h"
             + 3 * "*{2}{r}h"
             + 3 * "*{2}{r}h"
-            + 3 * "*{2}{r}h" + "*{2}{r}"
+            + 3 * "*{2}{r}h"
+            + "*{2}{r}"
         ),
     )
 

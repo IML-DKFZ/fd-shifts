@@ -18,8 +18,8 @@ from fd_shifts.utils.aug_utils import transforms_collection
 
 class AbstractDataLoader(pl.LightningDataModule):
     """Data module class for combination of multiple datasets for testing with shifts"""
-    def __init__(self, cf: configs.Config, no_norm_flag=False):
 
+    def __init__(self, cf: configs.Config, no_norm_flag=False):
         super().__init__()
         self.crossval_ids_path = cf.exp.crossval_ids_path
         self.crossval_n_folds = cf.exp.crossval_n_folds
@@ -72,7 +72,6 @@ class AbstractDataLoader(pl.LightningDataModule):
         pass
 
     def add_augmentations(self, query_augs, no_norm_flag):
-
         if self.query_studies is not None and self.external_test_sets is not None:
             for ext_set in self.external_test_sets:
                 query_augs["external_{}".format(ext_set)] = self.external_test_configs[
@@ -107,7 +106,6 @@ class AbstractDataLoader(pl.LightningDataModule):
         )
 
     def setup(self, stage=None):
-
         self.train_dataset = get_dataset(
             name=self.dataset_name,
             root=self.data_dir,
@@ -233,10 +231,7 @@ class AbstractDataLoader(pl.LightningDataModule):
                 self.test_datasets.append(tmp_external_set)
                 logging.debug("Len external Test data: %s", len(self.test_datasets[-1]))
 
-        if (
-            self.val_split is None
-            or self.val_split == "devries"
-        ):
+        if self.val_split is None or self.val_split == "devries":
             val_idx = []
             train_idx = []
             self.val_sampler = None
@@ -245,9 +240,7 @@ class AbstractDataLoader(pl.LightningDataModule):
         elif self.val_split == "repro_confidnet":
             num_train = len(self.train_dataset)
             indices = list(range(num_train))
-            split = int(
-                np.floor(0.1 * num_train)
-            )
+            split = int(np.floor(0.1 * num_train))
             np.random.seed(42)
             np.random.shuffle(indices)
             train_idx, val_idx = indices[split:], indices[:split]
@@ -292,12 +285,9 @@ class AbstractDataLoader(pl.LightningDataModule):
         )
 
     def val_dataloader(self):
-
         if self.val_split == "zhang":
             val_loader = []
-            for ix, test_dataset in enumerate(
-                self.test_datasets[:2]
-            ):
+            for ix, test_dataset in enumerate(self.test_datasets[:2]):
                 val_loader.append(
                     torch.utils.data.DataLoader(
                         test_dataset,

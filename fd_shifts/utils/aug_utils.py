@@ -1,9 +1,9 @@
-from torchvision import transforms
 import albumentations as A
-from albumentations.pytorch import ToTensorV2
 import cv2
-import torch
 import numpy as np
+import torch
+from albumentations.pytorch import ToTensorV2
+from torchvision import transforms
 
 transforms_collection = {
     "compose": lambda x: transforms.Compose(x),

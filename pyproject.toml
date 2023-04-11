@@ -50,6 +50,7 @@ dev = [
   "pylint",
   "black",
   "debugpy",
+  "pre-commit"
 ]
 docs = [
   "jupyterlab",
@@ -75,6 +76,19 @@ find = {}
 
 [tool.isort]
 profile = "black"
+
+[tool.black]
+line-length = 88
+exclude = '''
+
+(
+  /(
+      \.git
+    | \.venv
+    | _build
+  )/
+)
+'''
 
 [tool.pyright]
 reportOptionalSubscript = "warning"

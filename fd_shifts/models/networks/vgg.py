@@ -1,13 +1,12 @@
 """VGG11/13/16/19 in Pytorch."""
 # modified from https://github.com/kuangliu/pytorch-cifar/blob/master/models/vgg.py
 
-import torch.nn as nn
 import torch
+import torch.nn as nn
 from torch.autograd import Variable
 
 from fd_shifts import configs, logger
-from fd_shifts.models.networks.network import Network, DropoutEnablerMixin
-
+from fd_shifts.models.networks.network import DropoutEnablerMixin, Network
 
 cfg = {
     "vgg11": [64, "M", 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
@@ -103,9 +102,7 @@ class Encoder(DropoutEnablerMixin):
                 layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
             else:
                 layers += [
-                    nn.Conv2d(
-                        in_channels, x, kernel_size=3, padding=1
-                    ),
+                    nn.Conv2d(in_channels, x, kernel_size=3, padding=1),
                     nn.BatchNorm2d(x),
                     nn.ReLU(inplace=True),
                 ]
@@ -128,13 +125,11 @@ class Encoder(DropoutEnablerMixin):
         return nn.Sequential(*layers)
 
     def disable_dropout(self):
-
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].eval()
 
     def enable_dropout(self):
-
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].train()

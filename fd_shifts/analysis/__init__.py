@@ -244,7 +244,6 @@ class Analysis:
         qual_plot_confid,
         cf: configs.Config,
     ):
-
         self.method_dict = {"cfg": cf, "name": path.parts[-2]}
 
         self.cfg = cf
@@ -323,7 +322,6 @@ class Analysis:
             self._get_dataloader()
 
         if self.add_val_tuning:
-
             self.rstar = self.cfg.eval.r_star
             self.rdelta = self.cfg.eval.r_delta
             for study_name, study_data in get_study_iterator("val_tuning")(
@@ -345,7 +343,6 @@ class Analysis:
                 self._perform_study(study_name, study_data)
 
     def _perform_study(self, study_name, study_data: ExperimentData):
-
         self.study_name = study_name
         self._get_confidence_scores(study_data)
         self._compute_confid_metrics()
@@ -451,7 +448,6 @@ class Analysis:
         return performance_metrics
 
     def _compute_confid_metrics(self):
-
         for confid_key in self.method_dict["query_confids"]:
             logger.debug("{}\n{}", self.study_name, confid_key)
             confid_dict = self.method_dict[confid_key]
@@ -710,7 +706,6 @@ class Analysis:
                 qual_plot(fp_dict, fn_dict, out_path)
 
     def _create_results_csv(self, study_data: ExperimentData):
-
         all_metrics = self.query_performance_metrics + self.query_confid_metrics
         columns = [
             "name",

@@ -756,7 +756,8 @@ def get_all_experiments(
     if not with_vit_special_runs:
         _experiments = list(
             filter(
-                lambda exp: not (exp.backbone == "vit" and exp.model != "vit"), _experiments
+                lambda exp: not (exp.backbone == "vit" and exp.model != "vit"),
+                _experiments,
             )
         )
 
