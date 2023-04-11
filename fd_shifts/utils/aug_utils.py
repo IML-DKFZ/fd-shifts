@@ -1,5 +1,3 @@
-import importlib
-from torchvision import transforms
 import albumentations as A
 import cv2
 import numpy as np
@@ -7,6 +5,7 @@ import torch
 from albumentations.pytorch import ToTensorV2
 from torchvision import transforms
 
+from fd_shifts.utils import instantiate_from_str
 
 _transforms_collection: dict[str, type] = {
     "compose": lambda x: transforms.Compose(x),
@@ -43,16 +42,7 @@ def get_transform(name: str, *args, **kwargs):
             return _transforms_collection[name]
         return _transforms_collection[name](*args, **kwargs)
     else:
-        try:
-            module, class_name = name.rsplit(".", 1)
-            return getattr(importlib.import_module(module, package=None), class_name)(
-                *args, **kwargs
-            )
-        except ImportError as err:
-            raise ValueError(
-                f"Invalid transform '{name}'. New transforms can be registered via "
-                "'register_transform'."
-            ) from err
+        return instantiate_from_str(name, *args, **kwargs)
 
 
 class Lighting(object):
