@@ -284,10 +284,11 @@ def ext_confid(softmax: ArrayType) -> ArrayType:
 class ConfidScore:
     """Wrapper class handling CSF selection and handing over function args
 
-    Attributes: 
-        confid_func: 
-        analysis: 
+    Attributes:
+        confid_func:
+        analysis:
     """
+
     def __init__(
         self,
         study_data: ExperimentData,
@@ -380,10 +381,11 @@ class SecondaryConfidScore:
     """Wrapper class handling CSF selection and handing over function args for CSFs computed on top
     of precomputed confidence scores
 
-    Attributes: 
-        confid_func: 
-        analysis: 
+    Attributes:
+        confid_func:
+        analysis:
     """
+
     def __init__(
         self, study_data: ExperimentData, query_confid: str, analysis: Analysis
     ):

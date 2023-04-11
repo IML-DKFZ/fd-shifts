@@ -8,9 +8,7 @@ class DeVriesAndEncoder(networks.network.Network):
     def __init__(self, cf):
         super().__init__()
 
-        network = networks.get_network(cf.model.network.backbone)(
-            cf
-        )
+        network = networks.get_network(cf.model.network.backbone)(cf)
         self._encoder = network.encoder
         self._classifier = network.classifier
         self.devries_net = DeVriesNet(cf)
@@ -24,7 +22,6 @@ class DeVriesAndEncoder(networks.network.Network):
         return self._classifier
 
     def forward(self, x):
-
         x = self.encoder(x)
         pred_class = self.classifier(x)
         pred_confid = self.devries_net(x)
@@ -39,7 +36,6 @@ class DeVriesNet(nn.Module):
         self.uncertainty1 = nn.Linear(cf.model.fc_dim, 1)
 
     def forward(self, x):
-
         confid = self.uncertainty1(x)
 
         return confid

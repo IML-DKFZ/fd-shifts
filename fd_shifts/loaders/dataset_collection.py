@@ -72,7 +72,6 @@ class SuperCIFAR100(datasets.VisionDataset):
         download: bool = False,
         kwargs: Optional[Callable] = None,
     ) -> None:
-
         super(SuperCIFAR100, self).__init__(
             root, transform=transform, target_transform=target_transform
         )
@@ -154,9 +153,7 @@ class SuperCIFAR100(datasets.VisionDataset):
         ]
 
         if self.train:
-            self.targets = list(
-                np.array(self.coarse_targets)[train_data_ix]
-            )
+            self.targets = list(np.array(self.coarse_targets)[train_data_ix])
             self.data = self.data[train_data_ix]
         else:
             self.targets = list(np.array(self.coarse_targets)[holdout_data_ix])
@@ -258,7 +255,6 @@ class CorruptCIFAR(datasets.VisionDataset):
         target_transform: Optional[Callable] = None,
         kwargs: Optional[Callable] = None,
     ) -> None:
-
         super(CorruptCIFAR, self).__init__(
             root, transform=transform, target_transform=target_transform
         )
@@ -332,7 +328,6 @@ class ImageNet(datasets.ImageNet):
         super().__init__(root=root, train=train, download=download, transform=transform)
 
     def __getitem__(self, index):
-
         path, target = self.samples[index]
         sample = self.loader(path)
         if self.transform is not None:

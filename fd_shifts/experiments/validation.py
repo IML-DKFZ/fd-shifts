@@ -451,7 +451,6 @@ def validate_outputs(
 
     result = True
     for output in _outputs:
-
         if not output.is_file():
             output = NETWORK_DRIVES_PATH / output.relative_to(BASE_PATH)
 
@@ -559,14 +558,12 @@ def validate_results(
 
 
 def validate_experiment(experiment: Experiment, jobs: list[dict[str, str]]):
-
     configs.init()
     validation_result = ValidationResult(experiment)
     path = BASE_PATH / experiment.to_path()
     config_path = path / "hydra" / "config.yaml"
 
     validation_result.has_job = is_experiment_running(validation_result, jobs)
-
 
     if config_path.is_file():
         validation_result.config_exists = True

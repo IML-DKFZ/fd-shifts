@@ -13,7 +13,6 @@ from fd_shifts.reporting.tables import (
     rank_comparison_mode,
 )
 
-
 DATASETS = (
     "svhn",
     "cifar10",
@@ -213,7 +212,6 @@ def load_data(data_dir: Path) -> tuple[pd.DataFrame, list[str]]:
 def _extract_hparam(
     name: pd.Series, regex: str, default: str | None = None
 ) -> pd.Series:
-
     result: pd.Series = name.str.replace(".*" + regex + ".*", "\\1", regex=True)
     return result
 

@@ -16,7 +16,6 @@ from .metrics import StatsCache, get_metric_function
 
 
 def _get_tb_hparams(cf):
-
     hparams_collection = {"fold": cf.exp.fold}
     return {k: v for k, v in hparams_collection.items() if k in cf.eval.tb_hparams}
 
@@ -29,7 +28,6 @@ def monitor_eval(
     do_plot=True,
     ext_confid_name=None,
 ):
-
     out_metrics = {}
     out_plots = {}
     bins = 20
@@ -131,7 +129,6 @@ class ConfidEvaluator:
         self.stats_cache = StatsCache(self.confids, self.correct, self.bins)
 
     def get_metrics_per_confid(self):
-
         out_metrics = {}
         if "failauc" in self.query_metrics or "fpr@95tpr" in self.query_metrics:
             if "failauc" in self.query_metrics:
@@ -390,7 +387,6 @@ class ConfidPlotter:
         )
         plot_ix = 0
         for ix in range(len(f.axes)):
-
             if (ix + 1) % n_columns == 0 or plot_ix >= len(self.query_plots):
                 f.axes[ix].axis("off")
                 continue
@@ -524,7 +520,6 @@ class ConfidPlotter:
         self.ax.set_title("{}".format(title_string))
 
     def plot_calibration(self):
-
         bin_confids_list = []
         bin_accs_list = []
         for confid_key, confid_dict in self.input_dict.items():
@@ -550,7 +545,6 @@ class ConfidPlotter:
         self.ax.set_title("calibration")
 
     def plot_overconfidence(self):
-
         bin_confids_list = []
         bin_accs_list = []
         for confid_key, confid_dict in self.input_dict.items():
@@ -581,7 +575,6 @@ class ConfidPlotter:
         self.ax.set_xlabel("Confid")
 
     def plot_roc(self):
-
         fpr_list = []
         tpr_list = []
 
@@ -606,7 +599,6 @@ class ConfidPlotter:
         self.ax.set_xlabel("FPR")
 
     def plot_prc(self):
-
         precision_list = []
         recall_list = []
 
@@ -630,7 +622,6 @@ class ConfidPlotter:
         self.ax.set_xlabel("Recall")
 
     def plot_rc(self):
-
         coverage_list = []
         selective_risk_list = []
         coverage_list_geif = []
@@ -733,7 +724,6 @@ def clean_logging(log_dir):
 
 
 def plot_input_imgs(x, y, out_path):
-
     logger.debug(
         "{}\n{}\n{}\n{}",
         x.mean().item(),
@@ -753,7 +743,6 @@ def plot_input_imgs(x, y, out_path):
 
 
 def qual_plot(fp_dict, fn_dict, out_path):
-
     n_rows = len(fp_dict["images"])
     f, axs = plt.subplots(nrows=n_rows, ncols=2, figsize=(6, 13))
     title_pad = 0.85
@@ -787,7 +776,6 @@ def qual_plot(fp_dict, fn_dict, out_path):
 
 
 def ThresholdPlot(plot_dict):
-
     scale = 10
     n_cols = len(plot_dict)
     n_rows = 1
@@ -798,7 +786,6 @@ def ThresholdPlot(plot_dict):
 
     logger.debug("plot in {}", len(plot_dict))
     for ix, (study, study_dict) in enumerate(plot_dict.items()):
-
         logger.debug("threshold plot {} {}", study, len(study_dict["confids"]))
         confids = study_dict["confids"]
         correct = study_dict["correct"]
