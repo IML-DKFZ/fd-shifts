@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from functools import cached_property
-import logging
 from typing import Any, Callable, TypeVar, cast
 
 import numpy as np
@@ -30,8 +30,9 @@ def may_raise_sklearn_exception(func: Callable[P, T]) -> Callable[P, T]:
         func (Callable[P, T]): function that may raise sklearn exception
 
     Returns:
-        wrapped function 
+        wrapped function
     """
+
     @logger.catch(ValueError, level=logging.DEBUG, default=np.nan)
     def _inner_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
         return func(*args, **kwargs)
@@ -116,8 +117,7 @@ class StatsCache:
         labels = np.unique(y_true)
         if len(labels) > 2:
             raise ValueError(
-                "Only binary classification is supported. "
-                f"Provided labels {labels}."
+                "Only binary classification is supported. " f"Provided labels {labels}."
             )
         y_true = skp.label_binarize(y_true, classes=labels)[:, 0]
 
@@ -151,6 +151,7 @@ def register_metric_func(name: str) -> Callable:
     Returns:
         registered callable
     """
+
     def _inner_wrapper(func: Callable) -> Callable:
         _metric_funcs[name] = func
         return func

@@ -48,7 +48,6 @@ class SmallConv(Network):
         return self._classifier
 
     def forward(self, x):
-
         x = self.encoder(x)
         x = self.classifier(x)
 
@@ -121,13 +120,11 @@ class Encoder(DropoutEnablerMixin):
         return x
 
     def disable_dropout(self) -> None:
-
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].eval()
 
     def enable_dropout(self) -> None:
-
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].train()

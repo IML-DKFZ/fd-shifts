@@ -1,16 +1,19 @@
 from __future__ import annotations
-import torch
-from torch import Tensor
-import torch.nn as nn
-from torch.hub import load_state_dict_from_url
-from typing import TYPE_CHECKING, Type, Any, Callable, Union, List, Optional
-import torch.nn.functional as F
 
-from fd_shifts.models.networks.network import Network, DropoutEnablerMixin
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Type, Union
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch import Tensor
+from torch.hub import load_state_dict_from_url
+
 from fd_shifts import logger
+from fd_shifts.models.networks.network import DropoutEnablerMixin, Network
 
 if TYPE_CHECKING:
     from fd_shifts.configs import Config
+
 
 def conv3x3(
     in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1
@@ -220,7 +223,6 @@ class ResNetClassifier(nn.Module):
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
     def forward(self, x):
-
         x = self.fc(x)
         return x
 
@@ -390,17 +392,17 @@ class ResNetEncoder(DropoutEnablerMixin):
         return self._forward_impl(x)
 
     def load_pretrained_imagenet_params(self, pretrained_path):
-        logger.info("loading pretrained imagenet weights into encoder from ", pretrained_path)
+        logger.info(
+            "loading pretrained imagenet weights into encoder from ", pretrained_path
+        )
         self.load_state_dict(torch.load(pretrained_path), strict=False)
 
     def disable_dropout(self):
-
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].eval()
 
     def enable_dropout(self):
-
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].train()
@@ -412,7 +414,7 @@ def _resnet(
     num_classes: int,
     progress: bool,
     dropout_rate: float,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> ResNet:
     model = ResNet(block, layers, num_classes, dropout_rate=dropout_rate, **kwargs)
     return model

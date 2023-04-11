@@ -23,6 +23,7 @@ def register_filter_func(name: str) -> Callable:
     Returns:
         registered callable
     """
+
     def _inner_wrapper(func: Callable) -> Callable:
         _filter_funcs[name] = func
         return func
@@ -57,6 +58,7 @@ def register_study_iterator(name: str) -> Callable:
     Returns:
         registered callable
     """
+
     def _inner_wrapper(func: Callable) -> Callable:
         _study_iterators[name] = func
         return func
@@ -234,7 +236,6 @@ def iterate_new_class_study_data(
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     for new_class_set in getattr(analysis.query_studies, study_name):
         for mode in ["original_mode", "proposed_mode"]:
-
             study_data = filter_func(
                 analysis.experiment_data,
                 analysis.query_studies.iid_study,
@@ -334,7 +335,6 @@ def iterate_openset_study_data(
     """
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     for mode in ["original_mode", "proposed_mode"]:
-
         study_data = filter_func(
             analysis.experiment_data,
             analysis.query_studies.iid_study,

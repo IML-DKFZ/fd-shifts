@@ -28,10 +28,11 @@ def _init_optimizers_and_lr_schedulers(optim_conf: Any):
 class TrainingStages(Callback):
     """Training stages for ConfidNet training
 
-    Attributes: 
-        milestones: 
-        disable_dropout_at_finetuning: 
+    Attributes:
+        milestones:
+        disable_dropout_at_finetuning:
     """
+
     def __init__(self, milestones, disable_dropout_at_finetuning):
         self.milestones = milestones
         self.disable_dropout_at_finetuning = disable_dropout_at_finetuning
@@ -42,8 +43,6 @@ class TrainingStages(Callback):
             self.milestones[0] = 0
 
     def on_train_epoch_start(self, trainer, pl_module):
-
-
         if (
             pl_module.current_epoch == self.milestones[0]
         ):  # this is the end before the queried epoch
@@ -111,8 +110,8 @@ class TrainingStages(Callback):
             if pl_module.confidnet_lr_scheduler:
                 logger.info("initializing new scheduler for confidnet...")
                 optim_conf = {
-                "optimizer": optim_conf,
-                "lr_scheduler": {
+                    "optimizer": optim_conf,
+                    "lr_scheduler": {
                         "scheduler": torch.optim.lr_scheduler.CosineAnnealingLR(
                             optimizer=optim_conf,
                             T_max=self.milestones[1] - self.milestones[0],
@@ -121,7 +120,7 @@ class TrainingStages(Callback):
                         "interval": "epoch",
                         "frequency": 1,
                         "name": "confidnet_adam",
-                    }
+                    },
                 }
 
             (
@@ -134,7 +133,6 @@ class TrainingStages(Callback):
             if len(lr_monitor) > 0:
                 lr_monitor[0].__init__()
                 lr_monitor[0].on_train_start(trainer)
-
 
         if pl_module.current_epoch >= self.milestones[0]:
             self.disable_bn(pl_module.backbone.encoder)
@@ -186,12 +184,10 @@ class TrainingStages(Callback):
             trainer.optimizers = [new_optimizer]
             trainer.optimizer_frequencies = []
 
-
         if self.disable_dropout_at_finetuning:
             if pl_module.current_epoch >= self.milestones[1]:
                 self.disable_dropout(pl_module.backbone.encoder)
                 self.disable_dropout(pl_module.network.encoder)
-
 
     def freeze_layers(self, model, freeze_string=None, keep_string=None):
         for param in model.named_parameters():
@@ -219,13 +215,11 @@ class TrainingStages(Callback):
                 layer[1].eval()
 
     def disable_dropout(self, model):
-
         for layer in model.named_modules():
             if "dropout" in layer[0] or isinstance(layer[1], torch.nn.Dropout):
                 layer[1].eval()
 
     def check_weight_consistency(self, pl_module):
-
         for ix, x in enumerate(pl_module.backbone.named_parameters()):
             if ix == 0:
                 logger.debug("BACKBONE {} {}", x[0], x[1].mean().item())

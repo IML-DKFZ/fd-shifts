@@ -1,8 +1,8 @@
+import timm
 import torch
 import torch.nn as nn
-import timm
-from fd_shifts import configs
 
+from fd_shifts import configs
 from fd_shifts.models.networks.network import DropoutEnablerMixin, Network
 
 
@@ -51,7 +51,6 @@ class Encoder(DropoutEnablerMixin):
     def forward(self, x):
         x = self.model.forward_features(x)
         return x
-
 
 
 class Classifier(nn.Module):

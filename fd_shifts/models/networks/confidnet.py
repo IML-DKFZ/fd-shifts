@@ -8,9 +8,7 @@ class ConfidNetAndEncoder(networks.network.Network):
     def __init__(self, cf):
         super().__init__()
 
-        network = networks.get_network(cf.model.network.backbone)(
-            cf
-        )
+        network = networks.get_network(cf.model.network.backbone)(cf)
         self._encoder = network.encoder
         self._classifier = network.classifier
         self.confid_net = ConfidNet(cf)

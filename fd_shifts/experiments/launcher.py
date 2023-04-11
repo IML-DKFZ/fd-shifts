@@ -54,7 +54,9 @@ async def worker(name, queue: asyncio.Queue[str]):
         queue.task_done()
 
 
-def update_overrides(overrides: dict[str, Any], max_batch_size: int = 32) -> dict[str, Any]:
+def update_overrides(
+    overrides: dict[str, Any], max_batch_size: int = 32
+) -> dict[str, Any]:
     if overrides.get("trainer.batch_size", -1) > max_batch_size:
         accum = overrides["trainer.batch_size"] // max_batch_size
         overrides["trainer.batch_size"] = max_batch_size
@@ -63,7 +65,12 @@ def update_overrides(overrides: dict[str, Any], max_batch_size: int = 32) -> dic
     return overrides
 
 
-async def run(_experiments: list[experiments.Experiment], mode: str, dry_run: bool, max_batch_size: int = 32):
+async def run(
+    _experiments: list[experiments.Experiment],
+    mode: str,
+    dry_run: bool,
+    max_batch_size: int = 32,
+):
     if len(_experiments) == 0:
         print("Nothing to run")
         return
@@ -104,12 +111,9 @@ async def run(_experiments: list[experiments.Experiment], mode: str, dry_run: bo
     if queue.empty():
         return
 
-
     tasks = []
     for i in range(1):
-        task = asyncio.create_task(
-            worker(f"worker-{i}", queue)
-        )
+        task = asyncio.create_task(worker(f"worker-{i}", queue))
         tasks.append(task)
 
     # Wait until the queue is fully processed.
@@ -203,8 +207,6 @@ def launch(
                 _experiments,
             )
         )
-
-
 
     print("Launching:")
     for exp in map(

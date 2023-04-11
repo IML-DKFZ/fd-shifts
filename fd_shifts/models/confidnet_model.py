@@ -113,7 +113,6 @@ class Module(pl.LightningModule):
     def mcd_eval_forward(
         self, x: torch.Tensor, n_samples: int
     ) -> tuple[torch.Tensor, torch.Tensor]:
-
         """
         Args:
             x (torch.Tensor): batch of images

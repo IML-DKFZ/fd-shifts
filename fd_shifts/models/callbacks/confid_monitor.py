@@ -1,14 +1,14 @@
 import numpy as np
 import torch
 from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.trainer.connectors.logger_connector.logger_connector import \
-    LoggerConnector
+from pytorch_lightning.trainer.connectors.logger_connector.logger_connector import (
+    LoggerConnector,
+)
 from rich import print
 from tqdm import tqdm
 
 from fd_shifts import configs
 from fd_shifts.analysis import eval_utils
-
 
 DTYPES = {
     16: torch.float16,
@@ -20,34 +20,35 @@ DTYPES = {
 class ConfidMonitor(Callback):
     """Callback to save confids and logits to disk
 
-    Attributes: 
-        sync_dist: 
-        cfg: 
-        output_dtype: 
-        num_epochs: 
-        num_classes: 
-        fast_dev_run: 
-        tensorboard_hparams: 
-        query_performance_metrics: 
-        query_confid_metrics: 
-        query_monitor_plots: 
-        query_confids: 
-        output_paths: 
-        version_dir: 
-        val_every_n_epoch: 
-        running_test_softmax: 
-        running_test_softmax_dist: 
-        running_test_labels: 
-        running_test_dataset_idx: 
-        running_test_external_confids: 
-        running_test_external_confids_dist: 
-        running_confid_stats: 
-        running_perf_stats: 
-        running_train_correct_sum_sanity: 
-        running_val_correct_sum_sanity: 
-        running_train_correct_sum_sanity: 
-        running_val_correct_sum_sanity: 
+    Attributes:
+        sync_dist:
+        cfg:
+        output_dtype:
+        num_epochs:
+        num_classes:
+        fast_dev_run:
+        tensorboard_hparams:
+        query_performance_metrics:
+        query_confid_metrics:
+        query_monitor_plots:
+        query_confids:
+        output_paths:
+        version_dir:
+        val_every_n_epoch:
+        running_test_softmax:
+        running_test_softmax_dist:
+        running_test_labels:
+        running_test_dataset_idx:
+        running_test_external_confids:
+        running_test_external_confids_dist:
+        running_confid_stats:
+        running_perf_stats:
+        running_train_correct_sum_sanity:
+        running_val_correct_sum_sanity:
+        running_train_correct_sum_sanity:
+        running_val_correct_sum_sanity:
     """
+
     def __init__(self, cf: configs.Config):
         self.sync_dist = True if torch.cuda.device_count() > 1 else False
 
@@ -101,14 +102,11 @@ class ConfidMonitor(Callback):
             hp_metrics.update(
                 {"hp/val_{}".format(k): 0 for k in self.query_performance_metrics}
             )
-            pl_module.loggers[0].log_hyperparams(
-                self.tensorboard_hparams, hp_metrics
-            )
+            pl_module.loggers[0].log_hyperparams(self.tensorboard_hparams, hp_metrics)
 
     def on_train_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-
         loss = outputs["loss"].cpu()
         softmax = outputs["softmax"].cpu()
         y = outputs["labels"].cpu()
@@ -178,7 +176,6 @@ class ConfidMonitor(Callback):
                 )
 
     def on_train_epoch_end(self, trainer, pl_module):
-
         if (
             len(self.running_confid_stats["train"].keys()) > 0
             or len(self.running_perf_stats["train"].keys()) > 0
@@ -224,7 +221,6 @@ class ConfidMonitor(Callback):
     def on_validation_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-
         tmp_correct = None
         loss = outputs["loss"]
         softmax = outputs["softmax"]
@@ -261,7 +257,6 @@ class ConfidMonitor(Callback):
                     )
 
             if len(confid_keys) > 0 or softmax_dist is not None:
-
                 if tmp_correct is None:
                     tmp_correct = (torch.argmax(softmax, dim=1) == y).type(
                         torch.ByteTensor
@@ -297,7 +292,6 @@ class ConfidMonitor(Callback):
                         )
 
             if softmax_dist is not None:
-
                 mean_softmax = torch.mean(softmax_dist, dim=2)
                 tmp_mcd_correct = (torch.argmax(mean_softmax, dim=1) == y).type(
                     torch.ByteTensor
@@ -374,7 +368,6 @@ class ConfidMonitor(Callback):
                 self.running_test_external_confids.extend(outputs["confid"])
 
     def on_validation_epoch_end(self, trainer, pl_module):
-
         monitor_metrics = None
         if (
             len(self.running_confid_stats["val"].keys()) > 0
@@ -498,7 +491,6 @@ class ConfidMonitor(Callback):
         )
 
     def on_test_end(self, trainer, pl_module):
-
         stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
         stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
         stacked_dataset_idx = torch.stack(

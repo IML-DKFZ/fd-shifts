@@ -150,7 +150,6 @@ def _load_metrics() -> pd.DataFrame:
         label = data[:, -2]
         data = data[:, :-2]
 
-
         for precision in _dtype.keys():
             _data = data.astype(_dtype[precision])
             _softmax = spc.softmax(_data, axis=1)

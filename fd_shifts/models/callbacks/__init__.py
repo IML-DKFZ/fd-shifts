@@ -1,8 +1,12 @@
 from pytorch_lightning import Callback
-from pytorch_lightning.callbacks import (GPUStatsMonitor, LearningRateMonitor,
-                                         ModelCheckpoint, RichProgressBar)
-from fd_shifts import configs, logger
+from pytorch_lightning.callbacks import (
+    GPUStatsMonitor,
+    LearningRateMonitor,
+    ModelCheckpoint,
+    RichProgressBar,
+)
 
+from fd_shifts import configs, logger
 from fd_shifts.models.callbacks import confid_monitor, training_stages
 
 
@@ -37,14 +41,14 @@ def get_callbacks(cfg: configs.Config) -> list[Callback]:
                     ModelCheckpoint(
                         dirpath=cfg.exp.version_dir,
                         save_last=True,
-                        every_n_train_steps=cfg.trainer.num_steps // 2 if cfg.trainer.num_steps is not None else None
+                        every_n_train_steps=cfg.trainer.num_steps // 2
+                        if cfg.trainer.num_steps is not None
+                        else None,
                     )
                 )
 
         if k == "confid_monitor":
-            out_cb_list.append(
-                confid_monitor.ConfidMonitor(cfg)
-            )
+            out_cb_list.append(confid_monitor.ConfidMonitor(cfg))
 
         if k == "training_stages":
             out_cb_list.append(
@@ -56,6 +60,5 @@ def get_callbacks(cfg: configs.Config) -> list[Callback]:
 
         if k == "learning_rate_monitor":
             out_cb_list.append(LearningRateMonitor(logging_interval="epoch"))
-
 
     return out_cb_list
