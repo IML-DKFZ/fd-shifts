@@ -5,7 +5,9 @@ import torch
 from albumentations.pytorch import ToTensorV2
 from torchvision import transforms
 
-transforms_collection = {
+from fd_shifts.utils import instantiate_from_str
+
+_transforms_collection: dict[str, type] = {
     "compose": lambda x: transforms.Compose(x),
     "to_tensor": transforms.ToTensor(),
     "normalize": lambda x: transforms.Normalize(x[0], x[1]),
@@ -21,6 +23,26 @@ transforms_collection = {
     "lighting": lambda x: Lighting(),
     "cutout": lambda x: Cutout(length=x),
 }
+
+
+def transform_exists(name: str) -> bool:
+    """"""
+    return name in _transforms_collection
+
+
+def register_transform(name: str, transform: type) -> None:
+    """"""
+    _transforms_collection[name] = transform
+
+
+def get_transform(name: str, *args, **kwargs):
+    """"""
+    if transform_exists(name):
+        if name == "to_tensor":
+            return _transforms_collection[name]
+        return _transforms_collection[name](*args, **kwargs)
+    else:
+        return instantiate_from_str(name, *args, **kwargs)
 
 
 class Lighting(object):
