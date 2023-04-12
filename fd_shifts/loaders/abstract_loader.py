@@ -128,7 +128,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             root=self.data_dir,
             train=True,
             download=True,
-            target_transforms=self.target_transforms["train"],
+            target_transform=self.target_transforms["train"],
             transform=self.augmentations["train"],
             kwargs=self.dataset_kwargs,
         )
@@ -139,7 +139,7 @@ class AbstractDataLoader(pl.LightningDataModule):
             root=self.data_dir,
             train=False,
             download=True,
-            target_transforms=self.target_transforms["test"],
+            target_transform=self.target_transforms["test"],
             transform=self.augmentations["test"],
             kwargs=self.dataset_kwargs,
         )
@@ -169,7 +169,7 @@ class AbstractDataLoader(pl.LightningDataModule):
                     root=self.data_dir,
                     train=False,
                     download=True,
-                    target_transforms=self.target_transforms["val"],
+                    target_transform=self.target_transforms["val"],
                     transform=self.augmentations["val"],
                     kwargs=self.dataset_kwargs,
                 )
@@ -213,7 +213,7 @@ class AbstractDataLoader(pl.LightningDataModule):
                     root=self.data_dir,
                     train=False,
                     download=True,
-                    target_transforms=self.target_transforms["val"],
+                    target_transform=self.target_transforms["val"],
                     transform=self.augmentations["val"],
                     kwargs=self.dataset_kwargs,
                 )
@@ -240,7 +240,7 @@ class AbstractDataLoader(pl.LightningDataModule):
                 root=self.data_dir,
                 train=True,
                 download=True,
-                target_transforms=self.target_transforms["val"],
+                target_transform=self.target_transforms["val"],
                 transform=self.augmentations["val"],
                 kwargs=self.dataset_kwargs,
             )
@@ -272,7 +272,7 @@ class AbstractDataLoader(pl.LightningDataModule):
                     ),
                     train=False,
                     download=True,
-                    target_transforms=self.target_transforms,
+                    target_transform=self.target_transforms,
                     transform=self.augmentations["external_{}".format(ext_set)],
                     kwargs=self.dataset_kwargs,
                 )
