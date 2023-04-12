@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from loguru import logger
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,6 +8,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from loguru import logger
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
 from .confid_scores import ConfidScore, is_external_confid
@@ -164,7 +164,6 @@ class Analysis:
         qual_plot_confid,
         cf,
     ):
-
         self.method_dict = {
             "cfg": OmegaConf.load(Path(path).parent / "hydra" / "config.yaml")
             if cf is None
@@ -204,12 +203,10 @@ class Analysis:
         self.qual_plot_confid = qual_plot_confid
 
     def register_and_perform_studies(self):
-
         if self.qual_plot_confid:
             self.get_dataloader()
 
         if self.add_val_tuning:
-
             self.rstar = self.method_dict["cfg"].eval.r_star
             self.rdelta = self.method_dict["cfg"].eval.r_delta
             for study_name, study_data in get_study_iterator("val_tuning")(
@@ -224,7 +221,6 @@ class Analysis:
                 self.perform_study(study_name, study_data)
 
     def perform_study(self, study_name, study_data: ExperimentData):
-
         self.study_name = study_name
         self.get_confidence_scores(study_data)
         self.compute_confid_metrics()
@@ -295,7 +291,6 @@ class Analysis:
         return performance_metrics
 
     def compute_confid_metrics(self):
-
         for confid_key in self.method_dict["query_confids"]:
             logger.debug("{}\n{}", self.study_name, confid_key)
             confid_dict = self.method_dict[confid_key]
@@ -575,7 +570,6 @@ class Analysis:
                 qual_plot(fp_dict, fn_dict, out_path)
 
     def create_results_csv(self, study_data: ExperimentData):
-
         all_metrics = self.query_performance_metrics + self.query_confid_metrics
         columns = [
             "name",
@@ -690,7 +684,6 @@ def main(
     threshold_plot_confid: str | None = "tcp_mcd",
     qual_plot_confid=None,
 ):  # qual plot to false
-
     # path to the dir where the raw otuputs lie. NO SLASH AT THE END!
     path_to_test_dir = in_path
 

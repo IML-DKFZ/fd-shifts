@@ -1,9 +1,10 @@
+from typing import Any, Callable, List, Optional, Type, Union
+
 import torch
-from torch import Tensor
 import torch.nn as nn
-from torch.hub import load_state_dict_from_url
-from typing import Type, Any, Callable, Union, List, Optional
 import torch.nn.functional as F
+from torch import Tensor
+from torch.hub import load_state_dict_from_url
 
 
 def conv3x3(
@@ -206,7 +207,6 @@ class ResNetClassifier(nn.Module):
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
     def forward(self, x):
-
         x = self.fc(x)
         return x
 
@@ -382,13 +382,11 @@ class ResNetEncoder(nn.Module):
         self.load_state_dict(torch.load(pretrained_path), strict=False)
 
     def disable_dropout(self):
-
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].eval()
 
     def enable_dropout(self):
-
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].train()
@@ -400,7 +398,7 @@ def _resnet(
     num_classes: int,
     progress: bool,
     dropout_rate: float,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> ResNet:
     model = ResNet(block, layers, num_classes, dropout_rate=dropout_rate, **kwargs)
     return model

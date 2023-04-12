@@ -20,7 +20,6 @@ from fd_shifts.utils.aug_utils import (
 
 class AbstractDataLoader(pl.LightningDataModule):
     def __init__(self, cf, no_norm_flag=False):
-
         super().__init__()
         self.crossval_ids_path = cf.exp.crossval_ids_path
         self.crossval_n_folds = cf.exp.crossval_n_folds
@@ -94,7 +93,6 @@ class AbstractDataLoader(pl.LightningDataModule):
         pass
 
     def add_augmentations(self, query_augs, no_norm_flag):
-
         if self.query_studies is not None and self.external_test_sets is not None:
             for ext_set in self.external_test_sets:
                 query_augs["external_{}".format(ext_set)] = self.external_test_configs[
@@ -125,7 +123,6 @@ class AbstractDataLoader(pl.LightningDataModule):
         print("CHECK AUGMETNATIONS", self.assim_ood_norm_flag, self.augmentations)
 
     def setup(self, stage=None):
-
         self.train_dataset = get_dataset(
             name=self.dataset_name,
             root=self.data_dir,
@@ -377,7 +374,6 @@ class AbstractDataLoader(pl.LightningDataModule):
         )
 
     def val_dataloader(self):
-
         if self.val_split == "zhang":
             val_loader = []
             for ix, test_dataset in enumerate(

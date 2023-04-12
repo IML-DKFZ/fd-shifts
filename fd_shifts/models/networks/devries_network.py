@@ -1,6 +1,7 @@
-import fd_shifts.models.networks as networks
 from torch import nn
 from torch.nn import functional as F
+
+import fd_shifts.models.networks as networks
 
 
 class DeVriesAndEncoder(nn.Module):
@@ -15,7 +16,6 @@ class DeVriesAndEncoder(nn.Module):
         self.devries_net = DeVriesNet(cf)  # todo make arguments explcit!
 
     def forward(self, x):
-
         x = self.encoder(x)
         pred_class = self.classifier(x)
         pred_confid = self.devries_net(x)
@@ -39,7 +39,6 @@ class DeVriesNet(nn.Module):
         self.uncertainty1 = nn.Linear(cf.model.fc_dim, 1)
 
     def forward(self, x):
-
         confid = self.uncertainty1(x)
 
         return confid

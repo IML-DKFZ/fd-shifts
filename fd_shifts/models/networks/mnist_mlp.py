@@ -10,7 +10,6 @@ class MLP(nn.Module):
         self.classifier = Classifier(cf)
 
     def forward(self, x):
-
         x = self.encoder(x)
         x = self.classifier(x)
 

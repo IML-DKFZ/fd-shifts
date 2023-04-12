@@ -1,7 +1,7 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
-import torch
 
 
 class Conv2dSame(nn.Module):
@@ -33,7 +33,6 @@ class VGG16(nn.Module):
         self.classifier = Classifier(cf)
 
     def forward(self, x):
-
         x = self.encoder(x)
         x = self.classifier(x)
 

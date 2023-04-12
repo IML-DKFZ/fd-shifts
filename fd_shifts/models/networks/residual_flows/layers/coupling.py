@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+
 from . import mask_utils
 
 __all__ = ["CouplingBlock", "ChannelCouplingBlock", "MaskedCouplingBlock"]

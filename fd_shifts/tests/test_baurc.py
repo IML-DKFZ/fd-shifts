@@ -1,7 +1,9 @@
 import math
-from fd_shifts.analysis.metrics import baurc, StatsCache, aurc
-import pytest
+
 import numpy as np
+import pytest
+
+from fd_shifts.analysis.metrics import StatsCache, aurc, baurc
 
 """
 Tests to run

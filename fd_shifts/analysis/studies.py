@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 _filter_funcs = {}
 
 
-
 def register_filter_func(name: str) -> Callable:
     def _inner_wrapper(func: Callable) -> Callable:
         _filter_funcs[name] = func
@@ -74,7 +73,10 @@ def iterate_in_class_study_data(
 ) -> Iterator[Tuple[str, "ExperimentData"]]:
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     for in_class_set in analysis.query_studies[study_name]:
-        study_data = filter_func(analysis.experiment_data, in_class_set,)
+        study_data = filter_func(
+            analysis.experiment_data,
+            in_class_set,
+        )
 
         yield f"{study_name}_{in_class_set}", study_data
 
@@ -152,7 +154,6 @@ def iterate_new_class_study_data(
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     for new_class_set in analysis.query_studies[study_name]:
         for mode in ["original_mode", "proposed_mode"]:
-
             study_data = filter_func(
                 analysis.experiment_data,
                 analysis.query_studies["iid_study"],
@@ -226,11 +227,14 @@ def iterate_noise_study_data(
     for noise_set in analysis.query_studies[study_name]:
         for intensity_level in range(5):
             logger.debug(
-                "starting noise study with intensitiy level %s", intensity_level + 1,
+                "starting noise study with intensitiy level %s",
+                intensity_level + 1,
             )
 
             study_data = filter_func(
-                analysis.experiment_data, noise_set, intensity_level,
+                analysis.experiment_data,
+                noise_set,
+                intensity_level,
             )
 
             yield f"{study_name}_{intensity_level + 1}", study_data

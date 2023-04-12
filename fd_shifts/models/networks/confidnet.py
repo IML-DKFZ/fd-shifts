@@ -1,6 +1,7 @@
-import fd_shifts.models.networks as networks
 from torch import nn
 from torch.nn import functional as F
+
+import fd_shifts.models.networks as networks
 
 
 class ConfidNetAndEncoder(nn.Module):
@@ -15,7 +16,6 @@ class ConfidNetAndEncoder(nn.Module):
         self.confid_net = ConfidNet(cf)  # todo make arguments explcit!
 
     def forward(self, x):
-
         x = self.encoder(x)
         pred_class = self.classifier(x)
         pred_confid = self.confid_net(x)

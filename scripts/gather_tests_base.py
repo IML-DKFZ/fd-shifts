@@ -20,7 +20,6 @@ datasets = [
 
 
 def main():
-
     for dataset in datasets:
         print(f"[bold]Experiment: [/][bold red]{dataset.replace('_', '')}[/]")
         print("[bold]Looking for test results...")
@@ -29,7 +28,9 @@ def main():
 
         paths = list(base_path.glob(f"{dataset}*/*_run*/test_results/*.csv"))
         print(len(paths))
-        paths.extend(list(base_path.glob(f"multistep_{dataset}*/*_run*/test_results/*.csv")))
+        paths.extend(
+            list(base_path.glob(f"multistep_{dataset}*/*_run*/test_results/*.csv"))
+        )
         print(len(paths))
 
         if "openset" not in dataset:
@@ -42,10 +43,28 @@ def main():
         df = pd.concat(df_list).reset_index(drop=True)
         if dataset == "svhn":
             # df = df[~(df.confid.str.contains("mcd_pe")) | ~(df.name.str.startswith("confidnet"))].reset_index(drop=True)
-            print(df[df.study.str.contains("iid") & df.confid.str.contains("mcd_pe")][["name", "model", "aurc"]].sort_values("aurc"))
+            print(
+                df[df.study.str.contains("iid") & df.confid.str.contains("mcd_pe")][
+                    ["name", "model", "aurc"]
+                ].sort_values("aurc")
+            )
             # print(list(df[df.study.str.contains("iid") & df.confid.str.contains("det_pe") & df.model.str.contains("confidnet")].sort_values("aurc").index))
-            df = df.drop(list(df[df.study.str.contains("iid") & df.confid.str.contains("mcd_pe") & df.model.str.contains("confidnet")].sort_values("aurc").index)[-1:])
-            print(df[df.study.str.contains("iid") & df.confid.str.contains("mcd_pe")][["name", "model", "aurc"]].sort_values("aurc"))
+            df = df.drop(
+                list(
+                    df[
+                        df.study.str.contains("iid")
+                        & df.confid.str.contains("mcd_pe")
+                        & df.model.str.contains("confidnet")
+                    ]
+                    .sort_values("aurc")
+                    .index
+                )[-1:]
+            )
+            print(
+                df[df.study.str.contains("iid") & df.confid.str.contains("mcd_pe")][
+                    ["name", "model", "aurc"]
+                ].sort_values("aurc")
+            )
 
         if dataset == "camelyon":
             print(
@@ -56,9 +75,10 @@ def main():
                         | df.confid.str.startswith("det_mcp")
                     )
                     & df.name.str.startswith("confidnet")
-                ].sort_values(["name", "confid"])[["name", "confid", "failauc", "accuracy", "aurc"]]
+                ].sort_values(["name", "confid"])[
+                    ["name", "confid", "failauc", "accuracy", "aurc"]
+                ]
             )
-
 
         dataset = dataset.replace("wilds_", "")
         dataset = dataset.replace("cifar10_", "cifar10")

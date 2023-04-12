@@ -1,8 +1,9 @@
+import pytorch_lightning as pl
 import torch
+from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 from torch import nn
 from torch.nn import functional as F
-import pytorch_lightning as pl
-from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
+
 from fd_shifts.models.networks import get_network
 
 
@@ -111,7 +112,6 @@ class net(pl.LightningModule):
     #                 print("TRAIN", x[0])
 
     def validation_step(self, batch, batch_idx, *args):
-
         x, y = batch
         if args is not None and args[0] > 0:
             y = y.fill_(0)

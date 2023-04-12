@@ -1,17 +1,15 @@
 import os
 import subprocess
-from itertools import product
 import time
-
+from itertools import product
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 exec_dir = "/".join(current_dir.split("/")[:-1])
-exec_path = os.path.join(exec_dir,"exec.py")
+exec_path = os.path.join(exec_dir, "exec.py")
 
 
-
-train_mode = "train" # "test" / "train" / "analysis"
-backbones = ["resnet50"] #
+train_mode = "train"  # "test" / "train" / "analysis"
+backbones = ["resnet50"]  #
 dropouts = [1, 0]
 modes = ["confidnet", "dg", "devries"]
 runs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -20,38 +18,43 @@ my_ix = 0
 
 exp_name_list = []
 
-for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts, runs ,rewards)):
-
-    if  not (mode!="dg" and rew > 2.2):
-
-
+for ix, (mode, bb, do, run, rew) in enumerate(
+    product(modes, backbones, dropouts, runs, rewards)
+):
+    if not (mode != "dg" and rew > 2.2):
         exp_group_name = "camelyon_paper_sweep"
         exp_name = "{}_bb{}_do{}_run{}_rew{}".format(mode, bb, do, run, rew)
         exp_name_list.append(exp_name)
-        if 1==1:
+        if 1 == 1:
             my_ix += 1
             command_line_args = ""
 
             if train_mode == "test":
-                command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(os.path.join(exp_group_name, exp_name, "hydra"))
+                command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(
+                    os.path.join(exp_group_name, exp_name, "hydra")
+                )
                 command_line_args += "exp.mode=test "
 
-
             elif train_mode == "analysis":
-                command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(os.path.join(exp_group_name, exp_name, "hydra"))
+                command_line_args += "--config-path=$EXPERIMENT_ROOT_DIR/{} ".format(
+                    os.path.join(exp_group_name, exp_name, "hydra")
+                )
                 command_line_args += "exp.mode=analysis "
 
             else:
-
-
                 if mode == "devries":
                     command_line_args += "study={} ".format("devries")
-                    command_line_args += "model.network.name={} ".format("devries_and_enc")
+                    command_line_args += "model.network.name={} ".format(
+                        "devries_and_enc"
+                    )
                     command_line_args += "model.network.backbone={} ".format(bb)
                     command_line_args += "trainer.num_epochs={} ".format(5)
-                    command_line_args += "trainer.optimizer.learning_rate={} ".format(0.01)
-                    command_line_args += "trainer.optimizer.weight_decay={} ".format(0.01)
-
+                    command_line_args += "trainer.optimizer.learning_rate={} ".format(
+                        0.01
+                    )
+                    command_line_args += "trainer.optimizer.weight_decay={} ".format(
+                        0.01
+                    )
 
                 elif mode == "dg":
                     command_line_args += "study={} ".format("deepgamblers")
@@ -59,20 +62,28 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
                     command_line_args += "model.dg_reward={} ".format(rew)
                     command_line_args += "trainer.num_epochs={} ".format(8)
                     command_line_args += "trainer.dg_pretrain_epochs={} ".format(3)
-                    command_line_args += "trainer.optimizer.learning_rate={} ".format(0.01)
-                    command_line_args += "trainer.optimizer.weight_decay={} ".format(0.01)
-
+                    command_line_args += "trainer.optimizer.learning_rate={} ".format(
+                        0.01
+                    )
+                    command_line_args += "trainer.optimizer.weight_decay={} ".format(
+                        0.01
+                    )
 
                 elif mode == "confidnet":
                     command_line_args += "study={} ".format("confidnet")
-                    command_line_args += "model.network.name={} ".format("confidnet_and_enc")
+                    command_line_args += "model.network.name={} ".format(
+                        "confidnet_and_enc"
+                    )
                     command_line_args += "model.network.backbone={} ".format(bb)
                     command_line_args += "trainer.num_epochs={} ".format(9)
                     command_line_args += "trainer.num_epochs_backbone={} ".format(5)
-                    command_line_args += "trainer.callbacks.training_stages.milestones=\"{}\" ".format([5, 8])
+                    command_line_args += (
+                        'trainer.callbacks.training_stages.milestones="{}" '.format(
+                            [5, 8]
+                        )
+                    )
                     command_line_args += "trainer.learning_rate={} ".format(0.01)
                     command_line_args += "trainer.weight_decay={} ".format(0.01)
-
 
                 command_line_args += "data={} ".format("wilds_camelyon_data")
                 command_line_args += "exp.group_name={} ".format(exp_group_name)
@@ -86,17 +97,32 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
                     command_line_args += "model.fc_dim={} ".format(2048)
 
                 if do == 1:
-                    command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
-                        ["det_mcp" , "det_pe", "ext", "ext_mcd", "ext_waic", "mcd_mcp", "mcd_pe", "mcd_ee", "mcd_mi", "mcd_sv", "mcd_waic"])
+                    command_line_args += 'eval.confidence_measures.test="{}" '.format(
+                        [
+                            "det_mcp",
+                            "det_pe",
+                            "ext",
+                            "ext_mcd",
+                            "ext_waic",
+                            "mcd_mcp",
+                            "mcd_pe",
+                            "mcd_ee",
+                            "mcd_mi",
+                            "mcd_sv",
+                            "mcd_waic",
+                        ]
+                    )
                 else:
-                    command_line_args += "eval.confidence_measures.test=\"{}\" ".format(
-                        ["det_mcp", "det_pe", "ext"])
+                    command_line_args += 'eval.confidence_measures.test="{}" '.format(
+                        ["det_mcp", "det_pe", "ext"]
+                    )
 
                 command_line_args += "eval.query_studies.iid_study=wilds_camelyon "
                 command_line_args += "~eval.query_studies.noise_study "
                 command_line_args += "~eval.query_studies.new_class_study "
-                command_line_args += "+eval.query_studies.in_class_study=\"{}\" ".format(['wilds_camelyon_ood_test'])
-
+                command_line_args += '+eval.query_studies.in_class_study="{}" '.format(
+                    ["wilds_camelyon_ood_test"]
+                )
 
             launch_command = "python -u {} ".format(exec_path)
             launch_command += command_line_args
@@ -106,4 +132,3 @@ for ix, (mode, bb, do, run, rew) in enumerate(product(modes, backbones, dropouts
 
 print(my_ix)
 print(exp_name_list)
-

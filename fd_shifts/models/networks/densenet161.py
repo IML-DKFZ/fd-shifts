@@ -1,10 +1,11 @@
-from torchvision import models
+from typing import Any, List, Tuple
+
 import torch
 import torch.nn as nn
-from torch import Tensor
-from typing import Any, List, Tuple
 import torch.nn.functional as F
 import torchvision
+from torch import Tensor
+from torchvision import models
 
 
 class Densenet161(nn.Module):

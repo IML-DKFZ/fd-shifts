@@ -1,7 +1,7 @@
 # import paramiko
-import time
 import getpass
 import os
+import time
 
 studies = [
     "confidnet_chest_xray",

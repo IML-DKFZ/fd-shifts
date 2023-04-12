@@ -1,6 +1,6 @@
+import torch
 from torch import nn
 from torch.nn import functional as F
-import torch
 
 
 class Conv2dSame(nn.Module):
@@ -35,7 +35,6 @@ class SmallConv(nn.Module):
         self.classifier = Classifier(cf.model.fc_dim, num_classes)
 
     def forward(self, x):
-
         x = self.encoder(x)
         x = self.classifier(x)
 
@@ -108,13 +107,11 @@ class Encoder(nn.Module):
         return x
 
     def disable_dropout(self):
-
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].eval()
 
     def enable_dropout(self):
-
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].train()

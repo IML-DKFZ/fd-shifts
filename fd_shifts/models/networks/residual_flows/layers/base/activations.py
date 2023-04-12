@@ -59,7 +59,6 @@ class Swish(nn.Module):
 
 
 if __name__ == "__main__":
-
     m = Swish()
     xx = torch.linspace(-5, 5, 1000).requires_grad_(True)
     yy = m(xx)

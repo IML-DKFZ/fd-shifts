@@ -22,13 +22,10 @@ for run in runs[0:1]:
                 iid_all = ["dermoscopyall"]
 
             if dataset == "chest_xray":
-
                 iid_all = ["xray_chestall"]
             if dataset == "rxrx1":
-
                 iid_all = ["rxrx1all"]
             if dataset == "lidc_idri":
-
                 iid_all = ["lidc_idriall"]
             trainings = []
             trainings.extend(iid_all)

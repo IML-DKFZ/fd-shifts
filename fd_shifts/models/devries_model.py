@@ -1,10 +1,11 @@
+import pl_bolts
+import pytorch_lightning as pl
 import torch
 from torch import nn
 from torch.nn import functional as F
-import pytorch_lightning as pl
-import pl_bolts
-from fd_shifts.models.networks import get_network
 from tqdm import tqdm
+
+from fd_shifts.models.networks import get_network
 
 
 class net(pl.LightningModule):
@@ -93,7 +94,6 @@ class net(pl.LightningModule):
     #     print("loaded pretrained dg backbone from {}".format(self.load_dg_backbone_path))
 
     def on_epoch_end(self):
-
         if (
             self.ext_confid_name == "dg"
             and self.current_epoch == self.pretrain_epochs - 1
@@ -105,7 +105,6 @@ class net(pl.LightningModule):
             )
 
     def on_train_start(self):
-
         if self.imagenet_weights_path:
             self.model.encoder.load_pretrained_imagenet_params(
                 self.imagenet_weights_path
@@ -122,7 +121,6 @@ class net(pl.LightningModule):
                 tqdm.write(str(x[1].weight.mean().item()))
 
     def training_step(self, batch, batch_idx):
-
         x, y = batch
         if self.ext_confid_name == "devries":
             logits, confidence = self.model(x)
@@ -184,7 +182,6 @@ class net(pl.LightningModule):
         return batch_parts
 
     def validation_step(self, batch, batch_idx):
-
         x, y = batch
 
         if self.ext_confid_name == "devries":

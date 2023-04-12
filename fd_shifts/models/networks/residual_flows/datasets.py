@@ -60,7 +60,6 @@ class CIFAR10(object):
 
 
 class CelebA5bit(object):
-
     LOC = "data/celebahq64_5bit/celeba_full_64x64_5bit.pth"
 
     def __init__(self, train=True, transform=None):

@@ -58,8 +58,14 @@ def extract_hparam(name: str, regex: str, default: str | None = None) -> str:
 def to_experiment_list(paths):
     result = pd.DataFrame([Experiment.from_standardized_name(path) for path in paths])
     result = result.drop_duplicates(["dataset", "model", "bb", "lr", "bs", "do", "rew"])
-    result = result.groupby(["dataset", "model", "do"]).aggregate(lambda s: list({i for i in s})).reset_index()
-    result[["dataset", "model", "do"]] = result[["dataset", "model", "do"]].applymap(lambda x: [x])
+    result = (
+        result.groupby(["dataset", "model", "do"])
+        .aggregate(lambda s: list({i for i in s}))
+        .reset_index()
+    )
+    result[["dataset", "model", "do"]] = result[["dataset", "model", "do"]].applymap(
+        lambda x: [x]
+    )
     return result[["dataset", "model", "bb", "lr", "bs", "do", "rew"]]
 
 

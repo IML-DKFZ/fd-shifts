@@ -1,18 +1,20 @@
-from fd_shifts.models.networks import svhn_small_conv
-from fd_shifts.models.networks import mnist_small_conv
-from fd_shifts.models.networks import mnist_mlp
-from fd_shifts.models.networks import vgg16
-from fd_shifts.models.networks import confidnet
-from fd_shifts.models.networks import devries_network
-from fd_shifts.models.networks import vgg
-from fd_shifts.models.networks import zhang_network
-from fd_shifts.models.networks import resnet50_imagenet
-from fd_shifts.models.networks import vgg_devries
-from fd_shifts.models.networks import dgvgg
-from fd_shifts.models.networks import vit
-from fd_shifts.models.networks import efficientnetb4
-from fd_shifts.models.networks import densenet121
-from fd_shifts.models.networks import densenet161
+from fd_shifts.models.networks import (
+    confidnet,
+    densenet121,
+    densenet161,
+    devries_network,
+    dgvgg,
+    efficientnetb4,
+    mnist_mlp,
+    mnist_small_conv,
+    resnet50_imagenet,
+    svhn_small_conv,
+    vgg,
+    vgg16,
+    vgg_devries,
+    vit,
+    zhang_network,
+)
 
 
 def get_network(network_name):

@@ -1,35 +1,35 @@
+import imghdr
+import io
+import os
+import pickle
 from calendar import day_abbr
 from email.mime import image
+from typing import Any, Callable, Optional, Tuple
+
+import albumentations
+import cv2
+import medmnist
+import numpy as np
+import pandas as pd
+import torch
+from medmnist.info import DEFAULT_ROOT, HOMEPAGE, INFO
+from PIL import Image, ImageFile
+from robustness.tools.breeds_helpers import (
+    ClassHierarchy,
+    make_entity13,
+    print_dataset_info,
+)
+from robustness.tools.folder import ImageFolder
+from robustness.tools.helpers import get_label_mapping
+from torch.utils.data import Dataset
 from torchvision import datasets
 from torchvision.datasets.utils import check_integrity, download_and_extract_archive
-from typing import Any, Callable, Optional, Tuple
-from robustness.tools.folder import ImageFolder
-from robustness.tools.breeds_helpers import make_entity13
-from robustness.tools.breeds_helpers import print_dataset_info
-from robustness.tools.helpers import get_label_mapping
-from robustness.tools.breeds_helpers import ClassHierarchy
-from wilds.datasets.iwildcam_dataset import IWildCamDataset
 from wilds.datasets.camelyon17_dataset import Camelyon17Dataset
+from wilds.datasets.iwildcam_dataset import IWildCamDataset
 from wilds.datasets.wilds_dataset import WILDSSubset
-from fd_shifts.loaders import breeds_hierarchies
+
 from fd_shifts.analysis import eval_utils
-import numpy as np
-from PIL import Image
-from PIL import ImageFile
-import io
-import pickle
-import os
-import torch
-import medmnist
-import pandas as pd
-import os
-import numpy as np
-from PIL import Image
-from torch.utils.data import Dataset
-from medmnist.info import INFO, HOMEPAGE, DEFAULT_ROOT
-import cv2
-import albumentations
-import imghdr
+from fd_shifts.loaders import breeds_hierarchies
 
 
 def get_dataset(name, root, train, download, transform, target_transforms, kwargs):
@@ -636,7 +636,6 @@ def get_dataset(name, root, train, download, transform, target_transforms, kwarg
 
 
 def get_df(out_dim, data_dir, data_folder):
-
     # 2020 data
     df_train = pd.read_csv(
         os.path.join(
@@ -747,7 +746,6 @@ def get_df(out_dim, data_dir, data_folder):
 
 
 def get_transforms(image_size):
-
     transforms_train = albumentations.Compose(
         [
             albumentations.Transpose(p=0.5),
@@ -799,7 +797,6 @@ def get_transforms(image_size):
 
 class MelanomaDataset(Dataset):
     def __init__(self, csv: pd.core.frame.DataFrame, train: bool, transform=None):
-
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -818,7 +815,6 @@ class MelanomaDataset(Dataset):
         return self.csv.shape[0]
 
     def __getitem__(self, index):
-
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
@@ -837,10 +833,11 @@ class MelanomaDataset(Dataset):
         return data, torch.tensor(self.csv.iloc[index].target).long()
 
 
-from torch.utils.data import Dataset
+from typing import Optional
+
 import cv2
 import pandas as pd
-from typing import Optional
+from torch.utils.data import Dataset
 
 
 class Rxrx1Dataset(Dataset):
@@ -854,7 +851,6 @@ class Rxrx1Dataset(Dataset):
         train: bool,
         transform: Optional[callable] = None,
     ):
-
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -866,7 +862,6 @@ class Rxrx1Dataset(Dataset):
         return len(self.targets)
 
     def __getitem__(self, index):
-
         row = self.csv.iloc[index]
         filepath = row.stempath
         channels = []
@@ -899,7 +894,6 @@ class XrayDataset(Dataset):
         train: bool,
         transform: Optional[callable] = None,
     ):
-
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -911,7 +905,6 @@ class XrayDataset(Dataset):
         return len(self.targets)
 
     def __getitem__(self, index):
-
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
@@ -932,7 +925,6 @@ class Lidc_idriDataset(Dataset):
         train: bool,
         transform: Optional[callable] = None,
     ):
-
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -944,7 +936,6 @@ class Lidc_idriDataset(Dataset):
         return len(self.targets)
 
     def __getitem__(self, index):
-
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
@@ -965,7 +956,6 @@ class BasicDataset(Dataset):
         train: bool,
         transform: Optional[callable] = None,
     ):
-
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -983,7 +973,6 @@ class BasicDataset(Dataset):
         return self.csv.shape[0]
 
     def __getitem__(self, index):
-
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
@@ -1002,10 +991,11 @@ class BasicDataset(Dataset):
         return data, torch.tensor(self.csv.iloc[index].target).long()
 
 
-from torch.utils.data import Dataset
+from typing import Optional
+
 import cv2
 import pandas as pd
-from typing import Optional
+from torch.utils.data import Dataset
 
 
 class DermoscopyAllDataset(Dataset):
@@ -1016,7 +1006,6 @@ class DermoscopyAllDataset(Dataset):
         transform: Optional[callable] = None,
         oversampeling: int = 0,
     ):
-
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -1043,7 +1032,6 @@ class DermoscopyAllDataset(Dataset):
         return len(self.targets)
 
     def __getitem__(self, index):
-
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
@@ -1069,7 +1057,6 @@ class D7pDataset(Dataset):
         train: bool,
         transform: Optional[callable] = None,
     ):
-
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -1088,7 +1075,6 @@ class D7pDataset(Dataset):
         return self.csv.shape[0]
 
     def __getitem__(self, index):
-
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
@@ -1114,7 +1100,6 @@ class Ham10000Dataset(Dataset):
         train: bool,
         transform: Optional[callable] = None,
     ):
-
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -1133,7 +1118,6 @@ class Ham10000Dataset(Dataset):
         return self.csv.shape[0]
 
     def __getitem__(self, index):
-
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
@@ -1159,7 +1143,6 @@ class Ham10000DatasetSubbig(Dataset):
         train: bool,
         transform: Optional[callable] = None,
     ):
-
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -1178,7 +1161,6 @@ class Ham10000DatasetSubbig(Dataset):
         return self.csv.shape[0]
 
     def __getitem__(self, index):
-
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
@@ -1204,7 +1186,6 @@ class Ham10000DatasetSubsmall(Dataset):
         train: bool,
         transform: Optional[callable] = None,
     ):
-
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -1217,7 +1198,6 @@ class Ham10000DatasetSubsmall(Dataset):
         return self.csv.shape[0]
 
     def __getitem__(self, index):
-
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
@@ -1243,7 +1223,6 @@ class Isic2020Dataset(Dataset):
         train: bool,
         transform: Optional[callable] = None,
     ):
-
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -1262,7 +1241,6 @@ class Isic2020Dataset(Dataset):
         return self.csv.shape[0]
 
     def __getitem__(self, index):
-
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
@@ -1288,7 +1266,6 @@ class Ph2Dataset(Dataset):
         train: bool,
         transform: Optional[callable] = None,
     ):
-
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -1307,7 +1284,6 @@ class Ph2Dataset(Dataset):
         return self.csv.shape[0]
 
     def __getitem__(self, index):
-
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
@@ -1409,7 +1385,6 @@ class Isicv01(Dataset):
 
 
 class MedMNIST_mod(Dataset):
-
     flag = ...
 
     def __init__(
@@ -1547,7 +1522,6 @@ class MedMNIST2D(MedMNIST_mod):
         return img, target
 
     def save(self, folder, postfix="png", write_csv=True):
-
         from medmnist.utils import save2d
 
         save2d(
@@ -1664,7 +1638,6 @@ class SuperCIFAR100(datasets.VisionDataset):
         download: bool = False,
         kwargs: Optional[Callable] = None,
     ) -> None:
-
         super(SuperCIFAR100, self).__init__(
             root, transform=transform, target_transform=target_transform
         )
@@ -1848,7 +1821,6 @@ class CorruptCIFAR(datasets.VisionDataset):
         target_transform: Optional[Callable] = None,
         kwargs: Optional[Callable] = None,
     ) -> None:
-
         super(CorruptCIFAR, self).__init__(
             root, transform=transform, target_transform=target_transform
         )
@@ -1926,7 +1898,6 @@ class ImageNet(datasets.ImageNet):
         super().__init__(root=root, train=train, download=download, transform=transform)
 
     def __getitem__(self, index):
-
         path, target = self.samples[index]
         sample = self.loader(path)
         if self.transform is not None:

@@ -1,9 +1,9 @@
+import logging
 import math
+
 import numpy as np
 import torch
 import torch.nn as nn
-
-import logging
 
 logger = logging.getLogger()
 
@@ -229,7 +229,7 @@ class MemoryEfficientLogDetEstimator(torch.autograd.Function):
         vareps,
         coeff_fn,
         training,
-        *g_params
+        *g_params,
     ):
         ctx.training = training
         with torch.enable_grad():
@@ -319,7 +319,6 @@ def neumann_logdet_estimator(g, x, n_power_series, vareps, coeff_fn, training):
 
 
 def mem_eff_wrapper(estimator_fn, gnet, x, n_power_series, vareps, coeff_fn, training):
-
     # We need this in order to access the variables inside this module,
     # since we have no other way of getting variables along the execution path.
     if not isinstance(gnet, nn.Module):
@@ -333,7 +332,7 @@ def mem_eff_wrapper(estimator_fn, gnet, x, n_power_series, vareps, coeff_fn, tra
         vareps,
         coeff_fn,
         training,
-        *list(gnet.parameters())
+        *list(gnet.parameters()),
     )
 
 

@@ -1,11 +1,12 @@
 # from torch._six import container_abcs
+import math
 from collections import abc as container_abcs
 from itertools import repeat
-import math
+
 import torch
 import torch.nn as nn
-import torch.nn.init as init
 import torch.nn.functional as F
+import torch.nn.init as init
 
 __all__ = ["InducedNormLinear", "InducedNormConv2d"]
 
@@ -23,7 +24,7 @@ class InducedNormLinear(nn.Module):
         atol=None,
         rtol=None,
         zero_init=False,
-        **unused_kwargs
+        **unused_kwargs,
     ):
         del unused_kwargs
         super(InducedNormLinear, self).__init__()
@@ -107,7 +108,6 @@ class InducedNormLinear(nn.Module):
         weight = self.weight
 
         if update:
-
             n_iterations = self.n_iterations if n_iterations is None else n_iterations
             atol = self.atol if atol is None else atol
             rtol = self.rtol if rtol is None else atol
@@ -188,7 +188,7 @@ class InducedNormConv2d(nn.Module):
         n_iterations=None,
         atol=None,
         rtol=None,
-        **unused_kwargs
+        **unused_kwargs,
     ):
         del unused_kwargs
         super(InducedNormConv2d, self).__init__()
@@ -589,7 +589,6 @@ _triple = _ntuple(3)
 _quadruple = _ntuple(4)
 
 if __name__ == "__main__":
-
     p = nn.Parameter(torch.tensor(2.1))
 
     m = InducedNormConv2d(10, 2, 3, 1, 1, atol=1e-3, rtol=1e-3, domain=p, codomain=p)

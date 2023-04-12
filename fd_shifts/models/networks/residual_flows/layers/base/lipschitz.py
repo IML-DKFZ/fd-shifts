@@ -1,11 +1,12 @@
 import math
+
 import torch
 import torch.nn as nn
-import torch.nn.init as init
 import torch.nn.functional as F
+import torch.nn.init as init
 
+from .mixed_lipschitz import InducedNormConv2d, InducedNormLinear
 from .utils import _pair
-from .mixed_lipschitz import InducedNormLinear, InducedNormConv2d
 
 __all__ = [
     "SpectralNormLinear",

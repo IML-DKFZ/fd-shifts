@@ -1,6 +1,6 @@
+import timm
 import torch
 import torch.nn as nn
-import timm
 
 
 class EfficientNetb4timm(nn.Module):

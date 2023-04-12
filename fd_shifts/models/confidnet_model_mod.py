@@ -1,10 +1,11 @@
+import pl_bolts
+import pytorch_lightning as pl
 import torch
 from torch import nn
 from torch.nn import functional as F
-import pytorch_lightning as pl
-from fd_shifts.models.networks import get_network
 from tqdm import tqdm
-import pl_bolts
+
+from fd_shifts.models.networks import get_network
 from fd_shifts.utils.exp_utils import GradualWarmupSchedulerV2
 
 
@@ -162,7 +163,6 @@ class net(pl.LightningModule):
     #                 print("TRAIN", x[0])
 
     def validation_step(self, batch, batch_idx):
-
         if self.training_stage == 0:
             x, y = batch
             logits = self.backbone(x)
@@ -240,7 +240,6 @@ class net(pl.LightningModule):
         # print("CHECK Monitor Accuracy", (softmax.argmax(1) == y).sum()/y.numel())
 
     def configure_optimizers(self):
-
         if self.optimizer_cfgs.name == "SGD":
             optimizers = [
                 torch.optim.SGD(

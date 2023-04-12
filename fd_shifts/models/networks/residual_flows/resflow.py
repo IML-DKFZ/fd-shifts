@@ -223,7 +223,6 @@ class StackediResBlocks(layers.SequentialFlow):
         first_resblock=False,
         learn_p=False,
     ):
-
         chain = []
 
         # Parse vnorms

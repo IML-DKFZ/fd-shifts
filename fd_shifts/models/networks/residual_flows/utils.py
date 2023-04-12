@@ -1,7 +1,8 @@
-import os
-import math
-from numbers import Number
 import logging
+import math
+import os
+from numbers import Number
+
 import torch
 
 
@@ -128,7 +129,8 @@ def logsumexp(value, dim=None, keepdim=False):
 class ExponentialMovingAverage(object):
     def __init__(self, module, decay=0.999):
         """Initializes the model when .apply() is called the first time.
-        This is to take into account data-dependent initialization that occurs in the first iteration."""
+        This is to take into account data-dependent initialization that occurs in the first iteration.
+        """
         self.module = module
         self.decay = decay
         self.shadow_params = {}

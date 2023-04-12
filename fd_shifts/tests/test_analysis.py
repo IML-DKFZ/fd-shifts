@@ -3,9 +3,9 @@ import filecmp
 import shutil
 from pathlib import Path
 
-from PIL import Image
 import pytest
 from omegaconf import OmegaConf
+from PIL import Image
 
 from fd_shifts import analysis
 from fd_shifts.utils import exp_utils

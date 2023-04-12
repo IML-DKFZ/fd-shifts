@@ -1,12 +1,13 @@
+import numpy as np
+import torch
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.trainer.connectors.logger_connector.logger_connector import (
     LoggerConnector,
 )
-import torch
-import numpy as np
-from fd_shifts.analysis import eval_utils
-from tqdm import tqdm
 from rich import print
+from tqdm import tqdm
+
+from fd_shifts.analysis import eval_utils
 
 
 class ConfidMonitor(Callback):
@@ -67,7 +68,6 @@ class ConfidMonitor(Callback):
     def on_train_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-
         loss = outputs["loss"]
         softmax = outputs["softmax"]
         y = outputs["labels"]
@@ -141,7 +141,6 @@ class ConfidMonitor(Callback):
                 )
 
     def on_train_epoch_end(self, trainer, pl_module):
-
         if (
             len(self.running_confid_stats["train"].keys()) > 0
             or len(self.running_perf_stats["train"].keys()) > 0
@@ -187,7 +186,6 @@ class ConfidMonitor(Callback):
     def on_validation_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-
         # todo organize in dicts / factories instead of if else statements?
 
         tmp_correct = None
@@ -227,7 +225,6 @@ class ConfidMonitor(Callback):
                     )
 
             if len(confid_keys) > 0 or softmax_dist is not None:
-
                 if tmp_correct is None:
                     tmp_correct = (torch.argmax(softmax, dim=1) == y).type(
                         torch.cuda.ByteTensor
@@ -263,7 +260,6 @@ class ConfidMonitor(Callback):
                         )
 
             if softmax_dist is not None:
-
                 mean_softmax = torch.mean(softmax_dist, dim=2)
                 tmp_mcd_correct = (torch.argmax(mean_softmax, dim=1) == y).type(
                     torch.cuda.ByteTensor
@@ -340,7 +336,6 @@ class ConfidMonitor(Callback):
                 self.running_test_external_confids.extend(outputs["confid"])
 
     def on_validation_epoch_end(self, trainer, pl_module):
-
         monitor_metrics = None
         if (
             len(self.running_confid_stats["val"].keys()) > 0

@@ -1,11 +1,12 @@
 import os
-import torch
 import random
-import numpy as np
-import sys
-import pytorch_lightning as pl
 import subprocess
+import sys
 from pathlib import Path
+
+import numpy as np
+import pytorch_lightning as pl
+import torch
 
 
 def set_seed(seed):
@@ -124,9 +125,9 @@ class Logger(object):
 
 
 # Fix Warmup Bug
-from warmup_scheduler import (
+from warmup_scheduler import (  # https://github.com/ildoonet/pytorch-gradual-warmup-lr
     GradualWarmupScheduler,
-)  # https://github.com/ildoonet/pytorch-gradual-warmup-lr
+)
 
 
 class GradualWarmupSchedulerV2(GradualWarmupScheduler):

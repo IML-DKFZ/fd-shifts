@@ -1,10 +1,9 @@
 """VGG11/13/16/19 in Pytorch."""
 # modified from https://github.com/kuangliu/pytorch-cifar/blob/master/models/vgg.py
 
-import torch.nn as nn
 import torch
+import torch.nn as nn
 from torch.autograd import Variable
-
 
 cfg = {
     "vgg11": [64, "M", 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
@@ -117,13 +116,11 @@ class Encoder(nn.Module):
         return nn.Sequential(*layers)
 
     def disable_dropout(self):
-
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].eval()
 
     def enable_dropout(self):
-
         for layer in self.named_modules():
             if isinstance(layer[1], torch.nn.modules.dropout.Dropout):
                 layer[1].train()

@@ -102,7 +102,8 @@ def main():
                     maxtasksperchild=1,
                 ) as pool:
                     for _ in pool.imap_unordered(
-                        run_analysis, get_all_experiments(args.path),
+                        run_analysis,
+                        get_all_experiments(args.path),
                     ):
                         progress.advance(task_id)
     except KeyboardInterrupt:

@@ -1,6 +1,6 @@
-from torchvision.models import efficientnet_b4
 import torch
 import torch.nn as nn
+from torchvision.models import efficientnet_b4
 
 
 class EfficientNetb4(nn.Module):

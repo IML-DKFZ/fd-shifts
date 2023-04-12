@@ -1,5 +1,9 @@
-from pytorch_lightning.callbacks import (GPUStatsMonitor, LearningRateMonitor,
-                                         ModelCheckpoint, RichProgressBar)
+from pytorch_lightning.callbacks import (
+    GPUStatsMonitor,
+    LearningRateMonitor,
+    ModelCheckpoint,
+    RichProgressBar,
+)
 
 from fd_shifts.models.callbacks import confid_monitor, training_stages
 

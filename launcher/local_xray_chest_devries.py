@@ -1,8 +1,7 @@
 # import paramiko
-import time
 import getpass
 import os
-
+import time
 
 # ssh = paramiko.SSHClient()
 # keyfilename = "/home/l049e/.ssh/id_rsa"

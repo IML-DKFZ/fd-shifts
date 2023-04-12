@@ -1,10 +1,9 @@
 """VGG11/13/16/19 in Pytorch."""
 # modified from https://github.com/kuangliu/pytorch-cifar/blob/master/models/vgg.py
 
-import torch.nn as nn
 import torch
+import torch.nn as nn
 from torch.autograd import Variable
-
 
 cfg = {
     "VGG11": [64, "M", 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],

@@ -1,7 +1,7 @@
-import torch.nn as nn
-import torch.utils.model_zoo as model_zoo
 import math
 
+import torch.nn as nn
+import torch.utils.model_zoo as model_zoo
 
 __all__ = ["VGG", "vgg16", "vgg16_bn"]
 

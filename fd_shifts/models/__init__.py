@@ -1,12 +1,14 @@
-from fd_shifts.models import det_mcd_model
-from fd_shifts.models import confidnet_model
-from fd_shifts.models import zhang_model
-from fd_shifts.models import devries_model
-from fd_shifts.models import vit_model
-from fd_shifts.models import isic_model
-from fd_shifts.models import devries_model_mod
-from fd_shifts.models import confidnet_model_mod
-from fd_shifts.models import cross_entropy
+from fd_shifts.models import (
+    confidnet_model,
+    confidnet_model_mod,
+    cross_entropy,
+    det_mcd_model,
+    devries_model,
+    devries_model_mod,
+    isic_model,
+    vit_model,
+    zhang_model,
+)
 
 
 def get_model(model_name):

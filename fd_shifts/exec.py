@@ -1,9 +1,10 @@
 import logging
 import os
-from pathlib import Path
 import random
 import sys
+from pathlib import Path
 
+import cv2
 import hydra
 import omegaconf
 import pytorch_lightning as pl
@@ -14,7 +15,7 @@ from pytorch_lightning.callbacks import RichProgressBar
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
 from rich.console import Console
 from torch import multiprocessing
-import cv2
+
 from fd_shifts import analysis
 from fd_shifts.loaders.abstract_loader import AbstractDataLoader
 from fd_shifts.models import get_model
@@ -161,7 +162,6 @@ def train(cf, subsequent_testing=False):
 
 
 def test(cf):
-
     console = Console(stderr=True, force_terminal=True)
     progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
     progress._console = console

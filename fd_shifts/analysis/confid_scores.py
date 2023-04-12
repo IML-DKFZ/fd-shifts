@@ -1,4 +1,4 @@
-from typing import Any, Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import numpy.typing as npt

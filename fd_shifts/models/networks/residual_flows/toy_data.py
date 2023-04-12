@@ -6,7 +6,6 @@ from sklearn.utils import shuffle as util_shuffle
 
 # Dataset iterator
 def inf_train_gen(data, batch_size=200):
-
     if data == "swissroll":
         data = sklearn.datasets.make_swiss_roll(n_samples=batch_size, noise=1.0)[0]
         data = data.astype("float32")[:, [0, 2]]

@@ -43,14 +43,16 @@ def to_full_name(name: str) -> str:
 
 base_path = Path("~/Experiments/vit").expanduser()
 paths = base_path.glob("**/test_results/raw_output.npz")
-paths = sorted(set(map(str, map(lambda p: p.relative_to(base_path).parent.parent, paths))))
+paths = sorted(
+    set(map(str, map(lambda p: p.relative_to(base_path).parent.parent, paths)))
+)
 
 new_paths = map(to_full_name, paths)
 
 for old_name, new_name in zip(paths, new_paths):
     if old_name == new_name:
         continue
-    
+
     for s in old_name.split("_"):
         assert s in new_name
 

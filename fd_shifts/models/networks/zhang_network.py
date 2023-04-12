@@ -1,12 +1,14 @@
-import fd_shifts.models.networks as networks
-from fd_shifts.models.networks.residual_flows.resflow import ResidualFlow
-from fd_shifts.models.networks.residual_flows import layers
-import fd_shifts.models.networks.residual_flows.layers.base as base_layers
+import math
+
+import numpy as np
+import torch
 from torch import nn
 from torch.nn import functional as F
-import math
-import torch
-import numpy as np
+
+import fd_shifts.models.networks as networks
+import fd_shifts.models.networks.residual_flows.layers.base as base_layers
+from fd_shifts.models.networks.residual_flows import layers
+from fd_shifts.models.networks.residual_flows.resflow import ResidualFlow
 
 
 class ZhangAndEncoder(nn.Module):
@@ -21,7 +23,6 @@ class ZhangAndEncoder(nn.Module):
         self.zhang_net = ZhangNet(cf)  # todo make arguments explcit!
 
     def forward(self, x):
-
         x = self.encoder(x)
         pred_class = self.classifier(x)
         pred_confid = self.zhang_net(x)
@@ -37,7 +38,6 @@ class ZhangBackbone(nn.Module):
         self.classifier = classifier32(cf.data.num_classes)
 
     def forward(self, x):
-
         x = self.encoder(x)
         x = self.classifier(x)
 
@@ -97,7 +97,6 @@ class ZhangNet(nn.Module):
         self.epsilon_noise = cf.model.epsilon_noise
 
     def forward(self, x):
-
         x, logpu = self.add_padding(x, self.nvals)  # logpu = 0 without padding
 
         if self.squeeze_first:
@@ -294,7 +293,6 @@ class classifier32(nn.Module):
         self.fc1 = nn.Linear(512, num_classes)
 
     def forward(self, x):
-
         return self.fc1(x)
 
 

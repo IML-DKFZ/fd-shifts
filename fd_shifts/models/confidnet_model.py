@@ -1,9 +1,10 @@
+import pytorch_lightning as pl
 import torch
 from torch import nn
 from torch.nn import functional as F
-import pytorch_lightning as pl
-from fd_shifts.models.networks import get_network
 from tqdm import tqdm
+
+from fd_shifts.models.networks import get_network
 
 
 class net(pl.LightningModule):
@@ -158,7 +159,6 @@ class net(pl.LightningModule):
     #                 print("TRAIN", x[0])
 
     def validation_step(self, batch, batch_idx):
-
         if self.training_stage == 0:
             x, y = batch
             logits = self.backbone(x)

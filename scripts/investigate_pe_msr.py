@@ -60,7 +60,7 @@ for run in runs:
             ("label", ""),
             ("dataset", ""),
         ],
-        dtype=np.float64
+        dtype=np.float64,
     )
     df.columns = pd.MultiIndex.from_tuples(df.columns)
     softmax = df.softmax.to_numpy(dtype=np.float64)[:10]
@@ -76,7 +76,10 @@ for run in runs:
         pe=predictive_entropy(test_data.softmax),
         error=(
             (test_data.softmax.to_numpy(dtype=np.float64).max(axis=1) == 1)
-            & ((test_data.softmax.to_numpy(dtype=np.float64) > 0) & (test_data.softmax.to_numpy(dtype=np.float64) < 1)).any(axis=1)
+            & (
+                (test_data.softmax.to_numpy(dtype=np.float64) > 0)
+                & (test_data.softmax.to_numpy(dtype=np.float64) < 1)
+            ).any(axis=1)
         ),
     )
     idx_sorted_msr = np.argsort(test_data.msr)

@@ -1,7 +1,8 @@
-from pytorch_lightning.callbacks import Callback
-import torch
 from collections import OrderedDict
 from copy import deepcopy
+
+import torch
+from pytorch_lightning.callbacks import Callback
 
 
 class TrainingStages(Callback):
@@ -15,7 +16,6 @@ class TrainingStages(Callback):
             self.milestones[0] = 0
 
     def on_train_epoch_start(self, trainer, pl_module):
-
         # self.check_weight_consistency(pl_module)
 
         if (
@@ -84,7 +84,7 @@ class TrainingStages(Callback):
 
             trainer.optimizers = [new_optimizer]
             trainer.lr_schedulers = []
-            #in some pytorch lightning versions this is not supported. Adding a setter method for the lr_scheduler property in the pl trainer fixes it
+            # in some pytorch lightning versions this is not supported. Adding a setter method for the lr_scheduler property in the pl trainer fixes it
             new_schedulers = []
             if pl_module.confidnet_lr_scheduler:
                 print("initializing new scheduler for confidnet...")
@@ -200,14 +200,12 @@ class TrainingStages(Callback):
                 # print("disabling bn", layer[1])
 
     def disable_dropout(self, model):
-
         for layer in model.named_modules():
             if "dropout" in layer[0] or isinstance(layer[1], torch.nn.Dropout):
                 layer[1].eval()
                 # print("disabling dropout", layer[1], layer[0])
 
     def check_weight_consistency(self, pl_module):
-
         for ix, x in enumerate(pl_module.backbone.named_parameters()):
             if ix == 0:
                 print("BACKBONE", x[0], x[1].mean().item())

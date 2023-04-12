@@ -1,10 +1,11 @@
+import pl_bolts
+import pytorch_lightning as pl
 import torch
 from torch import nn
 from torch.nn import functional as F
-import pytorch_lightning as pl
-from fd_shifts.models.networks import get_network
 from tqdm import tqdm
-import pl_bolts
+
+from fd_shifts.models.networks import get_network
 from fd_shifts.utils.exp_utils import GradualWarmupSchedulerV2
 
 
@@ -82,7 +83,6 @@ class net(pl.LightningModule):
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
         if self.rotate_at_testtime:
-
             for rot in range(4):
                 x = torch.rot90(x, rot, [2, 3])
                 z = self.network.forward_features(x)
