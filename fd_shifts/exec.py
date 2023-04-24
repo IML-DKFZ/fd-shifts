@@ -80,20 +80,36 @@ def train(
         else 1
     )
 
+    limit_batches: float | int = 1.0
+    num_epochs = cf.trainer.num_epochs
+    val_every_n_epoch = cf.trainer.val_every_n_epoch
+
+    if isinstance(cf.trainer.fast_dev_run, bool):
+        limit_batches = 1 if cf.trainer.fast_dev_run else 1.0
+        num_epochs = 1 if cf.trainer.fast_dev_run else num_epochs
+        max_steps = 1 if cf.trainer.fast_dev_run else max_steps
+        val_every_n_epoch = 1 if cf.trainer.fast_dev_run else val_every_n_epoch
+    if isinstance(cf.trainer.fast_dev_run, int):
+        limit_batches = cf.trainer.fast_dev_run
+        max_steps = cf.trainer.fast_dev_run
+        val_every_n_epoch = 1
+        num_epochs = 1
+
     trainer = pl.Trainer(
         accelerator="auto",
         devices="auto",
         logger=[tb_logger, csv_logger],
-        max_epochs=cf.trainer.num_epochs,
+        max_epochs=num_epochs,
         max_steps=max_steps,
         callbacks=[progress] + get_callbacks(cf),
         resume_from_checkpoint=resume_ckpt_path,
         benchmark=cf.trainer.benchmark,
-        check_val_every_n_epoch=cf.trainer.val_every_n_epoch,
-        fast_dev_run=cf.trainer.fast_dev_run,
+        check_val_every_n_epoch=val_every_n_epoch,
         num_sanity_val_steps=5,
         deterministic=train_deterministic_flag,
-        limit_val_batches=0 if cf.trainer.do_val is False else 1.0,
+        limit_train_batches=limit_batches,
+        limit_val_batches=0 if cf.trainer.do_val is False else limit_batches,
+        limit_test_batches=limit_batches,
         gradient_clip_val=1,
         accumulate_grad_batches=accumulate_grad_batches,
     )
@@ -138,11 +154,19 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
     if not os.path.exists(cf.test.dir):
         os.makedirs(cf.test.dir)
 
+    limit_batches: float | int = 1.0
+
+    if isinstance(cf.trainer.fast_dev_run, bool):
+        limit_batches = 1 if cf.trainer.fast_dev_run else 1.0
+    if isinstance(cf.trainer.fast_dev_run, int):
+        limit_batches = cf.trainer.fast_dev_run
+
     trainer = pl.Trainer(
         accelerator="auto",
         devices="auto",
         logger=False,
         callbacks=[progress] + get_callbacks(cf),
+        limit_test_batches=limit_batches,
         replace_sampler_ddp=False,
     )
     trainer.test(model=module, datamodule=datamodule)
