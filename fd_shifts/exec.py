@@ -43,6 +43,7 @@ def train(
 
     resume_ckpt_path = None
     cf.exp.version = exp_utils.get_next_version(cf.exp.dir)
+    cf.exp.version_dir = cf.exp.version_dir.parent / f"version_{cf.exp.version}"
     if cf.trainer.resume_from_ckpt:
         cf.exp.version -= 1
         resume_ckpt_path = exp_utils._get_resume_ckpt_path(cf)
@@ -120,6 +121,7 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
     else:
         logger.info("CHECK cf.exp.dir", cf.exp.dir)
         cf.exp.version = exp_utils.get_most_recent_version(cf.exp.dir)
+        cf.exp.version_dir = cf.exp.version_dir.parent / f"version_{cf.exp.version}"
         ckpt_path = exp_utils._get_resume_ckpt_path(cf)
 
     logger.info(
