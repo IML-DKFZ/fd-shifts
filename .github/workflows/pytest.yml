@@ -22,7 +22,7 @@ jobs:
           python -m ipykernel install --user --name py310
       - name: Test library
         run: |
-          python -m pytest -W ignore -m "not memory_heavy and not requires_data"
+          python -m pytest -W ignore -m "not slow"
       - name: Test docs
         run: |
           python -m pytest -W ignore --nbmake ./docs
