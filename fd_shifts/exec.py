@@ -89,7 +89,7 @@ def train(
         num_epochs = 1 if cf.trainer.fast_dev_run else num_epochs
         max_steps = 1 if cf.trainer.fast_dev_run else max_steps
         val_every_n_epoch = 1 if cf.trainer.fast_dev_run else val_every_n_epoch
-    if isinstance(cf.trainer.fast_dev_run, int):
+    elif isinstance(cf.trainer.fast_dev_run, int):
         limit_batches = cf.trainer.fast_dev_run
         max_steps = cf.trainer.fast_dev_run
         val_every_n_epoch = 1
@@ -158,7 +158,7 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
 
     if isinstance(cf.trainer.fast_dev_run, bool):
         limit_batches = 1 if cf.trainer.fast_dev_run else 1.0
-    if isinstance(cf.trainer.fast_dev_run, int):
+    elif isinstance(cf.trainer.fast_dev_run, int):
         limit_batches = cf.trainer.fast_dev_run
 
     trainer = pl.Trainer(
