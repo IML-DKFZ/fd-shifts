@@ -49,6 +49,9 @@ class Experiment:
             "exp.name": str(self.to_path().name),
         }
 
+        if dataset in ("cifar10", "cifar100", "supercifar") and self.dropout:
+            overrides["model.avg_pool"] = False
+
         if self.learning_rate is not None:
             overrides["trainer.optimizer.lr"] = self.learning_rate
 

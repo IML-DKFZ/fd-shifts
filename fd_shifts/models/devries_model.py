@@ -295,5 +295,15 @@ class net(pl.LightningModule):
 
     def load_only_state_dict(self, path):
         ckpt = torch.load(path)
+
+        # For backwards-compatibility with before commit 1bdc717
+        for param in list(ckpt["state_dict"].keys()):
+            if ".encoder." in param or ".classifier." in param:
+                correct_param = param.replace(".encoder.", "._encoder.").replace(
+                    ".classifier.", "._classifier."
+                )
+                ckpt["state_dict"][correct_param] = ckpt["state_dict"][param]
+                del ckpt["state_dict"][param]
+
         logger.info("loading checkpoint from epoch {}".format(ckpt["epoch"]))
         self.load_state_dict(ckpt["state_dict"], strict=True)
