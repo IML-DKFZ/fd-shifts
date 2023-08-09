@@ -24,6 +24,147 @@ from fd_shifts import logger
 from fd_shifts.analysis import eval_utils
 from fd_shifts.loaders import breeds_hierarchies
 
+# def dataset_exists(name: str) -> bool:
+#     """Check if dataset with name is registered
+#
+#     Args:
+#         name (str): name of the dataset
+#
+#     Returns:
+#         True if it exists
+#     """
+#     return name in _dataset_factory
+#
+#
+# def register_dataset(name: str, dataset: type) -> None:
+#     """Register a new dataset
+#
+#     Args:
+#         name (str): name to register under
+#         dataset (type): dataset class to register
+#     """
+#     _dataset_factory[name] = dataset
+
+
+def get_dataset(
+    name: str,
+    root: str,
+    train: bool,
+    download: bool,
+    transform: Callable,
+    kwargs: dict[str, Any],
+) -> Any:
+    """Return a new instance of a dataset
+
+    Args:
+        name (str): name of the dataset
+        root (str): where it is stored on disk
+        train (bool): whether to load the train split
+        download (bool): whether to attempt to download if it is not in root
+        transform (Callable): transforms to apply to loaded data
+        kwargs (dict[str, Any]): other kwargs to pass on
+
+    Returns:
+        dataset instance
+    """
+    _dataset_factory: dict[str, type] = {
+        "svhn": datasets.SVHN,
+        "svhn_384": datasets.SVHN,
+        "svhn_openset": SVHNOpenSet,
+        "svhn_openset_384": SVHNOpenSet,
+        "tinyimagenet_384": datasets.ImageFolder,
+        "tinyimagenet_resize": datasets.ImageFolder,
+        "cifar10": datasets.CIFAR10,
+        "cifar100": datasets.CIFAR100,
+        "cifar10_384": datasets.CIFAR10,
+        "cifar100_384": datasets.CIFAR100,
+        "super_cifar100": SuperCIFAR100,
+        "super_cifar100_384": SuperCIFAR100,
+        "corrupt_cifar100": CorruptCIFAR,
+        "corrupt_cifar100_384": CorruptCIFAR,
+        "corrupt_cifar10": CorruptCIFAR,
+        "corrupt_cifar10_384": CorruptCIFAR,
+        "breeds": BREEDImageNet,
+        "breeds_ood_test": BREEDImageNet,
+        "breeds_384": BREEDImageNet,
+        "breeds_ood_test_384": BREEDImageNet,
+        "wilds_animals": WILDSAnimals,
+        "wilds_animals_ood_test": WILDSAnimals,
+        "wilds_animals_384": WILDSAnimals,
+        "wilds_animals_ood_test_384": WILDSAnimals,
+        "wilds_animals_openset": WILDSAnimalsOpenSet,
+        "wilds_animals_openset_384": WILDSAnimalsOpenSet,
+        "wilds_camelyon": WILDSCamelyon,
+        "wilds_camelyon_384": WILDSCamelyon,
+        "wilds_camelyon_ood_test": WILDSCamelyon,
+        "wilds_camelyon_ood_test_384": WILDSCamelyon,
+    }
+    pass_kwargs = {
+        "root": root,
+        "train": train,
+        "download": download,
+        "transform": transform,
+    }
+    if name.startswith("svhn"):
+        pass_kwargs = {
+            "root": root,
+            "split": "train" if train else "test",
+            "download": download,
+            "transform": transform,
+        }
+    if "openset" in name:
+        pass_kwargs["out_classes"] = kwargs["out_classes"]
+    if name == "tinyimagenet" or name == "tinyimagenet_384":
+        pass_kwargs = {"root": os.path.join(root, "test"), "transform": transform}
+    if name == "tinyimagenet_resize":
+        pass_kwargs = {"root": root, "transform": transform}
+
+    elif "breeds" in name:
+        if name == "breeds":
+            split = "train" if train else "id_test"
+        elif name == "breeds_ood_test":
+            split = "ood_test"
+        elif name == "breeds_384":
+            split = "train" if train else "id_test"
+        elif name == "breeds_ood_test_384":
+            split = "ood_test"
+        logger.debug("CHECK SPLIT {} {}", name, split)
+        pass_kwargs = {
+            "root": root,
+            "split": split,
+            "download": download,
+            "transform": transform,
+            "kwargs": kwargs,
+        }
+
+    if "wilds" in name:
+        if name == "wilds_animals":
+            split = "train" if train else "id_test"
+        elif name == "wilds_animals_ood_test":
+            split = "test"
+        elif name == "wilds_animals_384":
+            split = "train" if train else "id_test"
+        elif name == "wilds_animals_ood_test_384":
+            split = "test"
+        elif name == "wilds_animals_openset":
+            split = "train" if train else "id_test"
+        elif name == "wilds_animals_openset_384":
+            split = "train" if train else "id_test"
+        elif name == "wilds_camelyon":
+            split = "train" if train else "id_val"  # currently for chamelyon
+        elif name == "wilds_camelyon_ood_test":
+            split = "test"
+        elif name == "wilds_camelyon_384":
+            split = "train" if train else "id_val"  # currently for chamelyon
+        elif name == "wilds_camelyon_ood_test_384":
+            split = "test"
+        return _dataset_factory[name](**pass_kwargs).get_subset(
+            split, frac=1.0, transform=transform
+        )
+
+    else:
+        return _dataset_factory[name](**pass_kwargs)
+
 
 class SuperCIFAR100(datasets.VisionDataset):
     """Super`CIFAR10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset.
@@ -544,147 +685,3 @@ class SVHNOpenSet(datasets.SVHN):
         if split == "train":
             self.data = self.data[~np.isin(self.labels, self.out_classes)]
             self.labels = self.labels[~np.isin(self.labels, self.out_classes)]
-
-
-_dataset_factory: dict[str, type] = {
-    "svhn": datasets.SVHN,
-    "svhn_384": datasets.SVHN,
-    "svhn_openset": SVHNOpenSet,
-    "svhn_openset_384": SVHNOpenSet,
-    "tinyimagenet_384": datasets.ImageFolder,
-    "tinyimagenet_resize": datasets.ImageFolder,
-    "cifar10": datasets.CIFAR10,
-    "cifar100": datasets.CIFAR100,
-    "cifar10_384": datasets.CIFAR10,
-    "cifar100_384": datasets.CIFAR100,
-    "super_cifar100": SuperCIFAR100,
-    "super_cifar100_384": SuperCIFAR100,
-    "corrupt_cifar100": CorruptCIFAR,
-    "corrupt_cifar100_384": CorruptCIFAR,
-    "corrupt_cifar10": CorruptCIFAR,
-    "corrupt_cifar10_384": CorruptCIFAR,
-    "breeds": BREEDImageNet,
-    "breeds_ood_test": BREEDImageNet,
-    "breeds_384": BREEDImageNet,
-    "breeds_ood_test_384": BREEDImageNet,
-    "wilds_animals": WILDSAnimals,
-    "wilds_animals_ood_test": WILDSAnimals,
-    "wilds_animals_384": WILDSAnimals,
-    "wilds_animals_ood_test_384": WILDSAnimals,
-    "wilds_animals_openset": WILDSAnimalsOpenSet,
-    "wilds_animals_openset_384": WILDSAnimalsOpenSet,
-    "wilds_camelyon": WILDSCamelyon,
-    "wilds_camelyon_384": WILDSCamelyon,
-    "wilds_camelyon_ood_test": WILDSCamelyon,
-    "wilds_camelyon_ood_test_384": WILDSCamelyon,
-}
-
-
-def dataset_exists(name: str) -> bool:
-    """Check if dataset with name is registered
-
-    Args:
-        name (str): name of the dataset
-
-    Returns:
-        True if it exists
-    """
-    return name in _dataset_factory
-
-
-def register_dataset(name: str, dataset: type) -> None:
-    """Register a new dataset
-
-    Args:
-        name (str): name to register under
-        dataset (type): dataset class to register
-    """
-    _dataset_factory[name] = dataset
-
-
-def get_dataset(
-    name: str,
-    root: str,
-    train: bool,
-    download: bool,
-    transform: Callable,
-    kwargs: dict[str, Any],
-) -> Any:
-    """Return a new instance of a dataset
-
-    Args:
-        name (str): name of the dataset
-        root (str): where it is stored on disk
-        train (bool): whether to load the train split
-        download (bool): whether to attempt to download if it is not in root
-        transform (Callable): transforms to apply to loaded data
-        kwargs (dict[str, Any]): other kwargs to pass on
-
-    Returns:
-        dataset instance
-    """
-    pass_kwargs = {
-        "root": root,
-        "train": train,
-        "download": download,
-        "transform": transform,
-    }
-    if name.startswith("svhn"):
-        pass_kwargs = {
-            "root": root,
-            "split": "train" if train else "test",
-            "download": download,
-            "transform": transform,
-        }
-    if "openset" in name:
-        pass_kwargs["out_classes"] = kwargs["out_classes"]
-    if name == "tinyimagenet" or name == "tinyimagenet_384":
-        pass_kwargs = {"root": os.path.join(root, "test"), "transform": transform}
-    if name == "tinyimagenet_resize":
-        pass_kwargs = {"root": root, "transform": transform}
-
-    elif "breeds" in name:
-        if name == "breeds":
-            split = "train" if train else "id_test"
-        elif name == "breeds_ood_test":
-            split = "ood_test"
-        elif name == "breeds_384":
-            split = "train" if train else "id_test"
-        elif name == "breeds_ood_test_384":
-            split = "ood_test"
-        logger.debug("CHECK SPLIT {} {}", name, split)
-        pass_kwargs = {
-            "root": root,
-            "split": split,
-            "download": download,
-            "transform": transform,
-            "kwargs": kwargs,
-        }
-
-    if "wilds" in name:
-        if name == "wilds_animals":
-            split = "train" if train else "id_test"
-        elif name == "wilds_animals_ood_test":
-            split = "test"
-        elif name == "wilds_animals_384":
-            split = "train" if train else "id_test"
-        elif name == "wilds_animals_ood_test_384":
-            split = "test"
-        elif name == "wilds_animals_openset":
-            split = "train" if train else "id_test"
-        elif name == "wilds_animals_openset_384":
-            split = "train" if train else "id_test"
-        elif name == "wilds_camelyon":
-            split = "train" if train else "id_val"  # currently for chamelyon
-        elif name == "wilds_camelyon_ood_test":
-            split = "test"
-        elif name == "wilds_camelyon_384":
-            split = "train" if train else "id_val"  # currently for chamelyon
-        elif name == "wilds_camelyon_ood_test_384":
-            split = "test"
-        return _dataset_factory[name](**pass_kwargs).get_subset(
-            split, frac=1.0, transform=transform
-        )
-
-    else:
-        return _dataset_factory[name](**pass_kwargs)
