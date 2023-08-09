@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import timm
 import torch
 import torch.nn as nn
@@ -10,8 +12,16 @@ class ViT(Network):
     def __init__(self, cf: configs.Config):
         super().__init__()
 
-        self.encoder = Encoder(cf)
-        self.classifier = Classifier(self.encoder.model.head)
+        self._encoder = Encoder(cf)
+        self._classifier = Classifier(self.encoder.model.head)
+
+    @property
+    def encoder(self) -> Encoder:
+        return self._encoder
+
+    @property
+    def classifier(self) -> Classifier:
+        return self._classifier
 
     def forward(self, x):
         out = self.encoder(x)
