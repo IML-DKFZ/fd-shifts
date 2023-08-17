@@ -1,7 +1,7 @@
 # @package _global_
 defaults:
   - override /trainer/lr_scheduler: CosineAnnealingLR
-  - override /trainer/optimizer: ADAM
+  - override /trainer/optimizer: Adam
 
 data:
   dataset: lidc_idriall
@@ -48,8 +48,8 @@ trainer:
   optimizer:
     lr: 3e-5
     weight_decay: 0.1
-    nesterov: False
-    momentum: 0
+    # nesterov: False
+    # momentum: 0
   num_epochs_backbone: 45
   dg_pretrain_epochs: 45
   val_every_n_epoch: 5

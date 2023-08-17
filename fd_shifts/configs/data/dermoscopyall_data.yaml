@@ -1,7 +1,7 @@
 # @package _global_
 defaults:
   - override /trainer/lr_scheduler: CosineAnnealingLR
-  - override /trainer/optimizer: ADAM
+  - override /trainer/optimizer: Adam
 
 data:
   dataset: dermoscopyall
@@ -41,7 +41,7 @@ trainer:
   optimizer:
     lr: 3e-5
     weight_decay: 0
-    nesterov: True
+    # nesterov: True
   num_epochs_backbone: 20
   dg_pretrain_epochs: 15
   val_every_n_epoch: 5

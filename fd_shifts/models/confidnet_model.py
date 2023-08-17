@@ -55,14 +55,7 @@ class Module(pl.LightningModule):
 
         self.test_mcd_samples = cf.model.test_mcd_samples
         self.monitor_mcd_samples = cf.model.monitor_mcd_samples
-        self.learning_rate = cf.trainer.optimizer.lr
-        self.learning_rate_confidnet = cf.trainer.learning_rate_confidnet
-        self.learning_rate_confidnet_finetune = (
-            cf.trainer.learning_rate_confidnet_finetune
-        )
         self.lr_scheduler = cf.trainer.lr_scheduler
-        self.momentum = cf.trainer.optimizer.momentum
-        self.weight_decay = cf.trainer.optimizer.weight_decay
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
         if cf.trainer.callbacks["model_checkpoint"] is not None:

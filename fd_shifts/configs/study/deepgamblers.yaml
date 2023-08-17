@@ -15,9 +15,6 @@ trainer:
 
   optimizer:
     lr: 1e-1
-    momentum: 0.9
-    nesterov: False
-    weight_decay: 0.0005
 
 model:
   name: devries_model

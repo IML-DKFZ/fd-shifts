@@ -177,19 +177,15 @@ class SGD(OptimizerConfig):
 
 @defer_validation
 @dataclass(config=ConfigDict(validate_assignment=True))
-class ADAM(OptimizerConfig):
+class Adam(OptimizerConfig):
     """Configuration for ADAM optimizer"""
 
-    _target_: str = "torch.optim.adam.ADAM"
+    _target_: str = "torch.optim.adam.Adam"
     lr: float = 0.003  # pylint: disable=invalid-name
     betas: tuple[float, float] = (0.9, 0.999)
     eps: float = 1e-08
     maximize: bool = False
     weight_decay: float = 0.0
-
-    dampening: float = 0.0
-    momentum: float = 0.9
-    nesterov: bool = False
 
 
 @defer_validation
@@ -275,6 +271,7 @@ class ModelConfig(_IterableMixin):
     confidnet_fc_dim: Optional[int] = None
     dg_reward: Optional[float] = None
     avg_pool: bool = MISSING
+    balanced_sampeling: bool = False
     dropout_rate: int = MISSING
     monitor_mcd_samples: int = MISSING
     test_mcd_samples: int = MISSING
@@ -642,6 +639,6 @@ def init() -> None:
 
     store.store(
         group="trainer/optimizer",
-        name="ADAM",
-        node=ADAM,
+        name="Adam",
+        node=Adam,
     )

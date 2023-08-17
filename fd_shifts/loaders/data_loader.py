@@ -14,8 +14,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 import fd_shifts.configs.data as data_configs
 from fd_shifts import configs
 from fd_shifts.loaders.dataset_collection import get_dataset
-from fd_shifts.utils.aug_utils import get_transform
-from fd_shifts.utils.aug_utils import target_transforms_collection
+from fd_shifts.utils.aug_utils import get_transform, target_transforms_collection
 
 
 class FDShiftsDataLoader(pl.LightningDataModule):
@@ -62,9 +61,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
         # set up target transforms
         self.target_transforms = {}
         if cf.data.target_transforms:
-            self.add_target_transforms(
-                OmegaConf.to_container(cf.data.target_transforms, resolve=True), no_norm_flag
-            )
+            self.add_target_transforms(cf.data.target_transforms, no_norm_flag)
 
         # Set up augmentations
         self.augmentations = {}
@@ -197,7 +194,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                     root=self.data_dir,
                     train=False,
                     download=True,
-                    target_transforms=self.target_transforms["val"],
+                    target_transform=self.target_transforms["val"],
                     transform=self.augmentations["val"],
                     kwargs=self.dataset_kwargs,
                 )
@@ -287,7 +284,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             train_idx = []
             self.val_sampler = None
             self.train_sampler = None
-            if self.balanced_sampling:
+            if self.balanced_sampeling:
                 # do class balanced sampeling
                 val_idx = []
                 train_idx = []

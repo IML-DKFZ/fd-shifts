@@ -85,6 +85,8 @@ class ConfidMonitor(Callback):
         self.running_confid_stats["val"] = {
             k: {"confids": [], "correct": []} for k in self.query_confids.val
         }
+        self.running_val_labels = []
+        self.running_train_labels = []
         self.running_train_correct_sum_sanity = 0
         self.running_val_correct_sum_sanity = 0
         self.running_perf_stats["train"] = {
@@ -137,6 +139,7 @@ class ConfidMonitor(Callback):
                 )
 
         if len(self.running_confid_stats["train"].keys()) > 0:
+            self.running_train_labels.append(y)
             self.running_train_correct_sum_sanity += tmp_correct.sum()
             stat_keys = self.running_confid_stats["train"].keys()
             if tmp_correct is None:
@@ -190,6 +193,7 @@ class ConfidMonitor(Callback):
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(
                 self.running_confid_stats["train"],
                 self.running_perf_stats["train"],
+                self.running_train_labels,
                 self.query_confid_metrics.train,
                 self.query_monitor_plots,
                 do_plot=do_plot,
@@ -229,6 +233,7 @@ class ConfidMonitor(Callback):
         perf_keys = self.running_perf_stats["val"].keys()
         confid_keys = self.running_confid_stats["val"].keys()
         if dataloader_idx is None or dataloader_idx == 0:
+            self.running_val_labels.extend(outputs["labels"].cpu())
             if len(perf_keys) > 0:
                 y_one_hot = None
                 if "loss" in perf_keys:
@@ -384,6 +389,7 @@ class ConfidMonitor(Callback):
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(
                 self.running_confid_stats["val"],
                 self.running_perf_stats["val"],
+                self.running_val_labels,
                 self.query_confid_metrics.val,
                 self.query_monitor_plots,
                 do_plot=do_plot,

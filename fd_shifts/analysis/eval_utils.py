@@ -23,6 +23,7 @@ def _get_tb_hparams(cf):
 def monitor_eval(
     running_confid_stats,
     running_perf_stats,
+    running_labels,
     query_confid_metrics,
     query_monitor_plots,
     do_plot=True,
@@ -31,6 +32,7 @@ def monitor_eval(
     out_metrics = {}
     out_plots = {}
     bins = 20
+    labels_cpu = torch.stack(running_labels, dim=0).cpu().data.numpy()
 
     # currently not implemented for mcd_softmax_mean
     for perf_key, perf_list in running_perf_stats.items():
@@ -67,6 +69,7 @@ def monitor_eval(
             eval = ConfidEvaluator(
                 confids=confids_cpu,
                 correct=correct_cpu,
+                labels=labels_cpu,
                 query_metrics=query_confid_metrics,
                 query_plots=query_monitor_plots,
                 bins=bins,
@@ -112,7 +115,7 @@ def monitor_eval(
 
 
 class ConfidEvaluator:
-    def __init__(self, confids, correct, query_metrics, query_plots, bins):
+    def __init__(self, confids, correct, labels, query_metrics, query_plots, bins):
         self.confids = confids[~np.isnan(confids)]
         self.correct = correct[~np.isnan(confids)]
         self.query_metrics = query_metrics
