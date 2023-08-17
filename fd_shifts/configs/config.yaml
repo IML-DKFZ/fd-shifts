@@ -120,6 +120,7 @@ eval:
       - failap_err
       - mce
       - ece
+      - b-aurc
       - e-aurc
       - aurc
       - fpr@95tpr

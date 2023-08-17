@@ -19,3 +19,4 @@ _version.py
 
 data_folder/
 experiments_folder/
+experiments_test/

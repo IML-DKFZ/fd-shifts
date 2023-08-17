@@ -85,6 +85,8 @@ class OutputPathsConfig(_IterableMixin):
 
     input_imgs_plot: Optional[Path] = None
     raw_output: Path = MISSING
+    encoded_output: Optional[Path] = None
+    attributions_output: Optional[Path] = None
     raw_output_dist: Path = MISSING
     external_confids: Path = MISSING
     external_confids_dist: Path = MISSING
@@ -171,6 +173,23 @@ class SGD(OptimizerConfig):
     nesterov: bool = False
     maximize: bool = False
     weight_decay: float = 0.0
+
+
+@defer_validation
+@dataclass(config=ConfigDict(validate_assignment=True))
+class ADAM(OptimizerConfig):
+    """Configuration for ADAM optimizer"""
+
+    _target_: str = "torch.optim.adam.ADAM"
+    lr: float = 0.003  # pylint: disable=invalid-name
+    betas: tuple[float, float] = (0.9, 0.999)
+    eps: float = 1e-08
+    maximize: bool = False
+    weight_decay: float = 0.0
+
+    dampening: float = 0.0
+    momentum: float = 0.9
+    nesterov: bool = False
 
 
 @defer_validation
@@ -459,6 +478,7 @@ class DataConfig(_IterableMixin):
     num_classes: int = MISSING
     reproduce_confidnet_splits: bool = MISSING
     augmentations: Any = MISSING
+    target_transforms: Any = MISSING
     kwargs: Optional[dict[Any, Any]] = None
 
 
@@ -618,4 +638,10 @@ def init() -> None:
         group="trainer/optimizer",
         name="SGD",
         node=SGD,
+    )
+
+    store.store(
+        group="trainer/optimizer",
+        name="ADAM",
+        node=ADAM,
     )

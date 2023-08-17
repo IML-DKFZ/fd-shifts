@@ -114,6 +114,40 @@ class Experiment:
                 case _:
                     pass
 
+        if "medshifts" in str(self.group_dir):
+            if self.dataset.startswith("dermoscopyall"):
+                overrides["data"] = "dermoscopyall_data"
+                overrides["data.dataset"] = self.dataset
+
+                if self.dataset == "dermoscopyallham10000subclass":
+                    overrides["data.dataset"] = "dermoscopyallham10000subbig"
+                    overrides[
+                        "eval.query_studies.in_class_study"
+                    ] = f'"[dermoscopyallham10000subsmall]"'
+
+                if self.dataset == "dermoscopyallham10000multi":
+                    overrides["data.num_classes"] = 7
+                    overrides[
+                        "eval.query_studies.in_class_study"
+                    ] = f'"[dermoscopyallham10000multi]"'
+
+                if self.model == "confidnet":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[20, 25]"'
+                if self.model == "deepgamblers":
+                    overrides["model.network.name"] = self.backbone
+
+                if "but" in self.dataset:
+                    overrides[
+                        "eval.query_studies.in_class_study"
+                    ] = f'"[{self.dataset.replace("but", "")}]"'
+
+                if self.dataset == "dermoscopyall":
+                    overrides[
+                        "eval.query_studies.in_class_study"
+                    ] = '"[dermoscopyallcorrbrhigh, dermoscopyallcorrbrhighhigh, dermoscopyallcorrbrlow, dermoscopyallcorrbrlowlow, dermoscopyallcorrgaunoilow, dermoscopyallcorrgaunoilowlow]"'
+
         return overrides
 
     def to_path(self):
@@ -137,6 +171,14 @@ class Experiment:
                 f"do{self.dropout}_"
                 f"run{self.run + 1}_"
                 f"rew{self.reward}"
+            )
+
+        if "medshifts" in str(self.group_dir.stem):
+            return self.group_dir / (
+                f"ms_{self.dataset}/"
+                f"{self.model}_"
+                f"bb{self.backbone}_"
+                f"run{self.run + 1}"
             )
 
         return self.group_dir / (
@@ -176,8 +218,157 @@ class Experiment:
         )
 
 
+def get_ms_experiments() -> list[Experiment]:
+    _experiments = []
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("medshifts/"),
+            datasets=(
+                "dermoscopyall",
+                "dermoscopyallbutbarcelona",
+                "dermoscopyallbutmskcc",
+                "dermoscopyallham10000multi",
+                "dermoscopyallham10000subclass",
+            ),
+            models=("deepgamblers", "devries", "confidnet"),
+            backbones=("efficientnetb4",),
+            dropouts=(1,),
+            runs=range(3),
+            rewards=(10,),
+            learning_rates=(3e-5,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("medshifts/"),
+            datasets=(
+                "dermoscopyall",
+                "dermoscopyallbutbarcelona",
+                "dermoscopyallbutmskcc",
+                "dermoscopyallham10000multi",
+                "dermoscopyallham10000subclass",
+            ),
+            models=("deepgamblers", "vit"),
+            backbones=("vit",),
+            dropouts=(1,),
+            runs=range(3),
+            rewards=(10,),
+            learning_rates=(3e-5,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("medshifts/"),
+            datasets=(
+                "lidc_idriall",
+                "lidc_idriall_calcification",
+                "lidc_idriall_spiculation",
+                "lidc_idriall_texture",
+            ),
+            models=("deepgamblers", "devries", "confidnet"),
+            backbones=("densenet121",),
+            dropouts=(1,),
+            runs=range(3),
+            rewards=(20,),
+            learning_rates=(1.5e-4,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("medshifts/"),
+            datasets=(
+                "lidc_idriall",
+                "lidc_idriall_calcification",
+                "lidc_idriall_spiculation",
+                "lidc_idriall_texture",
+            ),
+            models=("deepgamblers", "vit"),
+            backbones=("vit",),
+            dropouts=(1,),
+            runs=range(3),
+            rewards=(20,),
+            learning_rates=(1.5e-4,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("medshifts/"),
+            datasets=(
+                "rxrx1all_large_set1",
+                "rxrx1all_large_set2",
+                "rxrx1all",
+            ),
+            models=("deepgamblers", "devries", "confidnet"),
+            backbones=("densenet161",),
+            dropouts=(1,),
+            runs=range(3),
+            rewards=(10,),
+            learning_rates=(1.5e-4,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("medshifts/"),
+            datasets=(
+                "rxrx1all_large_set1",
+                "rxrx1all_large_set2",
+                "rxrx1all",
+            ),
+            models=("deepgamblers", "vit"),
+            backbones=("vit",),
+            dropouts=(1,),
+            runs=range(3),
+            rewards=(10,),
+            learning_rates=(1.5e-4,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("medshifts/"),
+            datasets=(
+                "xray_chestallbutchexpert",
+                "xray_chestallbutnih14",
+                "xray_chestallnih14",
+                "xray_chestall",
+            ),
+            models=("deepgamblers", "devries", "confidnet"),
+            backbones=("densenet121",),
+            dropouts=(1,),
+            runs=range(3),
+            rewards=(10,),
+            learning_rates=(5e-4,),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("medshifts/"),
+            datasets=(
+                "xray_chestallbutchexpert",
+                "xray_chestallbutnih14",
+                "xray_chestallnih14",
+                "xray_chestall",
+            ),
+            models=("deepgamblers", "vit"),
+            backbones=("vit",),
+            dropouts=(1,),
+            runs=range(3),
+            rewards=(10,),
+            learning_rates=(5e-4,),
+        )
+    )
+    return _experiments
+
+
 def get_all_experiments(
-    with_hyperparameter_sweep=False, with_vit_special_runs=False
+    with_hyperparameter_sweep=False, with_vit_special_runs=False, with_ms_runs=True
 ) -> list[Experiment]:
     _experiments = []
 
@@ -763,6 +954,9 @@ def get_all_experiments(
                 _experiments,
             )
         )
+
+    # if with_ms_runs:
+    _experiments.extend(get_ms_experiments())
 
     return _experiments
 
