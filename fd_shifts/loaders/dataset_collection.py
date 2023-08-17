@@ -7,6 +7,8 @@ from typing import Any, Callable, Optional, Tuple, TypeVar
 import albumentations
 import cv2
 import numpy as np
+import pandas as pd
+import torch
 import torchvision
 from medmnist.info import DEFAULT_ROOT, HOMEPAGE, INFO
 from PIL import Image, ImageFile
@@ -190,7 +192,7 @@ def get_transforms(image_size):
 
 
 class MelanomaDataset(Dataset):
-    def __init__(self, csv: pd.core.frame.DataFrame, train: bool, transform=None):
+    def __init__(self, csv: pd.DataFrame, train: bool, transform=None):
         self.csv = csv.reset_index(drop=True)
         self.train = train
         self.transform = transform
@@ -227,13 +229,6 @@ class MelanomaDataset(Dataset):
         return data, torch.tensor(self.csv.iloc[index].target).long()
 
 
-from typing import Optional
-
-import cv2
-import pandas as pd
-from torch.utils.data import Dataset
-
-
 class Rxrx1Dataset(Dataset):
     """
     Returns 6-Channel image, not rgb but stacked greychannels from fluoresenzemicroscopy
@@ -241,9 +236,9 @@ class Rxrx1Dataset(Dataset):
 
     def __init__(
         self,
-        csv: pd.core.frame.DataFrame,
+        csv: pd.DataFrame,
         train: bool,
-        transform: Optional[callable] = None,
+        transform: Optional[Callable] = None,
     ):
         self.csv = csv.reset_index(drop=True)
         self.train = train
@@ -284,9 +279,9 @@ class Rxrx1Dataset(Dataset):
 class XrayDataset(Dataset):
     def __init__(
         self,
-        csv: pd.core.frame.DataFrame,
+        csv: pd.DataFrame,
         train: bool,
-        transform: Optional[callable] = None,
+        transform: Optional[Callable] = None,
     ):
         self.csv = csv.reset_index(drop=True)
         self.train = train
@@ -315,9 +310,9 @@ class XrayDataset(Dataset):
 class Lidc_idriDataset(Dataset):
     def __init__(
         self,
-        csv: pd.core.frame.DataFrame,
+        csv: pd.DataFrame,
         train: bool,
-        transform: Optional[callable] = None,
+        transform: Optional[Callable] = None,
     ):
         self.csv = csv.reset_index(drop=True)
         self.train = train
@@ -346,9 +341,9 @@ class Lidc_idriDataset(Dataset):
 class BasicDataset(Dataset):
     def __init__(
         self,
-        csv: pd.core.frame.DataFrame,
+        csv: pd.DataFrame,
         train: bool,
-        transform: Optional[callable] = None,
+        transform: Optional[Callable] = None,
     ):
         self.csv = csv.reset_index(drop=True)
         self.train = train
@@ -385,19 +380,12 @@ class BasicDataset(Dataset):
         return data, torch.tensor(self.csv.iloc[index].target).long()
 
 
-from typing import Optional
-
-import cv2
-import pandas as pd
-from torch.utils.data import Dataset
-
-
 class DermoscopyAllDataset(Dataset):
     def __init__(
         self,
-        csv: pd.core.frame.DataFrame,
+        csv: pd.DataFrame,
         train: bool,
-        transform: Optional[callable] = None,
+        transform: Optional[Callable] = None,
         oversampeling: int = 0,
     ):
         self.csv = csv.reset_index(drop=True)
@@ -447,9 +435,9 @@ class DermoscopyAllDataset(Dataset):
 class D7pDataset(Dataset):
     def __init__(
         self,
-        csv: pd.core.frame.DataFrame,
+        csv: pd.DataFrame,
         train: bool,
-        transform: Optional[callable] = None,
+        transform: Optional[Callable] = None,
     ):
         self.csv = csv.reset_index(drop=True)
         self.train = train
@@ -490,9 +478,9 @@ class D7pDataset(Dataset):
 class Ham10000Dataset(Dataset):
     def __init__(
         self,
-        csv: pd.core.frame.DataFrame,
+        csv: pd.DataFrame,
         train: bool,
-        transform: Optional[callable] = None,
+        transform: Optional[Callable] = None,
     ):
         self.csv = csv.reset_index(drop=True)
         self.train = train
@@ -533,9 +521,9 @@ class Ham10000Dataset(Dataset):
 class Ham10000DatasetSubbig(Dataset):
     def __init__(
         self,
-        csv: pd.core.frame.DataFrame,
+        csv: pd.DataFrame,
         train: bool,
-        transform: Optional[callable] = None,
+        transform: Optional[Callable] = None,
     ):
         self.csv = csv.reset_index(drop=True)
         self.train = train
@@ -576,9 +564,9 @@ class Ham10000DatasetSubbig(Dataset):
 class Ham10000DatasetSubsmall(Dataset):
     def __init__(
         self,
-        csv: pd.core.frame.DataFrame,
+        csv: pd.DataFrame,
         train: bool,
-        transform: Optional[callable] = None,
+        transform: Optional[Callable] = None,
     ):
         self.csv = csv.reset_index(drop=True)
         self.train = train
@@ -613,9 +601,9 @@ class Ham10000DatasetSubsmall(Dataset):
 class Isic2020Dataset(Dataset):
     def __init__(
         self,
-        csv: pd.core.frame.DataFrame,
+        csv: pd.DataFrame,
         train: bool,
-        transform: Optional[callable] = None,
+        transform: Optional[Callable] = None,
     ):
         self.csv = csv.reset_index(drop=True)
         self.train = train
@@ -656,9 +644,9 @@ class Isic2020Dataset(Dataset):
 class Ph2Dataset(Dataset):
     def __init__(
         self,
-        csv: pd.core.frame.DataFrame,
+        csv: pd.DataFrame,
         train: bool,
-        transform: Optional[callable] = None,
+        transform: Optional[Callable] = None,
     ):
         self.csv = csv.reset_index(drop=True)
         self.train = train
@@ -703,8 +691,8 @@ class Isicv01(Dataset):
         self,
         csv_file: str,
         root: str,
-        transform: Optional[callable] = None,
-        target_transforms: Optional[callable] = None,
+        transform: Optional[Callable] = None,
+        target_transforms: Optional[Callable] = None,
         train: bool = True,
         download: bool = False,
     ):
@@ -712,8 +700,8 @@ class Isicv01(Dataset):
         Args:
             csv_file (string): Path to csv with metadata and images
             root_dir (string): Directory with the images
-            transforms (callable, optional): Torchvision transforms to apply
-            target_transforms (callable): target transforms to apply
+            transforms (Callable, optional): Torchvision transforms to apply
+            target_transforms (Callable): target transforms to apply
             train (bool): If true traindata if false test data
             download (bool): toDo
         """
@@ -997,9 +985,9 @@ class SuperCIFAR100(datasets.VisionDataset):
             ``cifar-10-batches-py`` exists or will be saved to if download is set to True.
         train (bool, optional): If True, creates dataset from training set, otherwise
             creates from test set.
-        transform (callable, optional): A function/transform that takes in an PIL image
+        transform (Callable, optional): A function/transform that takes in an PIL image
             and returns a transformed version. E.g, ``transforms.RandomCrop``
-        target_transform (callable, optional): A function/transform that takes in the
+        target_transform (Callable, optional): A function/transform that takes in the
             target and transforms it.
         download (bool, optional): If true, downloads the dataset from the internet and
             puts it in root directory. If dataset is already downloaded, it is not
@@ -1198,9 +1186,9 @@ class CorruptCIFAR(datasets.VisionDataset):
             ``cifar-10-batches-py`` exists or will be saved to if download is set to True.
         train (bool, optional): If True, creates dataset from training set, otherwise
             creates from test set.
-        transform (callable, optional): A function/transform that takes in an PIL image
+        transform (Callable, optional): A function/transform that takes in an PIL image
             and returns a transformed version. E.g, ``transforms.RandomCrop``
-        target_transform (callable, optional): A function/transform that takes in the
+        target_transform (Callable, optional): A function/transform that takes in the
             target and transforms it.
         download (bool, optional): If true, downloads the dataset from the internet and
             puts it in root directory. If dataset is already downloaded, it is not

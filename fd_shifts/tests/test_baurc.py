@@ -1,7 +1,9 @@
 import math
-from fd_shifts.analysis.metrics import baurc, StatsCache, aurc
-import pytest
+
 import numpy as np
+import pytest
+
+from fd_shifts.analysis.metrics import StatsCache, aurc, baurc
 
 """
 Tests to run
@@ -22,10 +24,6 @@ Test Cases:
     If p.c.a. worse for low prev class: B~AURC > AURC
     If p.c.a. equal, but low prev class in beginning (e.g. lower confidence): B~AURC(front) < B-AURC(random)
 """
-
-
-def pytest_configure(config):
-    config.addinivalue_line("markers", "baurc: mark test to run only on named tests")
 
 
 @pytest.mark.baurc

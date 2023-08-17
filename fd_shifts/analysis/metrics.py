@@ -52,7 +52,7 @@ class StatsCache:
     confids: npt.NDArray[Any]
     correct: npt.NDArray[Any]
     n_bins: int
-    labels: npt.NDArray[Any]
+    labels: npt.NDArray[Any] | None = None
 
     @cached_property
     def roc_curve_stats(self) -> tuple[npt.NDArray[Any], npt.NDArray[Any]]:
@@ -69,6 +69,7 @@ class StatsCache:
         balanced_risks = []
         error_per_class = {}
         risk_per_class = {}
+        assert self.labels is not None, "labels must be set"
         assert len(self.labels) == len(
             self.confids
         ), "labels must be same size as confids"
