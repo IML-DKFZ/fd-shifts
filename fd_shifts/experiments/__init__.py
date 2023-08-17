@@ -166,6 +166,44 @@ class Experiment:
                         "trainer.callbacks.training_stages.milestones"
                     ] = '"[45, 60]"'
 
+            if self.dataset.startswith("rxrx1all"):
+                overrides["data"] = "rxrx1all_data"
+                overrides["data.dataset"] = self.dataset
+
+                if self.dataset == "rxrx1all":
+                    overrides[
+                        "eval.query_studies.in_class_study"
+                    ] = '"[rxrx1allcorrbrhigh, rxrx1allcorrbrhighhigh, rxrx1allcorrbrlow, rxrx1allcorrbrlowlow, rxrx1allcorrgaunoilow, rxrx1allcorrgaunoilowlow]"'
+                else:
+                    overrides[
+                        "eval.query_studies.in_class_study"
+                    ] = f'"[{self.dataset.replace("large", "small")}]"'
+
+                if self.model == "confidnet":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[120, 150]"'
+
+            if self.dataset.startswith("xray_chestall"):
+                overrides["data"] = "xray_chestall_data"
+                overrides["data.dataset"] = self.dataset
+
+                if self.dataset == "xray_chestall":
+                    overrides[
+                        "eval.query_studies.in_class_study"
+                    ] = '"[xray_chestallcorrbrhigh, xray_chestallcorrbrhighhigh, xray_chestallcorrbrlow, xray_chestallcorrbrlowlow, xray_chestallcorrgaunoilow, xray_chestallcorrgaunoilowlow, xray_chestallcorrletter]"'
+                else:
+                    overrides[
+                        "eval.query_studies.in_class_study"
+                    ] = f'"[{self.dataset.replace("but", "")}]"'
+
+                if self.model == "confidnet":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[40, 50]"'
+                else:
+                    overrides["trainer.optimizer.weight_decay"] = 1e-5
+
         return overrides
 
     def to_path(self):
@@ -353,7 +391,6 @@ def get_ms_experiments() -> list[Experiment]:
             datasets=(
                 "xray_chestallbutchexpert",
                 "xray_chestallbutnih14",
-                "xray_chestallnih14",
                 "xray_chestall",
             ),
             models=("deepgamblers", "devries", "confidnet"),
@@ -371,7 +408,6 @@ def get_ms_experiments() -> list[Experiment]:
             datasets=(
                 "xray_chestallbutchexpert",
                 "xray_chestallbutnih14",
-                "xray_chestallnih14",
                 "xray_chestall",
             ),
             models=("deepgamblers", "vit"),
