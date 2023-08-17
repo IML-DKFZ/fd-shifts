@@ -115,9 +115,21 @@ class Experiment:
                     pass
 
         if "medshifts" in str(self.group_dir):
+            if self.model == "deepgamblers":
+                overrides["model.network.name"] = self.backbone
+
+            if "but" in self.dataset:
+                overrides[
+                    "eval.query_studies.in_class_study"
+                ] = f'"[{self.dataset.replace("but", "")}]"'
+
             if self.dataset.startswith("dermoscopyall"):
                 overrides["data"] = "dermoscopyall_data"
                 overrides["data.dataset"] = self.dataset
+                if self.model == "confidnet":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[20, 25]"'
 
                 if self.dataset == "dermoscopyallham10000subclass":
                     overrides["data.dataset"] = "dermoscopyallham10000subbig"
@@ -131,22 +143,28 @@ class Experiment:
                         "eval.query_studies.in_class_study"
                     ] = f'"[dermoscopyallham10000multi]"'
 
-                if self.model == "confidnet":
-                    overrides[
-                        "trainer.callbacks.training_stages.milestones"
-                    ] = '"[20, 25]"'
-                if self.model == "deepgamblers":
-                    overrides["model.network.name"] = self.backbone
-
-                if "but" in self.dataset:
-                    overrides[
-                        "eval.query_studies.in_class_study"
-                    ] = f'"[{self.dataset.replace("but", "")}]"'
-
                 if self.dataset == "dermoscopyall":
                     overrides[
                         "eval.query_studies.in_class_study"
                     ] = '"[dermoscopyallcorrbrhigh, dermoscopyallcorrbrhighhigh, dermoscopyallcorrbrlow, dermoscopyallcorrbrlowlow, dermoscopyallcorrgaunoilow, dermoscopyallcorrgaunoilowlow]"'
+
+            if self.dataset.startswith("lidc_idriall"):
+                overrides["data"] = "lidc_idriall_data"
+                overrides["data.dataset"] = self.dataset
+                if self.dataset != "lidc_idriall":
+                    overrides["data.dataset"] += "_iid"
+                    overrides[
+                        "eval.query_studies.in_class_study"
+                    ] = f'"[{self.dataset + "_ood"}]"'
+                else:
+                    overrides[
+                        "eval.query_studies.in_class_study"
+                    ] = '"[lidc_idriallcorrbrhigh, lidc_idriallcorrbrhighhigh, lidc_idriallcorrbrlow, lidc_idriallcorrbrlowlow, lidc_idriallcorrgaunoilow, lidc_idriallcorrgaunoilowlow]"'
+
+                if self.model == "confidnet":
+                    overrides[
+                        "trainer.callbacks.training_stages.milestones"
+                    ] = '"[45, 60]"'
 
         return overrides
 
