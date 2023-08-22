@@ -257,7 +257,8 @@ class Module(pl.LightningModule):
     ) -> None:
         x, y = batch
 
-        logits = self.backbone(x)
+        z = self.backbone.forward_features(x)
+        logits = self.backbone.head(z)
         _, pred_confid = self.network(x)
         pred_confid = torch.sigmoid(pred_confid).squeeze(1)
 
@@ -275,6 +276,7 @@ class Module(pl.LightningModule):
             "labels": y,
             "confid": pred_confid,
             "confid_dist": pred_confid_dist,
+            "encoded": z,
         }
 
     def configure_optimizers(
