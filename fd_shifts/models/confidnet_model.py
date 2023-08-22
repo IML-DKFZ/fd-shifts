@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -305,12 +306,12 @@ class Module(pl.LightningModule):
     def load_only_state_dict(self, path: str | Path) -> None:
         ckpt = torch.load(path)
 
+        pattern = re.compile(r"^(\w*\.)(encoder|classifier)(\..*)")
+
         # For backwards-compatibility with before commit 1bdc717
         for param in list(ckpt["state_dict"].keys()):
-            if ".encoder." in param or ".classifier." in param:
-                correct_param = param.replace(".encoder.", "._encoder.").replace(
-                    ".classifier.", "._classifier."
-                )
+            if pattern.match(param):
+                correct_param = re.sub(pattern, r"\1_\2\3", param)
                 ckpt["state_dict"][correct_param] = ckpt["state_dict"][param]
                 del ckpt["state_dict"][param]
 
