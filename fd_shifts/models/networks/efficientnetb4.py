@@ -1,32 +1,34 @@
-from torchvision.models import efficientnet_b4
 import torch
 import torch.nn as nn
+from torchvision.models import efficientnet_b4
+
+from fd_shifts.models.networks.network import DropoutEnablerMixin, Network
 
 
-class EfficientNetb4(nn.Module):
+class EfficientNetb4(Network):
     def __init__(self, cf):
         super(EfficientNetb4, self).__init__()
 
-        self.encoder = Encoder(cf)
-        self.classifier = Classifier(self.encoder)
+        self._encoder = Encoder(cf)
+        self._classifier = Classifier(self._encoder.model.classifier)
         # self.classifier = Classifier(self.encoder.model.head)
         # self.num_features = self.encoder.model.classifier[1].in_features
 
     def forward(self, x):
-        out = self.encoder(x)
-        pred = self.classifier(out)
+        out = self._encoder(x)
+        pred = self._classifier(out)
         return pred
 
     # def head(self, x):
     #    return self.encoder.model.classifier(x)
     def forward_features(self, x):
-        return self.encoder(x)
+        return self._encoder(x)
 
     def head(self, x):
-        return self.classifier(x)
+        return self._classifier(x)
 
 
-class Encoder(nn.Module):
+class Encoder(DropoutEnablerMixin):
     def __init__(self, cf):
         super(Encoder, self).__init__()
         # name = cf.model.network.name if "vit" in cf.model.network.name else cf.model.network.backbone
@@ -74,7 +76,7 @@ class Classifier(nn.Module):
         self.module = module
 
     def forward(self, x):
-        return self.module.model.classifier(x)
+        return self.module(x)
 
     def load_state_dict(self, state_dict, strict=True):
         pass

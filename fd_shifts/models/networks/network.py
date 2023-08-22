@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 
+import torch
 import torch.nn as nn
 
 
@@ -45,3 +46,9 @@ class Network(nn.Module, metaclass=ABCMeta):
     def classifier(self, model: nn.Module) -> None:
         """Classifier network"""
         self._classifier = model
+
+    def forward_features(self, x: torch.Tensor) -> torch.Tensor:
+        return self.encoder(x)
+
+    def head(self, x: torch.Tensor) -> torch.Tensor:
+        return self.classifier(x)
