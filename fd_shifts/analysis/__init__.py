@@ -408,6 +408,7 @@ class Analysis:
 
             self.method_dict[query_confid] = {}
             self.method_dict[query_confid]["confids"] = confids
+            self.method_dict[query_confid]["labels"] = study_data.labels
             self.method_dict[query_confid]["correct"] = confid_score.correct
             self.method_dict[query_confid]["metrics"] = confid_score.metrics
             self.method_dict[query_confid]["predict"] = confid_score.predict
@@ -482,7 +483,7 @@ class Analysis:
             eval = ConfidEvaluator(
                 confids=confid_dict["confids"],
                 correct=confid_dict["correct"],
-                labels=confid_dict["labels"],
+                labels=confid_dict.get("labels"),
                 query_metrics=self.query_confid_metrics,
                 query_plots=self.query_plots,
                 bins=self.calibration_bins,
