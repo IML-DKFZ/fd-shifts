@@ -57,8 +57,8 @@ trainer:
   optimizer:
     lr: 3e-5
     weight_decay: 1e-4
-    nesterov: False
-    momentum: 0.9
+    # nesterov: False
+    # momentum: 0.9
   num_epochs_backbone: 30
   dg_pretrain_epochs: 30
   val_every_n_epoch: 5

@@ -475,7 +475,7 @@ class DataConfig(_IterableMixin):
     num_classes: int = MISSING
     reproduce_confidnet_splits: bool = MISSING
     augmentations: Any = MISSING
-    target_transforms: Any = MISSING
+    target_transforms: Optional[Any] = None
     kwargs: Optional[dict[Any, Any]] = None
 
 

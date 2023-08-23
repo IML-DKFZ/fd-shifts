@@ -52,12 +52,29 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             if len(self.external_test_sets) > 0:
                 self.external_test_configs = {}
                 for ext_set in self.external_test_sets:
+                    overwrite_dataset = False
+                    if ext_set.startswith("dermoscopyall"):
+                        file_set = "dermoscopyall"
+                        overwrite_dataset = False
+                    elif ext_set.startswith("rxrx1all"):
+                        file_set = "rxrx1all"
+                        overwrite_dataset = False
+                    elif ext_set.startswith("lidc_idriall"):
+                        file_set = "lidc_idriall"
+                        overwrite_dataset = False
+                    elif ext_set.startswith("xray_chestall"):
+                        file_set = "xray_chestall"
+                        overwrite_dataset = False
+                    else:
+                        file_set = ext_set
                     self.external_test_configs[ext_set] = OmegaConf.load(
                         os.path.join(
                             os.path.abspath(os.path.dirname(data_configs.__file__)),
-                            "{}_data.yaml".format(ext_set),
+                            "{}_data.yaml".format(file_set),
                         )
                     ).data
+                    if overwrite_dataset:
+                        self.external_test_configs[ext_set].dataset = ext_set
         # set up target transforms
         self.target_transforms = {}
         if cf.data.target_transforms:
@@ -126,7 +143,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             root=self.data_dir,
             train=True,
             download=True,
-            target_transform=self.target_transforms["train"],
+            target_transform=self.target_transforms.get("train"),
             transform=self.augmentations["train"],
             kwargs=self.dataset_kwargs,
         )
@@ -137,7 +154,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             root=self.data_dir,
             train=False,
             download=True,
-            target_transform=self.target_transforms["test"],
+            target_transform=self.target_transforms.get("test"),
             transform=self.augmentations["test"],
             kwargs=self.dataset_kwargs,
         )
@@ -168,7 +185,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 root=self.data_dir,
                 train=False,
                 download=True,
-                target_transform=self.target_transforms["val"],
+                target_transform=self.target_transforms.get("val"),
                 transform=self.augmentations["val"],
                 kwargs=self.dataset_kwargs,
             )
@@ -194,7 +211,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                     root=self.data_dir,
                     train=False,
                     download=True,
-                    target_transform=self.target_transforms["val"],
+                    target_transform=self.target_transforms.get("val"),
                     transform=self.augmentations["val"],
                     kwargs=self.dataset_kwargs,
                 )
@@ -221,7 +238,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 root=self.data_dir,
                 train=True,
                 download=True,
-                target_transform=self.target_transforms["val"],
+                target_transform=self.target_transforms.get("val"),
                 transform=self.augmentations["val"],
                 kwargs=self.dataset_kwargs,
             )

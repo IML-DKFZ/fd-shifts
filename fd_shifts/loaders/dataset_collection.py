@@ -1675,7 +1675,7 @@ def get_dataset(
     train: bool,
     download: bool,
     transform: Callable,
-    target_transform: Callable,
+    target_transform: Callable | None,
     kwargs: dict[str, Any],
 ) -> Any:
     """Return a new instance of a dataset
