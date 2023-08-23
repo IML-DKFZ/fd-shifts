@@ -422,7 +422,7 @@ def get_ms_experiments() -> list[Experiment]:
 
 
 def get_all_experiments(
-    with_hyperparameter_sweep=False, with_vit_special_runs=False, with_ms_runs=True
+    with_hyperparameter_sweep=False, with_vit_special_runs=True, with_ms_runs=True
 ) -> list[Experiment]:
     _experiments = []
 
@@ -431,7 +431,7 @@ def get_all_experiments(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("svhn",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-2,),
             dropouts=(1,),
@@ -444,7 +444,7 @@ def get_all_experiments(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("svhn",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-2,),
             dropouts=(0, 1),
@@ -456,8 +456,34 @@ def get_all_experiments(
     _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
+            datasets=("svhn", "svhn_openset"),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(3e-2,),
+            dropouts=(1,),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
+            datasets=("svhn", "svhn_openset"),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(1e-2,),
+            dropouts=(0, 1),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
             datasets=("svhn_openset",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-2,),
             dropouts=(1,),
@@ -470,7 +496,7 @@ def get_all_experiments(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("svhn_openset",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-2,),
             dropouts=(0, 1),
@@ -483,7 +509,7 @@ def get_all_experiments(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("cifar10",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-2,),
             dropouts=(1,),
@@ -496,7 +522,7 @@ def get_all_experiments(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("cifar10",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-4,),
             dropouts=(0,),
@@ -508,8 +534,34 @@ def get_all_experiments(
     _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
+            datasets=("cifar10",),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(1e-2,),
+            dropouts=(1,),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
+            datasets=("cifar10",),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(3e-4,),
+            dropouts=(0,),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
             datasets=("cifar100",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-2,),
             dropouts=(1, 0),
@@ -522,7 +574,7 @@ def get_all_experiments(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("super_cifar100",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-3,),
             dropouts=(0,),
@@ -535,7 +587,7 @@ def get_all_experiments(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("super_cifar100",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-3,),
             dropouts=(1,),
@@ -547,8 +599,47 @@ def get_all_experiments(
     _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
+            datasets=("cifar100",),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(1e-2,),
+            dropouts=(1, 0),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10, 12, 15, 20),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
+            datasets=("super_cifar100",),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(3e-3,),
+            dropouts=(0,),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10, 12, 15, 20),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
+            datasets=("super_cifar100",),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(1e-3,),
+            dropouts=(1,),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10, 12, 15, 20),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_animals",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-3,),
             dropouts=(0,),
@@ -561,7 +652,7 @@ def get_all_experiments(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_animals",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-3, 1e-2),
             dropouts=(0, 1),
@@ -574,7 +665,7 @@ def get_all_experiments(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_animals_openset",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-3,),
             dropouts=(0,),
@@ -587,7 +678,7 @@ def get_all_experiments(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_animals_openset",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-3,),
             dropouts=(0, 1),
@@ -599,8 +690,40 @@ def get_all_experiments(
     _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
+            datasets=(
+                "wilds_animals",
+                "wilds_animals_openset",
+            ),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(1e-3,),
+            dropouts=(0,),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10, 15),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
+            datasets=(
+                "wilds_animals",
+                "wilds_animals_openset",
+            ),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(3e-3,),
+            dropouts=(0, 1),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10, 15),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_camelyon",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-3,),
             dropouts=(0,),
@@ -613,7 +736,7 @@ def get_all_experiments(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_camelyon",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-3,),
             dropouts=(1,),
@@ -625,8 +748,34 @@ def get_all_experiments(
     _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
+            datasets=("wilds_camelyon",),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(1e-3,),
+            dropouts=(0,),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
+            datasets=("wilds_camelyon",),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(3e-3,),
+            dropouts=(1,),
+            runs=range(5),
+            rewards=(2.2, 3, 6, 10),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
             datasets=("breeds",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(3e-3, 1e-3),
             dropouts=(0,),
@@ -639,7 +788,7 @@ def get_all_experiments(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("breeds",),
-            models=("vit", "dg", "devries", "confidnet"),
+            models=("vit", "devries", "confidnet"),
             backbones=("vit",),
             learning_rates=(1e-2,),
             dropouts=(1,),
@@ -647,6 +796,33 @@ def get_all_experiments(
             rewards=(0,),
         )
     )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
+            datasets=("breeds",),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(3e-3, 1e-3),
+            dropouts=(0,),
+            runs=range(2),
+            rewards=(2.2, 3, 6, 10, 15),
+        )
+    )
+
+    _experiments.extend(
+        Experiment.from_iterables(
+            group_dir=Path("fd-shifts/vit"),
+            datasets=("breeds",),
+            models=("dg",),
+            backbones=("vit",),
+            learning_rates=(1e-2,),
+            dropouts=(1,),
+            runs=range(2),
+            rewards=(2.2, 3, 6, 10, 15),
+        )
+    )
+    # ViT Best lr runs
 
     # Non-vit
     _experiments.extend(
