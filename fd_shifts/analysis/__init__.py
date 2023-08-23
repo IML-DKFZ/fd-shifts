@@ -49,6 +49,7 @@ class ExperimentData:
     mcd_external_confids_dist: npt.NDArray[Any] | None = None
 
     _mcd_correct: npt.NDArray[Any] | None = field(default=None)
+    _mcd_labels: npt.NDArray[Any] | None = field(default=None)
     _correct: npt.NDArray[Any] | None = field(default=None)
 
     @property
@@ -76,6 +77,14 @@ class ExperimentData:
         if self.mcd_softmax_mean is None:
             return None
         return (np.argmax(self.mcd_softmax_mean, axis=1) == self.labels).astype(int)
+
+    @property
+    def mcd_labels(self) -> npt.NDArray[Any] | None:
+        if self._mcd_labels is not None:
+            return self._mcd_labels
+        if self.mcd_softmax_mean is None:
+            return None
+        return self.labels
 
     def dataset_name_to_idx(self, dataset_name: str) -> int:
         if dataset_name == "val_tuning":
@@ -408,7 +417,7 @@ class Analysis:
 
             self.method_dict[query_confid] = {}
             self.method_dict[query_confid]["confids"] = confids
-            self.method_dict[query_confid]["labels"] = study_data.labels
+            self.method_dict[query_confid]["labels"] = confid_score.labels
             self.method_dict[query_confid]["correct"] = confid_score.correct
             self.method_dict[query_confid]["metrics"] = confid_score.metrics
             self.method_dict[query_confid]["predict"] = confid_score.predict
