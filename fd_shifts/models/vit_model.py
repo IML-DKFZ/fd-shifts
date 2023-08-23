@@ -161,11 +161,11 @@ class net(pl.LightningModule):
             self.trainer.datamodule.train_dataloader(), console=get_console()
         )
 
-        if self.trainer.fast_dev_run:
+        if self.config.trainer.fast_dev_run:
             tracker = track(
                 islice(
                     self.trainer.datamodule.train_dataloader(),
-                    self.trainer.fast_dev_run,
+                    self.config.trainer.fast_dev_run,
                 ),
                 console=get_console(),
             )
@@ -217,6 +217,7 @@ class net(pl.LightningModule):
             "confid": maha,
             "logits_dist": logits_dist,
             "confid_dist": confid_dist,
+            "encoded": z,
         }
 
     def configure_optimizers(self):

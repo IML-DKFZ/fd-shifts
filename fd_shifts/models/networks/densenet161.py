@@ -1,32 +1,35 @@
-from torchvision import models
+from typing import Any, List, Tuple
+
 import torch
 import torch.nn as nn
-from torch import Tensor
-from typing import Any, List, Tuple
 import torch.nn.functional as F
 import torchvision
+from torch import Tensor
+from torchvision import models
+
+from fd_shifts.models.networks.network import DropoutEnablerMixin, Network
 
 
-class Densenet161(nn.Module):
+class Densenet161(Network):
     def __init__(self, cf) -> None:
         super(Densenet161, self).__init__()
 
-        self.encoder = Encoder(cf=cf)
-        self.classifier = Classifier(model=self.encoder)
+        self._encoder = Encoder(cf=cf)
+        self._classifier = Classifier(model=self._encoder.model.classifier)
 
     def forward(self, x):
-        out = self.encoder(x)
-        pred = self.classifier(out)
+        out = self._encoder(x)
+        pred = self._classifier(out)
         return pred
 
     def forward_features(self, x):
-        return self.encoder.forward(x)
+        return self._encoder.forward(x)
 
     def head(self, x):
-        return self.classifier.forward(x)
+        return self._classifier.forward(x)
 
 
-class Encoder(nn.Module):
+class Encoder(DropoutEnablerMixin):
     def __init__(self, cf) -> None:
         super(Encoder, self).__init__()
         num_classes = cf.data.num_classes
@@ -88,4 +91,4 @@ class Classifier(nn.Module):
         self.module = model
 
     def forward(self, x: Tensor) -> Tensor:
-        return self.module.model.classifier(x)
+        return self.module(x)
