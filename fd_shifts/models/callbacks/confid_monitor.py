@@ -139,7 +139,7 @@ class ConfidMonitor(Callback):
                 )
 
         if len(self.running_confid_stats["train"].keys()) > 0:
-            self.running_train_labels.append(y)
+            self.running_train_labels.extend(y)
             self.running_train_correct_sum_sanity += tmp_correct.sum()
             stat_keys = self.running_confid_stats["train"].keys()
             if tmp_correct is None:
