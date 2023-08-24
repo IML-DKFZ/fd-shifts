@@ -14,7 +14,6 @@ dependencies = [
   "hydra-zen",
   "imageio>=2.9.0",
   "ipython",
-    "warmup_scheduler",
   "loguru",
   "matplotlib>=3.3.4",
   "medmnist",
@@ -23,8 +22,9 @@ dependencies = [
   "omegaconf>=2.1.1",
   "opencv-python",
   "pandas>=1.2.3",
+  "Pillow==9.5.0",
   "protobuf<=3.20.0",
-  "pydantic>=1.10.0",
+  "pydantic>=1.10.0,<2.0.0",
   "pytorch-lightning-bolts>=0.3.2",
   "pytorch-lightning==1.6.5",
   "rich>=10.7.0",
@@ -41,6 +41,7 @@ dependencies = [
   "torchvision>=0.12.0",
   "tqdm>=4.62.0",
   "typing_extensions>=4.1.1",
+  "warmup_scheduler",
   "wilds>=1.1.0",
 ]
 
