@@ -78,6 +78,9 @@ If you use fd-shifts please cite our [paper](https://openreview.net/pdf?id=YnkGM
 }
 ```
 
+> **Note**  
+> This repository also contains the benchmarks for our follow-up study ["Understanding Silent Failures in Medical Image Classification"](https://arxiv.org/abs/2307.14729). For the visualization tool presented in that work please see [sf-visuals](https://github.com/IML-DKFZ/sf-visuals).
+
 ## Table Of Contents
 
 <!--toc:start-->
