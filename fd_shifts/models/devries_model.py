@@ -48,6 +48,7 @@ class net(pl.LightningModule):
 
         self.optimizer_cfgs = cf.trainer.optimizer
         self.lr_scheduler_cfgs = cf.trainer.lr_scheduler
+        self.lr_scheduler_interval = cf.trainer.lr_scheduler_interval
 
         if cf.trainer.callbacks["model_checkpoint"] is not None:
             logger.info(
@@ -75,6 +76,7 @@ class net(pl.LightningModule):
         if self.ext_confid_name == "dg":
             self.reward = cf.model.dg_reward
             self.pretrain_epochs = cf.trainer.dg_pretrain_epochs
+            self.pretrain_steps = cf.trainer.dg_pretrain_steps
             self.load_dg_backbone_path = cf.model.network.__dict__.get(
                 "load_dg_backbone_path"
             )
@@ -117,7 +119,16 @@ class net(pl.LightningModule):
     def on_epoch_end(self):
         if (
             self.ext_confid_name == "dg"
-            and self.current_epoch == self.pretrain_epochs - 1
+            and (
+                (
+                    self.pretrain_epochs is not None
+                    and self.current_epoch == self.pretrain_epochs - 1
+                )
+                or (
+                    self.pretrain_steps is not None
+                    and self.global_step >= self.pretrain_steps - 1
+                )
+            )
             and self.save_dg_backbone_path is not None
         ):
             self.trainer.save_checkpoint(self.save_dg_backbone_path)
@@ -177,7 +188,16 @@ class net(pl.LightningModule):
             softmax = F.softmax(logits, dim=1)
             pred_original, reservation = softmax[:, :-1], softmax[:, -1]
             confidence = 1 - reservation.unsqueeze(1)
-            if self.current_epoch >= self.pretrain_epochs and self.reward > -1:
+            if (
+                (
+                    self.pretrain_epochs is not None
+                    and self.current_epoch >= self.pretrain_epochs
+                )
+                or (
+                    self.pretrain_steps is not None
+                    and self.global_step >= self.pretrain_steps
+                )
+            ) and self.reward > -1:
                 gain = torch.gather(
                     pred_original, dim=1, index=y.unsqueeze(1)
                 ).squeeze()
@@ -231,7 +251,16 @@ class net(pl.LightningModule):
             outputs = F.softmax(outputs, dim=1)
             pred_original, reservation = outputs[:, :-1], outputs[:, -1]
             confidence = 1 - reservation.unsqueeze(1)
-            if self.current_epoch >= self.pretrain_epochs and self.reward > -1:
+            if (
+                (
+                    self.pretrain_epochs is not None
+                    and self.current_epoch >= self.pretrain_epochs
+                )
+                or (
+                    self.pretrain_steps is not None
+                    and self.global_step >= self.pretrain_steps
+                )
+            ) and self.reward > -1:
                 gain = torch.gather(
                     pred_original, dim=1, index=y.unsqueeze(1)
                 ).squeeze()
@@ -289,7 +318,12 @@ class net(pl.LightningModule):
         ]
 
         schedulers = [
-            hydra.utils.instantiate(self.lr_scheduler_cfgs)(optimizer=optimizers[0])
+            {
+                "scheduler": hydra.utils.instantiate(self.lr_scheduler_cfgs)(
+                    optimizer=optimizers[0]
+                ),
+                "interval": self.lr_scheduler_interval,
+            },
         ]
 
         return optimizers, schedulers

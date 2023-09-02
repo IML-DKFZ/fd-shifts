@@ -199,6 +199,7 @@ class TrainerConfig(_IterableMixin):
     num_steps: Optional[int] = None
     num_epochs_backbone: Optional[int] = None
     dg_pretrain_epochs: Optional[int] = None
+    dg_pretrain_steps: Optional[int] = None
     val_every_n_epoch: int = MISSING
     val_split: Optional[ValSplit] = None
     do_val: bool = MISSING
@@ -206,6 +207,7 @@ class TrainerConfig(_IterableMixin):
     resume_from_ckpt: bool = MISSING
     benchmark: bool = MISSING
     fast_dev_run: bool | int = MISSING
+    lr_scheduler_interval: str = "epoch"
     lr_scheduler: LRSchedulerConfig = LRSchedulerConfig()
     optimizer: OptimizerConfig = MISSING
     callbacks: dict[str, Optional[dict[Any, Any]]] = field(default_factory=lambda: {})

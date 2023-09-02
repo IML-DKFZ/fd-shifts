@@ -435,7 +435,8 @@ class ConfidMonitor(Callback):
         self.running_val_correct_sum_sanity = 0
 
     def on_train_end(self, trainer, pl_module):
-        if len(self.running_test_softmax) > 0:
+        # if len(self.running_test_softmax) > 0:
+        if False:
             stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
             stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
             stacked_dataset_idx = torch.zeros_like(stacked_labels)
