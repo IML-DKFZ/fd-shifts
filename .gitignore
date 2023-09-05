@@ -16,6 +16,7 @@ typings
 experiments.json
 _version.py
 .coverage
+bak_*
 
 data_folder/
 experiments_folder/
