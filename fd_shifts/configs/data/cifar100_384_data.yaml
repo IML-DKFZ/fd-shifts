@@ -1,4 +1,6 @@
 # @package _global_
+defaults:
+  - override /trainer/lr_scheduler: LinearWarmupCosineAnnealingLR
 
 data:
   dataset: cifar100
@@ -37,3 +39,10 @@ eval:
       - cifar10_384
       - svhn_384
       - tinyimagenet_384
+
+trainer:
+  num_epochs:
+  num_steps: ${fd_shifts.ifeq_else:${eval.ext_confid_name},dg,15000,10000}
+  dg_pretrain_epochs:
+  dg_pretrain_steps: 5000
+  lr_scheduler_interval: step
