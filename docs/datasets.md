@@ -116,7 +116,9 @@ Download the dataset from their website and extract to `$DATASET_ROOT_DIR/lidc_i
 
 - [LIDC-IDRI](https://wiki.cancerimagingarchive.net/pages/viewpage.action?pageId=1966254)
 
-Then run the data preprocessing:
+Prepare the dataset by following the instructions in [the separate LIDC readme](../fd_shifts/loaders/preparation/lidc-idri/README.md).
+
+Finaly, run the data preprocessing:
 
 ```bash
 fd_shifts prepare --dataset lung_ct
