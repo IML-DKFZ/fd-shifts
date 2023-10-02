@@ -22,6 +22,9 @@ def _get_network_factory() -> dict[str, NetworkFactoryType]:
         svhn_small_conv,
         vgg,
         vit,
+        efficientnetb4,
+        densenet121,
+        densenet161,
     )
 
     return {
@@ -32,6 +35,9 @@ def _get_network_factory() -> dict[str, NetworkFactoryType]:
         "vgg16": vgg.VGG,
         "resnet50": resnet50_imagenet.resnet50,
         "vit": vit.ViT,
+        "efficientnetb4": efficientnetb4.EfficientNetb4,
+        "densenet121": densenet121.Densenet121,
+        "densenet161": densenet161.Densenet161,
     }
 
 

@@ -1,0 +1,62 @@
+# @package _group_
+
+data:
+  dataset: emnist_balanced
+  data_dir: ${oc.env:DATASET_ROOT_DIR}/${data.dataset}
+  pin_memory: True
+  img_size: [28, 28, 1] #dataset is 28x28x1 either upscale it or need to adjust transforms and neural net
+  num_workers: 12
+  num_classes: 47
+  reproduce_confidnet_splits: True
+  augmentations:
+    train: # careful, the order here will determine the order of transforms (except normalize will be executed manually at the end after toTensor)
+      to_tensor:
+      tothreechannel: #copies data into three channels
+      normalize:
+        [[0.4376821, 0.4437697, 0.4728044], [0.19803012, 0.20101562, 0.19703614]]
+      pad4: #zero padding 4 pixels around edges
+
+    val:
+      to_tensor:
+      tothreechannel:
+      normalize:
+        [[0.4376821, 0.4437697, 0.47280442], [0.19803012, 0.20101562, 0.19703614]]
+      pad4:
+    test:
+      to_tensor:
+      tothreechannel:
+      normalize:
+        [[0.4376821, 0.4437697, 0.47280442], [0.19803012, 0.20101562, 0.19703614]]
+      pad4:
+
+  kwargs:
+    
+  # corbeire: 0.5 is not precise enough for OoD!
+  #ByClass: 62 C unbalanced
+  #MyMerge 47 C unbalanced
+  #Balanced: 47 C
+  #Letters: 26C
+  #Digits: 10 C
+  #MNIST: 10 C
+
+eval:
+  query_studies:
+    iid_study: ${data.dataset}
+    new_class_study:
+      - cifar10
+      - cifar100
+      - tinyimagenet_resize
+
+trainer:
+  batch_size: 128
+  num_epochs: ${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,320,${fd_shifts.ifeq_else:${eval.ext_confid_name},dg,150,100}}
+  num_epochs_backbone: 100
+  dg_pretrain_epochs: 50
+  optimizer:
+    lr: 1e-2
+    weight_decay: 5e-4
+
+model:
+  network:
+    name: ${fd_shifts.ifeq_else:${eval.ext_confid_name},devries,devries_and_enc,${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,confidnet_and_enc,svhn_small_conv}}
+    backbone: ${fd_shifts.ifeq_else:${eval.ext_confid_name},devries,svhn_small_conv,${fd_shifts.ifeq_else:${eval.ext_confid_name},tcp,svhn_small_conv,null}}

@@ -11,8 +11,6 @@ trainer:
   num_epochs_backbone: 250
   optimizer:
     lr: 1e-1
-    momentum: 0.9
-    weight_decay: 0.0005
   learning_rate_confidnet: 1e-4
   learning_rate_confidnet_finetune: 1e-6
   lr_scheduler:

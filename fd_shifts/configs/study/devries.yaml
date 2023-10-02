@@ -12,9 +12,6 @@ trainer:
     T_max: ${trainer.num_epochs}
   optimizer:
     lr: 1e-1
-    momentum: 0.9
-    nesterov: True
-    weight_decay: 0.0005
 
 model:
   name: devries_model

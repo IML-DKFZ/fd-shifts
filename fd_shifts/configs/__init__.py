@@ -85,6 +85,8 @@ class OutputPathsConfig(_IterableMixin):
 
     input_imgs_plot: Optional[Path] = None
     raw_output: Path = MISSING
+    encoded_output: Optional[Path] = None
+    attributions_output: Optional[Path] = None
     raw_output_dist: Path = MISSING
     external_confids: Path = MISSING
     external_confids_dist: Path = MISSING
@@ -175,6 +177,19 @@ class SGD(OptimizerConfig):
 
 @defer_validation
 @dataclass(config=ConfigDict(validate_assignment=True))
+class Adam(OptimizerConfig):
+    """Configuration for ADAM optimizer"""
+
+    _target_: str = "torch.optim.adam.Adam"
+    lr: float = 0.003  # pylint: disable=invalid-name
+    betas: tuple[float, float] = (0.9, 0.999)
+    eps: float = 1e-08
+    maximize: bool = False
+    weight_decay: float = 0.0
+
+
+@defer_validation
+@dataclass(config=ConfigDict(validate_assignment=True))
 class TrainerConfig(_IterableMixin):
     """Main configuration for PyTorch Lightning Trainer"""
 
@@ -184,6 +199,7 @@ class TrainerConfig(_IterableMixin):
     num_steps: Optional[int] = None
     num_epochs_backbone: Optional[int] = None
     dg_pretrain_epochs: Optional[int] = None
+    dg_pretrain_steps: Optional[int] = None
     val_every_n_epoch: int = MISSING
     val_split: Optional[ValSplit] = None
     do_val: bool = MISSING
@@ -191,6 +207,7 @@ class TrainerConfig(_IterableMixin):
     resume_from_ckpt: bool = MISSING
     benchmark: bool = MISSING
     fast_dev_run: bool | int = MISSING
+    lr_scheduler_interval: str = "epoch"
     lr_scheduler: LRSchedulerConfig = LRSchedulerConfig()
     optimizer: OptimizerConfig = MISSING
     callbacks: dict[str, Optional[dict[Any, Any]]] = field(default_factory=lambda: {})
@@ -256,6 +273,7 @@ class ModelConfig(_IterableMixin):
     confidnet_fc_dim: Optional[int] = None
     dg_reward: Optional[float] = None
     avg_pool: bool = MISSING
+    balanced_sampeling: bool = False
     dropout_rate: int = MISSING
     monitor_mcd_samples: int = MISSING
     test_mcd_samples: int = MISSING
@@ -459,6 +477,7 @@ class DataConfig(_IterableMixin):
     num_classes: int = MISSING
     reproduce_confidnet_splits: bool = MISSING
     augmentations: Any = MISSING
+    target_transforms: Optional[Any] = None
     kwargs: Optional[dict[Any, Any]] = None
 
 
@@ -618,4 +637,10 @@ def init() -> None:
         group="trainer/optimizer",
         name="SGD",
         node=SGD,
+    )
+
+    store.store(
+        group="trainer/optimizer",
+        name="Adam",
+        node=Adam,
     )

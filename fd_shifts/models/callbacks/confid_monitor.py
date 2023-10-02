@@ -70,7 +70,7 @@ class ConfidMonitor(Callback):
         self.output_paths = cf.exp.output_paths
         self.version_dir = cf.exp.version_dir
         self.val_every_n_epoch = cf.trainer.val_every_n_epoch
-
+        self.running_test_encoded = []
         self.running_test_softmax = []
         self.running_test_softmax_dist = []
         self.running_test_labels = []
@@ -85,6 +85,8 @@ class ConfidMonitor(Callback):
         self.running_confid_stats["val"] = {
             k: {"confids": [], "correct": []} for k in self.query_confids.val
         }
+        self.running_val_labels = []
+        self.running_train_labels = []
         self.running_train_correct_sum_sanity = 0
         self.running_val_correct_sum_sanity = 0
         self.running_perf_stats["train"] = {
@@ -137,6 +139,7 @@ class ConfidMonitor(Callback):
                 )
 
         if len(self.running_confid_stats["train"].keys()) > 0:
+            self.running_train_labels.extend(y)
             self.running_train_correct_sum_sanity += tmp_correct.sum()
             stat_keys = self.running_confid_stats["train"].keys()
             if tmp_correct is None:
@@ -190,6 +193,7 @@ class ConfidMonitor(Callback):
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(
                 self.running_confid_stats["train"],
                 self.running_perf_stats["train"],
+                self.running_train_labels,
                 self.query_confid_metrics.train,
                 self.query_monitor_plots,
                 do_plot=do_plot,
@@ -229,6 +233,7 @@ class ConfidMonitor(Callback):
         perf_keys = self.running_perf_stats["val"].keys()
         confid_keys = self.running_confid_stats["val"].keys()
         if dataloader_idx is None or dataloader_idx == 0:
+            self.running_val_labels.extend(outputs["labels"].cpu())
             if len(perf_keys) > 0:
                 y_one_hot = None
                 if "loss" in perf_keys:
@@ -384,6 +389,7 @@ class ConfidMonitor(Callback):
             monitor_metrics, monitor_plots = eval_utils.monitor_eval(
                 self.running_confid_stats["val"],
                 self.running_perf_stats["val"],
+                self.running_val_labels,
                 self.query_confid_metrics.val,
                 self.query_monitor_plots,
                 do_plot=do_plot,
@@ -429,7 +435,8 @@ class ConfidMonitor(Callback):
         self.running_val_correct_sum_sanity = 0
 
     def on_train_end(self, trainer, pl_module):
-        if len(self.running_test_softmax) > 0:
+        # if len(self.running_test_softmax) > 0:
+        if False:
             stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
             stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
             stacked_dataset_idx = torch.zeros_like(stacked_labels)
@@ -472,7 +479,9 @@ class ConfidMonitor(Callback):
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
         outputs = pl_module.test_results
-
+        self.running_test_encoded.extend(
+            outputs["encoded"].to(dtype=torch.float16).cpu()
+        )
         self.running_test_softmax.extend(
             outputs["logits"].to(dtype=self.output_dtype).cpu()
         )
@@ -491,6 +500,7 @@ class ConfidMonitor(Callback):
         )
 
     def on_test_end(self, trainer, pl_module):
+        stacked_encoded = torch.stack(self.running_test_encoded, dim=0)
         stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
         stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
         stacked_dataset_idx = torch.stack(
@@ -504,7 +514,28 @@ class ConfidMonitor(Callback):
             ],
             dim=1,
         )
+        encoded_output = torch.cat(
+            [
+                stacked_encoded,
+                stacked_dataset_idx,
+            ],
+            dim=1,
+        )
+        # try:
+        #    trainer.datamodule.test_datasets[0].csv.to_csv(
+        #        self.output_paths.test.attributions_output
+        #    )
+        try:
+            for ds_idx, test_ds in enumerate(trainer.datamodule.test_datasets):
+                test_ds.csv.to_csv(
+                    f"{self.output_paths.test.attributions_output[:-4]}{ds_idx}.csv"
+                )
 
+        except:
+            pass
+        np.savez_compressed(
+            self.output_paths.test.encoded_output, encoded_output.cpu().data.numpy()
+        )
         np.savez_compressed(
             self.output_paths.test.raw_output, raw_output.cpu().data.numpy()
         )

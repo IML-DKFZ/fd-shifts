@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 import hydra
@@ -47,6 +48,7 @@ class net(pl.LightningModule):
 
         self.optimizer_cfgs = cf.trainer.optimizer
         self.lr_scheduler_cfgs = cf.trainer.lr_scheduler
+        self.lr_scheduler_interval = cf.trainer.lr_scheduler_interval
 
         if cf.trainer.callbacks["model_checkpoint"] is not None:
             logger.info(
@@ -74,6 +76,7 @@ class net(pl.LightningModule):
         if self.ext_confid_name == "dg":
             self.reward = cf.model.dg_reward
             self.pretrain_epochs = cf.trainer.dg_pretrain_epochs
+            self.pretrain_steps = cf.trainer.dg_pretrain_steps
             self.load_dg_backbone_path = cf.model.network.__dict__.get(
                 "load_dg_backbone_path"
             )
@@ -116,7 +119,16 @@ class net(pl.LightningModule):
     def on_epoch_end(self):
         if (
             self.ext_confid_name == "dg"
-            and self.current_epoch == self.pretrain_epochs - 1
+            and (
+                (
+                    self.pretrain_epochs is not None
+                    and self.current_epoch == self.pretrain_epochs - 1
+                )
+                or (
+                    self.pretrain_steps is not None
+                    and self.global_step >= self.pretrain_steps - 1
+                )
+            )
             and self.save_dg_backbone_path is not None
         ):
             self.trainer.save_checkpoint(self.save_dg_backbone_path)
@@ -176,7 +188,16 @@ class net(pl.LightningModule):
             softmax = F.softmax(logits, dim=1)
             pred_original, reservation = softmax[:, :-1], softmax[:, -1]
             confidence = 1 - reservation.unsqueeze(1)
-            if self.current_epoch >= self.pretrain_epochs and self.reward > -1:
+            if (
+                (
+                    self.pretrain_epochs is not None
+                    and self.current_epoch >= self.pretrain_epochs
+                )
+                or (
+                    self.pretrain_steps is not None
+                    and self.global_step >= self.pretrain_steps
+                )
+            ) and self.reward > -1:
                 gain = torch.gather(
                     pred_original, dim=1, index=y.unsqueeze(1)
                 ).squeeze()
@@ -230,7 +251,16 @@ class net(pl.LightningModule):
             outputs = F.softmax(outputs, dim=1)
             pred_original, reservation = outputs[:, :-1], outputs[:, -1]
             confidence = 1 - reservation.unsqueeze(1)
-            if self.current_epoch >= self.pretrain_epochs and self.reward > -1:
+            if (
+                (
+                    self.pretrain_epochs is not None
+                    and self.current_epoch >= self.pretrain_epochs
+                )
+                or (
+                    self.pretrain_steps is not None
+                    and self.global_step >= self.pretrain_steps
+                )
+            ) and self.reward > -1:
                 gain = torch.gather(
                     pred_original, dim=1, index=y.unsqueeze(1)
                 ).squeeze()
@@ -251,15 +281,18 @@ class net(pl.LightningModule):
 
     def test_step(self, batch, batch_idx, *args):
         x, y = batch
+        z = self.model.forward_features(x)
         if self.ext_confid_name == "devries":
-            logits, confidence = self.model(x)
+            logits, confidence = self.model.head(z)
             confidence = torch.sigmoid(confidence).squeeze(1)
         elif self.ext_confid_name == "dg":
-            outputs = self.model(x)
+            outputs = self.model.head(z)
             outputs = F.softmax(outputs, dim=1)
             softmax, reservation = outputs[:, :-1], outputs[:, -1]
             logits = outputs[:, :-1]
             confidence = 1 - reservation
+        else:
+            raise NotImplementedError
 
         logits_dist = None
         confid_dist = None
@@ -274,6 +307,7 @@ class net(pl.LightningModule):
             "confid": confidence,
             "logits_dist": logits_dist,
             "confid_dist": confid_dist,
+            "encoded": z,
         }
 
     def configure_optimizers(self):
@@ -284,7 +318,12 @@ class net(pl.LightningModule):
         ]
 
         schedulers = [
-            hydra.utils.instantiate(self.lr_scheduler_cfgs)(optimizer=optimizers[0])
+            {
+                "scheduler": hydra.utils.instantiate(self.lr_scheduler_cfgs)(
+                    optimizer=optimizers[0]
+                ),
+                "interval": self.lr_scheduler_interval,
+            },
         ]
 
         return optimizers, schedulers
@@ -293,15 +332,15 @@ class net(pl.LightningModule):
         self.loaded_epoch = checkpoint["epoch"]
         logger.info("loading checkpoint from epoch {}".format(self.loaded_epoch))
 
-    def load_only_state_dict(self, path):
+    def load_only_state_dict(self, path: str | Path) -> None:
         ckpt = torch.load(path)
+
+        pattern = re.compile(r"^(\w*\.)(encoder|classifier)(\..*)")
 
         # For backwards-compatibility with before commit 1bdc717
         for param in list(ckpt["state_dict"].keys()):
-            if ".encoder." in param or ".classifier." in param:
-                correct_param = param.replace(".encoder.", "._encoder.").replace(
-                    ".classifier.", "._classifier."
-                )
+            if pattern.match(param):
+                correct_param = re.sub(pattern, r"\1_\2\3", param)
                 ckpt["state_dict"][correct_param] = ckpt["state_dict"][param]
                 del ckpt["state_dict"][param]
 

@@ -10,14 +10,9 @@ exp:
 trainer:
   num_epochs: 300
   dg_pretrain_epochs: 100
-  lr_scheduler:
-    T_max: ${trainer.num_epochs}
 
   optimizer:
     lr: 1e-1
-    momentum: 0.9
-    nesterov: False
-    weight_decay: 0.0005
 
 model:
   name: devries_model

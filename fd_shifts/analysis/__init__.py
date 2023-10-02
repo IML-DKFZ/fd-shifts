@@ -49,6 +49,7 @@ class ExperimentData:
     mcd_external_confids_dist: npt.NDArray[Any] | None = None
 
     _mcd_correct: npt.NDArray[Any] | None = field(default=None)
+    _mcd_labels: npt.NDArray[Any] | None = field(default=None)
     _correct: npt.NDArray[Any] | None = field(default=None)
 
     @property
@@ -76,6 +77,14 @@ class ExperimentData:
         if self.mcd_softmax_mean is None:
             return None
         return (np.argmax(self.mcd_softmax_mean, axis=1) == self.labels).astype(int)
+
+    @property
+    def mcd_labels(self) -> npt.NDArray[Any] | None:
+        if self._mcd_labels is not None:
+            return self._mcd_labels
+        if self.mcd_softmax_mean is None:
+            return None
+        return self.labels
 
     def dataset_name_to_idx(self, dataset_name: str) -> int:
         if dataset_name == "val_tuning":
@@ -408,6 +417,7 @@ class Analysis:
 
             self.method_dict[query_confid] = {}
             self.method_dict[query_confid]["confids"] = confids
+            self.method_dict[query_confid]["labels"] = confid_score.labels
             self.method_dict[query_confid]["correct"] = confid_score.correct
             self.method_dict[query_confid]["metrics"] = confid_score.metrics
             self.method_dict[query_confid]["predict"] = confid_score.predict
@@ -423,6 +433,7 @@ class Analysis:
             self.method_dict[query_confid]["correct"] = confid_score.correct
             self.method_dict[query_confid]["metrics"] = confid_score.metrics
             self.method_dict[query_confid]["predict"] = confid_score.predict
+            self.method_dict[query_confid]["labels"] = confid_score.labels
 
     def _compute_performance_metrics(self, softmax, labels, correct):
         performance_metrics = {}
@@ -437,6 +448,13 @@ class Analysis:
                 )
         if "accuracy" in self.query_performance_metrics:
             performance_metrics["accuracy"] = np.sum(correct) / correct.size
+        if "b-accuracy" in self.query_performance_metrics:
+            accuracies_list = []
+            for cla in np.unique(labels):
+                is_class = labels == cla
+                accuracy_class = np.mean(correct[is_class])
+                accuracies_list.append(accuracy_class)
+            performance_metrics["b-accuracy"] = np.mean(accuracies_list)
         if "brier_score" in self.query_performance_metrics:
             if "new_class" in self.study_name or "openset" in self.study_name:
                 performance_metrics["brier_score"] = None
@@ -474,6 +492,7 @@ class Analysis:
             eval = ConfidEvaluator(
                 confids=confid_dict["confids"],
                 correct=confid_dict["correct"],
+                labels=confid_dict.get("labels"),
                 query_metrics=self.query_confid_metrics,
                 query_plots=self.query_plots,
                 bins=self.calibration_bins,
@@ -534,6 +553,7 @@ class Analysis:
                         query_metrics=self.query_confid_metrics,
                         query_plots=self.query_plots,
                         bins=self.calibration_bins,
+                        labels=confid_dict["labels"],
                     )
                     self.threshold_plot_dict = {}
                     self.plot_threshs = []
@@ -579,6 +599,7 @@ class Analysis:
                     query_metrics=self.query_confid_metrics,
                     query_plots=self.query_plots,
                     bins=self.calibration_bins,
+                    labels=confid_dict["labels"],
                 )
                 true_thresh = eval.get_val_risk_scores(
                     self.rstar, 0.1, no_bound_mode=True
@@ -821,7 +842,7 @@ def main(
 
     analysis_out_dir = out_path
 
-    query_performance_metrics = ["accuracy", "nll", "brier_score"]
+    query_performance_metrics = ["accuracy", "b-accuracy", "nll", "brier_score"]
     query_confid_metrics = [
         "failauc",
         "failap_suc",
@@ -830,6 +851,7 @@ def main(
         "mce",
         "ece",
         "e-aurc",
+        "b-aurc",
         "aurc",
         "fpr@95tpr",
         "risk@100cov",

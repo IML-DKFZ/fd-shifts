@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -55,14 +56,7 @@ class Module(pl.LightningModule):
 
         self.test_mcd_samples = cf.model.test_mcd_samples
         self.monitor_mcd_samples = cf.model.monitor_mcd_samples
-        self.learning_rate = cf.trainer.optimizer.lr
-        self.learning_rate_confidnet = cf.trainer.learning_rate_confidnet
-        self.learning_rate_confidnet_finetune = (
-            cf.trainer.learning_rate_confidnet_finetune
-        )
         self.lr_scheduler = cf.trainer.lr_scheduler
-        self.momentum = cf.trainer.optimizer.momentum
-        self.weight_decay = cf.trainer.optimizer.weight_decay
         self.query_confids = cf.eval.confidence_measures
         self.num_epochs = cf.trainer.num_epochs
         if cf.trainer.callbacks["model_checkpoint"] is not None:
@@ -264,7 +258,8 @@ class Module(pl.LightningModule):
     ) -> None:
         x, y = batch
 
-        logits = self.backbone(x)
+        z = self.backbone.forward_features(x)
+        logits = self.backbone.head(z)
         _, pred_confid = self.network(x)
         pred_confid = torch.sigmoid(pred_confid).squeeze(1)
 
@@ -282,6 +277,7 @@ class Module(pl.LightningModule):
             "labels": y,
             "confid": pred_confid,
             "confid_dist": pred_confid_dist,
+            "encoded": z,
         }
 
     def configure_optimizers(
@@ -310,12 +306,12 @@ class Module(pl.LightningModule):
     def load_only_state_dict(self, path: str | Path) -> None:
         ckpt = torch.load(path)
 
+        pattern = re.compile(r"^(\w*\.)(encoder|classifier)(\..*)")
+
         # For backwards-compatibility with before commit 1bdc717
         for param in list(ckpt["state_dict"].keys()):
-            if ".encoder." in param or ".classifier." in param:
-                correct_param = param.replace(".encoder.", "._encoder.").replace(
-                    ".classifier.", "._classifier."
-                )
+            if pattern.match(param):
+                correct_param = re.sub(pattern, r"\1_\2\3", param)
                 ckpt["state_dict"][correct_param] = ckpt["state_dict"][param]
                 del ckpt["state_dict"][param]
 

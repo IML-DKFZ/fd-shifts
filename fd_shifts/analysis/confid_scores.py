@@ -300,13 +300,15 @@ class ConfidScore:
             assert study_data.mcd_softmax_dist is not None
             self.softmax = study_data.mcd_softmax_mean
             self.correct = study_data.mcd_correct
+            self.labels = study_data.mcd_labels
+
             self.confid_args = (
                 study_data.mcd_softmax_mean,
                 study_data.mcd_softmax_dist,
             )
             self.performance_args = (
                 study_data.mcd_softmax_mean,
-                study_data.labels,
+                study_data.mcd_labels,
                 study_data.mcd_correct,
             )
 
@@ -327,6 +329,7 @@ class ConfidScore:
         else:
             self.softmax = study_data.softmax_output
             self.correct = study_data.correct
+            self.labels = study_data.labels
             self.confid_args = (study_data.softmax_output,)
             self.performance_args = (
                 study_data.softmax_output,
@@ -396,6 +399,7 @@ class SecondaryConfidScore:
             study_data.labels,
             study_data.correct,
         )
+        self.labels = study_data.labels
 
         self.confid_args, self.confid_func = parse_secondary_confid(
             query_confid, analysis

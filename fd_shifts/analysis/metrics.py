@@ -52,6 +52,7 @@ class StatsCache:
     confids: npt.NDArray[Any]
     correct: npt.NDArray[Any]
     n_bins: int
+    labels: npt.NDArray[Any] | None = None
 
     @cached_property
     def roc_curve_stats(self) -> tuple[npt.NDArray[Any], npt.NDArray[Any]]:
@@ -61,6 +62,83 @@ class StatsCache:
     @property
     def residuals(self) -> npt.NDArray[Any]:
         return 1 - self.correct
+
+    @cached_property
+    def brc_curve_stats(self) -> tuple[list[float], list[float], list[float]]:
+        coverages = []
+        balanced_risks = []
+        error_per_class = {}
+        risk_per_class = {}
+        assert self.labels is not None, "labels must be set"
+        assert len(self.labels) == len(
+            self.confids
+        ), "labels must be same size as confids"
+        # calculate risk per class
+        n_residuals = len(self.residuals)
+        idx_sorted = np.argsort(self.confids)
+        n_remaining_per_class = {}
+        # coverage = number samples
+        coverage = n_residuals
+        # calcualte baselines:
+        # errors per class, residuals per class (total amount of images/errors from that class)
+        # risk per class: errors per class by remaining images in this class
+        # if there are no more images of a class risk is set to None and then filtered out before calculating mean
+        for label in np.unique(self.labels):
+            # remaining_labels = self.labels[idx_sorted]
+            idx_class = np.where(self.labels == label)[0]
+            error_per_class[label] = sum(self.residuals[idx_class])
+            n_remaining_per_class[label] = len(idx_class)
+            if n_remaining_per_class[label] == 0:
+                risk_per_class[label] = None
+            else:
+                risk_per_class[label] = (
+                    error_per_class[label] / n_remaining_per_class[label]
+                )
+        # coverage and risk point on the curve. starting point
+        coverages.append(coverage / n_residuals)
+        balanced_risks.append(
+            np.array([x for x in risk_per_class.values() if x is not None]).mean()
+        )
+        weights = []
+        tmp_weight = 0
+        for i in range(0, len(idx_sorted) - 1):
+            coverage = coverage - 1
+            # Decide which class the images is taken from
+            label = int(self.labels[idx_sorted[i]])
+            # from that class subtract 1 if an error is taken out and 0 if no error is taken out
+            error_per_class[label] = (
+                error_per_class[label] - self.residuals[idx_sorted[i]]
+            )
+            # reduce the remaining amount of images in the class an images was taken out
+            n_remaining_per_class[label] = n_remaining_per_class[label] - 1
+            assert (
+                n_remaining_per_class[label] >= 0
+            ), "Remaining images should be larger 0"
+            # if there is one or no more images remaining in a class risk is set to 0
+            # otherwise risk of the class is errors remaining divided by number images remaining
+            if n_remaining_per_class[label] < 1:
+                risk_per_class[label] = None
+            else:
+                risk_per_class[label] = error_per_class[label] / (
+                    n_remaining_per_class[label]
+                )
+                assert risk_per_class[label] >= 0, "Risk can never be below 0"
+            tmp_weight += 1
+            if i == 0 or self.confids[idx_sorted[i]] != self.confids[idx_sorted[i - 1]]:
+                coverages.append(coverage / n_residuals)
+                balanced_risks.append(
+                    np.array(
+                        [x for x in risk_per_class.values() if x is not None]
+                    ).mean()
+                )
+                weights.append(tmp_weight / n_residuals)
+                tmp_weight = 0
+        # add a well-defined final point to the RC-curve.
+        if tmp_weight > 0:
+            coverages.append(0)
+            balanced_risks.append(balanced_risks[-1])
+            weights.append(tmp_weight / n_residuals)
+        return coverages, balanced_risks, weights
 
     @cached_property
     def rc_curve_stats(self) -> tuple[list[float], list[float], list[float]]:
@@ -268,6 +346,16 @@ def aurc(stats_cache: StatsCache) -> float:
         metric value
     """
     _, risks, weights = stats_cache.rc_curve_stats
+    return (
+        sum([(risks[i] + risks[i + 1]) * 0.5 * weights[i] for i in range(len(weights))])
+        * AURC_DISPLAY_SCALE
+    )
+
+
+@register_metric_func("b-aurc")
+@may_raise_sklearn_exception
+def baurc(stats_cache: StatsCache):
+    _, risks, weights = stats_cache.brc_curve_stats
     return (
         sum([(risks[i] + risks[i + 1]) * 0.5 * weights[i] for i in range(len(weights))])
         * AURC_DISPLAY_SCALE

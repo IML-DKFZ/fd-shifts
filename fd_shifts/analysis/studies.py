@@ -217,6 +217,7 @@ def filter_new_class_study_data(
         config=data.config,
         _correct=__filter_if_exists(correct, select_ix_all),
         _mcd_correct=__filter_if_exists(mcd_correct, select_ix_all_mcd),
+        _mcd_labels=__filter_if_exists(labels, select_ix_all_mcd),
     )
 
 
@@ -347,7 +348,10 @@ def iterate_openset_study_data(
 
 @register_filter_func("noise_study")
 def filter_noise_study_data(
-    data: "ExperimentData", dataset_name: str, noise_level: int = 1
+    data: "ExperimentData",
+    dataset_name: str,
+    noise_level: int = 1,
+    fast_dev_run: bool = False,
 ) -> "ExperimentData":
     """Filter experiment data by corruption shift dataset
 
@@ -369,6 +373,9 @@ def filter_noise_study_data(
 
         data = data[mask]
 
+        if fast_dev_run:
+            return data
+
         return data.reshape(15, 5, -1, data.shape[-2], data.shape[-1])[
             :, noise_level
         ].reshape(-1, data.shape[-2], data.shape[-1])
@@ -379,6 +386,9 @@ def filter_noise_study_data(
 
         data = data[mask]
 
+        if fast_dev_run:
+            return data
+
         return data.reshape(15, 5, -1, data.shape[-1])[:, noise_level].reshape(
             -1, data.shape[-1]
         )
@@ -388,6 +398,9 @@ def filter_noise_study_data(
             return None
 
         data = data[mask]
+
+        if fast_dev_run:
+            return data
 
         return data.reshape(15, 5, -1)[:, noise_level].reshape(-1)
 
@@ -439,6 +452,7 @@ def iterate_noise_study_data(
                 analysis.experiment_data,
                 noise_set,
                 intensity_level,
+                analysis.cfg.trainer.fast_dev_run,
             )
 
             yield f"{study_name}_{intensity_level + 1}", study_data

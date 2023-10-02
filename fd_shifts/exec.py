@@ -3,6 +3,7 @@ import random
 from typing import cast
 
 import hydra
+import omegaconf
 import pytorch_lightning as pl
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -62,17 +63,6 @@ def train(
             random.sample(range(cf.data.num_classes), int(0.4 * cf.data.num_classes)),
         )
 
-    datamodule = FDShiftsDataLoader(cf)
-    model = get_model(cf.model.name)(cf)
-    tb_logger = TensorBoardLogger(
-        save_dir=str(cf.exp.group_dir),
-        name=cf.exp.name,
-        default_hp_metric=False,
-    )
-    csv_logger = CSVLogger(
-        save_dir=str(cf.exp.group_dir), name=cf.exp.name, version=cf.exp.version
-    )
-
     max_steps = cf.trainer.num_steps if hasattr(cf.trainer, "num_steps") else None
     accumulate_grad_batches = (
         cf.trainer.accumulate_grad_batches
@@ -90,10 +80,23 @@ def train(
         max_steps = 1 if cf.trainer.fast_dev_run else max_steps
         val_every_n_epoch = 1 if cf.trainer.fast_dev_run else val_every_n_epoch
     elif isinstance(cf.trainer.fast_dev_run, int):
-        limit_batches = cf.trainer.fast_dev_run
-        max_steps = cf.trainer.fast_dev_run
+        limit_batches = cf.trainer.fast_dev_run * accumulate_grad_batches
+        max_steps = cf.trainer.fast_dev_run * 5
+        cf.trainer.dg_pretrain_epochs = None
+        cf.trainer.dg_pretrain_steps = (max_steps * 2) // 3
         val_every_n_epoch = 1
-        num_epochs = 1
+        num_epochs = None
+
+    datamodule = FDShiftsDataLoader(cf)
+    model = get_model(cf.model.name)(cf)
+    tb_logger = TensorBoardLogger(
+        save_dir=str(cf.exp.group_dir),
+        name=cf.exp.name,
+        default_hp_metric=False,
+    )
+    csv_logger = CSVLogger(
+        save_dir=str(cf.exp.group_dir), name=cf.exp.name, version=cf.exp.version
+    )
 
     trainer = pl.Trainer(
         accelerator="auto",

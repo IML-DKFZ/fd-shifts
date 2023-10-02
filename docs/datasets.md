@@ -65,3 +65,61 @@ website](https://image-net.org/download-images.php) and move or symlink it to
 ## Training on CAMELYON-17-Wilds, iWildCam-2020-Wilds
 
 These datasets will be downloaded automatically.
+
+## Dermoscopy Data
+
+You can download the individual datasets from their respective websites:
+
+- [PH2](https://www.fc.up.pt/addi/ph2%20database.html) (extract to `$DATASET_ROOT_DIR/ph2`)
+- [HAM10000](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DBW86T) (extract to `$DATASET_ROOT_DIR/ham10000`)
+- [derm7pt](http://derm.cs.sfu.ca/) (extract to `$DATASET_ROOT_DIR/d7p`)
+- [isic2020](https://challenge.isic-archive.com/data/#2020) (extract to `$DATASET_ROOT_DIR/isic_2020`)
+
+Unpack them into their respective folders, then run the data preprocessing:
+
+```bash
+fd_shifts prepare --dataset dermoscopy
+```
+
+## Microscopy Data
+
+Download the dataset from their website and extract to `$DATASET_ROOT_DIR/rxrx1`.
+
+- [Rxrx1](https://www.rxrx.ai/rxrx1#Download)
+
+Then run the data preprocessing:
+
+```bash
+fd_shifts prepare --dataset microscopy
+```
+
+## Chest XRay Data
+
+You can download the individual datasets from their respective websites:
+
+> **Note**  
+> MIMIC requires you to apply for credentialed access.
+
+- [CheXpert](https://stanfordmlgroup.github.io/competitions/chexpert/) (extract to `$DATASET_ROOT_DIR/chexpert`)
+- [MIMIC](https://physionet.org/content/mimic-cxr-jpg/2.0.0/) (extract to `$DATASET_ROOT_DIR/mimic`)
+- [NIH14](https://www.nih.gov/news-events/news-releases/nih-clinical-center-provides-one-largest-publicly-available-chest-x-ray-datasets-scientific-community) (extract to `$DATASET_ROOT_DIR/nih14`)
+
+Unpack them into their respective folders, then run the data preprocessing:
+
+```bash
+fd_shifts prepare --dataset xray
+```
+
+## Lung CT Data
+
+Download the dataset from their website and extract to `$DATASET_ROOT_DIR/lidc_idri`.
+
+- [LIDC-IDRI](https://wiki.cancerimagingarchive.net/pages/viewpage.action?pageId=1966254)
+
+Prepare the dataset by following the instructions in [the separate LIDC readme](../fd_shifts/loaders/preparation/lidc-idri/README.md).
+
+Finaly, run the data preprocessing:
+
+```bash
+fd_shifts prepare --dataset lung_ct
+```

@@ -1,4 +1,6 @@
 # @package _global_
+defaults:
+  - override /trainer/lr_scheduler: LinearWarmupCosineAnnealingLR
 
 data:
   dataset: breeds
@@ -33,3 +35,10 @@ eval:
     iid_study: breeds_384
     in_class_study: 
       - breeds_ood_test_384
+
+trainer:
+  num_epochs:
+  num_steps: ${fd_shifts.ifeq_else:${eval.ext_confid_name},dg,60000,40000}
+  dg_pretrain_epochs:
+  dg_pretrain_steps: 20000
+  lr_scheduler_interval: step

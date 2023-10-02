@@ -8,12 +8,13 @@ import pytorch_lightning as pl
 import torch
 from omegaconf import OmegaConf
 from sklearn.model_selection import KFold
+from torch.utils.data import WeightedRandomSampler
 from torch.utils.data.sampler import SubsetRandomSampler
 
 import fd_shifts.configs.data as data_configs
 from fd_shifts import configs
 from fd_shifts.loaders.dataset_collection import get_dataset
-from fd_shifts.utils.aug_utils import get_transform
+from fd_shifts.utils.aug_utils import get_transform, target_transforms_collection
 
 
 class FDShiftsDataLoader(pl.LightningDataModule):
@@ -36,7 +37,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
         self.val_split = cf.trainer.val_split.name
         self.test_iid_split = cf.test.iid_set_split
         self.assim_ood_norm_flag = cf.test.assim_ood_norm_flag
-
+        self.balanced_sampeling = cf.model.balanced_sampeling
         self.add_val_tuning = cf.eval.val_tuning
         self.query_studies = dict(cf.eval.query_studies)
         if self.query_studies is not None:
@@ -51,12 +52,33 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             if len(self.external_test_sets) > 0:
                 self.external_test_configs = {}
                 for ext_set in self.external_test_sets:
+                    overwrite_dataset = False
+                    if ext_set.startswith("dermoscopyall"):
+                        file_set = "dermoscopyall"
+                        overwrite_dataset = False
+                    elif ext_set.startswith("rxrx1all"):
+                        file_set = "rxrx1all"
+                        overwrite_dataset = False
+                    elif ext_set.startswith("lidc_idriall"):
+                        file_set = "lidc_idriall"
+                        overwrite_dataset = False
+                    elif ext_set.startswith("xray_chestall"):
+                        file_set = "xray_chestall"
+                        overwrite_dataset = False
+                    else:
+                        file_set = ext_set
                     self.external_test_configs[ext_set] = OmegaConf.load(
                         os.path.join(
                             os.path.abspath(os.path.dirname(data_configs.__file__)),
-                            "{}_data.yaml".format(ext_set),
+                            "{}_data.yaml".format(file_set),
                         )
                     ).data
+                    if overwrite_dataset:
+                        self.external_test_configs[ext_set].dataset = ext_set
+        # set up target transforms
+        self.target_transforms = {}
+        if cf.data.target_transforms:
+            self.add_target_transforms(cf.data.target_transforms, no_norm_flag)
 
         # Set up augmentations
         self.augmentations = {}
@@ -67,6 +89,20 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             )
 
         self.train_dataset, self.val_dataset, self.test_datasets = None, None, None
+
+    def add_target_transforms(self, query_tt, no_norm_flag):
+        # add if for empty target transform. currently bug for no tt
+        for datasplit_k, datasplit_v in query_tt.items():
+            target_transforms, target_transforms_after = [], []
+            if datasplit_v is not None:
+                for tt_key, tt_param in datasplit_v.items():
+                    target_transforms.append(
+                        target_transforms_collection[tt_key](tt_param)
+                    )
+            self.target_transforms[datasplit_k] = target_transforms[0]
+        print(
+            "CHECK TARGET TRANSFORMS", self.assim_ood_norm_flag, self.target_transforms
+        )
 
     def prepare_data(self, *args, **kwargs):
         pass
@@ -107,6 +143,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             root=self.data_dir,
             train=True,
             download=True,
+            target_transform=self.target_transforms.get("train"),
             transform=self.augmentations["train"],
             kwargs=self.dataset_kwargs,
         )
@@ -117,13 +154,43 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             root=self.data_dir,
             train=False,
             download=True,
+            target_transform=self.target_transforms.get("test"),
             transform=self.augmentations["test"],
             kwargs=self.dataset_kwargs,
         )
 
-        if self.test_iid_split == "devries":
+        if self.test_iid_split == "tenPercent":
+            length_test = len(self.iid_test_set)
+            split = int(length_test * 0.1)
             if "wilds" in self.dataset_name:
-                self.iid_test_set.indices = self.iid_test_set.indices[1000:]
+                self.iid_test_set.indices = self.iid_test_set.indices[split:]
+                self.iid_test_set.__len__ = len(self.iid_test_set.indices)
+            else:
+                try:
+                    self.iid_test_set.imgs = self.iid_test_set.imgs[split:]
+                    self.iid_test_set.samples = self.iid_test_set.samples[split:]
+                    self.iid_test_set.targets = self.iid_test_set.targets[split:]
+                    self.iid_test_set.__len__ = len(self.iid_test_set.imgs)
+                except:
+                    self.iid_test_set.data = self.iid_test_set.data[split:]
+                    try:
+                        self.iid_test_set.targets = self.iid_test_set.targets[split:]
+                    except:
+                        self.iid_test_set.labels = self.iid_test_set.labels[split:]
+                    self.iid_test_set.__len__ = len(self.iid_test_set.data)
+
+        if self.val_split == "devries":
+            self.val_dataset = get_dataset(
+                name=self.dataset_name,
+                root=self.data_dir,
+                train=False,
+                download=True,
+                target_transform=self.target_transforms.get("val"),
+                transform=self.augmentations["val"],
+                kwargs=self.dataset_kwargs,
+            )
+            if "wilds" in self.dataset_name:
+                self.iid_test_set.indices = self.iid_test_set.indices[100:150]
                 self.iid_test_set.__len__ = len(self.iid_test_set.indices)
             else:
                 try:
@@ -138,32 +205,32 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                     except:
                         self.iid_test_set.labels = self.iid_test_set.labels[1000:]
                     self.iid_test_set.__len__ = len(self.iid_test_set.data)
-
-        if self.val_split == "devries":
-            self.val_dataset = get_dataset(
-                name=self.dataset_name,
-                root=self.data_dir,
-                train=False,
-                download=True,
-                transform=self.augmentations["val"],
-                kwargs=self.dataset_kwargs,
-            )
-            if "wilds" in self.dataset_name:
-                self.val_dataset.indices = self.val_dataset.indices[:1000]
-                self.val_dataset.__len__ = len(self.val_dataset.indices)
-            else:
-                try:
-                    self.val_dataset.imgs = self.val_dataset.imgs[:1000]
-                    self.val_dataset.samples = self.val_dataset.samples[:1000]
-                    self.val_dataset.targets = self.val_dataset.targets[:1000]
-                    self.val_dataset.__len__ = len(self.val_dataset.imgs)
-                except:
-                    self.val_dataset.data = self.val_dataset.data[:1000]
+            if self.val_split == "devries":
+                self.val_dataset = get_dataset(
+                    name=self.dataset_name,
+                    root=self.data_dir,
+                    train=False,
+                    download=True,
+                    target_transform=self.target_transforms.get("val"),
+                    transform=self.augmentations["val"],
+                    kwargs=self.dataset_kwargs,
+                )
+                if "wilds" in self.dataset_name:
+                    self.val_dataset.indices = self.val_dataset.indices[:1000]
+                    self.val_dataset.__len__ = len(self.val_dataset.indices)
+                else:
                     try:
+                        self.val_dataset.imgs = self.val_dataset.imgs[:1000]
+                        self.val_dataset.samples = self.val_dataset.samples[:1000]
                         self.val_dataset.targets = self.val_dataset.targets[:1000]
+                        self.val_dataset.__len__ = len(self.val_dataset.imgs)
                     except:
-                        self.val_dataset.labels = self.val_dataset.labels[:1000]
-                    self.val_dataset.__len__ = len(self.val_dataset.data)
+                        self.val_dataset.data = self.val_dataset.data[:1000]
+                        try:
+                            self.val_dataset.targets = self.val_dataset.targets[:1000]
+                        except:
+                            self.val_dataset.labels = self.val_dataset.labels[:1000]
+                        self.val_dataset.__len__ = len(self.val_dataset.data)
 
         else:
             self.val_dataset = get_dataset(
@@ -171,6 +238,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 root=self.data_dir,
                 train=True,
                 download=True,
+                target_transform=self.target_transforms.get("val"),
                 transform=self.augmentations["val"],
                 kwargs=self.dataset_kwargs,
             )
@@ -204,6 +272,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                     ),
                     train=False,
                     download=True,
+                    target_transform=self.target_transforms,
                     transform=self.augmentations["external_{}".format(ext_set)],
                     kwargs=self.dataset_kwargs,
                 )
@@ -232,6 +301,22 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             train_idx = []
             self.val_sampler = None
             self.train_sampler = None
+            if self.balanced_sampeling:
+                # do class balanced sampeling
+                val_idx = []
+                train_idx = []
+                self.val_sampler = None
+                class_weights = {}
+                labels = self.train_dataset.csv.target
+
+                for cla in labels.unique():
+                    class_weights[cla] = 1 / (np.mean(labels == cla))
+
+                sample_weights = [*map(class_weights.get, labels)]
+
+                self.train_sampler = WeightedRandomSampler(
+                    sample_weights, num_samples=len(sample_weights), replacement=True
+                )
 
         elif self.val_split == "repro_confidnet":
             num_train = len(self.train_dataset)
