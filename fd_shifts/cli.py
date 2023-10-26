@@ -1,12 +1,22 @@
 import argparse
 
-from fd_shifts import experiments, reporting
-from fd_shifts.experiments import launcher
+from fd_shifts import reporting
+from fd_shifts.experiments import get_all_experiments, launcher
 from fd_shifts.loaders import prepare
 
 
-def _list_experiments(_) -> None:
-    _experiments = experiments.get_all_experiments()
+def _list_experiments(args) -> None:
+    _experiments = launcher.filter_experiments(
+        dataset=args.dataset,
+        dropout=args.dropout,
+        model=args.model,
+        backbone=args.backbone,
+        exclude_model=args.exclude_model,
+        run_nr=args.run,
+        rew=args.reward,
+        name=args.name,
+    )
+
     for exp in _experiments:
         print(exp.to_path())
 
@@ -21,6 +31,7 @@ def main() -> None:
     parser.set_defaults(command=lambda _: parser.print_help())
 
     list_parser = subparsers.add_parser("list")
+    launcher.add_filter_arguments(list_parser)
     list_parser.set_defaults(command=_list_experiments)
 
     launch_parser = subparsers.add_parser("launch")
@@ -36,3 +47,7 @@ def main() -> None:
 
     args = parser.parse_args()
     args.command(args)
+
+
+if __name__ == "__main__":
+    main()

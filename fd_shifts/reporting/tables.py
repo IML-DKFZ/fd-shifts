@@ -5,7 +5,6 @@ from itertools import product
 from pathlib import Path
 from typing import Callable
 
-import matplotlib
 import numpy as np
 import pandas as pd
 
@@ -323,6 +322,8 @@ def _print_original_mode(data: pd.DataFrame, metric: str):
 
 
 def _compute_gmap(data: pd.DataFrame, invert: bool):
+    import matplotlib
+
     # NOTE: Manually compute gradient map because Normalize returns 0 if vmax - vmin == 0, but we
     # NOTE:   want it to be 1 in that case
 

@@ -4,13 +4,6 @@ from pathlib import Path
 
 import imageio.core.util
 
-from fd_shifts.loaders.preparation import (
-    prepare_dermoscopy,
-    prepare_lidc,
-    prepare_rxrx1,
-    prepare_xray,
-)
-
 
 def ignore_warnings(*args, **kwargs):
     pass
@@ -32,12 +25,20 @@ def add_arguments(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
 def main(args: argparse.Namespace):
     data_dir = Path(os.getenv("DATASET_ROOT_DIR", "./data"))
     if args.dataset == "all" or args.dataset == "microscopy":
+        from fd_shifts.loaders.preparation import prepare_rxrx1
+
         prepare_rxrx1(data_dir)
     if args.dataset == "all" or args.dataset == "xray":
+        from fd_shifts.loaders.preparation import prepare_xray
+
         prepare_xray(data_dir)
     if args.dataset == "all" or args.dataset == "dermoscopy":
+        from fd_shifts.loaders.preparation import prepare_dermoscopy
+
         prepare_dermoscopy(data_dir)
     if args.dataset == "all" or args.dataset == "lung_ct":
+        from fd_shifts.loaders.preparation import prepare_lidc
+
         prepare_lidc(data_dir)
 
 

@@ -5,13 +5,6 @@ from typing import cast
 import pandas as pd
 
 from fd_shifts.experiments import Experiment, get_all_experiments
-from fd_shifts.reporting import tables
-from fd_shifts.reporting.plots import plot_rank_style, vit_v_cnn_box
-from fd_shifts.reporting.tables import (
-    paper_results,
-    rank_comparison_metric,
-    rank_comparison_mode,
-)
 
 DATASETS = (
     "svhn",
@@ -485,6 +478,14 @@ def main(base_path: str | Path):
     Args:
         base_path (str | Path): path where experiment data lies
     """
+    from fd_shifts.reporting import tables
+    from fd_shifts.reporting.plots import plot_rank_style, vit_v_cnn_box
+    from fd_shifts.reporting.tables import (
+        paper_results,
+        rank_comparison_metric,
+        rank_comparison_mode,
+    )
+
     pd.set_option("display.max_rows", None)
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
