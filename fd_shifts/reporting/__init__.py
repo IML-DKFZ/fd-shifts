@@ -59,8 +59,23 @@ def gather_data(data_dir: Path):
     Args:
         data_dir (Path): where to collect to
     """
-    experiment_dir = Path(os.environ["EXPERIMENT_ROOT_DIR"])
-    experiments = get_all_experiments()
+    experiment_dirs = [
+        Path(os.environ["EXPERIMENT_ROOT_DIR"]),
+    ]
+
+    if add_dirs := os.getenv("EXPERIMENT_ADD_DIRS"):
+        (
+            experiment_dirs.extend(
+                map(
+                    lambda path: Path(path),
+                    add_dirs.split(os.pathsep),
+                )
+            ),
+        )
+
+    experiments = get_all_experiments(
+        with_ms_runs=False, with_precision_study=False, with_vit_special_runs=False
+    )
 
     for dataset in DATASETS + ("animals_openset", "svhn_openset"):
         print(dataset)
@@ -69,19 +84,20 @@ def gather_data(data_dir: Path):
         _paths = []
         _vit_paths = []
 
-        for experiment in _experiments:
-            if experiment.model == "vit":
-                _vit_paths.extend(
-                    (experiment_dir / experiment.to_path() / "test_results").glob(
-                        "*.csv"
+        for experiment_dir in experiment_dirs:
+            for experiment in _experiments:
+                if experiment.model == "vit":
+                    _vit_paths.extend(
+                        (experiment_dir / experiment.to_path() / "test_results").glob(
+                            "*.csv"
+                        )
                     )
-                )
-            else:
-                _paths.extend(
-                    (experiment_dir / experiment.to_path() / "test_results").glob(
-                        "*.csv"
+                else:
+                    _paths.extend(
+                        (experiment_dir / experiment.to_path() / "test_results").glob(
+                            "*.csv"
+                        )
                     )
-                )
 
         if len(_paths) > 0:
             dframe: pd.DataFrame = pd.concat(
