@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from typing import TYPE_CHECKING
 
@@ -14,13 +13,10 @@ from tqdm import tqdm
 
 from fd_shifts import logger
 from fd_shifts.models.networks import get_network
+from fd_shifts.utils import to_dict
 
 if TYPE_CHECKING:
     from fd_shifts import configs
-
-
-def to_dict(obj):
-    return json.loads(json.dumps(obj, default=lambda o: getattr(o, "__dict__", str(o))))
 
 
 class net(pl.LightningModule):

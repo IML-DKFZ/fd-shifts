@@ -17,13 +17,10 @@ from rich.progress import track
 from tqdm import tqdm
 
 from fd_shifts import logger
+from fd_shifts.utils import to_dict
 
 if TYPE_CHECKING:
     from fd_shifts import configs
-
-
-def to_dict(obj):
-    return json.loads(json.dumps(obj, default=lambda o: getattr(o, "__dict__", str(o))))
 
 
 class net(pl.LightningModule):

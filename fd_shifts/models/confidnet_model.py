@@ -14,6 +14,7 @@ from tqdm import tqdm
 from fd_shifts import logger
 from fd_shifts.models.networks import get_network
 from fd_shifts.models.networks.resnet50_imagenet import ResNetEncoder
+from fd_shifts.utils import to_dict
 
 if TYPE_CHECKING:
     from fd_shifts import configs
@@ -51,7 +52,7 @@ class Module(pl.LightningModule):
     def __init__(self, cf: configs.Config):
         super().__init__()
 
-        self.save_hyperparameters()
+        self.save_hyperparameters(to_dict(cf))
         self.conf = cf
 
         self.test_mcd_samples = cf.model.test_mcd_samples

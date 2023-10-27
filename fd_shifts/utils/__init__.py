@@ -1,4 +1,19 @@
 import importlib
+import json
+
+from omegaconf import DictConfig, ListConfig, OmegaConf
+from pydantic.json import pydantic_encoder
+
+
+def __to_dict(obj):
+    if isinstance(obj, DictConfig) or isinstance(obj, ListConfig):
+        return OmegaConf.to_container(obj)
+    return pydantic_encoder(obj)
+
+
+def to_dict(obj):
+    s = json.dumps(obj, default=__to_dict)
+    return json.loads(s)
 
 
 def instantiate_from_str(name, *args, **kwargs):
