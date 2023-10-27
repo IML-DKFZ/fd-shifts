@@ -1,14 +1,14 @@
 import os
 import random
+from pathlib import Path
 from typing import cast
 
 import hydra
-import omegaconf
 import pytorch_lightning as pl
 import torch
 from omegaconf import DictConfig, OmegaConf
-from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBar
-from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger
+from pytorch_lightning.callbacks import RichProgressBar
+from pytorch_lightning.loggers import CSVLogger, MLFlowLogger, TensorBoardLogger
 from rich import get_console, reconfigure
 from torch import multiprocessing
 
@@ -16,6 +16,7 @@ from fd_shifts import analysis, configs, logger
 from fd_shifts.loaders.data_loader import FDShiftsDataLoader
 from fd_shifts.models import get_model
 from fd_shifts.models.callbacks import get_callbacks
+from fd_shifts.models.callbacks.device_stats import DeviceStatsMonitor
 from fd_shifts.utils import exp_utils
 
 configs.init()
@@ -73,6 +74,7 @@ def train(
     limit_batches: float | int = 1.0
     num_epochs = cf.trainer.num_epochs
     val_every_n_epoch = cf.trainer.val_every_n_epoch
+    log_every_n_steps = 50
 
     if isinstance(cf.trainer.fast_dev_run, bool):
         limit_batches = 1 if cf.trainer.fast_dev_run else 1.0
@@ -81,10 +83,11 @@ def train(
         val_every_n_epoch = 1 if cf.trainer.fast_dev_run else val_every_n_epoch
     elif isinstance(cf.trainer.fast_dev_run, int):
         limit_batches = cf.trainer.fast_dev_run * accumulate_grad_batches
-        max_steps = cf.trainer.fast_dev_run * 5
+        max_steps = cf.trainer.fast_dev_run * 2
         cf.trainer.dg_pretrain_epochs = None
         cf.trainer.dg_pretrain_steps = (max_steps * 2) // 3
         val_every_n_epoch = 1
+        log_every_n_steps = 1
         num_epochs = None
 
     datamodule = FDShiftsDataLoader(cf)
@@ -98,13 +101,21 @@ def train(
         save_dir=str(cf.exp.group_dir), name=cf.exp.name, version=cf.exp.version
     )
 
+    mlf_logger = MLFlowLogger(
+        experiment_name="fd_shifts",
+        run_name=cf.exp.name,
+    )
+
+    device_stats_monitor = DeviceStatsMonitor(cpu_stats=True)
+
     trainer = pl.Trainer(
         accelerator="auto",
         devices="auto",
-        logger=[tb_logger, csv_logger],
+        logger=[tb_logger, csv_logger, mlf_logger],
+        log_every_n_steps=log_every_n_steps,
         max_epochs=num_epochs,
         max_steps=max_steps,
-        callbacks=[progress] + get_callbacks(cf),
+        callbacks=[progress, device_stats_monitor] + get_callbacks(cf),
         resume_from_checkpoint=resume_ckpt_path,
         benchmark=cf.trainer.benchmark,
         check_val_every_n_epoch=val_every_n_epoch,
@@ -158,17 +169,27 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
         os.makedirs(cf.test.dir)
 
     limit_batches: float | int = 1.0
+    log_every_n_steps = 50
 
     if isinstance(cf.trainer.fast_dev_run, bool):
         limit_batches = 1 if cf.trainer.fast_dev_run else 1.0
     elif isinstance(cf.trainer.fast_dev_run, int):
         limit_batches = cf.trainer.fast_dev_run
+        log_every_n_steps = 1
+
+    mlf_logger = MLFlowLogger(
+        experiment_name="fd_shifts",
+        run_name=cf.exp.name,
+    )
+
+    device_stats_monitor = DeviceStatsMonitor(cpu_stats=True)
 
     trainer = pl.Trainer(
         accelerator="auto",
         devices="auto",
-        logger=False,
-        callbacks=[progress] + get_callbacks(cf),
+        logger=mlf_logger,
+        log_every_n_steps=log_every_n_steps,
+        callbacks=[progress, device_stats_monitor] + get_callbacks(cf),
         limit_test_batches=limit_batches,
         replace_sampler_ddp=False,
     )

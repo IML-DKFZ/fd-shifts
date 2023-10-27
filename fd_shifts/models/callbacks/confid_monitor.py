@@ -201,7 +201,6 @@ class ConfidMonitor(Callback):
             )
             tqdm.write(f"CHECK TRAIN METRICS {str(monitor_metrics)}")
             tensorboard = pl_module.loggers[0].experiment
-            pl_module.log("step", pl_module.current_epoch, sync_dist=self.sync_dist)
             for k, v in monitor_metrics.items():
                 pl_module.log("train/{}".format(k), v, sync_dist=self.sync_dist)
                 tensorboard.add_scalar(
@@ -396,7 +395,6 @@ class ConfidMonitor(Callback):
                 ext_confid_name=pl_module.ext_confid_name,
             )
             tensorboard = pl_module.loggers[0].experiment
-            pl_module.log("step", pl_module.current_epoch, sync_dist=self.sync_dist)
             for k, v in monitor_metrics.items():
                 pl_module.log("val/{}".format(k), v, sync_dist=self.sync_dist)
                 tensorboard.add_scalar(

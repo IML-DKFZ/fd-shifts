@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from typing import TYPE_CHECKING
 
@@ -16,6 +17,10 @@ from fd_shifts.models.networks import get_network
 
 if TYPE_CHECKING:
     from fd_shifts import configs
+
+
+def to_dict(obj):
+    return json.loads(json.dumps(obj, default=lambda o: getattr(o, "__dict__", str(o))))
 
 
 class net(pl.LightningModule):
@@ -44,7 +49,7 @@ class net(pl.LightningModule):
     def __init__(self, cf: configs.Config):
         super(net, self).__init__()
 
-        self.save_hyperparameters()
+        self.save_hyperparameters(to_dict(cf))
 
         self.optimizer_cfgs = cf.trainer.optimizer
         self.lr_scheduler_cfgs = cf.trainer.lr_scheduler

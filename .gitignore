@@ -1,4 +1,5 @@
 **/__pycache__
+mlruns
 .DS_Store
 *.log
 *.csv
