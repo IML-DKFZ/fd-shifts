@@ -226,6 +226,33 @@ class PlattScaling:
         return 1 / (1 + np.exp(confids * self.a + self.b))
 
 
+class TemperatureScaling:
+    def __init__(self, val_logits: npt.NDArray[Any], val_labels: npt.NDArray[Any]):
+        logger.info("Fit temperature to validation logits")
+        self.temperature = torch.ones(1).requires_grad_(True)
+
+        logits = torch.tensor(val_logits)
+        labels = torch.tensor(val_labels).long()
+
+        optimizer = torch.optim.LBFGS([self.temperature], lr=0.01, max_iter=50)
+
+        def _eval():
+            optimizer.zero_grad()
+            loss = torch.nn.functional.cross_entropy(logits / self.temperature, labels)
+            loss.backward()
+            return loss
+
+        optimizer.step(_eval)
+
+        self.temperature = self.temperature.item()
+
+    def __call__(self, logits: npt.NDArray[Any]) -> npt.NDArray[Any]:
+        return np.max(
+            torch.softmax(torch.tensor(logits) / self.temperature, dim=1).numpy(),
+            axis=1,
+        )
+
+
 @dataclass
 class QuantileScaling:
     """Quantile scaling normalization function"""
@@ -280,6 +307,8 @@ class Analysis:
                     self.method_dict["query_confids"],
                 )
             )
+
+        self.method_dict["query_confids"].append("temp_logits")
 
         self.secondary_confids = []
 
