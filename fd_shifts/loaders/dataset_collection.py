@@ -2,6 +2,7 @@ import imghdr
 import io
 import os
 import pickle
+from pathlib import Path
 from typing import Any, Callable, Optional, Tuple, TypeVar
 
 import albumentations
@@ -258,12 +259,18 @@ class Rxrx1Dataset(Dataset):
             start, end = filepath.split("XXX")
             channel_path = start + str(channel) + end
             channels.append(channel_path)
-        blue = cv2.imread(channels[0])[:, :, 0]
-        green = cv2.imread(channels[1])[:, :, 0]
-        red = cv2.imread(channels[2])[:, :, 0]
-        cyan = cv2.imread(channels[3])[:, :, 0]
-        magenta = cv2.imread(channels[4])[:, :, 0]
-        yellow = cv2.imread(channels[5])[:, :, 0]
+        try:
+            blue = cv2.imread(channels[0])[:, :, 0]
+            green = cv2.imread(channels[1])[:, :, 0]
+            red = cv2.imread(channels[2])[:, :, 0]
+            cyan = cv2.imread(channels[3])[:, :, 0]
+            magenta = cv2.imread(channels[4])[:, :, 0]
+            yellow = cv2.imread(channels[5])[:, :, 0]
+        except TypeError:
+            logger.error(f"Error loading {filepath}")
+            self.csv.drop([index], inplace=True)
+            self.csv.reset_index(drop=True, inplace=True)
+            return self.__getitem__(index)
 
         image = np.stack((red, green, blue, cyan, magenta, yellow), axis=2)
 
@@ -297,6 +304,11 @@ class XrayDataset(Dataset):
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
+        if image is None:
+            logger.error(f"Error loading {row.filepath}")
+            self.csv.drop([index], inplace=True)
+            self.csv.reset_index(drop=True, inplace=True)
+            return self.__getitem__(index)
         if self.transform is not None:
             image = Image.fromarray(image)
             image = self.transform(image)
@@ -1954,31 +1966,21 @@ def get_dataset(
             dataset_name = "all"
         dataroot = os.environ["DATASET_ROOT_DIR"]
         csv_file = f"{dataroot}/{dataset}/{dataset_name}_{binary}_{mode}.csv"
+        if "corr" in name:
+            _, cor = name.split("xray_chestallcorr")
+            cor = "_" + cor
+        else:
+            cor = ""
         df = pd.read_csv(csv_file)
-
-        for i in range(len(df)):
-            atti = df["attribution"].iloc[i]
-            dataset = atti
-            datafolder = "/" + dataset
-            data_dir = os.path.join(dataroot + datafolder)
-            img_sub_path = df["filepath"].iloc[i]
-            img_path = data_dir + "/" + img_sub_path
-            if ".png" in img_path:
-                start, _ = img_path.split(".png")
-                end = "png"
-            if ".jpg" in img_path:
-                start, _ = img_path.split(".jpg")
-                end = "jpg"
-
-            # create new path for corrupted images
-            if "corr" in name:
-                _, cor = name.split("xray_chestallcorr")
-                cor = "_" + cor
-            else:
-                cor = ""
-            df.iloc[i, df.columns.get_loc("filepath")] = (
-                start + "_256" + cor + "." + end
-            )
+        df["filepath"] = (
+            str(Path(dataroot))
+            + "/"
+            + df.attribution.str.strip("/")
+            + "/"
+            + df.filepath.str.strip("/")
+        )
+        split = df.filepath.str.rsplit(".", expand=True, n=1)
+        df["filepath"] = split[0] + "_256" + cor + "." + split[1]
 
         pass_kwargs = {"csv": df, "train": train, "transform": transform}
         return _dataset_factory[name](**pass_kwargs)
