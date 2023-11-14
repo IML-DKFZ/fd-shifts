@@ -3,7 +3,7 @@ import io
 import os
 import pickle
 from pathlib import Path
-from typing import Any, Callable, Optional, Tuple, TypeVar
+from typing import Any, Callable, Literal, Optional, Tuple, TypeVar
 
 import albumentations
 import cv2
@@ -29,6 +29,7 @@ from wilds.datasets.wilds_dataset import WILDSSubset
 
 from fd_shifts import logger
 from fd_shifts.analysis import eval_utils
+from fd_shifts.data import SVHN
 from fd_shifts.loaders import breeds_hierarchies
 
 
@@ -346,48 +347,6 @@ class Lidc_idriDataset(Dataset):
         else:
             image = image.astype(np.float32)
         data = image
-
-        return data, torch.tensor(self.csv.iloc[index].target).long()
-
-
-class BasicDataset(Dataset):
-    def __init__(
-        self,
-        csv: pd.DataFrame,
-        train: bool,
-        transform: Optional[Callable] = None,
-    ):
-        self.csv = csv.reset_index(drop=True)
-        self.train = train
-        self.transform = transform
-        self.train_df = self.csv.sample(frac=0.8, random_state=200)
-        self.test_df = self.csv.drop(self.train_df.index)
-        if self.train:
-            self.csv = self.train_df
-        elif not self.train:
-            self.csv = self.test_df
-        self.targets = self.csv.target
-        self.imgs = self.csv["filepath"]
-        self.samples = self.imgs
-
-    def __len__(self):
-        return self.csv.shape[0]
-
-    def __getitem__(self, index):
-        row = self.csv.iloc[index]
-
-        image = cv2.imread(row.filepath)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        if self.transform is not None:
-            res = self.transform(image=image)
-            image = res["image"].astype(np.float32)
-        else:
-            image = image.astype(np.float32)
-
-        image = image.transpose(2, 0, 1)
-
-        data = torch.tensor(image).float()
 
         return data, torch.tensor(self.csv.iloc[index].target).long()
 
@@ -1482,37 +1441,11 @@ class WILDSAnimalsOpenSet(IWildCamDataset):
         return subset
 
 
-class SVHNOpenSet(datasets.SVHN):
-    def __init__(
-        self,
-        root: str,
-        split: str = "train",
-        transform: Optional[Callable] = None,
-        target_transform: Optional[Callable] = None,
-        download: bool = False,
-        out_classes: list[int] = [0, 1, 2, 3],
-    ) -> None:
-        super().__init__(
-            root,
-            split=split,
-            transform=transform,
-            target_transform=target_transform,
-            download=download,
-        )
-
-        self.out_classes = out_classes
-        logger.info("SVHN holdout classes {}", self.out_classes)
-
-        if split == "train":
-            self.data = self.data[~np.isin(self.labels, self.out_classes)]
-            self.labels = self.labels[~np.isin(self.labels, self.out_classes)]
-
-
 _dataset_factory: dict[str, type] = {
-    "svhn": datasets.SVHN,
-    "svhn_384": datasets.SVHN,
-    "svhn_openset": SVHNOpenSet,
-    "svhn_openset_384": SVHNOpenSet,
+    "svhn": SVHN,
+    "svhn_384": SVHN,
+    "svhn_openset": SVHN,
+    "svhn_openset_384": SVHN,
     "tinyimagenet_384": datasets.ImageFolder,
     "tinyimagenet_resize": datasets.ImageFolder,
     "emnist_byclass": datasets.EMNIST,
@@ -1713,7 +1646,8 @@ def get_dataset(
     if name.startswith("svhn"):
         pass_kwargs = {
             "root": root,
-            "split": "train" if train else "test",
+            "split": "openset" if "openset" in name else "all",
+            "train": train,
             "download": download,
             "transform": transform,
         }
