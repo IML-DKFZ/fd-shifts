@@ -147,18 +147,24 @@ class ExperimentData:
 
         if (test_dir / "raw_logits.npz").is_file():
             with np.load(test_dir / "raw_logits.npz") as npz:
-                raw_output = npz.f.arr_0
+                raw_output = npz.f.arr_0.astype(np.float64)
 
             logits = raw_output[:, :-2]
             softmax = scpspecial.softmax(logits, axis=1)
 
-            if (
-                mcd_logits_dist := ExperimentData.__load_npz_if_exists(
-                    test_dir / "raw_logits_dist.npz"
+            if any(
+                "mcd" in confid for confid in config.eval.confidence_measures.test
+            ) and (
+                (
+                    mcd_logits_dist := ExperimentData.__load_npz_if_exists(
+                        test_dir / "raw_logits_dist.npz"
+                    )
                 )
-            ) is not None:
+                is not None
+            ):
                 mcd_softmax_dist = scpspecial.softmax(mcd_logits_dist, axis=1)
             else:
+                mcd_logits_dist = None
                 mcd_softmax_dist = None
 
         elif (test_dir / "raw_output.npz").is_file():
@@ -191,9 +197,12 @@ class ExperimentData:
         external_confids = ExperimentData.__load_npz_if_exists(
             test_dir / "external_confids.npz"
         )
-        mcd_external_confids_dist = ExperimentData.__load_npz_if_exists(
-            test_dir / "external_confids_dist.npz"
-        )
+        if any("mcd" in confid for confid in config.eval.confidence_measures.test):
+            mcd_external_confids_dist = ExperimentData.__load_npz_if_exists(
+                test_dir / "external_confids_dist.npz"
+            )
+        else:
+            mcd_external_confids_dist = None
 
         return ExperimentData(
             softmax_output=softmax,
