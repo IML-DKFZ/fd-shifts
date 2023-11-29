@@ -311,10 +311,22 @@ class Module(pl.LightningModule):
 
         # For backwards-compatibility with before commit 1bdc717
         for param in list(ckpt["state_dict"].keys()):
+            if param.startswith(
+                "backbone.classifier.module.model.features"
+            ) or param.startswith("network.classifier.module.model.features"):
+                del ckpt["state_dict"][param]
+                continue
+            if param.startswith(
+                "backbone.classifier.module.model.classifier"
+            ) or param.startswith("network.classifier.module.model.classifier"):
+                correct_param = param.replace(".model.classifier", "")
+                ckpt["state_dict"][correct_param] = ckpt["state_dict"][param]
+                del ckpt["state_dict"][param]
+                param = correct_param
             if pattern.match(param):
                 correct_param = re.sub(pattern, r"\1_\2\3", param)
                 ckpt["state_dict"][correct_param] = ckpt["state_dict"][param]
                 del ckpt["state_dict"][param]
 
         logger.info("loading checkpoint from epoch {}".format(ckpt["epoch"]))
-        self.load_state_dict(ckpt["state_dict"], strict=True)
+        self.load_state_dict(ckpt["state_dict"], strict=False)

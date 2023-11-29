@@ -12,8 +12,8 @@ from fd_shifts.analysis import eval_utils
 
 DTYPES = {
     16: torch.float16,
-    32: torch.float32,
-    64: torch.float64,
+    32: torch.float16,
+    64: torch.float16,
 }
 
 

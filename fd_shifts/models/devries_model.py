@@ -110,8 +110,8 @@ class net(pl.LightningModule):
                 soutputs = F.softmax(outputs, dim=1)
                 softmax, reservation = soutputs[:, :-1], soutputs[:, -1]
                 confidence = 1 - reservation
-                softmax_list.append(outputs[:, :-1].unsqueeze(2))
-                conf_list.append(confidence.unsqueeze(1))
+                softmax_list.append(outputs[:, :-1].unsqueeze(2).detach())
+                conf_list.append(confidence.unsqueeze(1).detach())
 
         self.model.encoder.disable_dropout()
 
@@ -127,7 +127,7 @@ class net(pl.LightningModule):
                 )
                 or (
                     self.pretrain_steps is not None
-                    and self.global_step >= self.pretrain_steps - 1
+                    and self.global_step == self.pretrain_steps - 1
                 )
             )
             and self.save_dg_backbone_path is not None
@@ -288,9 +288,9 @@ class net(pl.LightningModule):
             confidence = torch.sigmoid(confidence).squeeze(1)
         elif self.ext_confid_name == "dg":
             outputs = self.model.head(z)
-            outputs = F.softmax(outputs, dim=1)
-            softmax, reservation = outputs[:, :-1], outputs[:, -1]
             logits = outputs[:, :-1]
+            soutputs = F.softmax(outputs, dim=1)
+            softmax, reservation = soutputs[:, :-1], soutputs[:, -1]
             confidence = 1 - reservation
         else:
             raise NotImplementedError
@@ -340,6 +340,14 @@ class net(pl.LightningModule):
 
         # For backwards-compatibility with before commit 1bdc717
         for param in list(ckpt["state_dict"].keys()):
+            if param.startswith("model.classifier.module.model.features"):
+                del ckpt["state_dict"][param]
+                continue
+            if param.startswith("model.classifier.module.model.classifier"):
+                correct_param = param.replace(".model.classifier", "")
+                ckpt["state_dict"][correct_param] = ckpt["state_dict"][param]
+                del ckpt["state_dict"][param]
+                param = correct_param
             if pattern.match(param):
                 correct_param = re.sub(pattern, r"\1_\2\3", param)
                 ckpt["state_dict"][correct_param] = ckpt["state_dict"][param]
