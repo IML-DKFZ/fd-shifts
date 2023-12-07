@@ -12,7 +12,7 @@ from torch.utils.data import WeightedRandomSampler
 from torch.utils.data.sampler import SubsetRandomSampler
 
 import fd_shifts.configs.data as data_configs
-from fd_shifts import configs
+from fd_shifts import configs, logger
 from fd_shifts.loaders.dataset_collection import get_dataset
 from fd_shifts.utils.aug_utils import get_transform, target_transforms_collection
 
@@ -34,7 +34,11 @@ class FDShiftsDataLoader(pl.LightningDataModule):
         self.reproduce_confidnet_splits = cf.data.reproduce_confidnet_splits
         self.dataset_kwargs = cf.data.kwargs
         self.devries_repro_ood_split = cf.test.devries_repro_ood_split
-        self.val_split = cf.trainer.val_split.name
+        self.val_split = (
+            cf.trainer.val_split
+            if isinstance(cf.trainer.val_split, str)
+            else cf.trainer.val_split.name
+        )
         self.test_iid_split = cf.test.iid_set_split
         self.assim_ood_norm_flag = cf.test.assim_ood_norm_flag
         self.balanced_sampeling = cf.model.balanced_sampeling
@@ -100,7 +104,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                         target_transforms_collection[tt_key](tt_param)
                     )
             self.target_transforms[datasplit_k] = target_transforms[0]
-        print(
+        logging.debug(
             "CHECK TARGET TRANSFORMS", self.assim_ood_norm_flag, self.target_transforms
         )
 
@@ -355,6 +359,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
         logging.debug("len val sampler %s", len(val_idx))
 
     def train_dataloader(self):
+        logger.info(f"Loading train data with {self.batch_size=}")
         return torch.utils.data.DataLoader(
             dataset=self.train_dataset,
             batch_size=self.batch_size,
@@ -392,6 +397,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
     def test_dataloader(
         self,
     ):
+        logger.info(f"Loading test data with {self.batch_size=}")
         test_loaders = []
         for ix, test_dataset in enumerate(self.test_datasets):
             test_loaders.append(
