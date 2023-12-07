@@ -231,10 +231,7 @@ class Experiment:
 
         if "medshifts" in str(self.group_dir.stem):
             return self.group_dir / (
-                f"ms_{self.dataset}/"
-                f"{self.model}_"
-                f"bb{self.backbone}_"
-                f"run{self.run + 1}"
+                f"ms_{self.dataset}_run_{self.run + 1}/{self.model}_mcd"
             )
 
         return self.group_dir / (
@@ -1245,7 +1242,3 @@ def get_all_experiments(
         _experiments = chain(_experiments, get_ms_experiments())
 
     return _experiments
-
-
-if __name__ == "__main__":
-    pprint(get_all_experiments())
