@@ -401,6 +401,7 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
 def _confid_string_to_name(confid: pd.Series) -> pd.Series:
     confid = (
         confid.str.replace("vit_model", "vit")
+        .str.replace("medshifts/", "")
         .str.replace("confidnet_", "")
         .str.replace("_dg", "_res")
         .str.replace("_det", "")

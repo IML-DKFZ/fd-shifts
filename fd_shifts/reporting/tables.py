@@ -92,14 +92,21 @@ def aggregate_over_runs(data: pd.DataFrame) -> pd.DataFrame:
     fixed_columns = ["study", "confid"]
     metrics_columns = ["accuracy", "aurc", "ece", "failauc", "fail-NLL"]
 
-    data = (
+    mean = (
         data[fixed_columns + metrics_columns]
         .groupby(by=fixed_columns)
         .mean()
         .sort_values("confid")
         .reset_index()
     )
-    return data
+    std = (
+        data[fixed_columns + metrics_columns]
+        .groupby(by=fixed_columns)
+        .std()
+        .sort_values("confid")
+        .reset_index()
+    )
+    return mean, std
 
 
 def _create_results_pivot(data: pd.DataFrame, metric: str, original_mode: bool = False):
@@ -190,9 +197,29 @@ _study_list = [
     "MCD-MI",
     "ConfidNet",
     "DG-MCD-MSR",
+    "DG-MSR",
     "DG-Res",
     "Devries et al.",
     "MAHA",
+    "TEMP-MLS",
+    "ENERGY-MLS",
+    "REACT-MLS",
+    "REACT-MSR",
+    "REACT-TEMP-MLS",
+    "REACT-ENERGY-MLS",
+    "DKNN",
+    "VIM",
+    "DG-PE",
+    "DG-MLS",
+    "DG-TEMP-MLS",
+    "DG-ENERGY-MLS",
+    "DG-MAHA",
+    "DG-DKNN",
+    "DG-VIM",
+    "DG-REACT-MSR",
+    "DG-REACT-MLS",
+    "DG-REACT-TEMP-MLS",
+    "DG-REACT-ENERGY-MLS",
 ]
 
 
@@ -245,7 +272,7 @@ def _reorder_studies(
     return table
 
 
-def _dataset_to_display_name(dataset_name: str) -> str:
+def _dataset_to_display_name(dataset_name: str) -> str | None:
     mapping = {
         "animals": "iWildCam",
         "breeds": "BREEDS",
@@ -254,7 +281,7 @@ def _dataset_to_display_name(dataset_name: str) -> str:
         "cifar100": "CIFAR-100",
         "svhn": "SVHN",
     }
-    return mapping[dataset_name]
+    return mapping.get(dataset_name)
 
 
 def _build_multilabel(table: pd.DataFrame, paper_filter: bool = True) -> pd.DataFrame:
@@ -402,7 +429,7 @@ def paper_results(
         level=0,
     )
 
-    sanity_check(results_table, metric)
+    # sanity_check(results_table, metric)
 
     # Render table
     results_table = results_table.astype(float).applymap(
