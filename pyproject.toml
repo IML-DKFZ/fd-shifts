@@ -43,6 +43,7 @@ dependencies = [
   "typing_extensions>=4.1.1",
   "warmup_scheduler",
   "wilds>=1.1.0",
+  "wandb",
 ]
 
 [project.optional-dependencies]
@@ -95,14 +96,20 @@ exclude = '''
 '''
 
 [tool.pyright]
+exclude = [
+    "experiments*",
+    "analysis_outputs",
+]
 reportOptionalSubscript = "warning"
 reportOptionalMemberAccess = "warning"
 reportOptionalCall = "warning"
 reportOptionalIterable = "warning"
 reportOptionalContextManager = "warning"
 reportOptionalOperand = "warning"
+# useLibraryCodeForTypes = false
 
 [tool.pytest.ini_options]
+testpaths = [ "fd_shifts" ]
 addopts = [
   "--import-mode=importlib",
 ]

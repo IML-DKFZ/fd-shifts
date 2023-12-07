@@ -8,15 +8,13 @@ import pytorch_lightning as pl
 import torch
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import RichProgressBar
-from pytorch_lightning.loggers import CSVLogger, MLFlowLogger, TensorBoardLogger
+from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger, WandbLogger
 from rich import get_console, reconfigure
-from torch import multiprocessing
 
 from fd_shifts import analysis, configs, logger
 from fd_shifts.loaders.data_loader import FDShiftsDataLoader
 from fd_shifts.models import get_model
 from fd_shifts.models.callbacks import get_callbacks
-from fd_shifts.models.callbacks.device_stats import DeviceStatsMonitor
 from fd_shifts.utils import exp_utils
 
 configs.init()
@@ -32,7 +30,7 @@ def train(
     specified in the configs.
     """
 
-    logger.info("CHECK CUDNN VERSION", torch.backends.cudnn.version())
+    logger.info("CHECK CUDNN VERSION", torch.backends.cudnn.version())  # type: ignore
     train_deterministic_flag = False
     if cf.exp.global_seed is not None:
         exp_utils.set_seed(cf.exp.global_seed)
@@ -53,12 +51,14 @@ def train(
 
     if cf.trainer.resume_from_ckpt_confidnet:
         cf.exp.version -= 1
-        cf.trainer.callbacks.training_stages.pretrained_confidnet_path = (
+        cf.trainer.callbacks.training_stages.pretrained_confidnet_path = (  # type: ignore
             exp_utils._get_resume_ckpt_path(cf)
         )
         logger.info("resuming previous training:", resume_ckpt_path)
 
     if "openset" in cf.data.dataset:
+        if cf.data.kwargs is None:
+            cf.data.kwargs = {}
         cf.data.kwargs["out_classes"] = cf.data.kwargs.get(
             "out_classes",
             random.sample(range(cf.data.num_classes), int(0.4 * cf.data.num_classes)),
@@ -101,23 +101,22 @@ def train(
         save_dir=str(cf.exp.group_dir), name=cf.exp.name, version=cf.exp.version
     )
 
-    mlf_logger = MLFlowLogger(
-        experiment_name="fd_shifts",
-        run_name=cf.exp.name,
+    wandb_logger = WandbLogger(
+        project="fd_shifts_proto",
+        name=cf.exp.name,
     )
-
-    device_stats_monitor = DeviceStatsMonitor(cpu_stats=True)
 
     trainer = pl.Trainer(
         accelerator="auto",
         devices="auto",
-        logger=[tb_logger, csv_logger, mlf_logger],
+        logger=[tb_logger, csv_logger, wandb_logger],
         log_every_n_steps=log_every_n_steps,
         max_epochs=num_epochs,
-        max_steps=max_steps,
-        callbacks=[progress, device_stats_monitor] + get_callbacks(cf),
+        max_steps=max_steps,  # type: ignore
+        callbacks=[progress] + get_callbacks(cf),
         resume_from_checkpoint=resume_ckpt_path,
         benchmark=cf.trainer.benchmark,
+        precision=16,
         check_val_every_n_epoch=val_every_n_epoch,
         num_sanity_val_steps=5,
         deterministic=train_deterministic_flag,
@@ -162,7 +161,10 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
     logger.info("logging testing to: {}".format(cf.test.dir))
 
     module = get_model(cf.model.name)(cf)
-    module.load_only_state_dict(ckpt_path)
+
+    # TODO: make common module class with this method
+    module.load_only_state_dict(ckpt_path)  # type: ignore
+
     datamodule = FDShiftsDataLoader(cf)
 
     if not os.path.exists(cf.test.dir):
@@ -177,21 +179,19 @@ def test(cf: configs.Config, progress: RichProgressBar = RichProgressBar()) -> N
         limit_batches = cf.trainer.fast_dev_run
         log_every_n_steps = 1
 
-    mlf_logger = MLFlowLogger(
-        experiment_name="fd_shifts",
-        run_name=cf.exp.name,
+    wandb_logger = WandbLogger(
+        project="fd_shifts_proto",
+        name=cf.exp.name,
     )
-
-    device_stats_monitor = DeviceStatsMonitor(cpu_stats=True)
 
     trainer = pl.Trainer(
         accelerator="auto",
         devices="auto",
-        logger=mlf_logger,
+        logger=wandb_logger,
         log_every_n_steps=log_every_n_steps,
-        callbacks=[progress, device_stats_monitor] + get_callbacks(cf),
+        callbacks=[progress] + get_callbacks(cf),
         limit_test_batches=limit_batches,
-        replace_sampler_ddp=False,
+        precision=16,
     )
     trainer.test(model=module, datamodule=datamodule)
     analysis.main(
@@ -247,7 +247,7 @@ def main(dconf: DictConfig) -> None:
         _fix_metadata(dconf)
         conf: configs.Config = cast(configs.Config, OmegaConf.to_object(dconf))
 
-        conf.__pydantic_validate_values__()
+        conf.__pydantic_validate_values__()  # type: ignore
 
         if conf.exp.mode == configs.Mode.train:
             conf.exp.version = exp_utils.get_next_version(conf.exp.dir)
@@ -260,7 +260,7 @@ def main(dconf: DictConfig) -> None:
                 conf.data.num_workers
             )
 
-            conf.__pydantic_validate_values__()
+            conf.__pydantic_validate_values__()  # type: ignore
             logger.info(OmegaConf.to_yaml(conf))
 
             train(conf, progress)
@@ -276,7 +276,7 @@ def main(dconf: DictConfig) -> None:
                 conf.data.num_workers
             )
 
-            conf.__pydantic_validate_values__()
+            conf.__pydantic_validate_values__()  # type: ignore
             logger.info(OmegaConf.to_yaml(conf))
             train(conf, progress, subsequent_testing=True)
 
@@ -294,12 +294,12 @@ def main(dconf: DictConfig) -> None:
                 logger.info("CHECK conf.exp.dir", conf.exp.dir)
                 conf.exp.version = exp_utils.get_most_recent_version(conf.exp.dir)
                 ckpt_path = exp_utils._get_resume_ckpt_path(conf)
-            conf.__pydantic_validate_values__()
+            conf.__pydantic_validate_values__()  # type: ignore
             logger.info(OmegaConf.to_yaml(conf))
             test(conf, progress)
 
         elif conf.exp.mode == configs.Mode.analysis:
-            conf.__pydantic_validate_values__()
+            conf.__pydantic_validate_values__()  # type: ignore
             logger.info(OmegaConf.to_yaml(conf))
             analysis.main(
                 in_path=conf.test.dir,
@@ -310,7 +310,7 @@ def main(dconf: DictConfig) -> None:
                 cf=conf,
             )
         else:
-            conf.__pydantic_validate_values__()
+            conf.__pydantic_validate_values__()  # type: ignore
             logger.info("BEGIN CONFIG\n{}\nEND CONFIG", OmegaConf.to_yaml(conf))
     except Exception as e:
         logger.exception(e)

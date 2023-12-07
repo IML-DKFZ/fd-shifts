@@ -28,7 +28,7 @@ def set_seed(seed: int) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
 
 
-def get_next_version(exp_dir: str) -> int:
+def get_next_version(exp_dir: str | Path) -> int:
     """get best.ckpt of experiment. if split over multiple runs (e.g. due to resuming), still find the best.ckpt.
     if there are multiple overall runs in the folder select the latest.
 
@@ -45,7 +45,7 @@ def get_next_version(exp_dir: str) -> int:
     return max_ver + 1
 
 
-def get_most_recent_version(exp_dir: str) -> int:
+def get_most_recent_version(exp_dir: str | Path) -> int:
     """get best.ckpt of experiment. if split over multiple runs (e.g. due to resuming), still find the best.ckpt.
     if there are multiple overall runs in the folder select the latest.
 
@@ -148,9 +148,9 @@ class Logger:
 
 
 # Fix Warmup Bug
-from warmup_scheduler import (
+from warmup_scheduler import (  # https://github.com/ildoonet/pytorch-gradual-warmup-lr
     GradualWarmupScheduler,
-)  # https://github.com/ildoonet/pytorch-gradual-warmup-lr
+)
 
 
 class GradualWarmupSchedulerV2(GradualWarmupScheduler):
