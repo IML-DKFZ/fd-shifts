@@ -218,6 +218,11 @@ def filter_new_class_study_data(
         _correct=__filter_if_exists(correct, select_ix_all),
         _mcd_correct=__filter_if_exists(mcd_correct, select_ix_all_mcd),
         _mcd_labels=__filter_if_exists(labels, select_ix_all_mcd),
+        _react_logits=__filter_if_exists(data.react_logits, select_ix_all),
+        _maha_dist=__filter_if_exists(data.maha_dist, select_ix_all),
+        _vim_score=__filter_if_exists(data.vim_score, select_ix_all),
+        _dknn_dist=__filter_if_exists(data.dknn_dist, select_ix_all),
+        _train_features=data._train_features,
     )
 
 
@@ -443,8 +448,8 @@ def iterate_noise_study_data(
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     for noise_set in getattr(analysis.query_studies, study_name):
         for intensity_level in range(5):
-            logger.debug(
-                "starting noise study with intensitiy level %s",
+            logger.info(
+                "Starting noise study with intensitiy level %s",
                 intensity_level + 1,
             )
 

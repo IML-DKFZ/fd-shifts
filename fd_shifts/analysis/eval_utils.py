@@ -201,9 +201,6 @@ class ConfidEvaluator:
 
         if "fail-NLL" in self.query_metrics:
             out_metrics["fail-NLL"] = get_metric_function("fail-NLL")(self.stats_cache)
-            logger.debug(
-                "CHECK FAIL NLL: \n{}\n{}", self.confids.max(), self.confids.min()
-            )
 
         return out_metrics
 
@@ -240,14 +237,8 @@ class ConfidEvaluator:
         try:
             self.fpr_list, self.tpr_list, _ = skm.roc_curve(self.correct, self.confids)
         except:
-            logger.debug(
-                "FAIL CHECK\n{}\n{}\n{}\n{}\n{}\n{}",
-                self.correct.shape,
-                self.confids.shape,
-                np.min(self.correct),
-                np.max(self.correct),
-                np.min(self.confids),
-                np.max(self.confids),
+            logger.error(
+                f"ROC Curve Failed: {self.correct.shape=}, {self.confids.shape=}, {np.min(self.correct)=}, {np.max(self.correct)=}, {np.min(self.confids)=}, {np.max(self.confids)=}"
             )
 
     def get_rc_curve_stats(self):
@@ -333,15 +324,6 @@ class ConfidEvaluator:
         val_risk_scores["val_risk"] = risk
         val_risk_scores["val_cov"] = coverage
         val_risk_scores["theta"] = theta
-        logger.debug(
-            "STRAIGHT FROM THRESH CALCULATION\n{}\n{}\n{}\n{}\n{}\n{}",
-            risk,
-            coverage,
-            theta,
-            rstar,
-            delta,
-            bound,
-        )
         return val_risk_scores
 
 
@@ -666,7 +648,7 @@ def RC_curve(residuals, confidence):
     idx_sorted = np.argsort(confidence)
     cov = n
     error_sum = sum(residuals[idx_sorted])
-    coverages.append(cov / n),
+    (coverages.append(cov / n),)
     risks.append(error_sum / n)
     weights = []
     tmp_weight = 0
@@ -730,17 +712,10 @@ def clean_logging(log_dir):
         df = df.groupby("step").max().round(3)
         df.to_csv(log_dir / "metrics.csv")
     except:
-        logger.warning("no metrics.csv found in clean logging!")
+        logger.warning("No metrics.csv found in clean logging!")
 
 
 def plot_input_imgs(x, y, out_path):
-    logger.debug(
-        "{}\n{}\n{}\n{}",
-        x.mean().item(),
-        x.std().item(),
-        x.min().item(),
-        x.max().item(),
-    )
     f, axs = plt.subplots(nrows=4, ncols=4, figsize=(10, 10))
     for ix in range(len(f.axes)):
         ax = f.axes[ix]
@@ -782,7 +757,7 @@ def qual_plot(fp_dict, fn_dict, out_path):
     plt.subplots_adjust(wspace=0.23, hspace=0.4)
     f.savefig(out_path)
     plt.close()
-    logger.debug("saved qual_plot to {}", out_path)
+    logger.debug("Saved qual_plot to {}", out_path)
 
 
 def ThresholdPlot(plot_dict):
@@ -794,9 +769,8 @@ def ThresholdPlot(plot_dict):
         nrows=n_rows, ncols=n_cols, figsize=(n_cols * scale * 0.6, n_rows * scale * 0.4)
     )
 
-    logger.debug("plot in {}", len(plot_dict))
     for ix, (study, study_dict) in enumerate(plot_dict.items()):
-        logger.debug("threshold plot {} {}", study, len(study_dict["confids"]))
+        logger.debug("Threshold plot {} {}", study, len(study_dict["confids"]))
         confids = study_dict["confids"]
         correct = study_dict["correct"]
         delta_threshs = study_dict["delta_threshs"]
@@ -824,7 +798,6 @@ def ThresholdPlot(plot_dict):
         )
 
         for idx, dt in enumerate(delta_threshs):
-            logger.debug("drawing line", idx, dt, delta_threshs, deltas)
             axs[ix].vlines(
                 dt,
                 ymin=0,
