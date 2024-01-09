@@ -476,10 +476,13 @@ class ConfidMonitor(Callback):
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
+        if not hasattr(pl_module, "test_results"):
+            return
         outputs = pl_module.test_results
-        self.running_test_encoded.extend(
-            outputs["encoded"].to(dtype=torch.float16).cpu()
-        )
+        if outputs["encoded"] is not None:
+            self.running_test_encoded.extend(
+                outputs["encoded"].to(dtype=torch.float16).cpu()
+            )
         self.running_test_softmax.extend(
             outputs["logits"].to(dtype=self.output_dtype).cpu()
         )
@@ -498,7 +501,9 @@ class ConfidMonitor(Callback):
         )
 
     def on_test_end(self, trainer, pl_module):
-        stacked_encoded = torch.stack(self.running_test_encoded, dim=0)
+        if not hasattr(pl_module, "test_results"):
+            return
+
         stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
         stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
         stacked_dataset_idx = torch.stack(
@@ -512,13 +517,18 @@ class ConfidMonitor(Callback):
             ],
             dim=1,
         )
-        encoded_output = torch.cat(
-            [
-                stacked_encoded,
-                stacked_dataset_idx,
-            ],
-            dim=1,
-        )
+        if len(self.running_test_encoded) > 0:
+            stacked_encoded = torch.stack(self.running_test_encoded, dim=0)
+            encoded_output = torch.cat(
+                [
+                    stacked_encoded,
+                    stacked_dataset_idx,
+                ],
+                dim=1,
+            )
+            np.savez_compressed(
+                self.output_paths.test.encoded_output, encoded_output.cpu().data.numpy()
+            )
         # try:
         #    trainer.datamodule.test_datasets[0].csv.to_csv(
         #        self.output_paths.test.attributions_output
@@ -531,9 +541,6 @@ class ConfidMonitor(Callback):
 
         except:
             pass
-        np.savez_compressed(
-            self.output_paths.test.encoded_output, encoded_output.cpu().data.numpy()
-        )
         np.savez_compressed(
             self.output_paths.test.raw_output, raw_output.cpu().data.numpy()
         )
