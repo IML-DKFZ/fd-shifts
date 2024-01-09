@@ -1,11 +1,12 @@
 import pytorch_lightning as pl
 
-from fd_shifts.models import confidnet_model, devries_model, vit_model
+from fd_shifts.models import clip_model, confidnet_model, devries_model, vit_model
 
 _model_factory: dict[str, type[pl.LightningModule]] = {
     "confidnet_model": confidnet_model.Module,
     "devries_model": devries_model.net,
     "vit_model": vit_model.net,
+    "clip_model": clip_model.ClipOodModel,
 }
 
 
