@@ -292,7 +292,9 @@ def main(dconf: DictConfig) -> None:
                 )
             else:
                 logger.info("CHECK conf.exp.dir", conf.exp.dir)
-                conf.exp.version = exp_utils.get_most_recent_version(conf.exp.dir)
+                version = exp_utils.get_most_recent_version(conf.exp.dir)
+                if version is not None:
+                    conf.exp.version = version
                 ckpt_path = exp_utils._get_resume_ckpt_path(conf)
             conf.__pydantic_validate_values__()  # type: ignore
             logger.info(OmegaConf.to_yaml(conf))

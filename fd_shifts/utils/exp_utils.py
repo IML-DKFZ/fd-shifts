@@ -45,7 +45,7 @@ def get_next_version(exp_dir: str | Path) -> int:
     return max_ver + 1
 
 
-def get_most_recent_version(exp_dir: str | Path) -> int:
+def get_most_recent_version(exp_dir: str | Path) -> int | None:
     """get best.ckpt of experiment. if split over multiple runs (e.g. due to resuming), still find the best.ckpt.
     if there are multiple overall runs in the folder select the latest.
 
@@ -58,7 +58,8 @@ def get_most_recent_version(exp_dir: str | Path) -> int:
     ver_list = [int(x.split("_")[1]) for x in os.listdir(exp_dir) if "version_" in x]
     logger.debug(ver_list)
     if len(ver_list) == 0:
-        RuntimeError("No checkpoints exist in this experiment dir!")
+        logger.warning("No checkpoints exist in this experiment dir!")
+        return None
     max_ver = max(ver_list)
     return max_ver
 
