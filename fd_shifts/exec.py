@@ -211,7 +211,7 @@ def main(dconf: DictConfig) -> None:
     Args:
         dconf (DictConfig): config passed in by hydra
     """
-    multiprocessing.set_start_method("spawn")
+    # multiprocessing.set_start_method("spawn")
 
     reconfigure(stderr=True, force_terminal=True)
     progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
