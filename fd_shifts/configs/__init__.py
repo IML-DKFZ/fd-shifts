@@ -6,24 +6,27 @@ from copy import deepcopy
 from dataclasses import field
 from enum import Enum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterator, Optional, TypeVar
+from random import randint
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Optional, TypeVar
 
 import pl_bolts
 import torch
 from hydra.core.config_store import ConfigStore
 from hydra_zen import builds  # type: ignore
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import SI, DictConfig, OmegaConf
 from omegaconf.omegaconf import MISSING
 from pydantic import ConfigDict, validator
 from pydantic.dataclasses import dataclass
 from typing_extensions import dataclass_transform
 
+import fd_shifts
 from fd_shifts import models
 from fd_shifts.analysis import confid_scores, metrics
 from fd_shifts.loaders import dataset_collection
 from fd_shifts.utils import exp_utils
 
 from ..models import networks
+from .iterable_mixin import _IterableMixin
 
 if TYPE_CHECKING:
     from pydantic.dataclasses import Dataclass
@@ -58,13 +61,6 @@ class ValSplit(StrEnum):
     zhang = auto()
 
 
-class _IterableMixin:  # pylint: disable=too-few-public-methods
-    def __iter__(self) -> Iterator[tuple[str, Any]]:
-        return filter(
-            lambda item: not item[0].startswith("__"), self.__dict__.items()
-        ).__iter__()
-
-
 @dataclass_transform()
 def defer_validation(original_class: type[ConfigT]) -> type[ConfigT]:
     """Disable validation for a pydantic dataclass
@@ -83,13 +79,13 @@ def defer_validation(original_class: type[ConfigT]) -> type[ConfigT]:
 class OutputPathsConfig(_IterableMixin):
     """Where outputs are stored"""
 
+    raw_output: Path | None = None
+    raw_output_dist: Path | None = None
+    external_confids: Path | None = None
+    external_confids_dist: Path | None = None
     input_imgs_plot: Optional[Path] = None
-    raw_output: Path = MISSING
     encoded_output: Optional[Path] = None
     attributions_output: Optional[Path] = None
-    raw_output_dist: Path = MISSING
-    external_confids: Path = MISSING
-    external_confids_dist: Path = MISSING
 
 
 @defer_validation
@@ -106,23 +102,25 @@ class OutputPathsPerMode(_IterableMixin):
 class ExperimentConfig(_IterableMixin):
     """Main experiment config"""
 
-    group_name: str = MISSING
-    name: str = MISSING
+    group_name: str | None = None
+    name: str | None = None
+    mode: Mode = Mode.train_test
+    work_dir: Path | None = Path.cwd()
+    fold_dir: Path | None = None
+    root_dir: Path | None = Path(p) if (p := os.getenv("EXPERIMENT_ROOT_DIR")) else None
+    data_root_dir: Path | None = (
+        Path(p) if (p := os.getenv("DATASET_ROOT_DIR")) else None
+    )
+    group_dir: Path | None = SI("${exp.root_dir}/${exp.group_name}")
+    dir: Path | None = group_dir / name if group_dir and name else None
     version: Optional[int] = None
-    mode: Mode = MISSING
-    work_dir: Path = MISSING
-    fold_dir: Path = MISSING
-    root_dir: Path = MISSING
-    data_root_dir: Path = MISSING
-    group_dir: Path = MISSING
-    dir: Path = MISSING
-    version_dir: Path = MISSING
-    fold: int = MISSING
-    crossval_n_folds: int = MISSING
-    crossval_ids_path: Path = MISSING
+    version_dir: Path | None = dir / f"version_{version}" if dir and version else None
+    fold: int = 0
+    crossval_n_folds: int = 10
+    crossval_ids_path: Path | None = dir / "crossval_ids.pickle" if dir else None
+    log_path: Path | None = None
+    global_seed: int = randint(0, 1_000_000)
     output_paths: OutputPathsPerMode = OutputPathsPerMode()
-    log_path: Path = MISSING
-    global_seed: int = MISSING
 
 
 @defer_validation
@@ -189,27 +187,33 @@ class Adam(OptimizerConfig):
 
 
 @defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass(config=ConfigDict(validate_assignment=True, arbitrary_types_allowed=True))
 class TrainerConfig(_IterableMixin):
     """Main configuration for PyTorch Lightning Trainer"""
 
-    accumulate_grad_batches: int = 1
-    resume_from_ckpt_confidnet: Optional[bool] = None
-    num_epochs: Optional[int] = None
+    num_epochs: Optional[int] = 300
     num_steps: Optional[int] = None
     num_epochs_backbone: Optional[int] = None
-    dg_pretrain_epochs: Optional[int] = None
+    val_every_n_epoch: int = 5
+    do_val: bool = True
+    batch_size: int = 128
+    resume_from_ckpt: bool = False
+    benchmark: bool = True
+    fast_dev_run: bool | int = False
+    lr_scheduler: Callable[
+        [torch.optim.Optimizer], torch.optim.lr_scheduler._LRScheduler
+    ] | None = None
+    optimizer: Callable[[Iterable], torch.optim.Optimizer] | None = None
+    # lr_scheduler: LRSchedulerConfig | None = None
+    # optimizer: OptimizerConfig | None = None
+    accumulate_grad_batches: int = 1
+    resume_from_ckpt_confidnet: bool = False
+    dg_pretrain_epochs: int | None = 100
     dg_pretrain_steps: Optional[int] = None
-    val_every_n_epoch: int = MISSING
-    val_split: Optional[ValSplit] = None
-    do_val: bool = MISSING
-    batch_size: int = MISSING
-    resume_from_ckpt: bool = MISSING
-    benchmark: bool = MISSING
-    fast_dev_run: bool | int = MISSING
+    val_split: ValSplit = ValSplit.devries
     lr_scheduler_interval: str = "epoch"
-    lr_scheduler: LRSchedulerConfig = LRSchedulerConfig()
-    optimizer: OptimizerConfig = MISSING
+
+    # TODO: Replace with jsonargparse compatible type hint to lightning.Callback
     callbacks: dict[str, Optional[dict[Any, Any]]] = field(default_factory=lambda: {})
 
     learning_rate_confidnet: Optional[float] = None
@@ -241,7 +245,7 @@ class TrainerConfig(_IterableMixin):
 class NetworkConfig(_IterableMixin):
     """Model Network configuration"""
 
-    name: str = MISSING
+    name: str = "vgg13"
     backbone: Optional[str] = None
     imagenet_weights_path: Optional[Path] = None
     load_dg_backbone_path: Optional[Path] = None
@@ -268,17 +272,17 @@ class NetworkConfig(_IterableMixin):
 class ModelConfig(_IterableMixin):
     """Model Configuration"""
 
-    name: str = MISSING
-    fc_dim: int = MISSING
+    name: str = "devries_model"
+    network: NetworkConfig = NetworkConfig()
+    fc_dim: int = 512
+    avg_pool: bool = True
+    dropout_rate: int = 0
+    monitor_mcd_samples: int = 50
+    test_mcd_samples: int = 50
     confidnet_fc_dim: Optional[int] = None
     dg_reward: Optional[float] = None
-    avg_pool: bool = MISSING
     balanced_sampeling: bool = False
-    dropout_rate: int = MISSING
-    monitor_mcd_samples: int = MISSING
-    test_mcd_samples: int = MISSING
-    budget: Optional[float] = None
-    network: NetworkConfig = NetworkConfig()
+    budget: float = 0.3
 
     # pylint: disable=no-self-argument
     @validator("name")
@@ -397,10 +401,10 @@ class ConfidMeasuresConfig(_IterableMixin):
 class QueryStudiesConfig(_IterableMixin):
     """Query Studies Configuration"""
 
-    iid_study: str = MISSING
-    noise_study: list[str] = MISSING
-    in_class_study: list[str] = MISSING
-    new_class_study: list[str] = MISSING
+    iid_study: str | None = None
+    noise_study: list[str] = field(default_factory=lambda: [])
+    in_class_study: list[str] = field(default_factory=lambda: [])
+    new_class_study: list[str] = field(default_factory=lambda: [])
 
     # pylint: disable=no-self-argument
     @validator(
@@ -424,6 +428,13 @@ class QueryStudiesConfig(_IterableMixin):
 class EvalConfig(_IterableMixin):
     """Evaluation Configuration container"""
 
+    tb_hparams: list[str] = field(default_factory=lambda: ["fold"])
+    test_conf_scaling: bool = False
+    val_tuning: bool = True
+    r_star: float = 0.25
+    r_delta: float = 0.05
+
+    query_studies: QueryStudiesConfig = QueryStudiesConfig()
     performance_metrics: PerfMetricsConfig = PerfMetricsConfig()
     confid_metrics: ConfidMetricsConfig = ConfidMetricsConfig()
     confidence_measures: ConfidMeasuresConfig = ConfidMeasuresConfig()
@@ -434,14 +445,7 @@ class EvalConfig(_IterableMixin):
         ]
     )
 
-    tb_hparams: list[str] = MISSING
     ext_confid_name: Optional[str] = None
-    test_conf_scaling: bool = MISSING
-    val_tuning: bool = MISSING
-    r_star: float = MISSING
-    r_delta: float = MISSING
-
-    query_studies: QueryStudiesConfig = QueryStudiesConfig()
 
 
 @defer_validation
@@ -449,19 +453,19 @@ class EvalConfig(_IterableMixin):
 class TestConfig(_IterableMixin):
     """Inference time configuration"""
 
-    name: str = MISSING
-    dir: Path = MISSING
-    cf_path: Path = MISSING
-    selection_criterion: str = MISSING
-    best_ckpt_path: Path = MISSING
-    only_latest_version: bool = MISSING
-    devries_repro_ood_split: bool = MISSING
-    assim_ood_norm_flag: bool = MISSING
-    iid_set_split: str = MISSING
-    raw_output_path: str = MISSING
-    external_confids_output_path: str = MISSING
+    name: str = "test_results"
+    dir: Path | None = None
+    cf_path: Path | None = None
+    selection_criterion: str | None = None
+    best_ckpt_path: Path | None = None
+    only_latest_version: bool | None = None
+    devries_repro_ood_split: bool | None = None
+    assim_ood_norm_flag: bool | None = None
+    iid_set_split: str | None = None
+    raw_output_path: str | None = None
+    external_confids_output_path: str | None = None
+    output_precision: int | None = None
     selection_mode: Optional[str] = None
-    output_precision: int = MISSING
 
 
 @defer_validation
@@ -469,14 +473,14 @@ class TestConfig(_IterableMixin):
 class DataConfig(_IterableMixin):
     """Dataset Configuration"""
 
-    dataset: str = MISSING
-    data_dir: Path = MISSING
-    pin_memory: bool = MISSING
-    img_size: tuple[int, int, int] = MISSING
-    num_workers: int = MISSING
-    num_classes: int = MISSING
-    reproduce_confidnet_splits: bool = MISSING
-    augmentations: Any = MISSING
+    dataset: str | None = None
+    data_dir: Path | None = None
+    pin_memory: bool | None = None
+    img_size: tuple[int, int, int] | None = None
+    num_workers: int | None = None
+    num_classes: int | None = None
+    reproduce_confidnet_splits: bool | None = None
+    augmentations: dict[str, dict[str, Any]] | None = None
     target_transforms: Optional[Any] = None
     kwargs: Optional[dict[Any, Any]] = None
 
@@ -486,7 +490,8 @@ class DataConfig(_IterableMixin):
 class Config(_IterableMixin):
     """Main Configuration Class"""
 
-    pkgversion: str = MISSING
+    pkgversion: str = fd_shifts.get_version()
+
     data: DataConfig = DataConfig()
 
     trainer: TrainerConfig = TrainerConfig()

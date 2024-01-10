@@ -312,17 +312,28 @@ class net(pl.LightningModule):
         }
 
     def configure_optimizers(self):
+        # optimizers = [
+        #     hydra.utils.instantiate(self.optimizer_cfgs, _partial_=True)(
+        #         self.model.parameters()
+        #     )
+        # ]
+
+        # schedulers = [
+        #     {
+        #         "scheduler": hydra.utils.instantiate(self.lr_scheduler_cfgs)(
+        #             optimizer=optimizers[0]
+        #         ),
+        #         "interval": self.lr_scheduler_interval,
+        #     },
+        # ]
+
         optimizers = [
-            hydra.utils.instantiate(self.optimizer_cfgs, _partial_=True)(
-                self.model.parameters()
-            )
+            self.optimizer_cfgs(self.model.parameters()),
         ]
 
         schedulers = [
             {
-                "scheduler": hydra.utils.instantiate(self.lr_scheduler_cfgs)(
-                    optimizer=optimizers[0]
-                ),
+                "scheduler": self.lr_scheduler_cfgs(optimizers[0]),
                 "interval": self.lr_scheduler_interval,
             },
         ]
