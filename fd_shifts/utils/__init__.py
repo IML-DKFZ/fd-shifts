@@ -1,5 +1,6 @@
 import importlib
 import json
+from dataclasses import asdict
 
 from omegaconf import DictConfig, ListConfig, OmegaConf
 from pydantic.json import pydantic_encoder
@@ -12,8 +13,9 @@ def __to_dict(obj):
 
 
 def to_dict(obj):
-    s = json.dumps(obj, default=__to_dict)
-    return json.loads(s)
+    # s = json.dumps(obj, default=__to_dict)
+    # return json.loads(s)
+    return asdict(obj)
 
 
 def instantiate_from_str(name, *args, **kwargs):
