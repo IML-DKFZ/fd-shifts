@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 import pytorch_lightning as pl
 import rich
-from jsonargparse import ArgumentParser
+from jsonargparse import ActionConfigFile, ArgumentParser
 from jsonargparse._actions import Action
 from omegaconf import OmegaConf
 from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBar
@@ -323,22 +323,32 @@ def test(config: Config):
 def main():
     setup_logging()
 
-    parser = ArgumentParser(parser_mode="omegaconf")
+    parser = ArgumentParser()
+    parser.add_argument("-f", "--overwrite-config-file", action="store_true")
     subcommands = parser.add_subcommands(dest="command")
+    subparsers: dict[str, ArgumentParser] = {}
 
     for name, func in __subcommands.items():
-        subparser = ArgumentParser(parser_mode="omegaconf")
+        subparser = ArgumentParser()
+        subparser.add_argument("--config-file", action=ActionConfigFile)
         subparser.add_argument("--experiment", action=ActionExperiment)
         subparser.add_function_arguments(func, sub_configs=True)
+        subparsers[name] = subparser
         subcommands.add_subcommand(name, subparser)
 
     args = parser.parse_args()
 
-    args = parser.instantiate_classes(args)
+    config = parser.instantiate_classes(args)[args.command].config
+    config = omegaconf_resolve(config)
 
-    args[args.command].config = omegaconf_resolve(args[args.command].config)
+    subparsers[args.command].save(
+        args[args.command],
+        config.test.cf_path,
+        skip_check=True,
+        overwrite=args.overwrite_config_file,
+    )
 
-    __subcommands[args.command](config=args[args.command].config)
+    __subcommands[args.command](config=config)
 
 
 if __name__ == "__main__":

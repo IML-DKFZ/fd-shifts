@@ -1,5 +1,8 @@
+import importlib
 import os
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterable
 
 import pl_bolts
 import torch
@@ -12,9 +15,11 @@ from fd_shifts.configs import (
     DataConfig,
     EvalConfig,
     ExperimentConfig,
+    LRSchedulerConfig,
     Mode,
     ModelConfig,
     NetworkConfig,
+    OptimizerConfig,
     OutputPathsConfig,
     OutputPathsPerMode,
     PerfMetricsConfig,
@@ -80,22 +85,30 @@ __experiments["svhn_modeldg_bbvit_lr0.01_bs128_run4_do1_rew10"] = Config(
         resume_from_ckpt=False,
         benchmark=True,
         fast_dev_run=False,
-        lr_scheduler=lambda optim: pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR(
-            optim,
-            warmup_epochs=500,
-            max_epochs=60000,
-            warmup_start_lr=0.0,
-            eta_min=0.0,
-            last_epoch=-1,
+        lr_scheduler=LRSchedulerConfig(
+            {
+                "class_path": "pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR",
+                "init_args": {
+                    "warmup_epochs": 500,
+                    "max_epochs": 60000,
+                    "warmup_start_lr": 0.0,
+                    "eta_min": 0.0,
+                    "last_epoch": -1,
+                },
+            }
         ),
-        optimizer=lambda params: torch.optim.SGD(
-            params,
-            lr=0.01,
-            dampening=0.0,
-            momentum=0.9,
-            nesterov=False,
-            maximize=False,
-            weight_decay=0.0,
+        optimizer=OptimizerConfig(
+            {
+                "class_path": "torch.optim.SGD",
+                "init_args": {
+                    "lr": 0.01,
+                    "dampening": 0.0,
+                    "momentum": 0.9,
+                    "nesterov": False,
+                    "maximize": False,
+                    "weight_decay": 0.0,
+                },
+            }
         ),
         accumulate_grad_batches=1,
         resume_from_ckpt_confidnet=False,
