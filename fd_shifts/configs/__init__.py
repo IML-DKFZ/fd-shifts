@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import os
 from collections.abc import Mapping
 from copy import deepcopy
@@ -123,67 +124,91 @@ class ExperimentConfig(_IterableMixin):
     output_paths: OutputPathsPerMode = OutputPathsPerMode()
 
 
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+# @defer_validation
+# @dataclass(config=ConfigDict(validate_assignment=True))
+# class LRSchedulerConfig:
+#     """Base class for LR scheduler configuration"""
+
+#     _target_: str = MISSING
+#     _partial_: Optional[bool] = None
+
+
+# CosineAnnealingLR = builds(
+#     torch.optim.lr_scheduler.CosineAnnealingLR,
+#     builds_bases=(LRSchedulerConfig,),
+#     zen_partial=True,
+#     populate_full_signature=True,
+#     T_max="${trainer.num_steps}",
+# )
+
+# LinearWarmupCosineAnnealingLR = builds(
+#     pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR,
+#     builds_bases=(LRSchedulerConfig,),
+#     zen_partial=True,
+#     populate_full_signature=True,
+#     max_epochs="${trainer.num_steps}",
+#     warmup_epochs=500,
+# )
+
+
+# @defer_validation
+# @dataclass(config=ConfigDict(validate_assignment=True))
+# class OptimizerConfig:
+#     """Base class for optimizer configuration"""
+
+#     _target_: str = MISSING
+#     _partial_: Optional[bool] = True
+
+
+# @defer_validation
+# @dataclass(config=ConfigDict(validate_assignment=True))
+# class SGD(OptimizerConfig):
+#     """Configuration for SGD optimizer"""
+
+#     _target_: str = "torch.optim.sgd.SGD"
+#     lr: float = 0.003  # pylint: disable=invalid-name
+#     dampening: float = 0.0
+#     momentum: float = 0.9
+#     nesterov: bool = False
+#     maximize: bool = False
+#     weight_decay: float = 0.0
+
+
+# @defer_validation
+# @dataclass(config=ConfigDict(validate_assignment=True))
+# class Adam(OptimizerConfig):
+#     """Configuration for ADAM optimizer"""
+
+#     _target_: str = "torch.optim.adam.Adam"
+#     lr: float = 0.003  # pylint: disable=invalid-name
+#     betas: tuple[float, float] = (0.9, 0.999)
+#     eps: float = 1e-08
+#     maximize: bool = False
+#     weight_decay: float = 0.0
+
+
+@dataclass
 class LRSchedulerConfig:
-    """Base class for LR scheduler configuration"""
+    init_args: dict
+    class_path: str = "fd_shifts.configs.LRSchedulerConfig"
 
-    _target_: str = MISSING
-    _partial_: Optional[bool] = None
-
-
-CosineAnnealingLR = builds(
-    torch.optim.lr_scheduler.CosineAnnealingLR,
-    builds_bases=(LRSchedulerConfig,),
-    zen_partial=True,
-    populate_full_signature=True,
-    T_max="${trainer.num_steps}",
-)
-
-LinearWarmupCosineAnnealingLR = builds(
-    pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR,
-    builds_bases=(LRSchedulerConfig,),
-    zen_partial=True,
-    populate_full_signature=True,
-    max_epochs="${trainer.num_steps}",
-    warmup_epochs=500,
-)
+    def __call__(
+        self, optim: torch.optim.Optimizer
+    ) -> torch.optim.lr_scheduler._LRScheduler:
+        module_name, class_name = self.init_args["class_path"].rsplit(".", 1)
+        cls = getattr(importlib.import_module(module_name), class_name)
+        return cls(optim, **self.init_args["init_args"])
 
 
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class OptimizerConfig:
-    """Base class for optimizer configuration"""
+    init_args: dict
+    class_path: str = "fd_shifts.configs.OptimizerConfig"
 
-    _target_: str = MISSING
-    _partial_: Optional[bool] = True
-
-
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
-class SGD(OptimizerConfig):
-    """Configuration for SGD optimizer"""
-
-    _target_: str = "torch.optim.sgd.SGD"
-    lr: float = 0.003  # pylint: disable=invalid-name
-    dampening: float = 0.0
-    momentum: float = 0.9
-    nesterov: bool = False
-    maximize: bool = False
-    weight_decay: float = 0.0
-
-
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
-class Adam(OptimizerConfig):
-    """Configuration for ADAM optimizer"""
-
-    _target_: str = "torch.optim.adam.Adam"
-    lr: float = 0.003  # pylint: disable=invalid-name
-    betas: tuple[float, float] = (0.9, 0.999)
-    eps: float = 1e-08
-    maximize: bool = False
-    weight_decay: float = 0.0
+    def __call__(self, params: Iterable) -> torch.optim.Optimizer:
+        module_name, class_name = self.init_args["class_path"].rsplit(".", 1)
+        cls = getattr(importlib.import_module(module_name), class_name)
+        return cls(params, **self.init_args["init_args"])
 
 
 @defer_validation
@@ -200,12 +225,12 @@ class TrainerConfig(_IterableMixin):
     resume_from_ckpt: bool = False
     benchmark: bool = True
     fast_dev_run: bool | int = False
-    lr_scheduler: Callable[
-        [torch.optim.Optimizer], torch.optim.lr_scheduler._LRScheduler
-    ] | None = None
-    optimizer: Callable[[Iterable], torch.optim.Optimizer] | None = None
-    # lr_scheduler: LRSchedulerConfig | None = None
-    # optimizer: OptimizerConfig | None = None
+    # lr_scheduler: Callable[
+    #     [torch.optim.Optimizer], torch.optim.lr_scheduler._LRScheduler
+    # ] | None = None
+    # optimizer: Callable[[Iterable], torch.optim.Optimizer] | None = None
+    lr_scheduler: LRSchedulerConfig | None = None
+    optimizer: OptimizerConfig | None = None
     accumulate_grad_batches: int = 1
     resume_from_ckpt_confidnet: bool = False
     dg_pretrain_epochs: int | None = 100
