@@ -255,3 +255,7 @@ __experiments["svhn_modeldg_bbvit_lr0.01_bs128_run4_do1_rew10"] = Config(
 
 def get_experiment_config(name: str) -> Config:
     return __experiments[name]
+
+
+def list_experiment_configs() -> list[str]:
+    return list(__experiments.keys())

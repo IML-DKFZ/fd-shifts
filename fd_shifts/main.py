@@ -21,11 +21,12 @@ from rich.pretty import pretty_repr
 
 from fd_shifts import analysis, logger
 from fd_shifts.configs import Config
-from fd_shifts.experiments.configs import get_experiment_config
+from fd_shifts.experiments.configs import get_experiment_config, list_experiment_configs
 from fd_shifts.loaders.data_loader import FDShiftsDataLoader
 from fd_shifts.models import get_model
 from fd_shifts.models.callbacks import get_callbacks
 from fd_shifts.utils import exp_utils
+from fd_shifts.version import get_version
 
 __subcommands = {}
 
@@ -416,13 +417,22 @@ def test(config: Config):
     )
 
 
+def _list_experiments():
+    rich.print("Available experiments:")
+    for exp in sorted(list_experiment_configs()):
+        rich.print(exp)
+
+
 def main():
     setup_logging()
 
-    parser = ArgumentParser()
+    parser = ArgumentParser(version=get_version())
     parser.add_argument("-f", "--overwrite-config-file", action="store_true")
     subcommands = parser.add_subcommands(dest="command")
     subparsers: dict[str, ArgumentParser] = {}
+
+    subparser = ArgumentParser()
+    subcommands.add_subcommand("list-experiments", subparser)
 
     for name, func in __subcommands.items():
         subparser = ArgumentParser()
@@ -435,6 +445,10 @@ def main():
         subcommands.add_subcommand(name, subparser)
 
     args = parser.parse_args()
+
+    if args.command == "list-experiments":
+        _list_experiments()
+        return
 
     config = parser.instantiate_classes(args)[args.command].config
     config = omegaconf_resolve(config)
