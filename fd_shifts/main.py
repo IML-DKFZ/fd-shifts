@@ -4,10 +4,12 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
+import jsonargparse
 import pytorch_lightning as pl
 import rich
+import yaml
 from jsonargparse import ActionConfigFile, ArgumentParser
 from jsonargparse._actions import Action
 from omegaconf import OmegaConf
@@ -86,6 +88,100 @@ class ActionExperiment(Action):
             cfg_merged = parser.merge_config(tcfg, cfg)
             cfg.__dict__.update(cfg_merged.__dict__)
             cfg[dest] = value
+
+
+class ActionLegacyConfigFile(ActionConfigFile):
+    """Action to indicate that an argument is a configuration file or a configuration string."""
+
+    def __init__(self, **kwargs):
+        """Initializer for ActionLegacyConfigFile instance."""
+        if "default" in kwargs:
+            self.set_default_error()
+        opt_name = kwargs["option_strings"]
+        opt_name = (
+            opt_name[0]
+            if len(opt_name) == 1
+            else [x for x in opt_name if x[0:2] == "--"][0]
+        )
+        if "." in opt_name:
+            raise ValueError("ActionLegacyConfigFile must be a top level option.")
+        if "help" not in kwargs:
+            kwargs["help"] = "Path to a configuration file."
+        super().__init__(**kwargs)
+
+    def __call__(self, parser, cfg, values, option_string=None):
+        """Parses the given configuration and adds all the corresponding keys to the namespace.
+
+        Raises:
+            TypeError: If there are problems parsing the configuration.
+        """
+        self.apply_config(parser, cfg, self.dest, values, option_string)
+
+    @staticmethod
+    def set_default_error():
+        raise ValueError(
+            "ActionLegacyConfigFile does not accept a default, use default_config_files."
+        )
+
+    @staticmethod
+    def apply_config(parser, cfg, dest, value, option_string) -> None:
+        from jsonargparse._link_arguments import skip_apply_links
+
+        with jsonargparse._actions._ActionSubCommands.not_single_subcommand(), previous_config_context(
+            cfg
+        ), skip_apply_links():
+            kwargs = {
+                "env": False,
+                "defaults": False,
+                "_skip_check": True,
+            }
+            cfg_path: Optional[jsonargparse.Path] = jsonargparse.Path(
+                value, mode=jsonargparse._optionals.get_config_read_mode()
+            )
+
+            with cfg_path.open() as f:
+                cfg_from_file = yaml.unsafe_load(f)
+
+            if option_string == "--config-file":
+                cfg_file = cfg_from_file
+            elif option_string == "--legacy-config-file":
+                cfg_file = {"config": cfg_from_file}
+
+                # hydra instantiate to jsonargparse instantiate format
+                lr_scheduler_cfg = cfg_file["config"]["trainer"]["lr_scheduler"]
+                cfg_file["config"]["trainer"]["lr_scheduler"] = {
+                    "class_path": "fd_shifts.configs.LRSchedulerConfig",
+                    "init_args": {
+                        "class_path": lr_scheduler_cfg["_target_"],
+                        "init_args": {
+                            k: v
+                            for k, v in lr_scheduler_cfg.items()
+                            if k not in ["_target_", "_partial_"]
+                        },
+                    },
+                }
+                optimizer_cfg = cfg_file["config"]["trainer"]["optimizer"]
+                cfg_file["config"]["trainer"]["optimizer"] = {
+                    "class_path": "fd_shifts.configs.OptimizerConfig",
+                    "init_args": {
+                        "class_path": optimizer_cfg["_target_"],
+                        "init_args": {
+                            k: v
+                            for k, v in optimizer_cfg.items()
+                            if k not in ["_target_", "_partial_"]
+                        },
+                    },
+                }
+            else:
+                raise ValueError(f"Unknown option string {option_string}")
+
+            cfg_file = parser.parse_object(cfg_file, **kwargs)
+
+            cfg_merged = parser.merge_config(cfg_file, cfg)
+            cfg.__dict__.update(cfg_merged.__dict__)
+            if cfg.get(dest) is None:
+                cfg[dest] = []
+            cfg[dest].append(cfg_path)
 
 
 def _path_to_str(cfg) -> dict:
@@ -330,7 +426,9 @@ def main():
 
     for name, func in __subcommands.items():
         subparser = ArgumentParser()
-        subparser.add_argument("--config-file", action=ActionConfigFile)
+        subparser.add_argument(
+            "--config-file", "--legacy-config-file", action=ActionLegacyConfigFile
+        )
         subparser.add_argument("--experiment", action=ActionExperiment)
         subparser.add_function_arguments(func, sub_configs=True)
         subparsers[name] = subparser
