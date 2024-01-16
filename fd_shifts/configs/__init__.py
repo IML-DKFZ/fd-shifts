@@ -449,9 +449,9 @@ class QueryStudiesConfig(_IterableMixin):
     """Query Studies Configuration"""
 
     iid_study: str | None = None
-    noise_study: list[str] = field(default_factory=lambda: [])
-    in_class_study: list[str] = field(default_factory=lambda: [])
-    new_class_study: list[str] = field(default_factory=lambda: [])
+    noise_study: list[DataConfig] = field(default_factory=lambda: [])
+    in_class_study: list[DataConfig] = field(default_factory=lambda: [])
+    new_class_study: list[DataConfig] = field(default_factory=lambda: [])
 
     # pylint: disable=no-self-argument
     @validator(

@@ -2,6 +2,8 @@ import logging
 import os
 import pickle
 from copy import deepcopy
+from dataclasses import asdict
+from pathlib import Path
 
 import numpy as np
 import pytorch_lightning as pl
@@ -25,9 +27,9 @@ class FDShiftsDataLoader(pl.LightningDataModule):
         self.crossval_ids_path = cf.exp.crossval_ids_path
         self.crossval_n_folds = cf.exp.crossval_n_folds
         self.fold = cf.exp.fold
-        self.data_dir = cf.data.data_dir
-        self.data_root_dir = cf.exp.data_root_dir
-        self.dataset_name = cf.data.dataset
+        self.data_dir: Path = cf.data.data_dir
+        self.data_root_dir: Path = cf.exp.data_root_dir
+        self.dataset_name: str = cf.data.dataset
         self.batch_size = cf.trainer.batch_size
         self.pin_memory = cf.data.pin_memory
         self.num_workers = cf.data.num_workers
@@ -43,10 +45,11 @@ class FDShiftsDataLoader(pl.LightningDataModule):
         self.assim_ood_norm_flag = cf.test.assim_ood_norm_flag
         self.balanced_sampeling = cf.model.balanced_sampeling
         self.add_val_tuning = cf.eval.val_tuning
-        self.query_studies = dict(cf.eval.query_studies)
+        self.query_studies = cf.eval.query_studies
+        print(f"{self.query_studies=}")
         if self.query_studies is not None:
             self.external_test_sets = []
-            for key, values in self.query_studies.items():
+            for key, values in self.query_studies:
                 if key != "iid_study" and values is not None:
                     self.external_test_sets.extend(list(values))
             logging.debug(
@@ -55,28 +58,33 @@ class FDShiftsDataLoader(pl.LightningDataModule):
 
             if len(self.external_test_sets) > 0:
                 self.external_test_configs = {}
-                for ext_set in self.external_test_sets:
+                for i, ext_set in enumerate(self.external_test_sets):
                     overwrite_dataset = False
-                    if ext_set.startswith("dermoscopyall"):
-                        file_set = "dermoscopyall"
-                        overwrite_dataset = False
-                    elif ext_set.startswith("rxrx1all"):
-                        file_set = "rxrx1all"
-                        overwrite_dataset = False
-                    elif ext_set.startswith("lidc_idriall"):
-                        file_set = "lidc_idriall"
-                        overwrite_dataset = False
-                    elif ext_set.startswith("xray_chestall"):
-                        file_set = "xray_chestall"
-                        overwrite_dataset = False
-                    else:
-                        file_set = ext_set
-                    self.external_test_configs[ext_set] = OmegaConf.load(
-                        os.path.join(
-                            os.path.abspath(os.path.dirname(data_configs.__file__)),
-                            "{}_data.yaml".format(file_set),
-                        )
-                    ).data
+                    if isinstance(ext_set, str):
+                        if ext_set.startswith("dermoscopyall"):
+                            file_set = "dermoscopyall"
+                            overwrite_dataset = False
+                        elif ext_set.startswith("rxrx1all"):
+                            file_set = "rxrx1all"
+                            overwrite_dataset = False
+                        elif ext_set.startswith("lidc_idriall"):
+                            file_set = "lidc_idriall"
+                            overwrite_dataset = False
+                        elif ext_set.startswith("xray_chestall"):
+                            file_set = "xray_chestall"
+                            overwrite_dataset = False
+                        else:
+                            file_set = ext_set
+                        self.external_test_configs[ext_set] = OmegaConf.load(
+                            os.path.join(
+                                os.path.abspath(os.path.dirname(data_configs.__file__)),
+                                "{}_data.yaml".format(file_set),
+                            )
+                        ).data
+
+                    elif isinstance(ext_set, configs.DataConfig):
+                        self.external_test_configs[ext_set.dataset] = deepcopy(ext_set)
+                        self.external_test_sets[i] = ext_set.dataset
                     if overwrite_dataset:
                         self.external_test_configs[ext_set].dataset = ext_set
         # set up target transforms

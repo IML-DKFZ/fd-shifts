@@ -192,7 +192,9 @@ class ExperimentData:
 
         flat_test_set_list = []
         for _, datasets in self.config.eval.query_studies:
-            if isinstance(datasets, (list, ListConfig)):
+            if isinstance(datasets, (list, ListConfig)) and len(datasets) > 0:
+                if isinstance(datasets[0], configs.DataConfig):
+                    datasets = map(lambda d: d.dataset, datasets)
                 flat_test_set_list.extend(list(datasets))
             else:
                 flat_test_set_list.append(datasets)
@@ -605,6 +607,12 @@ class Analysis:
         self.query_studies = (
             self.cfg.eval.query_studies if query_studies is None else query_studies
         )
+        for study_name, datasets in self.query_studies:
+            if isinstance(datasets, (list, ListConfig)) and len(datasets) > 0:
+                if isinstance(datasets[0], configs.DataConfig):
+                    self.query_studies.__dict__[study_name] = list(
+                        map(lambda d: d.dataset, datasets)
+                    )
         self.analysis_out_dir = analysis_out_dir
         self.calibration_bins = 20
         self.val_risk_scores = {}
