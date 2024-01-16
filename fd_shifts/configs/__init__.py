@@ -94,8 +94,24 @@ class OutputPathsConfig(_IterableMixin):
 class OutputPathsPerMode(_IterableMixin):
     """Container for per-mode output paths"""
 
-    fit: OutputPathsConfig = OutputPathsConfig()
-    test: OutputPathsConfig = OutputPathsConfig()
+    fit: OutputPathsConfig = OutputPathsConfig(
+        raw_output=Path("${exp.version_dir}/raw_output.npz"),
+        raw_output_dist=Path("${exp.version_dir}/raw_output_dist.npz"),
+        external_confids=Path("${exp.version_dir}/external_confids.npz"),
+        external_confids_dist=Path("${exp.version_dir}/external_confids_dist.npz"),
+        input_imgs_plot=Path("${exp.dir}/input_imgs.png"),
+        encoded_output=None,
+        attributions_output=None,
+    )
+    test: OutputPathsConfig = OutputPathsConfig(
+        raw_output=Path("${test.dir}/raw_logits.npz"),
+        raw_output_dist=Path("${test.dir}/raw_logits_dist.npz"),
+        external_confids=Path("${test.dir}/external_confids.npz"),
+        external_confids_dist=Path("${test.dir}/external_confids_dist.npz"),
+        input_imgs_plot=None,
+        encoded_output=Path("${test.dir}/encoded_output.npz"),
+        attributions_output=Path("${test.dir}/attributions.csv"),
+    )
 
 
 @defer_validation
@@ -103,23 +119,23 @@ class OutputPathsPerMode(_IterableMixin):
 class ExperimentConfig(_IterableMixin):
     """Main experiment config"""
 
-    group_name: str | None = None
-    name: str | None = None
+    group_name: str
+    name: str
     mode: Mode = Mode.train_test
-    work_dir: Path | None = Path.cwd()
-    fold_dir: Path | None = None
+    work_dir: Path = Path.cwd()
+    fold_dir: Path = Path("exp/${exp.fold}")
     root_dir: Path | None = Path(p) if (p := os.getenv("EXPERIMENT_ROOT_DIR")) else None
     data_root_dir: Path | None = (
         Path(p) if (p := os.getenv("DATASET_ROOT_DIR")) else None
     )
-    group_dir: Path | None = SI("${exp.root_dir}/${exp.group_name}")
-    dir: Path | None = group_dir / name if group_dir and name else None
-    version: Optional[int] = None
-    version_dir: Path | None = dir / f"version_{version}" if dir and version else None
+    group_dir: Path = Path("${exp.root_dir}/${exp.group_name}")
+    dir: Path = Path("${exp.group_dir}/${exp.name}")
+    version: int | None = None
+    version_dir: Path = Path("${exp.dir}/version_${exp.version}")
     fold: int = 0
     crossval_n_folds: int = 10
-    crossval_ids_path: Path | None = dir / "crossval_ids.pickle" if dir else None
-    log_path: Path | None = None
+    crossval_ids_path: Path = Path("${exp.dir}/crossval_ids.pickle")
+    log_path: Path = Path("log.txt")
     global_seed: int = randint(0, 1_000_000)
     output_paths: OutputPathsPerMode = OutputPathsPerMode()
 
@@ -239,7 +255,13 @@ class TrainerConfig(_IterableMixin):
     lr_scheduler_interval: str = "epoch"
 
     # TODO: Replace with jsonargparse compatible type hint to lightning.Callback
-    callbacks: dict[str, Optional[dict[Any, Any]]] = field(default_factory=lambda: {})
+    callbacks: dict[str, Optional[dict[Any, Any]]] = field(
+        default_factory=lambda: {
+            "model_checkpoint": None,
+            "confid_monitor": None,
+            "learning_rate_monitor": None,
+        }
+    )
 
     learning_rate_confidnet: Optional[float] = None
     learning_rate_confidnet_finetune: Optional[float] = None
@@ -405,6 +427,7 @@ class ConfidMeasuresConfig(_IterableMixin):
     train: list[str] = field(default_factory=lambda: ["det_mcp"])
     val: list[str] = field(default_factory=lambda: ["det_mcp"])
     test: list[str] = field(default_factory=lambda: ["det_mcp", "det_pe", "ext"])
+    test: list[str] = field(default_factory=lambda: ["det_mcp", "det_pe"])
 
     # pylint: disable=no-self-argument
     @validator("train", "val", "test", each_item=True)
@@ -479,18 +502,18 @@ class TestConfig(_IterableMixin):
     """Inference time configuration"""
 
     name: str = "test_results"
-    dir: Path | None = None
-    cf_path: Path | None = None
-    selection_criterion: str | None = None
-    best_ckpt_path: Path | None = None
-    only_latest_version: bool | None = None
-    devries_repro_ood_split: bool | None = None
-    assim_ood_norm_flag: bool | None = None
-    iid_set_split: str | None = None
-    raw_output_path: str | None = None
-    external_confids_output_path: str | None = None
-    output_precision: int | None = None
-    selection_mode: Optional[str] = None
+    dir: Path = Path("${exp.dir}/${test.name}")
+    cf_path: Path = Path("${exp.dir}/hydra/config.yaml")
+    selection_criterion: str = "latest"
+    best_ckpt_path: Path = Path("${exp.version_dir}/${test.selection_criterion}.ckpt")
+    only_latest_version: bool = True
+    devries_repro_ood_split: bool = False
+    assim_ood_norm_flag: bool = False
+    iid_set_split: str = "devries"
+    raw_output_path: str = "raw_output.npz"
+    external_confids_output_path: str = "external_confids.npz"
+    output_precision: int = 16
+    selection_mode: Optional[str] = "max"
 
 
 @defer_validation
@@ -515,13 +538,13 @@ class DataConfig(_IterableMixin):
 class Config(_IterableMixin):
     """Main Configuration Class"""
 
+    exp: ExperimentConfig
     pkgversion: str = fd_shifts.get_version()
 
     data: DataConfig = DataConfig()
 
     trainer: TrainerConfig = TrainerConfig()
 
-    exp: ExperimentConfig = ExperimentConfig()
     model: ModelConfig = ModelConfig()
 
     eval: EvalConfig = EvalConfig()
