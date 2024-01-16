@@ -107,10 +107,8 @@ class ExperimentData:
         return self._features
 
     @property
-    def last_layer(self) -> tuple[npt.NDArray[Any], npt.NDArray[Any]]:
-        if self._last_layer is not None:
-            return self._last_layer
-        raise NotImplementedError("TODO: Load last layer")
+    def last_layer(self) -> tuple[npt.NDArray[Any], npt.NDArray[Any]] | None:
+        return self._last_layer
 
     @property
     def vim_score(self):
