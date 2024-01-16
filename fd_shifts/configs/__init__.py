@@ -320,7 +320,7 @@ class ModelConfig(_IterableMixin):
     """Model Configuration"""
 
     name: str = "devries_model"
-    network: NetworkConfig = NetworkConfig()
+    network: NetworkConfig = field(default_factory=lambda: NetworkConfig())
     fc_dim: int = 512
     avg_pool: bool = True
     dropout_rate: int = 0
@@ -426,7 +426,6 @@ class ConfidMeasuresConfig(_IterableMixin):
 
     train: list[str] = field(default_factory=lambda: ["det_mcp"])
     val: list[str] = field(default_factory=lambda: ["det_mcp"])
-    test: list[str] = field(default_factory=lambda: ["det_mcp", "det_pe", "ext"])
     test: list[str] = field(default_factory=lambda: ["det_mcp", "det_pe"])
 
     # pylint: disable=no-self-argument
@@ -482,10 +481,18 @@ class EvalConfig(_IterableMixin):
     r_star: float = 0.25
     r_delta: float = 0.05
 
-    query_studies: QueryStudiesConfig = QueryStudiesConfig()
-    performance_metrics: PerfMetricsConfig = PerfMetricsConfig()
-    confid_metrics: ConfidMetricsConfig = ConfidMetricsConfig()
-    confidence_measures: ConfidMeasuresConfig = ConfidMeasuresConfig()
+    query_studies: QueryStudiesConfig = field(
+        default_factory=lambda: QueryStudiesConfig()
+    )
+    performance_metrics: PerfMetricsConfig = field(
+        default_factory=lambda: PerfMetricsConfig()
+    )
+    confid_metrics: ConfidMetricsConfig = field(
+        default_factory=lambda: ConfidMetricsConfig()
+    )
+    confidence_measures: ConfidMeasuresConfig = field(
+        default_factory=lambda: ConfidMeasuresConfig()
+    )
 
     monitor_plots: list[str] = field(
         default_factory=lambda: [
@@ -539,16 +546,17 @@ class Config(_IterableMixin):
     """Main Configuration Class"""
 
     exp: ExperimentConfig
+
     pkgversion: str = fd_shifts.get_version()
 
-    data: DataConfig = DataConfig()
+    data: DataConfig = field(default_factory=lambda: DataConfig())
 
-    trainer: TrainerConfig = TrainerConfig()
+    trainer: TrainerConfig = field(default_factory=lambda: TrainerConfig())
 
-    model: ModelConfig = ModelConfig()
+    model: ModelConfig = field(default_factory=lambda: ModelConfig())
 
-    eval: EvalConfig = EvalConfig()
-    test: TestConfig = TestConfig()
+    eval: EvalConfig = field(default_factory=lambda: EvalConfig())
+    test: TestConfig = field(default_factory=lambda: TestConfig())
 
     def update_experiment(self, name: str):
         config = deepcopy(self)
