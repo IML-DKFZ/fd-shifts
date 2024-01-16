@@ -20,7 +20,7 @@ from pytorch_lightning.loggers.wandb import WandbLogger
 from rich.pretty import pretty_repr
 
 from fd_shifts import analysis, logger
-from fd_shifts.configs import Config
+from fd_shifts.configs import Config, TestConfig
 from fd_shifts.experiments.configs import get_experiment_config, list_experiment_configs
 from fd_shifts.loaders.data_loader import FDShiftsDataLoader
 from fd_shifts.models import get_model
@@ -202,12 +202,15 @@ def _path_to_str(cfg) -> dict:
 
 def _dict_to_dataclass(cfg) -> Config:
     def __dict_to_dataclass(cfg, cls):
+        print(f"{cls=}", cls == list)
         if is_dataclass(cls):
             fieldtypes = typing.get_type_hints(cls)
             return cls(
                 **{k: __dict_to_dataclass(v, fieldtypes[k]) for k, v in cfg.items()}
             )
-        if (
+        if typing.get_origin(cls) == list:
+            return [__dict_to_dataclass(v, typing.get_args(cls)[0]) for v in cfg]
+        if cls == Path or (
             isinstance(cls, types.UnionType)
             and Path in cls.__args__
             and cfg is not None
@@ -423,9 +426,7 @@ def _list_experiments():
         rich.print(exp)
 
 
-def main():
-    setup_logging()
-
+def get_parser():
     parser = ArgumentParser(version=get_version())
     parser.add_argument("-f", "--overwrite-config-file", action="store_true")
     subcommands = parser.add_subcommands(dest="command")
@@ -444,15 +445,32 @@ def main():
         subparsers[name] = subparser
         subcommands.add_subcommand(name, subparser)
 
+    return parser, subparsers
+
+
+def config_from_parser(parser, args):
+    config = parser.instantiate_classes(args)[args.command].config
+    config = omegaconf_resolve(config)
+    return config
+
+
+def main():
+    setup_logging()
+
+    parser, subparsers = get_parser()
+
     args = parser.parse_args()
 
     if args.command == "list-experiments":
         _list_experiments()
         return
 
-    config = parser.instantiate_classes(args)[args.command].config
-    config = omegaconf_resolve(config)
+    config = config_from_parser(parser, args)
 
+    rich.print(config)
+
+    # TODO: Check if configs are the same
+    config.test.cf_path.parent.mkdir(parents=True, exist_ok=True)
     subparsers[args.command].save(
         args[args.command],
         config.test.cf_path,
