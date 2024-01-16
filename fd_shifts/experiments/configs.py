@@ -1,11 +1,6 @@
-import importlib
-import os
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Literal
 
-import pl_bolts
-import torch
 from omegaconf import SI
 
 from fd_shifts.configs import (
@@ -29,228 +24,329 @@ from fd_shifts.configs import (
     ValSplit,
 )
 
-__data_configs = {}
 
-__data_configs["svhn_384"] = DataConfig(
-    dataset="svhn",
-    data_dir=SI("${oc.env:DATASET_ROOT_DIR}/svhn"),
-    pin_memory=True,
-    img_size=(384, 384, 3),
-    num_workers=24,
-    num_classes=10,
-    reproduce_confidnet_splits=True,
-    augmentations={
-        "train": {
-            "to_tensor": None,
-            "resize": 384,
-            "normalize": [
-                [0.4376821, 0.4437697, 0.47280442],
-                [0.19803012, 0.20101562, 0.19703614],
-            ],
+def svhn_data_config(
+    dataset: Literal["svhn", "svhn_openset"], img_size: int | tuple[int, int]
+) -> DataConfig:
+    augmentations = {
+        "to_tensor": None,
+        "resize": img_size,
+        "normalize": [
+            [0.4376821, 0.4437697, 0.47280442],
+            [0.19803012, 0.20101562, 0.19703614],
+        ],
+    }
+
+    if isinstance(img_size, int):
+        img_size = (img_size, img_size)
+
+    return DataConfig(
+        dataset="svhn"
+        + ("_384" if img_size[0] == 384 else "")
+        + ("_openset" if dataset == "svhn_openset" else ""),
+        data_dir=SI("${oc.env:DATASET_ROOT_DIR}/svhn"),
+        pin_memory=True,
+        img_size=(img_size[0], img_size[1], 3),
+        num_workers=12,
+        num_classes=10,
+        reproduce_confidnet_splits=True,
+        augmentations={
+            "train": augmentations,
+            "val": augmentations,
+            "test": augmentations,
         },
-        "val": {
-            "to_tensor": None,
-            "resize": 384,
-            "normalize": [
-                [0.4376821, 0.4437697, 0.47280442],
-                [0.19803012, 0.20101562, 0.19703614],
-            ],
+        target_transforms=None,
+        kwargs=None,
+    )
+
+
+def svhn_query_config(
+    dataset: Literal["svhn", "svhn_openset"], img_size: int | tuple[int, int]
+) -> QueryStudiesConfig:
+    return QueryStudiesConfig(
+        iid_study="svhn_384",
+        noise_study=[],
+        in_class_study=[],
+        new_class_study=[
+            cifar10_data_config(img_size)
+        ],  # , "cifar100_384", "tinyimagenet_384"],
+    )
+
+
+def cifar10_data_config(img_size: int | tuple[int, int]) -> DataConfig:
+    augmentations = {
+        "to_tensor": None,
+        "resize": img_size,
+        "normalize": [[0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.201]],
+    }
+
+    if isinstance(img_size, int):
+        img_size = (img_size, img_size)
+
+    return DataConfig(
+        dataset="cifar10" + ("_384" if img_size[0] == 384 else ""),
+        data_dir=SI("${oc.env:DATASET_ROOT_DIR}/cifar10"),
+        pin_memory=True,
+        img_size=(img_size[0], img_size[1], 3),
+        num_workers=12,
+        num_classes=10,
+        reproduce_confidnet_splits=True,
+        augmentations={
+            "train": augmentations,
+            "val": augmentations,
+            "test": augmentations,
         },
-        "test": {
-            "to_tensor": None,
-            "resize": 384,
-            "normalize": [
-                [0.4376821, 0.4437697, 0.47280442],
-                [0.19803012, 0.20101562, 0.19703614],
-            ],
-        },
-    },
-    target_transforms=None,
-    kwargs=None,
-)
+        target_transforms=None,
+        kwargs=None,
+    )
 
 
-def get_data_config(name: str) -> DataConfig:
-    return __data_configs[name]
+__experiments: dict[str, Config] = {}
 
 
-__experiments = {}
-
-__experiments["svhn_modeldg_bbvit_lr0.01_bs128_run4_do1_rew10"] = Config(
-    data=get_data_config("svhn_384"),
-    trainer=TrainerConfig(
-        val_every_n_epoch=5,
-        do_val=True,
-        batch_size=128,
-        resume_from_ckpt=False,
-        benchmark=True,
-        fast_dev_run=False,
-        lr_scheduler=LRSchedulerConfig(
-            {
-                "class_path": "pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR",
-                "init_args": {
-                    "warmup_epochs": 500,
-                    "max_epochs": 60000,
-                    "warmup_start_lr": 0.0,
-                    "eta_min": 0.0,
-                    "last_epoch": -1,
+def svhn_modelvit_bbvit(lr: float, run: int, do: int, **kwargs) -> Config:
+    return Config(
+        exp=ExperimentConfig(
+            group_name="vit",
+            name=f"svhn_modelvit_bbvit_lr{lr}_bs128_run{run}_do{do}_rew0",
+        ),
+        pkgversion="0.0.1+f85760e",
+        data=svhn_data_config("svhn", 384),
+        trainer=TrainerConfig(
+            num_epochs=None,
+            num_steps=40000,
+            batch_size=128,
+            lr_scheduler=LRSchedulerConfig(
+                init_args={
+                    "class_path": "pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR",
+                    "init_args": {
+                        "warmup_epochs": 500,
+                        "warmup_start_lr": 0,
+                        "eta_min": 0,
+                        "max_epochs": 40000,
+                    },
                 },
-            }
-        ),
-        optimizer=OptimizerConfig(
-            {
-                "class_path": "torch.optim.SGD",
-                "init_args": {
-                    "lr": 0.01,
-                    "dampening": 0.0,
-                    "momentum": 0.9,
-                    "nesterov": False,
-                    "maximize": False,
-                    "weight_decay": 0.0,
+                class_path="fd_shifts.configs.LRSchedulerConfig",
+            ),
+            optimizer=OptimizerConfig(
+                init_args={
+                    "class_path": "torch.optim.SGD",
+                    "init_args": {
+                        "lr": 0.01,
+                        "dampening": 0.0,
+                        "momentum": 0.9,
+                        "nesterov": False,
+                        "maximize": False,
+                        "weight_decay": 0.0,
+                    },
                 },
-            }
-        ),
-        accumulate_grad_batches=1,
-        resume_from_ckpt_confidnet=False,
-        num_epochs=None,
-        num_steps=60000,
-        num_epochs_backbone=None,
-        dg_pretrain_epochs=None,
-        dg_pretrain_steps=20000,
-        val_split=ValSplit.devries,
-        lr_scheduler_interval="step",
-        callbacks={
-            "model_checkpoint": None,
-            "confid_monitor": None,
-            "learning_rate_monitor": None,
-        },
-        learning_rate_confidnet=None,
-        learning_rate_confidnet_finetune=None,
-    ),
-    exp=ExperimentConfig(
-        group_name="vit",
-        name="svhn_modeldg_bbvit_lr0.01_bs128_run4_do1_rew10",
-        mode=Mode.analysis,
-        work_dir=Path.cwd(),
-        fold_dir=SI("exp/${exp.fold}"),
-        root_dir=Path(p)
-        if (p := os.getenv("EXPERIMENT_ROOT_DIR")) is not None
-        else None,
-        data_root_dir=Path(p)
-        if (p := os.getenv("DATASET_ROOT_DIR")) is not None
-        else None,
-        group_dir=Path("${exp.root_dir}/${exp.group_name}"),
-        dir=Path("${exp.group_dir}/${exp.name}"),
-        version_dir=Path("${exp.dir}/version_${exp.version}"),
-        fold=0,
-        crossval_n_folds=10,
-        crossval_ids_path=Path("${exp.dir}/crossval_ids.pickle"),
-        log_path=Path("log.txt"),
-        global_seed=0,
-        output_paths=OutputPathsPerMode(
-            fit=OutputPathsConfig(
-                raw_output=Path("${exp.version_dir}/raw_output.npz"),
-                raw_output_dist=Path("${exp.version_dir}/raw_output_dist.npz"),
-                external_confids=Path("${exp.version_dir}/external_confids.npz"),
-                external_confids_dist=Path(
-                    "${exp.version_dir}/external_confids_dist.npz"
-                ),
-                input_imgs_plot=Path("${exp.dir}/input_imgs.png"),
-                encoded_output=None,
-                attributions_output=None,
+                class_path="fd_shifts.configs.OptimizerConfig",
             ),
-            test=OutputPathsConfig(
-                raw_output=Path("${test.dir}/raw_logits.npz"),
-                raw_output_dist=Path("${test.dir}/raw_logits_dist.npz"),
-                external_confids=Path("${test.dir}/external_confids.npz"),
-                external_confids_dist=Path("${test.dir}/external_confids_dist.npz"),
-                input_imgs_plot=None,
-                encoded_output=Path("${test.dir}/encoded_output.npz"),
-                attributions_output=Path("${test.dir}/attributions.csv"),
-            ),
+            lr_scheduler_interval="epoch",
         ),
-        version=None,
-    ),
-    model=ModelConfig(
+        model=ModelConfig(
+            name="vit_model",
+            network=NetworkConfig(
+                name="vit",
+            ),
+            fc_dim=512,
+            avg_pool=True,
+            dropout_rate=0,
+        ),
+        eval=EvalConfig(
+            val_tuning=True,
+            query_studies=svhn_query_config("svhn", 384),
+        ),
+    )
+
+
+def svhn_modeldg_bbvit(lr: float, run: int, do: int, rew: int | float) -> Config:
+    config = svhn_modelvit_bbvit(lr=lr, run=run, do=do)
+    config.trainer.num_steps = 60000
+    config.trainer.lr_scheduler = LRSchedulerConfig(
+        {
+            "class_path": "pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR",
+            "init_args": {
+                "warmup_epochs": 500,
+                "max_epochs": 60000,
+                "warmup_start_lr": 0.0,
+                "eta_min": 0.0,
+                "last_epoch": -1,
+            },
+        }
+    )
+    config.trainer.optimizer = OptimizerConfig(
+        {
+            "class_path": "torch.optim.SGD",
+            "init_args": {
+                "lr": lr,
+                "dampening": 0.0,
+                "momentum": 0.9,
+                "nesterov": False,
+                "maximize": False,
+                "weight_decay": 0.0,
+            },
+        }
+    )
+    config.trainer.dg_pretrain_epochs = None
+    config.trainer.dg_pretrain_steps = 20000
+    config.trainer.lr_scheduler_interval = "step"
+    config.exp.name = f"svhn_modeldg_bbvit_lr{lr}_bs128_run{run}_do{do}_rew{rew}"
+    config.model = ModelConfig(
         name="devries_model",
         network=NetworkConfig(
             name="vit",
-            backbone=None,
-            imagenet_weights_path=None,
-            load_dg_backbone_path=None,
             save_dg_backbone_path=Path("${exp.dir}/dg_backbone.ckpt"),
         ),
         fc_dim=768,
         avg_pool=True,
         dropout_rate=1,
-        monitor_mcd_samples=50,
-        test_mcd_samples=50,
-        confidnet_fc_dim=None,
-        dg_reward=10,
-        balanced_sampeling=False,
-        budget=0.3,
-    ),
-    eval=EvalConfig(
-        tb_hparams=["fold"],
-        test_conf_scaling=False,
-        val_tuning=True,
-        r_star=0.25,
-        r_delta=0.05,
-        query_studies=QueryStudiesConfig(
-            iid_study="svhn_384",
-            noise_study=[],
-            in_class_study=[],
-            new_class_study=["cifar10_384", "cifar100_384", "tinyimagenet_384"],
+        dg_reward=rew,
+    )
+    config.eval.ext_confid_name = "dg"
+    config.eval.confidence_measures.test.append("ext")
+
+    return config
+
+
+def cifar10_modelvit_bbvit(lr: float, run: int, do: Literal[0, 1], **kwargs) -> Config:
+    return Config(
+        exp=ExperimentConfig(
+            group_name="vit",
+            name=f"cifar10_modelvit_bbvit_lr{lr}_bs128_run{run}_do{do}_rew0",
         ),
-        performance_metrics=PerfMetricsConfig(
-            train=["loss", "nll", "accuracy"],
-            val=["loss", "nll", "accuracy", "brier_score"],
-            test=["nll", "accuracy", "brier_score"],
+        data=cifar10_data_config(384),
+        trainer=TrainerConfig(
+            num_epochs=None,
+            num_steps=40000,
+            batch_size=128,
+            lr_scheduler=LRSchedulerConfig(
+                init_args={
+                    "class_path": "pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR",
+                    "init_args": {
+                        "warmup_epochs": 500,
+                        "warmup_start_lr": 0,
+                        "eta_min": 0,
+                        "max_epochs": 40000,
+                    },
+                },
+                class_path="fd_shifts.configs.LRSchedulerConfig",
+            ),
+            optimizer=OptimizerConfig(
+                init_args={
+                    "class_path": "torch.optim.SGD",
+                    "init_args": {
+                        "lr": lr,
+                        "dampening": 0.0,
+                        "momentum": 0.9,
+                        "nesterov": False,
+                        "maximize": False,
+                        "weight_decay": 0.0,
+                    },
+                },
+                class_path="fd_shifts.configs.OptimizerConfig",
+            ),
         ),
-        confid_metrics=ConfidMetricsConfig(
-            train=[
-                "failauc",
-                "failap_suc",
-                "failap_err",
-                "fpr@95tpr",
-                "e-aurc",
-                "aurc",
-            ],
-            val=["failauc", "failap_suc", "failap_err", "fpr@95tpr", "e-aurc", "aurc"],
-            test=[
-                "failauc",
-                "failap_suc",
-                "failap_err",
-                "mce",
-                "ece",
-                "b-aurc",
-                "e-aurc",
-                "aurc",
-                "fpr@95tpr",
-            ],
+        model=ModelConfig(
+            name="vit_model",
+            network=NetworkConfig(
+                name="vit",
+            ),
+            fc_dim=512,
+            avg_pool=True,
+            dropout_rate=do,
         ),
-        confidence_measures=ConfidMeasuresConfig(
-            train=["det_mcp"], val=["det_mcp"], test=["det_mcp", "det_pe", "ext"]
+        eval=EvalConfig(
+            query_studies=QueryStudiesConfig(
+                iid_study="cifar10_384",
+                noise_study=["corrupt_cifar10_384"],
+                in_class_study=[],
+                new_class_study=["cifar100_384", "svhn_384", "tinyimagenet_384"],
+            ),
+            ext_confid_name="maha",
         ),
-        monitor_plots=["hist_per_confid"],
-        ext_confid_name="dg",
-    ),
-    test=TestConfig(
-        name="test_results",
-        dir=Path("${exp.dir}/${test.name}"),
-        cf_path=Path("${exp.dir}/hydra/config.yaml"),
-        selection_criterion="latest",
-        best_ckpt_path=Path("${exp.version_dir}/${test.selection_criterion}.ckpt"),
-        only_latest_version=True,
-        devries_repro_ood_split=False,
-        assim_ood_norm_flag=False,
-        iid_set_split="devries",
-        raw_output_path="raw_output.npz",
-        external_confids_output_path="external_confids.npz",
-        output_precision=16,
-        selection_mode="max",
-    ),
-)
+    )
+
+
+def cifar10_modeldg_bbvit(
+    lr: float, run: int, do: Literal[0, 1], rew: int | float
+) -> Config:
+    config = cifar10_modelvit_bbvit(lr=lr, run=run, do=do)
+    config.trainer.num_steps = 60000
+    config.trainer.lr_scheduler = LRSchedulerConfig(
+        {
+            "class_path": "pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR",
+            "init_args": {
+                "warmup_epochs": 500,
+                "max_epochs": 60000,
+                "warmup_start_lr": 0.0,
+                "eta_min": 0.0,
+                "last_epoch": -1,
+            },
+        }
+    )
+    config.trainer.optimizer = OptimizerConfig(
+        {
+            "class_path": "torch.optim.SGD",
+            "init_args": {
+                "lr": lr,
+                "dampening": 0.0,
+                "momentum": 0.9,
+                "nesterov": False,
+                "maximize": False,
+                "weight_decay": 0.0,
+            },
+        }
+    )
+    config.trainer.dg_pretrain_epochs = None
+    config.trainer.dg_pretrain_steps = 20000
+    config.trainer.lr_scheduler_interval = "step"
+    config.exp.name = f"cifar10_modeldg_bbvit_lr{lr}_bs128_run{run}_do{do}_rew{rew}"
+    config.model = ModelConfig(
+        name="devries_model",
+        network=NetworkConfig(
+            name="vit",
+            save_dg_backbone_path=Path("${exp.dir}/dg_backbone.ckpt"),
+        ),
+        fc_dim=768,
+        avg_pool=True,
+        dropout_rate=1,
+        dg_reward=rew,
+    )
+    config.eval.ext_confid_name = "dg"
+    config.eval.confidence_measures.test.append("ext")
+
+    return config
+
+
+def register(config_fn: Callable[..., Config], n_runs: int = 5, **kwargs):
+    for run in range(n_runs):
+        config = config_fn(**kwargs, run=run)
+        __experiments[config.exp.name] = config
+
+
+register(svhn_modelvit_bbvit, lr=0.03, do=1, rew=2.2)
+register(svhn_modelvit_bbvit, lr=0.01, do=0, rew=2.2)
+register(svhn_modelvit_bbvit, lr=0.01, do=1, rew=2.2)
+register(svhn_modeldg_bbvit, lr=0.01, do=1, rew=2.2)
+register(svhn_modeldg_bbvit, lr=0.01, do=1, rew=3)
+register(svhn_modeldg_bbvit, lr=0.01, do=1, rew=6)
+register(svhn_modeldg_bbvit, lr=0.01, do=1, rew=10)
+register(svhn_modeldg_bbvit, lr=0.03, do=1, rew=2.2)
+register(svhn_modeldg_bbvit, lr=0.03, do=1, rew=3)
+register(svhn_modeldg_bbvit, lr=0.03, do=1, rew=6)
+register(svhn_modeldg_bbvit, lr=0.03, do=1, rew=10)
+
+register(cifar10_modelvit_bbvit, lr=3e-4, do=0, rew=2.2)
+register(cifar10_modelvit_bbvit, lr=0.01, do=1, rew=2.2)
+register(cifar10_modeldg_bbvit, lr=3e-4, do=0, rew=2.2)
+register(cifar10_modeldg_bbvit, lr=0.01, do=1, rew=2.2)
+register(cifar10_modeldg_bbvit, lr=3e-4, do=0, rew=3)
+register(cifar10_modeldg_bbvit, lr=0.01, do=1, rew=3)
+register(cifar10_modeldg_bbvit, lr=3e-4, do=0, rew=6)
+register(cifar10_modeldg_bbvit, lr=0.01, do=1, rew=6)
+register(cifar10_modeldg_bbvit, lr=3e-4, do=0, rew=10)
+register(cifar10_modeldg_bbvit, lr=0.01, do=1, rew=10)
 
 
 def get_experiment_config(name: str) -> Config:
@@ -258,4 +354,4 @@ def get_experiment_config(name: str) -> Config:
 
 
 def list_experiment_configs() -> list[str]:
-    return list(__experiments.keys())
+    return list(sorted(__experiments.keys()))
