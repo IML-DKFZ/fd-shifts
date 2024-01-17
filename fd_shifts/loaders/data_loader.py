@@ -250,9 +250,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 "Adding tuning data. (preliminary) len: %s", len(self.test_datasets[-1])
             )
 
-        if not (
-            self.query_studies is not None and "iid_study" not in self.query_studies
-        ):
+        if self.query_studies is None or self.query_studies.iid_study is not None:
             self.test_datasets.append(self.iid_test_set)
             logging.debug(
                 "Adding internal test dataset. %s", len(self.test_datasets[-1])
