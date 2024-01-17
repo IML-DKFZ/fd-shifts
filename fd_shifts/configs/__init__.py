@@ -330,6 +330,7 @@ class ModelConfig(_IterableMixin):
     dg_reward: Optional[float] = None
     balanced_sampeling: bool = False
     budget: float = 0.3
+    clip_class_prefix: Optional[str] = None
 
     # pylint: disable=no-self-argument
     @validator("name")
