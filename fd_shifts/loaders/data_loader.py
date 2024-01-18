@@ -261,9 +261,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 logging.debug("Adding external test dataset: %s", ext_set)
                 tmp_external_set = get_dataset(
                     name=ext_set,
-                    root=os.path.join(
-                        self.data_root_dir, self.external_test_configs[ext_set].dataset
-                    ),
+                    root=self.external_test_configs[ext_set].data_dir,
                     train=False,
                     download=True,
                     target_transform=self.target_transforms,
