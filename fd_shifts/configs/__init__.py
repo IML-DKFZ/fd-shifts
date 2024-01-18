@@ -530,11 +530,11 @@ class DataConfig(_IterableMixin):
 
     dataset: str | None = None
     data_dir: Path | None = None
-    pin_memory: bool | None = None
+    pin_memory: bool = True
     img_size: tuple[int, int, int] | None = None
-    num_workers: int | None = None
+    num_workers: int = 12
     num_classes: int | None = None
-    reproduce_confidnet_splits: bool | None = None
+    reproduce_confidnet_splits: bool = False
     augmentations: dict[str, dict[str, Any]] | None = None
     target_transforms: Optional[Any] = None
     kwargs: Optional[dict[Any, Any]] = None
