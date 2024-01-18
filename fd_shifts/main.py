@@ -193,6 +193,8 @@ def _path_to_str(cfg) -> dict:
             return cfg.__class__(
                 **{k: __path_to_str(v) for k, v in cfg.__dict__.items()}
             )
+        if isinstance(cfg, list):
+            return [__path_to_str(v) for v in cfg]
         if isinstance(cfg, Path):
             return str(cfg)
         return cfg
@@ -202,7 +204,6 @@ def _path_to_str(cfg) -> dict:
 
 def _dict_to_dataclass(cfg) -> Config:
     def __dict_to_dataclass(cfg, cls):
-        print(f"{cls=}", cls == list)
         if is_dataclass(cls):
             fieldtypes = typing.get_type_hints(cls)
             return cls(
