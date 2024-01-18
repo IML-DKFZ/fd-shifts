@@ -963,6 +963,13 @@ class WILDSAnimals(IWildCamDataset):
         )
 
         logger.debug("CHECK ROOT !!! {}", root)
+        categories = {
+            r[1]: r[2]
+            for r in pd.read_csv(root / "iwildcam_v2.0" / "categories.csv")[
+                ["y", "name"]
+            ].to_records()
+        }
+        self.classes = [categories[i] for i in range(self.n_classes)]
 
     def get_subset(self, split, frac=1.0, transform=None):
         """
@@ -990,6 +997,7 @@ class WILDSAnimals(IWildCamDataset):
 class myWILDSSubset(WILDSSubset):
     def __init__(self, dataset, indices, transform):
         super().__init__(dataset, indices, transform)
+        self.classes = dataset.classes
 
     def __getitem__(self, idx):
         x, y, metadata = self.dataset[self.indices[idx]]

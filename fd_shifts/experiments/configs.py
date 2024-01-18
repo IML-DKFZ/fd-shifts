@@ -142,6 +142,92 @@ def cifar100_data_config(img_size: int | tuple[int, int]) -> DataConfig:
     )
 
 
+def wilds_animals_data_config(
+    dataset: Literal["wilds_animals", "wilds_animals_ood_test"] = "wilds_animals",
+    img_size: int | tuple[int, int] = 448,
+) -> DataConfig:
+    if isinstance(img_size, int):
+        img_size = (img_size, img_size)
+
+    augmentations = {
+        "to_tensor": None,
+        "resize": img_size,
+        "normalize": [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]],
+    }
+
+    return DataConfig(
+        dataset=dataset,
+        data_dir=SI("${oc.env:DATASET_ROOT_DIR}/wilds_animals"),
+        pin_memory=True,
+        img_size=(img_size[0], img_size[1], 3),
+        num_workers=8,
+        num_classes=182,
+        reproduce_confidnet_splits=False,
+        augmentations={
+            "train": augmentations,
+            "val": augmentations,
+            "test": augmentations,
+        },
+        target_transforms=None,
+        kwargs=None,
+    )
+
+
+def wilds_animals_query_config(img_size: int | tuple[int, int]) -> QueryStudiesConfig:
+    return QueryStudiesConfig(
+        iid_study="wilds_animals",
+        noise_study=[],
+        in_class_study=[wilds_animals_data_config("wilds_animals_ood_test", img_size)],
+        new_class_study=[],
+    )
+
+
+def breeds_data_config(
+    dataset: Literal["breeds", "breeds_ood_test"] = "breeds",
+    img_size: int | tuple[int, int] = 224,
+) -> DataConfig:
+    if isinstance(img_size, int):
+        img_size = (img_size, img_size)
+
+    return DataConfig(
+        dataset=dataset,
+        data_dir=SI("${oc.env:DATASET_ROOT_DIR}/breeds"),
+        img_size=(img_size[0], img_size[1], 3),
+        num_classes=13,
+        augmentations={
+            "train": {
+                "randomresized_crop": img_size,
+                "hflip": True,
+                "color_jitter": [0.1, 0.1, 0.1],
+                "to_tensor": None,
+                "normalize": [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]],
+            },
+            "val": {
+                "resize": 256 if img_size[0] == 224 else img_size,
+                "center_crop": img_size,
+                "to_tensor": None,
+                "normalize": [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]],
+            },
+            "test": {
+                "resize": 256 if img_size[0] == 224 else img_size,
+                "center_crop": img_size,
+                "to_tensor": None,
+                "normalize": [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]],
+            },
+        },
+        kwargs={"info_dir_path": "loaders/breeds_hierarchies"},
+    )
+
+
+def breeds_query_config(img_size: int | tuple[int, int]) -> QueryStudiesConfig:
+    return QueryStudiesConfig(
+        iid_study="breeds",
+        noise_study=[],
+        in_class_study=[breeds_data_config("breeds_ood_test", img_size)],
+        new_class_study=[],
+    )
+
+
 __experiments: dict[str, Config] = {}
 
 
@@ -354,7 +440,12 @@ def cifar10_modeldg_bbvit(
     return config
 
 
-def clip(dataset: DataConfig, class_prefix: str | None = None, **kwargs):
+def clip(
+    dataset: DataConfig,
+    query_studies: QueryStudiesConfig,
+    class_prefix: str | None = None,
+    **kwargs,
+):
     return Config(
         data=dataset,
         exp=ExperimentConfig(
@@ -366,9 +457,7 @@ def clip(dataset: DataConfig, class_prefix: str | None = None, **kwargs):
             clip_class_prefix=class_prefix,
         ),
         eval=EvalConfig(
-            query_studies=svhn_query_config("svhn", 224)
-            if "svhn" == dataset.dataset
-            else cifar10_query_config(224),
+            query_studies=query_studies,
         ),
     )
 
@@ -402,18 +491,89 @@ register(cifar10_modeldg_bbvit, lr=0.01, do=1, rew=6)
 register(cifar10_modeldg_bbvit, lr=3e-4, do=0, rew=10)
 register(cifar10_modeldg_bbvit, lr=0.01, do=1, rew=10)
 
-register(clip, n_runs=1, dataset=cifar10_data_config(img_size=224), class_prefix=None)
-register(clip, n_runs=1, dataset=cifar10_data_config(img_size=224), class_prefix="a")
 register(
     clip,
     n_runs=1,
     dataset=cifar10_data_config(img_size=224),
+    query_studies=cifar10_query_config(224),
+    class_prefix=None,
+)
+register(
+    clip,
+    n_runs=1,
+    dataset=cifar10_data_config(img_size=224),
+    query_studies=cifar10_query_config(224),
+    class_prefix="a",
+)
+register(
+    clip,
+    n_runs=1,
+    dataset=cifar10_data_config(img_size=224),
+    query_studies=cifar10_query_config(224),
     class_prefix="a picture of a",
 )
-register(clip, n_runs=1, dataset=svhn_data_config("svhn", 224), class_prefix=None)
-register(clip, n_runs=1, dataset=svhn_data_config("svhn", 224), class_prefix="a")
 register(
-    clip, n_runs=1, dataset=svhn_data_config("svhn", 224), class_prefix="a picture of a"
+    clip,
+    n_runs=1,
+    dataset=svhn_data_config("svhn", 224),
+    query_studies=svhn_query_config("svhn", 224),
+    class_prefix=None,
+)
+register(
+    clip,
+    n_runs=1,
+    dataset=svhn_data_config("svhn", 224),
+    query_studies=svhn_query_config("svhn", 224),
+    class_prefix="a",
+)
+register(
+    clip,
+    n_runs=1,
+    dataset=svhn_data_config("svhn", 224),
+    query_studies=svhn_query_config("svhn", 224),
+    class_prefix="a picture of a",
+)
+register(
+    clip,
+    n_runs=1,
+    dataset=wilds_animals_data_config("wilds_animals", 224),
+    query_studies=wilds_animals_query_config(224),
+    class_prefix=None,
+)
+register(
+    clip,
+    n_runs=1,
+    dataset=wilds_animals_data_config("wilds_animals", 224),
+    query_studies=wilds_animals_query_config(224),
+    class_prefix="a",
+)
+register(
+    clip,
+    n_runs=1,
+    dataset=wilds_animals_data_config("wilds_animals", 224),
+    query_studies=wilds_animals_query_config(224),
+    class_prefix="a picture of a",
+)
+register(
+    clip,
+    n_runs=1,
+    dataset=breeds_data_config("breeds", 224),
+    query_studies=breeds_query_config(224),
+    class_prefix=None,
+)
+register(
+    clip,
+    n_runs=1,
+    dataset=breeds_data_config("breeds", 224),
+    query_studies=breeds_query_config(224),
+    class_prefix="a",
+)
+register(
+    clip,
+    n_runs=1,
+    dataset=breeds_data_config("breeds", 224),
+    query_studies=breeds_query_config(224),
+    class_prefix="a picture of a",
 )
 
 
