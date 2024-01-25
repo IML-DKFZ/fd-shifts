@@ -194,47 +194,31 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 kwargs=self.dataset_kwargs,
             )
             if "wilds" in self.dataset_name:
-                self.iid_test_set.indices = self.iid_test_set.indices[100:150]
+                self.iid_test_set.indices = self.iid_test_set.indices[1000:]
                 self.iid_test_set.__len__ = len(self.iid_test_set.indices)
+                self.val_dataset.indices = self.val_dataset.indices[:1000]
+                self.val_dataset.__len__ = len(self.val_dataset.indices)
             else:
                 try:
                     self.iid_test_set.imgs = self.iid_test_set.imgs[1000:]
                     self.iid_test_set.samples = self.iid_test_set.samples[1000:]
                     self.iid_test_set.targets = self.iid_test_set.targets[1000:]
                     self.iid_test_set.__len__ = len(self.iid_test_set.imgs)
+                    self.val_dataset.imgs = self.val_dataset.imgs[:1000]
+                    self.val_dataset.samples = self.val_dataset.samples[:1000]
+                    self.val_dataset.targets = self.val_dataset.targets[:1000]
+                    self.val_dataset.__len__ = len(self.val_dataset.imgs)
                 except:
                     self.iid_test_set.data = self.iid_test_set.data[1000:]
+                    self.val_dataset.data = self.val_dataset.data[:1000]
                     try:
                         self.iid_test_set.targets = self.iid_test_set.targets[1000:]
+                        self.val_dataset.targets = self.val_dataset.targets[:1000]
                     except:
                         self.iid_test_set.labels = self.iid_test_set.labels[1000:]
+                        self.val_dataset.labels = self.val_dataset.labels[:1000]
                     self.iid_test_set.__len__ = len(self.iid_test_set.data)
-            if self.val_split == "devries":
-                self.val_dataset = get_dataset(
-                    name=self.dataset_name,
-                    root=self.data_dir,
-                    train=False,
-                    download=True,
-                    target_transform=self.target_transforms.get("val"),
-                    transform=self.augmentations["val"],
-                    kwargs=self.dataset_kwargs,
-                )
-                if "wilds" in self.dataset_name:
-                    self.val_dataset.indices = self.val_dataset.indices[:1000]
-                    self.val_dataset.__len__ = len(self.val_dataset.indices)
-                else:
-                    try:
-                        self.val_dataset.imgs = self.val_dataset.imgs[:1000]
-                        self.val_dataset.samples = self.val_dataset.samples[:1000]
-                        self.val_dataset.targets = self.val_dataset.targets[:1000]
-                        self.val_dataset.__len__ = len(self.val_dataset.imgs)
-                    except:
-                        self.val_dataset.data = self.val_dataset.data[:1000]
-                        try:
-                            self.val_dataset.targets = self.val_dataset.targets[:1000]
-                        except:
-                            self.val_dataset.labels = self.val_dataset.labels[:1000]
-                        self.val_dataset.__len__ = len(self.val_dataset.data)
+                    self.val_dataset.__len__ = len(self.val_dataset.data)
 
         else:
             self.val_dataset = get_dataset(
