@@ -12,10 +12,14 @@ image: "python:3.10"
 
 test:package:
   stage: test
+  tags:
+    - fd-shifts
   before_script:
     - python --version
+    - pip install -U pip wheel
     - pip install .[dev]
   script:
+    - python -c 'import numpy as np; print(np.version.full_version)'
     - python -m pytest -W ignore -m "not slow"
 
 test:notebooks:
