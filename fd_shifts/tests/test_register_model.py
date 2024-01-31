@@ -14,6 +14,7 @@ class MyModel(pl.LightningModule):
     pass
 
 
+@pytest.mark.skip("TODO: does nothing, remove or improve")
 def test_register_model(mock_env_if_missing):
     configs.init()
 
