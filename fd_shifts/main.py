@@ -1,5 +1,7 @@
+import re
 import types
 import typing
+import warnings
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, is_dataclass
@@ -21,7 +23,13 @@ from rich.pretty import pretty_repr
 
 from fd_shifts import analysis, logger
 from fd_shifts.configs import Config, TestConfig
-from fd_shifts.experiments.configs import get_experiment_config, list_experiment_configs
+from fd_shifts.experiments.configs import (
+    get_dataset_config,
+    get_experiment_config,
+    list_experiment_configs,
+    wilds_animals_query_config,
+)
+from fd_shifts.experiments.tracker import get_path
 from fd_shifts.loaders.data_loader import FDShiftsDataLoader
 from fd_shifts.models import get_model
 from fd_shifts.models.callbacks import get_callbacks
@@ -173,6 +181,40 @@ class ActionLegacyConfigFile(ActionConfigFile):
                         },
                     },
                 }
+
+                # query_studies contain DataConfig objects now, not just names
+                for k, v in cfg_file["config"]["eval"]["query_studies"].items():
+                    if k == "iid_study":
+                        pass
+                    elif k in ["in_class_study", "noise_study", "new_class_study"]:
+                        cfg_file["config"]["eval"]["query_studies"][k] = [
+                            asdict(get_dataset_config(v2)) for v2 in v
+                        ]
+                    else:
+                        raise ValueError(f"Unknown query study {k}")
+
+                # for specific experiments, the seed should be fixed, if "random_seed" was written fix it
+                if isinstance(cfg_file["config"]["exp"]["global_seed"], str):
+                    warnings.warn(
+                        "global_seed is set to random in file, setting it to -1"
+                    )
+                    cfg_file["config"]["exp"]["global_seed"] = -1
+
+                # hydra is gone
+                if cfg_file["config"]["exp"]["work_dir"] == "${hydra:runtime.cwd}":
+                    cfg_file["config"]["exp"]["work_dir"] = Path.cwd()
+
+                # resolve everything else
+                oc_config = OmegaConf.create(cfg_file["config"])
+                dict_config: dict[str, Any] = OmegaConf.to_object(oc_config)  # type: ignore
+                cfg_file["config"] = dict_config
+
+                # don't need to comply with accumulate_grad_batches, that's runtime env dependent
+                cfg_file["config"]["trainer"]["batch_size"] *= cfg_file["config"][
+                    "trainer"
+                ].get("accumulate_grad_batches", 1)
+                cfg_file["config"]["trainer"]["accumulate_grad_batches"] = 1
+
             else:
                 raise ValueError(f"Unknown option string {option_string}")
 
