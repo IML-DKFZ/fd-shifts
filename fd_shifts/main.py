@@ -1,4 +1,3 @@
-import re
 import types
 import typing
 import warnings
@@ -21,13 +20,13 @@ from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.loggers.wandb import WandbLogger
 from rich.pretty import pretty_repr
 
-from fd_shifts import analysis, logger
-from fd_shifts.configs import Config, TestConfig
+from fd_shifts import analysis as ana
+from fd_shifts import logger
+from fd_shifts.configs import Config
 from fd_shifts.experiments.configs import (
     get_dataset_config,
     get_experiment_config,
     list_experiment_configs,
-    wilds_animals_query_config,
 )
 from fd_shifts.experiments.tracker import get_path
 from fd_shifts.loaders.data_loader import FDShiftsDataLoader
@@ -453,14 +452,23 @@ def test(config: Config):
         precision=16,
     )
     trainer.test(model=module, datamodule=datamodule)
-    analysis.main(
+
+
+@subcommand
+def analysis(config: Config):
+    ana.main(
         in_path=config.test.dir,
-        out_path=config.test.dir,
+        out_path=config.exp.output_paths.analysis,
         query_studies=config.eval.query_studies,
         add_val_tuning=config.eval.val_tuning,
         threshold_plot_confid=None,
         cf=config,
     )
+
+
+@subcommand
+def debug(config: Config):
+    pass
 
 
 def _list_experiments():
