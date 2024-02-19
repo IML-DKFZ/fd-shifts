@@ -112,6 +112,7 @@ class OutputPathsPerMode(_IterableMixin):
         encoded_output=Path("${test.dir}/encoded_output.npz"),
         attributions_output=Path("${test.dir}/attributions.csv"),
     )
+    analysis: Path = SI("${test.dir}")
 
 
 @defer_validation
