@@ -54,7 +54,7 @@ class ClipOodModel(pl.LightningModule):
 
         logits = image_features @ self.text_features.T
 
-        self.test_results = {
+        return {
             "logits": logits,
             "logits_dist": None,
             "labels": y,

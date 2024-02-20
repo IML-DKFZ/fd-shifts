@@ -77,6 +77,7 @@ class OutputPathsConfig(_IterableMixin):
     external_confids: Path
     external_confids_dist: Path
     encoded_output: Path
+    encoded_train: Path
     attributions_output: Path
     input_imgs_plot: Optional[Path] = None
 
@@ -93,6 +94,7 @@ class OutputPathsPerMode(_IterableMixin):
         external_confids_dist=Path("${exp.version_dir}/external_confids_dist.npz"),
         input_imgs_plot=Path("${exp.dir}/input_imgs.png"),
         encoded_output=Path("${test.dir}/encoded_output.npz"),
+        encoded_train=Path("${test.dir}/train_features.npz"),
         attributions_output=Path("${test.dir}/attributions.csv"),
     )
     test: OutputPathsConfig = OutputPathsConfig(
@@ -102,6 +104,7 @@ class OutputPathsPerMode(_IterableMixin):
         external_confids_dist=Path("${test.dir}/external_confids_dist.npz"),
         input_imgs_plot=None,
         encoded_output=Path("${test.dir}/encoded_output.npz"),
+        encoded_train=Path("${test.dir}/train_features.npz"),
         attributions_output=Path("${test.dir}/attributions.csv"),
     )
     analysis: Path = SI("${test.dir}")
@@ -525,6 +528,7 @@ class TestConfig(_IterableMixin):
     external_confids_output_path: str = "external_confids.npz"
     output_precision: int = 16
     selection_mode: Optional[str] = "max"
+    compute_train_encodings: bool = False
 
 
 @defer_validation
