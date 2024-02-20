@@ -173,7 +173,16 @@ class ActionLegacyConfigFile(ActionConfigFile):
                 for k, v in cfg_file["config"]["eval"]["query_studies"].items():
                     if k == "iid_study":
                         pass
-                    elif k in ["in_class_study", "noise_study", "new_class_study"]:
+                    elif k == "noise_study":
+                        if len(v) == 0:
+                            cfg_file["config"]["eval"]["query_studies"][k] = None
+                        elif len(v) == 1:
+                            cfg_file["config"]["eval"]["query_studies"][k] = asdict(
+                                get_dataset_config(v[0])
+                            )
+                        else:
+                            raise ValueError(f"Too many noise studies {v}")
+                    elif k in ["in_class_study", "new_class_study"]:
                         cfg_file["config"]["eval"]["query_studies"][k] = [
                             asdict(get_dataset_config(v2)) for v2 in v
                         ]
@@ -236,6 +245,17 @@ def _dict_to_dataclass(cfg) -> Config:
         if is_dataclass(cls):
             fieldtypes = typing.get_type_hints(cls)
             return cls(
+                **{k: __dict_to_dataclass(v, fieldtypes[k]) for k, v in cfg.items()}
+            )
+        if (
+            isinstance(cls, types.UnionType)
+            and len(cls.__args__) == 2
+            and cls.__args__[1] == type(None)
+            and is_dataclass(cls.__args__[0])
+            and isinstance(cfg, dict)
+        ):
+            fieldtypes = typing.get_type_hints(cls.__args__[0])
+            return cls.__args__[0](
                 **{k: __dict_to_dataclass(v, fieldtypes[k]) for k, v in cfg.items()}
             )
         if typing.get_origin(cls) == list:
