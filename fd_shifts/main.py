@@ -559,13 +559,14 @@ def main():
     rich.print(config)
 
     # TODO: Check if configs are the same
-    config.test.cf_path.parent.mkdir(parents=True, exist_ok=True)
-    subparsers[args.command].save(
-        args[args.command],
-        config.test.cf_path,
-        skip_check=True,
-        overwrite=args.overwrite_config_file,
-    )
+    if not config.test.cf_path.is_file() or args.overwrite_config_file:
+        config.test.cf_path.parent.mkdir(parents=True, exist_ok=True)
+        subparsers[args.command].save(
+            args[args.command],
+            config.test.cf_path,
+            skip_check=True,
+            overwrite=args.overwrite_config_file,
+        )
 
     __subcommands[args.command](config=config)
 
