@@ -51,7 +51,10 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             self.external_test_sets = []
             for key, values in self.query_studies:
                 if key != "iid_study" and values is not None:
-                    self.external_test_sets.extend(list(values))
+                    if key == "noise_study" and values.dataset is not None:
+                        self.external_test_sets.append(values)
+                    else:
+                        self.external_test_sets.extend(list(values))
             logging.debug(
                 "CHECK flat list of external datasets %s", self.external_test_sets
             )
@@ -267,6 +270,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                     target_transform=self.target_transforms,
                     transform=self.augmentations["external_{}".format(ext_set)],
                     kwargs=self.dataset_kwargs,
+                    config=self.external_test_configs[ext_set],
                 )
                 if (
                     self.devries_repro_ood_split

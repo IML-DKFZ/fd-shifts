@@ -72,13 +72,13 @@ def defer_validation(original_class: type[ConfigT]) -> type[ConfigT]:
 class OutputPathsConfig(_IterableMixin):
     """Where outputs are stored"""
 
-    raw_output: Path | None = None
-    raw_output_dist: Path | None = None
-    external_confids: Path | None = None
-    external_confids_dist: Path | None = None
+    raw_output: Path
+    raw_output_dist: Path
+    external_confids: Path
+    external_confids_dist: Path
+    encoded_output: Path
+    attributions_output: Path
     input_imgs_plot: Optional[Path] = None
-    encoded_output: Optional[Path] = None
-    attributions_output: Optional[Path] = None
 
 
 @defer_validation
@@ -92,8 +92,8 @@ class OutputPathsPerMode(_IterableMixin):
         external_confids=Path("${exp.version_dir}/external_confids.npz"),
         external_confids_dist=Path("${exp.version_dir}/external_confids_dist.npz"),
         input_imgs_plot=Path("${exp.dir}/input_imgs.png"),
-        encoded_output=None,
-        attributions_output=None,
+        encoded_output=Path("${test.dir}/encoded_output.npz"),
+        attributions_output=Path("${test.dir}/attributions.csv"),
     )
     test: OutputPathsConfig = OutputPathsConfig(
         raw_output=Path("${test.dir}/raw_logits.npz"),
@@ -450,7 +450,7 @@ class QueryStudiesConfig(_IterableMixin):
     """Query Studies Configuration"""
 
     iid_study: str | None = None
-    noise_study: list[DataConfig] = field(default_factory=lambda: [])
+    noise_study: DataConfig = field(default_factory=lambda: DataConfig())
     in_class_study: list[DataConfig] = field(default_factory=lambda: [])
     new_class_study: list[DataConfig] = field(default_factory=lambda: [])
 
