@@ -545,6 +545,7 @@ class DataConfig(_IterableMixin):
     reproduce_confidnet_splits: bool = False
     augmentations: dict[str, dict[str, Any]] | None = None
     target_transforms: Optional[Any] = None
+    subsample_corruptions: int = 10
     kwargs: Optional[dict[Any, Any]] = None
 
 
