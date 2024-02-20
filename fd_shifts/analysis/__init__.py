@@ -10,17 +10,14 @@ import faiss
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import torch
 from loguru import logger
-from omegaconf import DictConfig, ListConfig, OmegaConf
+from omegaconf import ListConfig
 from rich import inspect
 from scipy import special as scpspecial
-from sklearn import neighbors
 from sklearn.calibration import _sigmoid_calibration as calib
 
 from fd_shifts import configs
 
-from . import metrics
 from .confid_scores import ConfidScore, SecondaryConfidScore, is_external_confid
 from .eval_utils import (
     ConfidEvaluator,
@@ -361,6 +358,8 @@ class PlattScaling:
 
 class TemperatureScaling:
     def __init__(self, val_logits: npt.NDArray[Any], val_labels: npt.NDArray[Any]):
+        import torch
+
         logger.info("Fit temperature to validation logits")
         self.temperature = torch.ones(1).requires_grad_(True)
 
@@ -380,6 +379,8 @@ class TemperatureScaling:
         self.temperature = self.temperature.item()
 
     def __call__(self, logits: npt.NDArray[Any]) -> npt.NDArray[Any]:
+        import torch
+
         return np.max(
             torch.softmax(torch.tensor(logits) / self.temperature, dim=1).numpy(),
             axis=1,
@@ -394,6 +395,8 @@ def _react(
     clip_quantile=99,
     val_set_index=0,
 ):
+    import torch
+
     logger.info("Compute REACT logits")
     logger.warning(
         "Currently uses validation set for clip parameter fit, will switch to training set in the future"
@@ -425,6 +428,8 @@ def _maha_dist(
     dataset_idx: npt.NDArray[np.int_],
     val_set_index=0,
 ):
+    import torch
+
     logger.info("Compute Mahalanobis distance")
 
     # mask = np.argwhere(dataset_idx == val_set_index)[:, 0]
@@ -453,6 +458,8 @@ def _vim(
     features: npt.NDArray[np.float_],
     logits: npt.NDArray[np.float_],
 ):
+    import torch
+
     logger.info("Compute ViM score")
     D = 512
     w, b = last_layer

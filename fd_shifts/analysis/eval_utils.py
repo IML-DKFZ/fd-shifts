@@ -1,18 +1,24 @@
+from __future__ import annotations
+
 import math
 import os
+from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy
 import seaborn
-import torch
 from sklearn import metrics as skm
 from sklearn.calibration import calibration_curve
-from torchmetrics import Metric
 
 from . import logger
 from .metrics import StatsCache, get_metric_function
+
+# from torchmetrics import Metric
+
+
+if TYPE_CHECKING:
+    import torch
 
 
 def _get_tb_hparams(cf):
@@ -29,6 +35,8 @@ def monitor_eval(
     do_plot=True,
     ext_confid_name=None,
 ):
+    import torch
+
     out_metrics = {}
     out_plots = {}
     bins = 20
@@ -367,6 +375,8 @@ class ConfidPlotter:
         self.threshold = None
 
     def compose_plot(self):
+        import matplotlib.pyplot as plt
+
         seaborn.set(font_scale=self.fig_scale, style="whitegrid")
         self.colors_list = seaborn.hls_palette(len(self.confid_keys_list)).as_hex()
         n_columns = 2
@@ -681,29 +691,31 @@ def RC_curve(residuals, confidence):
     return curve, aurc, e_aurc
 
 
-class BrierScore(Metric):
-    def __init__(self, num_classes, dist_sync_on_step=False):
-        # call `self.add_state`for every internal state that is needed for the metrics computations
-        # dist_reduce_fx indicates the function that should be used to reduce
-        # state from multiple processes
-        super().__init__(dist_sync_on_step=dist_sync_on_step)
+# class BrierScore(Metric):
+#     def __init__(self, num_classes, dist_sync_on_step=False):
+#         import torch
+#         # call `self.add_state`for every internal state that is needed for the metrics computations
+#         # dist_reduce_fx indicates the function that should be used to reduce
+#         # state from multiple processes
+#         super().__init__(dist_sync_on_step=dist_sync_on_step)
 
-        self.num_classes = num_classes
-        self.add_state("brier_score", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
+#         self.num_classes = num_classes
+#         self.add_state("brier_score", default=torch.tensor(0.0), dist_reduce_fx="sum")
+#         self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
 
-    def update(self, preds: torch.Tensor, target: torch.Tensor):
-        # update metric states
+#     def update(self, preds: torch.Tensor, target: torch.Tensor):
+#         import torch
+#         # update metric states
 
-        y_one_hot = torch.nn.functional.one_hot(target, num_classes=self.num_classes)
-        assert preds.shape == y_one_hot.shape
+#         y_one_hot = torch.nn.functional.one_hot(target, num_classes=self.num_classes)
+#         assert preds.shape == y_one_hot.shape
 
-        self.brier_score += ((preds - y_one_hot) ** 2).sum(1).mean()
-        self.total += 1
+#         self.brier_score += ((preds - y_one_hot) ** 2).sum(1).mean()
+#         self.total += 1
 
-    def compute(self):
-        # compute final result
-        return self.brier_score.float() / self.total
+#     def compute(self):
+#         # compute final result
+#         return self.brier_score.float() / self.total
 
 
 def clean_logging(log_dir):
@@ -716,6 +728,8 @@ def clean_logging(log_dir):
 
 
 def plot_input_imgs(x, y, out_path):
+    import matplotlib.pyplot as plt
+
     f, axs = plt.subplots(nrows=4, ncols=4, figsize=(10, 10))
     for ix in range(len(f.axes)):
         ax = f.axes[ix]
@@ -728,6 +742,8 @@ def plot_input_imgs(x, y, out_path):
 
 
 def qual_plot(fp_dict, fn_dict, out_path):
+    import matplotlib.pyplot as plt
+
     n_rows = len(fp_dict["images"])
     f, axs = plt.subplots(nrows=n_rows, ncols=2, figsize=(6, 13))
     title_pad = 0.85
@@ -761,6 +777,8 @@ def qual_plot(fp_dict, fn_dict, out_path):
 
 
 def ThresholdPlot(plot_dict):
+    import matplotlib.pyplot as plt
+
     scale = 10
     n_cols = len(plot_dict)
     n_rows = 1

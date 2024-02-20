@@ -8,28 +8,20 @@ from dataclasses import field
 from enum import Enum, auto
 from pathlib import Path
 from random import randint
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Iterable, Optional, TypeVar
 
-import pl_bolts
-import torch
 from hydra.core.config_store import ConfigStore
-from hydra_zen import builds  # type: ignore
 from omegaconf import SI, DictConfig, OmegaConf
-from omegaconf.omegaconf import MISSING
 from pydantic import ConfigDict, validator
 from pydantic.dataclasses import dataclass
 from typing_extensions import dataclass_transform
 
-import fd_shifts
-from fd_shifts import models
-from fd_shifts.analysis import confid_scores, metrics
-from fd_shifts.loaders import dataset_collection
-from fd_shifts.utils import exp_utils
+from fd_shifts import get_version
 
-from ..models import networks
 from .iterable_mixin import _IterableMixin
 
 if TYPE_CHECKING:
+    import torch
     from pydantic.dataclasses import Dataclass
 
     ConfigT = TypeVar("ConfigT", bound=Dataclass)
@@ -310,6 +302,8 @@ class NetworkConfig(_IterableMixin):
         Returns:
             name
         """
+        from ..models import networks
+
         if name is not None and not networks.network_exists(name):
             raise ValueError(f'Network "{name}" does not exist.')
         return name
@@ -343,6 +337,8 @@ class ModelConfig(_IterableMixin):
         Returns:
             name
         """
+        from fd_shifts import models
+
         if name is not None and not models.model_exists(name):
             raise ValueError(f'Model "{name}" does not exist.')
         return name
@@ -415,6 +411,8 @@ class ConfidMetricsConfig(_IterableMixin):
         Returns:
             name
         """
+        from fd_shifts.analysis import metrics
+
         if not metrics.metric_function_exists(name):
             raise ValueError(f'Confid metric function "{name}" does not exist.')
         return name
@@ -439,6 +437,8 @@ class ConfidMeasuresConfig(_IterableMixin):
         Returns:
             name
         """
+        from fd_shifts.analysis import confid_scores
+
         if not confid_scores.confid_function_exists(name):
             raise ValueError(f'Confid function "{name}" does not exist.')
         return name
@@ -466,6 +466,8 @@ class QueryStudiesConfig(_IterableMixin):
         Returns:
             name
         """
+        from fd_shifts.loaders import dataset_collection
+
         if not dataset_collection.dataset_exists(name):
             raise ValueError(f'Dataset "{name}" does not exist.')
         return name
@@ -548,7 +550,7 @@ class Config(_IterableMixin):
 
     exp: ExperimentConfig
 
-    pkgversion: str = fd_shifts.get_version()
+    pkgversion: str = get_version()
 
     data: DataConfig = field(default_factory=lambda: DataConfig())
 
@@ -560,6 +562,8 @@ class Config(_IterableMixin):
     test: TestConfig = field(default_factory=lambda: TestConfig())
 
     def update_experiment(self, name: str):
+        from fd_shifts.utils import exp_utils
+
         config = deepcopy(self)
         group_name = config.data.dataset
         group_dir = config.exp.group_dir.parent / group_name

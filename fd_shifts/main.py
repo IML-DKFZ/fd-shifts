@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import types
 import typing
 import warnings
@@ -5,35 +7,17 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import jsonargparse
-import pytorch_lightning as pl
 import rich
 import yaml
 from jsonargparse import ActionConfigFile, ArgumentParser
 from jsonargparse._actions import Action
 from omegaconf import OmegaConf
-from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBar
-from pytorch_lightning.loggers.csv_logs import CSVLogger
-from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
-from pytorch_lightning.loggers.wandb import WandbLogger
 from rich.pretty import pretty_repr
 
-from fd_shifts import analysis as ana
-from fd_shifts import logger
 from fd_shifts.configs import Config
-from fd_shifts.experiments.configs import (
-    get_dataset_config,
-    get_experiment_config,
-    list_experiment_configs,
-)
-from fd_shifts.experiments.tracker import get_path
-from fd_shifts.loaders.data_loader import FDShiftsDataLoader
-from fd_shifts.models import get_model
-from fd_shifts.models.callbacks import get_callbacks
-from fd_shifts.utils import exp_utils
-from fd_shifts.version import get_version
 
 __subcommands = {}
 
@@ -85,6 +69,8 @@ class ActionExperiment(Action):
 
     @staticmethod
     def apply_experiment_config(parser: ArgumentParser, cfg, dest, value) -> None:
+        from fd_shifts.experiments.configs import get_experiment_config
+
         with previous_config_context(cfg):
             experiment_cfg = get_experiment_config(value)
             tcfg = parser.parse_object(
@@ -134,6 +120,8 @@ class ActionLegacyConfigFile(ActionConfigFile):
     @staticmethod
     def apply_config(parser, cfg, dest, value, option_string) -> None:
         from jsonargparse._link_arguments import skip_apply_links
+
+        from fd_shifts.experiments.configs import get_dataset_config
 
         with jsonargparse._actions._ActionSubCommands.not_single_subcommand(), previous_config_context(
             cfg
@@ -292,6 +280,8 @@ def omegaconf_resolve(config: Config):
 
 
 def setup_logging():
+    from fd_shifts import logger
+
     rich.reconfigure(stderr=True, force_terminal=True)
     logger.remove()  # Remove default 'stderr' handler
 
@@ -309,6 +299,18 @@ def setup_logging():
 
 @subcommand
 def train(config: Config):
+    import pytorch_lightning as pl
+    from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBar
+    from pytorch_lightning.loggers.csv_logs import CSVLogger
+    from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
+    from pytorch_lightning.loggers.wandb import WandbLogger
+
+    from fd_shifts import logger
+    from fd_shifts.loaders.data_loader import FDShiftsDataLoader
+    from fd_shifts.models import get_model
+    from fd_shifts.models.callbacks import get_callbacks
+    from fd_shifts.utils import exp_utils
+
     progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
 
     if config.exp.dir is None:
@@ -397,6 +399,16 @@ def train(config: Config):
 
 @subcommand
 def test(config: Config):
+    import pytorch_lightning as pl
+    from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBar
+    from pytorch_lightning.loggers.wandb import WandbLogger
+
+    from fd_shifts import logger
+    from fd_shifts.loaders.data_loader import FDShiftsDataLoader
+    from fd_shifts.models import get_model
+    from fd_shifts.models.callbacks import get_callbacks
+    from fd_shifts.utils import exp_utils
+
     progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
 
     if config.exp.dir is None:
@@ -456,6 +468,8 @@ def test(config: Config):
 
 @subcommand
 def analysis(config: Config):
+    from fd_shifts import analysis as ana
+
     ana.main(
         in_path=config.test.dir,
         out_path=config.exp.output_paths.analysis,
@@ -472,12 +486,16 @@ def debug(config: Config):
 
 
 def _list_experiments():
+    from fd_shifts.experiments.configs import list_experiment_configs
+
     rich.print("Available experiments:")
     for exp in sorted(list_experiment_configs()):
         rich.print(exp)
 
 
 def get_parser():
+    from fd_shifts import get_version
+
     parser = ArgumentParser(version=get_version())
     parser.add_argument("-f", "--overwrite-config-file", action="store_true")
     subcommands = parser.add_subcommands(dest="command")
