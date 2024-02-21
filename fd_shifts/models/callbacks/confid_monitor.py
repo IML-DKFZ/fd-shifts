@@ -515,8 +515,6 @@ class ConfidMonitor(Callback):
 
     def on_test_end(self, trainer, pl_module):
         logger.info("Saving test outputs to disk")
-        if not hasattr(pl_module, "test_results"):
-            return
 
         stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
         stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
@@ -559,6 +557,11 @@ class ConfidMonitor(Callback):
                 self.output_paths.test.encoded_train,
                 encoded_train_output.cpu().data.numpy(),
             )
+            w, b = pl_module.last_layer()
+            w = w.cpu().numpy()
+            b = b.cpu().numpy()
+            np.savez_compressed(self.cfg.test.dir / "last_layer.npz", w=w, b=b)
+
         # try:
         #    trainer.datamodule.test_datasets[0].csv.to_csv(
         #        self.output_paths.test.attributions_output
