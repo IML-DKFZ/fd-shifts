@@ -483,6 +483,7 @@ def _react(
     dataset_idx: npt.NDArray[np.integer],
     clip_quantile=99,
     val_set_index=0,
+    is_dg=False,
 ):
     import torch
 
@@ -501,6 +502,8 @@ def _react(
         )
         + b
     )
+    if is_dg:
+        logits = logits[:, :-1]
     return logits.numpy()
 
 
@@ -539,6 +542,7 @@ def _vim(
     train_features: npt.NDArray[np.float_] | None,
     features: npt.NDArray[np.float_],
     logits: npt.NDArray[np.float_],
+    is_dg=False,
 ):
     import torch
 
@@ -556,7 +560,7 @@ def _vim(
 
     logger.debug("ViM: Compute NS")
     u = -torch.pinverse(w) @ b
-    train_f = torch.tensor(train_features[:1000, :-1], dtype=torch.float)
+    train_f = torch.tensor(train_features[:, :-1], dtype=torch.float)
     cov = torch.cov((train_f - u).T)
     eig_vals, eigen_vectors = torch.linalg.eig(cov)
     eig_vals = eig_vals.real
@@ -565,6 +569,9 @@ def _vim(
 
     logger.debug("ViM: Compute alpha")
     logit_train = torch.matmul(train_f, w.T) + b
+
+    if is_dg:
+        logit_train = logit_train[:, :-1]
 
     vlogit_train = torch.linalg.norm(torch.matmul(train_f - u, NS), dim=-1)
     alpha = logit_train.max(dim=-1)[0].mean() / vlogit_train.mean()
