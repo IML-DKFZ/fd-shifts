@@ -59,8 +59,6 @@ def svhn_query_config(
 
     return QueryStudiesConfig(
         iid_study="svhn" + ("_384" if img_size[0] == 384 else ""),
-        noise_study=[],
-        in_class_study=[],
         new_class_study=[
             cifar10_data_config(img_size=img_size),
             cifar100_data_config(img_size=img_size),
@@ -120,10 +118,7 @@ def cifar10_query_config(img_size: int | tuple[int, int]) -> QueryStudiesConfig:
 
     return QueryStudiesConfig(
         iid_study="cifar10" + ("_384" if img_size[0] == 384 else ""),
-        noise_study=[
-            cifar10_data_config("corrupt_cifar10", img_size),
-        ],
-        in_class_study=[],
+        noise_study=cifar10_data_config("corrupt_cifar10", img_size),
         new_class_study=[
             cifar100_data_config(img_size=img_size),
             svhn_data_config("svhn", img_size),
@@ -133,7 +128,7 @@ def cifar10_query_config(img_size: int | tuple[int, int]) -> QueryStudiesConfig:
 
 
 def cifar100_data_config(
-    dataset: Literal["cifar100", "corrupt_cifar100"] = "cifar100",
+    dataset: Literal["cifar100", "corrupt_cifar100", "super_cifar100"] = "cifar100",
     img_size: int | tuple[int, int] = 32,
 ) -> DataConfig:
     if isinstance(img_size, int):
@@ -158,11 +153,14 @@ def cifar100_data_config(
 
     return DataConfig(
         dataset=dataset,
-        data_dir=SI("${oc.env:DATASET_ROOT_DIR}/" + dataset),
+        data_dir=SI(
+            "${oc.env:DATASET_ROOT_DIR}/"
+            + ("cifar100" if dataset in ["cifar100", "super_cifar100"] else dataset)
+        ),
         pin_memory=True,
         img_size=(img_size[0], img_size[1], 3),
         num_workers=12,
-        num_classes=100,
+        num_classes=19 if dataset == "super_cifar100" else 100,
         reproduce_confidnet_splits=True,
         augmentations={
             "train": train_augmentations,
@@ -174,21 +172,26 @@ def cifar100_data_config(
     )
 
 
-def cifar100_query_config(img_size: int | tuple[int, int]) -> QueryStudiesConfig:
+def cifar100_query_config(
+    img_size: int | tuple[int, int],
+    dataset: Literal["cifar100", "super_cifar100"] = "cifar100",
+) -> QueryStudiesConfig:
     if isinstance(img_size, int):
         img_size = (img_size, img_size)
 
     return QueryStudiesConfig(
-        iid_study="cifar100" + ("_384" if img_size[0] == 384 else ""),
-        noise_study=[
-            cifar100_data_config("corrupt_cifar100", img_size),
-        ],
+        iid_study=dataset + ("_384" if img_size[0] == 384 else ""),
+        noise_study=cifar100_data_config("corrupt_cifar100", img_size)
+        if dataset == "cifar100"
+        else DataConfig(),
         in_class_study=[],
         new_class_study=[
             cifar10_data_config(img_size=img_size),
             svhn_data_config("svhn", img_size),
             tinyimagenet_data_config(img_size),
-        ],
+        ]
+        if dataset == "cifar100"
+        else [],
     )
 
 
@@ -234,7 +237,6 @@ def wilds_animals_query_config(
 
     return QueryStudiesConfig(
         iid_study="wilds_animals" + ("_384" if img_size[0] == 384 else ""),
-        noise_study=[],
         in_class_study=[wilds_animals_data_config("wilds_animals_ood_test", img_size)],
         new_class_study=[],
     )
@@ -284,7 +286,6 @@ def wilds_camelyon_query_config(
 
     return QueryStudiesConfig(
         iid_study="wilds_camelyon" + ("_384" if img_size[0] == 384 else ""),
-        noise_study=[],
         in_class_study=[
             wilds_camelyon_data_config("wilds_camelyon_ood_test", img_size)
         ],
@@ -335,9 +336,7 @@ def breeds_query_config(img_size: int | tuple[int, int] = 224) -> QueryStudiesCo
 
     return QueryStudiesConfig(
         iid_study="breeds" + ("_384" if img_size[0] == 384 else ""),
-        noise_study=[],
         in_class_study=[breeds_data_config("breeds_ood_test", img_size)],
-        new_class_study=[],
     )
 
 
@@ -378,6 +377,8 @@ __dataset_configs: dict[str, DataConfig] = {
     "cifar10_384": cifar10_data_config(img_size=384),
     "cifar100": cifar100_data_config(),
     "cifar100_384": cifar100_data_config(img_size=384),
+    "super_cifar100": cifar100_data_config(dataset="super_cifar100"),
+    "super_cifar100_384": cifar100_data_config(img_size=384, dataset="super_cifar100"),
     "corrupt_cifar10": cifar10_data_config(dataset="corrupt_cifar10"),
     "corrupt_cifar10_384": cifar10_data_config(dataset="corrupt_cifar10", img_size=384),
     "corrupt_cifar100": cifar100_data_config(dataset="corrupt_cifar100"),
@@ -723,6 +724,36 @@ def cnn_cifar100_modeldg(run: int, do: int, rew: float):
     config.model.avg_pool = do == 0
     config.model.network.name = "vgg13"
     config.eval.ext_confid_name = "dg"
+    return config
+
+
+def cnn_super_cifar100_modelconfidnet(run: int, do: int, **kwargs):
+    config = cnn_cifar100_modelconfidnet(run, do, **kwargs)
+    config.exp.group_name = "supercifar_paper_sweep"
+    config.data = cifar100_data_config(dataset="super_cifar100", img_size=32)
+    config.eval.query_studies = cifar100_query_config(
+        dataset="super_cifar100", img_size=32
+    )
+    return config
+
+
+def cnn_super_cifar100_modeldevries(run: int, do: int, **kwargs):
+    config = cnn_cifar100_modeldevries(run, do, **kwargs)
+    config.exp.group_name = "supercifar_paper_sweep"
+    config.data = cifar100_data_config(dataset="super_cifar100", img_size=32)
+    config.eval.query_studies = cifar100_query_config(
+        dataset="super_cifar100", img_size=32
+    )
+    return config
+
+
+def cnn_super_cifar100_modeldg(run: int, do: int, rew: float):
+    config = cnn_cifar100_modeldg(run, do, rew)
+    config.exp.group_name = "supercifar_paper_sweep"
+    config.data = cifar100_data_config(dataset="super_cifar100", img_size=32)
+    config.eval.query_studies = cifar100_query_config(
+        dataset="super_cifar100", img_size=32
+    )
     return config
 
 
@@ -1151,6 +1182,25 @@ register(cnn_cifar100_modeldg, do=0, rew=15)
 register(cnn_cifar100_modeldg, do=1, rew=15)
 register(cnn_cifar100_modeldg, do=0, rew=20)
 register(cnn_cifar100_modeldg, do=1, rew=20)
+
+register(cnn_super_cifar100_modeldevries, do=0)
+register(cnn_super_cifar100_modeldevries, do=1)
+register(cnn_super_cifar100_modelconfidnet, do=0)
+register(cnn_super_cifar100_modelconfidnet, do=1)
+register(cnn_super_cifar100_modeldg, do=0, rew=2.2)
+register(cnn_super_cifar100_modeldg, do=1, rew=2.2)
+register(cnn_super_cifar100_modeldg, do=0, rew=3)
+register(cnn_super_cifar100_modeldg, do=1, rew=3)
+register(cnn_super_cifar100_modeldg, do=0, rew=6)
+register(cnn_super_cifar100_modeldg, do=1, rew=6)
+register(cnn_super_cifar100_modeldg, do=0, rew=10)
+register(cnn_super_cifar100_modeldg, do=1, rew=10)
+register(cnn_super_cifar100_modeldg, do=0, rew=12)
+register(cnn_super_cifar100_modeldg, do=1, rew=12)
+register(cnn_super_cifar100_modeldg, do=0, rew=15)
+register(cnn_super_cifar100_modeldg, do=1, rew=15)
+register(cnn_super_cifar100_modeldg, do=0, rew=20)
+register(cnn_super_cifar100_modeldg, do=1, rew=20)
 
 register(cnn_animals_modeldevries, do=0)
 register(cnn_animals_modeldevries, do=1)
