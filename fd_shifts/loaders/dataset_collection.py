@@ -849,7 +849,7 @@ class CorruptCIFAR(datasets.VisionDataset):
         self.classes = eval_utils.cifar100_classes
 
     @staticmethod
-    def subsample(data, targets, subsample):
+    def subsample_idx(data, targets, subsample):
         n_classes = len(np.unique(targets))
         n_cor_kinds = 15
         n_cor_levels = 5
@@ -877,6 +877,11 @@ class CorruptCIFAR(datasets.VisionDataset):
                 for cor_level_idx in range(n_cor_levels)
             ]
         )
+        return idx
+
+    @staticmethod
+    def subsample(data, targets, subsample):
+        idx = CorruptCIFAR.subsample_idx(data, targets, subsample)
         return data[idx, :], targets[idx]
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
