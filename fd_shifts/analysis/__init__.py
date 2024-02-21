@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass, field
 from numbers import Number
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, overload
 
 import faiss
 import numpy as np
@@ -246,6 +246,39 @@ class ExperimentData:
         with np.load(path) as npz:
             return npz.f.arr_0
 
+    @overload
+    @staticmethod
+    def __load_from_store(
+        config: configs.Config, file: str
+    ) -> npt.NDArray[np.float64] | None:
+        ...
+
+    @overload
+    @staticmethod
+    def __load_from_store(
+        config: configs.Config, file: str, unpack: Literal[False]
+    ) -> dict[str, npt.NDArray[np.float64]] | None:
+        ...
+
+    @staticmethod
+    def __load_from_store(
+        config: configs.Config, file: str, unpack: bool = True
+    ) -> npt.NDArray[np.float64] | dict[str, npt.NDArray[np.float64]] | None:
+        store_paths = map(Path, os.getenv("FD_SHIFTS_STORE_PATH", "").split(":"))
+
+        test_dir = config.test.dir.relative_to(os.getenv("EXPERIMENT_ROOT_DIR", ""))
+
+        for store_path in store_paths:
+            if (store_path / test_dir / file).is_file():
+                logger.debug(f"Loading {store_path / test_dir / file}")
+                with np.load(store_path / test_dir / file) as npz:
+                    if unpack:
+                        return npz.f.arr_0.astype(np.float64)
+                    else:
+                        return dict(npz.items())
+
+        return None
+
     @staticmethod
     def from_experiment(
         test_dir: Path,
@@ -255,10 +288,9 @@ class ExperimentData:
         if not isinstance(test_dir, Path):
             test_dir = Path(test_dir)
 
-        if (test_dir / "raw_logits.npz").is_file():
-            with np.load(test_dir / "raw_logits.npz") as npz:
-                raw_output = npz.f.arr_0.astype(np.float64)
-
+        if (
+            raw_output := ExperimentData.__load_from_store(config, "raw_logits.npz")
+        ) is not None:
             logits = raw_output[:, :-2]
             softmax = scpspecial.softmax(logits, axis=1)
 
@@ -266,8 +298,8 @@ class ExperimentData:
                 "mcd" in confid for confid in config.eval.confidence_measures.test
             ) and (
                 (
-                    mcd_logits_dist := ExperimentData.__load_npz_if_exists(
-                        test_dir / "raw_logits_dist.npz"
+                    mcd_logits_dist := ExperimentData.__load_from_store(
+                        config, "raw_logits_dist.npz"
                     )
                 )
                 is not None
@@ -277,15 +309,14 @@ class ExperimentData:
                 mcd_logits_dist = None
                 mcd_softmax_dist = None
 
-        elif (test_dir / "raw_output.npz").is_file():
-            with np.load(test_dir / "raw_output.npz") as npz:
-                raw_output = npz.f.arr_0
-
+        elif (
+            raw_output := ExperimentData.__load_from_store(config, "raw_output.npz")
+        ) is not None:
             logits = None
             mcd_logits_dist = None
             softmax = raw_output[:, :-2]
-            mcd_softmax_dist = ExperimentData.__load_npz_if_exists(
-                test_dir / "raw_output_dist.npz"
+            mcd_softmax_dist = ExperimentData.__load_from_store(
+                config, "raw_output_dist.npz"
             )
         else:
             raise FileNotFoundError(f"Could not find model output in {test_dir}")
@@ -304,29 +335,30 @@ class ExperimentData:
                 mcd_logits_dist[:, holdout_classes, :] = -np.inf
                 mcd_softmax_dist = scpspecial.softmax(mcd_logits_dist, axis=1)
 
-        external_confids = ExperimentData.__load_npz_if_exists(
-            test_dir / "external_confids.npz"
+        external_confids = ExperimentData.__load_from_store(
+            config, "external_confids.npz"
         )
         if any("mcd" in confid for confid in config.eval.confidence_measures.test):
-            mcd_external_confids_dist = ExperimentData.__load_npz_if_exists(
-                test_dir / "external_confids_dist.npz"
+            mcd_external_confids_dist = ExperimentData.__load_from_store(
+                config, "external_confids_dist.npz"
             )
         else:
             mcd_external_confids_dist = None
 
         if (
-            features := ExperimentData.__load_npz_if_exists(
-                test_dir / "encoded_output.npz"
-            )
+            features := ExperimentData.__load_from_store(config, "encoded_output.npz")
         ) is not None:
             features = features[:, :-1]
-        last_layer: tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]] | None = None
-        if (test_dir / "last_layer.npz").is_file():
-            last_layer = tuple(np.load(test_dir / "last_layer.npz").values())  # type: ignore
-        train_features = None
-        if (test_dir / "train_features.npz").is_file():
-            with np.load(test_dir / "train_features.npz") as npz:
-                train_features = npz.f.arr_0
+
+        if (
+            last_layer := ExperimentData.__load_from_store(
+                config, "last_layer.npz", unpack=False
+            )
+        ) is not None:
+            last_layer = tuple(last_layer.values())
+
+        train_features = ExperimentData.__load_from_store(config, "train_features.npz")
+
         return ExperimentData(
             softmax_output=softmax,
             logits=logits,
@@ -339,7 +371,7 @@ class ExperimentData:
             config=config,
             _features=features,
             _train_features=train_features,
-            _last_layer=last_layer,
+            _last_layer=last_layer,  # type: ignore
         )
 
 
