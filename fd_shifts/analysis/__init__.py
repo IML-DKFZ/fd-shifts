@@ -17,7 +17,6 @@ from scipy import special as scpspecial
 from sklearn.calibration import _sigmoid_calibration as calib
 
 from fd_shifts import configs
-from fd_shifts.loaders.dataset_collection import CorruptCIFAR
 
 from .confid_scores import ConfidScore, SecondaryConfidScore, is_external_confid
 from .eval_utils import (
@@ -286,6 +285,8 @@ class ExperimentData:
         config: configs.Config,
         holdout_classes: list | None = None,
     ) -> ExperimentData:
+        from fd_shifts.loaders.dataset_collection import CorruptCIFAR
+
         if not isinstance(test_dir, Path):
             test_dir = Path(test_dir)
 

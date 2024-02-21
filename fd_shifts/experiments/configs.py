@@ -353,7 +353,7 @@ def tinyimagenet_data_config(img_size: int | tuple[int, int] = 64) -> DataConfig
         augmentations["resize"] = img_size
 
     return DataConfig(
-        dataset="tinyimagenet" + ("" if img_size[0] == 384 else "_resize"),
+        dataset="tinyimagenet" + ("_384" if img_size[0] == 384 else "_resize"),
         data_dir=SI(
             "${oc.env:DATASET_ROOT_DIR}/"
             + "tinyimagenet"
