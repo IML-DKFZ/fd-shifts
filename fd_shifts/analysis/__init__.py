@@ -192,7 +192,12 @@ class ExperimentData:
                     if isinstance(datasets[0], configs.DataConfig):
                         datasets = map(lambda d: d.dataset, datasets)
                     flat_test_set_list.extend(list(datasets))
-            else:
+            elif (
+                isinstance(datasets, configs.DataConfig)
+                and datasets.dataset is not None
+            ):
+                flat_test_set_list.append(datasets.dataset)
+            elif isinstance(datasets, str):
                 flat_test_set_list.append(datasets)
 
         logger.error(f"{flat_test_set_list=}")
@@ -398,12 +403,7 @@ def _react(
     import torch
 
     logger.info("Compute REACT logits")
-    logger.warning(
-        "Currently uses validation set for clip parameter fit, will switch to training set in the future"
-    )
 
-    # mask = np.argwhere(dataset_idx == val_set_index)[:, 0]
-    # val_features = features[mask]
     clip = torch.tensor(np.quantile(train_features[:, :-1], clip_quantile / 100))
 
     w, b = last_layer
@@ -426,13 +426,11 @@ def _maha_dist(
     labels: npt.NDArray[np.int_],
     predicted: npt.NDArray[np.int_],
     dataset_idx: npt.NDArray[np.int_],
-    val_set_index=0,
 ):
     import torch
 
     logger.info("Compute Mahalanobis distance")
 
-    # mask = np.argwhere(dataset_idx == val_set_index)[:, 0]
     val_features = train_features[:, :-1]
     val_labels = train_features[:, -1]
 
@@ -621,6 +619,12 @@ class Analysis:
                     self.query_studies.__dict__[study_name] = list(
                         map(lambda d: d.dataset, datasets)
                     )
+            if isinstance(datasets, configs.DataConfig):
+                if datasets.dataset is not None:
+                    self.query_studies.__dict__[study_name] = [datasets.dataset]
+                else:
+                    self.query_studies.__dict__[study_name] = []
+
         self.analysis_out_dir = analysis_out_dir
         self.calibration_bins = 20
         self.val_risk_scores = {}
