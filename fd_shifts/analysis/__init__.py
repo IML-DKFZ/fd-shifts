@@ -459,7 +459,13 @@ def _vim(
     import torch
 
     logger.info("Compute ViM score")
-    D = 512
+    if features.shape[-1] >= 2048:
+        D = 1000
+    elif features.shape[-1] >= 768:
+        D = 512
+    else:
+        D = features.shape[-1] // 2
+
     w, b = last_layer
     w = torch.tensor(w, dtype=torch.float)
     b = torch.tensor(b, dtype=torch.float)
@@ -596,7 +602,7 @@ class Analysis:
         ):
             self.method_dict["query_confids"].append("maha")
             self.method_dict["query_confids"].append("dknn")
-            # self.method_dict["query_confids"].append("vim")
+            self.method_dict["query_confids"].append("vim")
             self.method_dict["query_confids"].append("react_det_mcp")
             self.method_dict["query_confids"].append("react_det_mls")
             self.method_dict["query_confids"].append("react_temp_mls")

@@ -47,6 +47,8 @@ class net(pl.LightningModule):
 
         self.save_hyperparameters(to_dict(cf))
 
+        self.cf = cf
+
         self.optimizer_cfgs = cf.trainer.optimizer
         self.lr_scheduler_cfgs = cf.trainer.lr_scheduler
         self.lr_scheduler_interval = cf.trainer.lr_scheduler_interval
@@ -280,7 +282,7 @@ class net(pl.LightningModule):
     def validation_step_end(self, batch_parts):
         return batch_parts
 
-    def test_step(self, batch, batch_idx, *args):
+    def test_step(self, batch, batch_idx, dataloader_idx, *args):
         x, y = batch
         z = self.model.forward_features(x)
         if self.ext_confid_name == "devries":
@@ -297,7 +299,9 @@ class net(pl.LightningModule):
 
         logits_dist = None
         confid_dist = None
-        if any("mcd" in cfd for cfd in self.query_confids.test):
+        if any("mcd" in cfd for cfd in self.query_confids.test) and (
+            not (self.cf.test.compute_train_encodings and dataloader_idx == 0)
+        ):
             logits_dist, confid_dist = self.mcd_eval_forward(
                 x=x, n_samples=self.test_mcd_samples
             )
@@ -366,3 +370,21 @@ class net(pl.LightningModule):
 
         logger.info("loading checkpoint from epoch {}".format(ckpt["epoch"]))
         self.load_state_dict(ckpt["state_dict"], strict=True)
+
+    def last_layer(self):
+        state = self.state_dict()
+        model_prefix = "model"
+        if f"{model_prefix}._classifier.module.weight" in state:
+            w = state[f"{model_prefix}._classifier.module.weight"]
+            b = state[f"{model_prefix}._classifier.module.bias"]
+        elif f"{model_prefix}._classifier.fc.weight" in state:
+            w = state[f"{model_prefix}._classifier.fc.weight"]
+            b = state[f"{model_prefix}._classifier.fc.bias"]
+        elif f"{model_prefix}._classifier.fc2.weight" in state:
+            w = state[f"{model_prefix}._classifier.fc2.weight"]
+            b = state[f"{model_prefix}._classifier.fc2.bias"]
+        else:
+            print(list(state.keys()))
+            raise RuntimeError("No classifier weights found")
+
+        return w, b

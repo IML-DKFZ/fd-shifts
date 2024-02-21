@@ -267,7 +267,9 @@ class Module(pl.LightningModule):
         logits_dist = None
         pred_confid_dist = None
 
-        if any("mcd" in cfd for cfd in self.query_confids.test):
+        if any("mcd" in cfd for cfd in self.query_confids.test) and (
+            not (self.conf.test.compute_train_encodings and dataloader_id == 0)
+        ):
             logits_dist, pred_confid_dist = self.mcd_eval_forward(
                 x=x, n_samples=self.test_mcd_samples
             )
@@ -330,3 +332,21 @@ class Module(pl.LightningModule):
 
         logger.info("loading checkpoint from epoch {}".format(ckpt["epoch"]))
         self.load_state_dict(ckpt["state_dict"], strict=False)
+
+    def last_layer(self):
+        state = self.state_dict()
+        model_prefix = "backbone"
+        if f"{model_prefix}._classifier.module.weight" in state:
+            w = state[f"{model_prefix}._classifier.module.weight"]
+            b = state[f"{model_prefix}._classifier.module.bias"]
+        elif f"{model_prefix}._classifier.fc.weight" in state:
+            w = state[f"{model_prefix}._classifier.fc.weight"]
+            b = state[f"{model_prefix}._classifier.fc.bias"]
+        elif f"{model_prefix}._classifier.fc2.weight" in state:
+            w = state[f"{model_prefix}._classifier.fc2.weight"]
+            b = state[f"{model_prefix}._classifier.fc2.bias"]
+        else:
+            print(list(state.keys()))
+            raise RuntimeError("No classifier weights found")
+
+        return w, b
