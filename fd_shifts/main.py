@@ -17,7 +17,7 @@ from jsonargparse._actions import Action
 from omegaconf import OmegaConf
 from rich.pretty import pretty_repr
 
-from fd_shifts.configs import Config
+from fd_shifts.configs import Config, DataConfig, OutputPathsPerMode
 
 __subcommands = {}
 
@@ -175,7 +175,9 @@ class ActionLegacyConfigFile(ActionConfigFile):
                         pass
                     elif k == "noise_study":
                         if len(v) == 0:
-                            cfg_file["config"]["eval"]["query_studies"][k] = None
+                            cfg_file["config"]["eval"]["query_studies"][k] = asdict(
+                                DataConfig()
+                            )
                         elif len(v) == 1:
                             cfg_file["config"]["eval"]["query_studies"][k] = asdict(
                                 get_dataset_config(v[0])
@@ -199,6 +201,26 @@ class ActionLegacyConfigFile(ActionConfigFile):
                 # hydra is gone
                 if cfg_file["config"]["exp"]["work_dir"] == "${hydra:runtime.cwd}":
                     cfg_file["config"]["exp"]["work_dir"] = Path.cwd()
+
+                # some paths could previously be none
+                if (
+                    cfg_file["config"]["exp"]["output_paths"]["fit"].get(
+                        "encoded_output", ""
+                    )
+                    is None
+                ):
+                    cfg_file["config"]["exp"]["output_paths"]["fit"][
+                        "encoded_output"
+                    ] = OutputPathsPerMode().fit.encoded_output
+                if (
+                    cfg_file["config"]["exp"]["output_paths"]["fit"].get(
+                        "attributions_output", ""
+                    )
+                    is None
+                ):
+                    cfg_file["config"]["exp"]["output_paths"]["fit"][
+                        "attributions_output"
+                    ] = OutputPathsPerMode().fit.attributions_output
 
                 # resolve everything else
                 oc_config = OmegaConf.create(cfg_file["config"])
@@ -241,34 +263,46 @@ def _path_to_str(cfg) -> dict:
 
 
 def _dict_to_dataclass(cfg) -> Config:
-    def __dict_to_dataclass(cfg, cls):
-        if is_dataclass(cls):
-            fieldtypes = typing.get_type_hints(cls)
-            return cls(
-                **{k: __dict_to_dataclass(v, fieldtypes[k]) for k, v in cfg.items()}
-            )
-        if (
-            isinstance(cls, types.UnionType)
-            and len(cls.__args__) == 2
-            and cls.__args__[1] == type(None)
-            and is_dataclass(cls.__args__[0])
-            and isinstance(cfg, dict)
-        ):
-            fieldtypes = typing.get_type_hints(cls.__args__[0])
-            return cls.__args__[0](
-                **{k: __dict_to_dataclass(v, fieldtypes[k]) for k, v in cfg.items()}
-            )
-        if typing.get_origin(cls) == list:
-            return [__dict_to_dataclass(v, typing.get_args(cls)[0]) for v in cfg]
-        if cls == Path or (
-            isinstance(cls, types.UnionType)
-            and Path in cls.__args__
-            and cfg is not None
-        ):
-            return Path(cfg)
+    def __dict_to_dataclass(cfg, cls, key):
+        try:
+            if is_dataclass(cls):
+                fieldtypes = typing.get_type_hints(cls)
+                return cls(
+                    **{
+                        k: __dict_to_dataclass(v, fieldtypes[k], k)
+                        for k, v in cfg.items()
+                    }
+                )
+            if (
+                isinstance(cls, types.UnionType)
+                and len(cls.__args__) == 2
+                and cls.__args__[1] == type(None)
+                and is_dataclass(cls.__args__[0])
+                and isinstance(cfg, dict)
+            ):
+                fieldtypes = typing.get_type_hints(cls.__args__[0])
+                return cls.__args__[0](
+                    **{
+                        k: __dict_to_dataclass(v, fieldtypes[k], k)
+                        for k, v in cfg.items()
+                    }
+                )
+            if typing.get_origin(cls) == list:
+                return [
+                    __dict_to_dataclass(v, typing.get_args(cls)[0], key) for v in cfg
+                ]
+            if cls == Path or (
+                isinstance(cls, types.UnionType)
+                and Path in cls.__args__
+                and cfg is not None
+            ):
+                return Path(cfg)
+        except:
+            print(key)
+            raise
         return cfg
 
-    return __dict_to_dataclass(cfg, Config)  # type: ignore
+    return __dict_to_dataclass(cfg, Config, "")  # type: ignore
 
 
 def omegaconf_resolve(config: Config):

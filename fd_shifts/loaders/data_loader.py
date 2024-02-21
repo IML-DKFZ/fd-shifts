@@ -51,13 +51,15 @@ class FDShiftsDataLoader(pl.LightningDataModule):
         if self.query_studies is not None:
             self.external_test_sets = []
             for key, values in self.query_studies:
-                if key != "iid_study" and values is not None:
-                    if key == "noise_study" and values.dataset is not None:
-                        self.external_test_sets.append(values)
-                    else:
-                        self.external_test_sets.extend(list(values))
-            logging.debug(
-                "CHECK flat list of external datasets %s", self.external_test_sets
+                if (
+                    isinstance(values, configs.DataConfig)
+                    and values.dataset is not None
+                ):
+                    self.external_test_sets.append(values)
+                elif isinstance(values, list):
+                    self.external_test_sets.extend(list(values))
+            logger.debug(
+                f"CHECK flat list of external datasets {self.external_test_sets}"
             )
 
             if len(self.external_test_sets) > 0:

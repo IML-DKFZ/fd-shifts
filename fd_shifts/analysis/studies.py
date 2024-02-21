@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Callable, Iterator, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Tuple, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -385,7 +385,21 @@ def filter_noise_study_data(
             :, noise_level
         ].reshape(-1, data.shape[-2], data.shape[-1])
 
-    def __filter_intensity_2d(data, mask, noise_level):
+    @overload
+    def __filter_intensity_2d(
+        data: npt.NDArray[Any], mask: npt.NDArray[Any], noise_level: int
+    ) -> npt.NDArray[Any]:
+        ...
+
+    @overload
+    def __filter_intensity_2d(
+        data: None, mask: npt.NDArray[Any], noise_level: int
+    ) -> None:
+        ...
+
+    def __filter_intensity_2d(
+        data: npt.NDArray[Any] | None, mask: npt.NDArray[Any], noise_level: int
+    ) -> npt.NDArray[Any] | None:
         if data is None:
             return None
 
@@ -397,6 +411,18 @@ def filter_noise_study_data(
         return data.reshape(15, 5, -1, data.shape[-1])[:, noise_level].reshape(
             -1, data.shape[-1]
         )
+
+    @overload
+    def __filter_intensity_1d(
+        data: npt.NDArray[Any], mask: npt.NDArray[Any], noise_level: int
+    ) -> npt.NDArray[Any]:
+        ...
+
+    @overload
+    def __filter_intensity_1d(
+        data: None, mask: npt.NDArray[Any], noise_level: int
+    ) -> None:
+        ...
 
     def __filter_intensity_1d(data, mask, noise_level):
         if data is None:
@@ -429,6 +455,14 @@ def filter_noise_study_data(
             data.mcd_logits_dist, select_ix, noise_level
         ),
         config=data.config,
+        _correct=__filter_intensity_1d(data._correct, select_ix, noise_level),
+        _mcd_correct=__filter_intensity_1d(data._mcd_correct, select_ix, noise_level),
+        _mcd_labels=__filter_intensity_1d(data._mcd_labels, select_ix, noise_level),
+        _react_logits=__filter_intensity_2d(data._react_logits, select_ix, noise_level),
+        _maha_dist=__filter_intensity_1d(data._maha_dist, select_ix, noise_level),
+        _vim_score=__filter_intensity_1d(data._vim_score, select_ix, noise_level),
+        _dknn_dist=__filter_intensity_1d(data._dknn_dist, select_ix, noise_level),
+        _train_features=data._train_features,
     )
 
 
