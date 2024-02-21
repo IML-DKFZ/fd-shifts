@@ -942,6 +942,16 @@ def vit_cifar100_modeldg(run: int, lr: float, do: int, rew: float):
     return config
 
 
+def vit_super_cifar100_modeldg(run: int, lr: float, do: int, rew: float):
+    config = vit_cifar100_modeldg(run, lr, do, rew)
+    config.exp.name = "super_" + config.exp.name
+    config.data = cifar100_data_config(dataset="super_cifar100", img_size=384)
+    config.eval.query_studies = cifar100_query_config(
+        dataset="super_cifar100", img_size=384
+    )
+    return config
+
+
 def vit_breeds_modeldg(run: int, lr: float, do: int, rew: float):
     config = vit_modeldg(
         name=f"breeds_modeldg_bbvit_lr{lr}_bs128_run{run}_do{do}_rew{rew}",
@@ -1021,6 +1031,18 @@ def vit_cifar100_modelvit(run: int, lr: float, do: int, **kwargs):
     config.trainer.optimizer.init_args["init_args"]["lr"] = lr
     config.model.dropout_rate = do
     config.eval.query_studies = cifar100_query_config(384)
+    return config
+
+
+def vit_super_cifar100_modelvit(run: int, lr: float, do: int, **kwargs):
+    config = vit_cifar100_modelvit(run, lr, do, **kwargs)
+    config.exp.name = "super_" + config.exp.name
+    config.data = cifar100_data_config(dataset="super_cifar100", img_size=384)
+    config.eval.query_studies = cifar100_query_config(
+        dataset="super_cifar100", img_size=384
+    )
+    config.trainer.num_steps = 40000
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000
     return config
 
 
@@ -1108,6 +1130,23 @@ register(vit_cifar100_modeldg, lr=1e-2, do=0, rew=15)
 register(vit_cifar100_modeldg, lr=1e-2, do=1, rew=15)
 register(vit_cifar100_modeldg, lr=1e-2, do=0, rew=20)
 register(vit_cifar100_modeldg, lr=1e-2, do=1, rew=20)
+
+register(vit_super_cifar100_modelvit, lr=3e-3, do=0, rew=0)
+register(vit_super_cifar100_modelvit, lr=1e-3, do=1, rew=0)
+register(vit_super_cifar100_modeldg, lr=3e-3, do=0, rew=2.2)
+register(vit_super_cifar100_modeldg, lr=1e-3, do=1, rew=2.2)
+register(vit_super_cifar100_modeldg, lr=3e-3, do=0, rew=3)
+register(vit_super_cifar100_modeldg, lr=1e-3, do=1, rew=3)
+register(vit_super_cifar100_modeldg, lr=3e-3, do=0, rew=6)
+register(vit_super_cifar100_modeldg, lr=1e-3, do=1, rew=6)
+register(vit_super_cifar100_modeldg, lr=3e-3, do=0, rew=10)
+register(vit_super_cifar100_modeldg, lr=1e-3, do=1, rew=10)
+register(vit_super_cifar100_modeldg, lr=3e-3, do=0, rew=12)
+register(vit_super_cifar100_modeldg, lr=1e-3, do=1, rew=12)
+register(vit_super_cifar100_modeldg, lr=3e-3, do=0, rew=15)
+register(vit_super_cifar100_modeldg, lr=1e-3, do=1, rew=15)
+register(vit_super_cifar100_modeldg, lr=3e-3, do=0, rew=20)
+register(vit_super_cifar100_modeldg, lr=1e-3, do=1, rew=20)
 
 register(vit_wilds_animals_modelvit, lr=1e-3, do=0, rew=0)
 register(vit_wilds_animals_modelvit, lr=1e-2, do=0, rew=0)
