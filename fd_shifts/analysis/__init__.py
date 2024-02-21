@@ -17,6 +17,7 @@ from scipy import special as scpspecial
 from sklearn.calibration import _sigmoid_calibration as calib
 
 from fd_shifts import configs
+from fd_shifts.loaders.dataset_collection import CorruptCIFAR
 
 from .confid_scores import ConfidScore, SecondaryConfidScore, is_external_confid
 from .eval_utils import (
@@ -304,6 +305,30 @@ class ExperimentData:
                 )
                 is not None
             ):
+                if mcd_logits_dist.shape[0] > logits.shape[0]:
+                    dset = CorruptCIFAR(
+                        config.eval.query_studies.noise_study.data_dir,
+                        train=False,
+                        download=False,
+                    )
+                    idx = (
+                        CorruptCIFAR.subsample_idx(
+                            dset.data,
+                            dset.targets,
+                            config.eval.query_studies.noise_study.subsample_corruptions,
+                        )
+                        + raw_output[raw_output[:, -1] < 2].shape[0]
+                    )
+                    idx = np.concatenate(
+                        [
+                            np.argwhere(raw_output[:, -1] < 2).flatten(),
+                            idx,
+                            np.argwhere(raw_output[:, -1] > 2).flatten()
+                            + mcd_logits_dist.shape[0]
+                            - raw_output.shape[0],
+                        ]
+                    )
+                    mcd_logits_dist = mcd_logits_dist[idx]
                 mcd_softmax_dist = scpspecial.softmax(mcd_logits_dist, axis=1)
             else:
                 mcd_logits_dist = None
@@ -342,6 +367,33 @@ class ExperimentData:
             mcd_external_confids_dist = ExperimentData.__load_from_store(
                 config, "external_confids_dist.npz"
             )
+            if (
+                mcd_external_confids_dist is not None
+                and mcd_external_confids_dist.shape[0] > logits.shape[0]
+            ):
+                dset = CorruptCIFAR(
+                    config.eval.query_studies.noise_study.data_dir,
+                    train=False,
+                    download=False,
+                )
+                idx = (
+                    CorruptCIFAR.subsample_idx(
+                        dset.data,
+                        dset.targets,
+                        config.eval.query_studies.noise_study.subsample_corruptions,
+                    )
+                    + raw_output[raw_output[:, -1] < 2].shape[0]
+                )
+                idx = np.concatenate(
+                    [
+                        np.argwhere(raw_output[:, -1] < 2).flatten(),
+                        idx,
+                        np.argwhere(raw_output[:, -1] > 2).flatten()
+                        + mcd_logits_dist.shape[0]
+                        - raw_output.shape[0],
+                    ]
+                )
+                mcd_external_confids_dist = mcd_external_confids_dist[idx]
         else:
             mcd_external_confids_dist = None
 
