@@ -256,13 +256,20 @@ class ExperimentData:
     @overload
     @staticmethod
     def __load_from_store(
-        config: configs.Config, file: str, unpack: Literal[False]
+        config: configs.Config, file: str, dtype: type, unpack: Literal[False]
     ) -> dict[str, npt.NDArray[np.float64]] | None:
+        ...
+
+    @overload
+    @staticmethod
+    def __load_from_store(
+        config: configs.Config, file: str, dtype: type
+    ) -> npt.NDArray[np.float64] | None:
         ...
 
     @staticmethod
     def __load_from_store(
-        config: configs.Config, file: str, unpack: bool = True
+        config: configs.Config, file: str, dtype: type = np.float64, unpack: bool = True
     ) -> npt.NDArray[np.float64] | dict[str, npt.NDArray[np.float64]] | None:
         store_paths = map(Path, os.getenv("FD_SHIFTS_STORE_PATH", "").split(":"))
 
@@ -273,7 +280,7 @@ class ExperimentData:
                 logger.debug(f"Loading {store_path / test_dir / file}")
                 with np.load(store_path / test_dir / file) as npz:
                     if unpack:
-                        return npz.f.arr_0.astype(np.float64)
+                        return npz.f.arr_0.astype(dtype)
                     else:
                         return dict(npz.items())
 
@@ -301,7 +308,7 @@ class ExperimentData:
             ) and (
                 (
                     mcd_logits_dist := ExperimentData.__load_from_store(
-                        config, "raw_logits_dist.npz"
+                        config, "raw_logits_dist.npz", dtype=np.float16
                     )
                 )
                 is not None
@@ -330,6 +337,7 @@ class ExperimentData:
                         ]
                     )
                     mcd_logits_dist = mcd_logits_dist[idx]
+                mcd_logits_dist = mcd_logits_dist.astype(np.float64)
                 mcd_softmax_dist = scpspecial.softmax(mcd_logits_dist, axis=1)
             else:
                 mcd_logits_dist = None
@@ -364,14 +372,16 @@ class ExperimentData:
         external_confids = ExperimentData.__load_from_store(
             config, "external_confids.npz"
         )
-        if any("mcd" in confid for confid in config.eval.confidence_measures.test):
-            mcd_external_confids_dist = ExperimentData.__load_from_store(
-                config, "external_confids_dist.npz"
+        if (
+            any("mcd" in confid for confid in config.eval.confidence_measures.test)
+            and (
+                mcd_external_confids_dist := ExperimentData.__load_from_store(
+                    config, "external_confids_dist.npz", dtype=np.float16
+                )
             )
-            if (
-                mcd_external_confids_dist is not None
-                and mcd_external_confids_dist.shape[0] > logits.shape[0]
-            ):
+            is not None
+        ):
+            if mcd_external_confids_dist.shape[0] > logits.shape[0]:
                 dset = CorruptCIFAR(
                     config.eval.query_studies.noise_study.data_dir,
                     train=False,
@@ -395,6 +405,7 @@ class ExperimentData:
                     ]
                 )
                 mcd_external_confids_dist = mcd_external_confids_dist[idx]
+            mcd_external_confids_dist = mcd_external_confids_dist.astype(np.float64)
         else:
             mcd_external_confids_dist = None
 
@@ -715,11 +726,27 @@ class Analysis:
             if isinstance(datasets, (list, ListConfig)) and len(datasets) > 0:
                 if isinstance(datasets[0], configs.DataConfig):
                     self.query_studies.__dict__[study_name] = list(
-                        map(lambda d: d.dataset, datasets)
+                        map(
+                            lambda d: d.dataset
+                            + (
+                                "_384"
+                                if d.img_size[0] == 384 and "384" not in d.dataset
+                                else ""
+                            ),
+                            datasets,
+                        )
                     )
             if isinstance(datasets, configs.DataConfig):
                 if datasets.dataset is not None:
-                    self.query_studies.__dict__[study_name] = [datasets.dataset]
+                    self.query_studies.__dict__[study_name] = [
+                        datasets.dataset
+                        + (
+                            "_384"
+                            if datasets.img_size[0] == 384
+                            and "384" not in datasets.dataset
+                            else ""
+                        )
+                    ]
                 else:
                     self.query_studies.__dict__[study_name] = []
 
