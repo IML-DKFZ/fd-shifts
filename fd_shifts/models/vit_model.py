@@ -213,7 +213,7 @@ class net(pl.LightningModule):
                 x=x, n_samples=self.test_mcd_samples
             )
 
-        self.test_results = {
+        return {
             "logits": probs,
             "labels": y,
             "confid": maha,

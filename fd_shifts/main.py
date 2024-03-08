@@ -1,32 +1,25 @@
+from __future__ import annotations
+
 import types
 import typing
+import warnings
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import jsonargparse
-import pytorch_lightning as pl
 import rich
+import shtab
 import yaml
 from jsonargparse import ActionConfigFile, ArgumentParser
 from jsonargparse._actions import Action
 from omegaconf import OmegaConf
-from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBar
-from pytorch_lightning.loggers.csv_logs import CSVLogger
-from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
-from pytorch_lightning.loggers.wandb import WandbLogger
 from rich.pretty import pretty_repr
 
-from fd_shifts import analysis, logger
-from fd_shifts.configs import Config, TestConfig
-from fd_shifts.experiments.configs import get_experiment_config, list_experiment_configs
-from fd_shifts.loaders.data_loader import FDShiftsDataLoader
-from fd_shifts.models import get_model
-from fd_shifts.models.callbacks import get_callbacks
-from fd_shifts.utils import exp_utils
-from fd_shifts.version import get_version
+from fd_shifts import reporting
+from fd_shifts.configs import Config, DataConfig, OutputPathsPerMode
 
 __subcommands = {}
 
@@ -78,6 +71,8 @@ class ActionExperiment(Action):
 
     @staticmethod
     def apply_experiment_config(parser: ArgumentParser, cfg, dest, value) -> None:
+        from fd_shifts.experiments.configs import get_experiment_config
+
         with previous_config_context(cfg):
             experiment_cfg = get_experiment_config(value)
             tcfg = parser.parse_object(
@@ -128,6 +123,8 @@ class ActionLegacyConfigFile(ActionConfigFile):
     def apply_config(parser, cfg, dest, value, option_string) -> None:
         from jsonargparse._link_arguments import skip_apply_links
 
+        from fd_shifts.experiments.configs import get_dataset_config
+
         with jsonargparse._actions._ActionSubCommands.not_single_subcommand(), previous_config_context(
             cfg
         ), skip_apply_links():
@@ -173,6 +170,71 @@ class ActionLegacyConfigFile(ActionConfigFile):
                         },
                     },
                 }
+
+                # query_studies contain DataConfig objects now, not just names
+                for k, v in cfg_file["config"]["eval"]["query_studies"].items():
+                    if k == "iid_study":
+                        pass
+                    elif k == "noise_study":
+                        if len(v) == 0:
+                            cfg_file["config"]["eval"]["query_studies"][k] = asdict(
+                                DataConfig()
+                            )
+                        elif len(v) == 1:
+                            cfg_file["config"]["eval"]["query_studies"][k] = asdict(
+                                get_dataset_config(v[0])
+                            )
+                        else:
+                            raise ValueError(f"Too many noise studies {v}")
+                    elif k in ["in_class_study", "new_class_study"]:
+                        cfg_file["config"]["eval"]["query_studies"][k] = [
+                            asdict(get_dataset_config(v2)) for v2 in v
+                        ]
+                    else:
+                        raise ValueError(f"Unknown query study {k}")
+
+                # for specific experiments, the seed should be fixed, if "random_seed" was written fix it
+                if isinstance(cfg_file["config"]["exp"]["global_seed"], str):
+                    warnings.warn(
+                        "global_seed is set to random in file, setting it to -1"
+                    )
+                    cfg_file["config"]["exp"]["global_seed"] = -1
+
+                # hydra is gone
+                if cfg_file["config"]["exp"]["work_dir"] == "${hydra:runtime.cwd}":
+                    cfg_file["config"]["exp"]["work_dir"] = Path.cwd()
+
+                # some paths could previously be none
+                if (
+                    cfg_file["config"]["exp"]["output_paths"]["fit"].get(
+                        "encoded_output", ""
+                    )
+                    is None
+                ):
+                    cfg_file["config"]["exp"]["output_paths"]["fit"][
+                        "encoded_output"
+                    ] = OutputPathsPerMode().fit.encoded_output
+                if (
+                    cfg_file["config"]["exp"]["output_paths"]["fit"].get(
+                        "attributions_output", ""
+                    )
+                    is None
+                ):
+                    cfg_file["config"]["exp"]["output_paths"]["fit"][
+                        "attributions_output"
+                    ] = OutputPathsPerMode().fit.attributions_output
+
+                # resolve everything else
+                oc_config = OmegaConf.create(cfg_file["config"])
+                dict_config: dict[str, Any] = OmegaConf.to_object(oc_config)  # type: ignore
+                cfg_file["config"] = dict_config
+
+                # don't need to comply with accumulate_grad_batches, that's runtime env dependent
+                cfg_file["config"]["trainer"]["batch_size"] *= cfg_file["config"][
+                    "trainer"
+                ].get("accumulate_grad_batches", 1)
+                cfg_file["config"]["trainer"]["accumulate_grad_batches"] = 1
+
             else:
                 raise ValueError(f"Unknown option string {option_string}")
 
@@ -203,23 +265,46 @@ def _path_to_str(cfg) -> dict:
 
 
 def _dict_to_dataclass(cfg) -> Config:
-    def __dict_to_dataclass(cfg, cls):
-        if is_dataclass(cls):
-            fieldtypes = typing.get_type_hints(cls)
-            return cls(
-                **{k: __dict_to_dataclass(v, fieldtypes[k]) for k, v in cfg.items()}
-            )
-        if typing.get_origin(cls) == list:
-            return [__dict_to_dataclass(v, typing.get_args(cls)[0]) for v in cfg]
-        if cls == Path or (
-            isinstance(cls, types.UnionType)
-            and Path in cls.__args__
-            and cfg is not None
-        ):
-            return Path(cfg)
+    def __dict_to_dataclass(cfg, cls, key):
+        try:
+            if is_dataclass(cls):
+                fieldtypes = typing.get_type_hints(cls)
+                return cls(
+                    **{
+                        k: __dict_to_dataclass(v, fieldtypes[k], k)
+                        for k, v in cfg.items()
+                    }
+                )
+            if (
+                isinstance(cls, types.UnionType)
+                and len(cls.__args__) == 2
+                and cls.__args__[1] == type(None)
+                and is_dataclass(cls.__args__[0])
+                and isinstance(cfg, dict)
+            ):
+                fieldtypes = typing.get_type_hints(cls.__args__[0])
+                return cls.__args__[0](
+                    **{
+                        k: __dict_to_dataclass(v, fieldtypes[k], k)
+                        for k, v in cfg.items()
+                    }
+                )
+            if typing.get_origin(cls) == list:
+                return [
+                    __dict_to_dataclass(v, typing.get_args(cls)[0], key) for v in cfg
+                ]
+            if cls == Path or (
+                isinstance(cls, types.UnionType)
+                and Path in cls.__args__
+                and cfg is not None
+            ):
+                return Path(cfg)
+        except:
+            print(key)
+            raise
         return cfg
 
-    return __dict_to_dataclass(cfg, Config)  # type: ignore
+    return __dict_to_dataclass(cfg, Config, "")  # type: ignore
 
 
 def omegaconf_resolve(config: Config):
@@ -251,6 +336,8 @@ def omegaconf_resolve(config: Config):
 
 
 def setup_logging():
+    from fd_shifts import logger
+
     rich.reconfigure(stderr=True, force_terminal=True)
     logger.remove()  # Remove default 'stderr' handler
 
@@ -268,6 +355,18 @@ def setup_logging():
 
 @subcommand
 def train(config: Config):
+    import pytorch_lightning as pl
+    from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBar
+    from pytorch_lightning.loggers.csv_logs import CSVLogger
+    from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
+    from pytorch_lightning.loggers.wandb import WandbLogger
+
+    from fd_shifts import logger
+    from fd_shifts.loaders.data_loader import FDShiftsDataLoader
+    from fd_shifts.models import get_model
+    from fd_shifts.models.callbacks import get_callbacks
+    from fd_shifts.utils import exp_utils
+
     progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
 
     if config.exp.dir is None:
@@ -356,6 +455,16 @@ def train(config: Config):
 
 @subcommand
 def test(config: Config):
+    import pytorch_lightning as pl
+    from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBar
+    from pytorch_lightning.loggers.wandb import WandbLogger
+
+    from fd_shifts import logger
+    from fd_shifts.loaders.data_loader import FDShiftsDataLoader
+    from fd_shifts.models import get_model
+    from fd_shifts.models.callbacks import get_callbacks
+    from fd_shifts.utils import exp_utils
+
     progress = RichProgressBar(console_kwargs={"stderr": True, "force_terminal": True})
 
     if config.exp.dir is None:
@@ -411,9 +520,15 @@ def test(config: Config):
         precision=16,
     )
     trainer.test(model=module, datamodule=datamodule)
-    analysis.main(
+
+
+@subcommand
+def analysis(config: Config):
+    from fd_shifts import analysis as ana
+
+    ana.main(
         in_path=config.test.dir,
-        out_path=config.test.dir,
+        out_path=config.exp.output_paths.analysis,
         query_studies=config.eval.query_studies,
         add_val_tuning=config.eval.val_tuning,
         threshold_plot_confid=None,
@@ -421,14 +536,23 @@ def test(config: Config):
     )
 
 
+@subcommand
+def debug(config: Config):
+    pass
+
+
 def _list_experiments():
-    rich.print("Available experiments:")
+    from fd_shifts.experiments.configs import list_experiment_configs
+
     for exp in sorted(list_experiment_configs()):
-        rich.print(exp)
+        print(exp)
 
 
 def get_parser():
+    from fd_shifts import get_version
+
     parser = ArgumentParser(version=get_version())
+    shtab.add_argument_to(parser, ["-s", "--print-completion"])
     parser.add_argument("-f", "--overwrite-config-file", action="store_true")
     subcommands = parser.add_subcommands(dest="command")
     subparsers: dict[str, ArgumentParser] = {}
@@ -436,11 +560,16 @@ def get_parser():
     subparser = ArgumentParser()
     subcommands.add_subcommand("list-experiments", subparser)
 
+    subparser = ArgumentParser()
+    subparser.add_function_arguments(reporting.main)
+    subparsers["report"] = subparser
+    subcommands.add_subcommand("report", subparser)
+
     for name, func in __subcommands.items():
         subparser = ArgumentParser()
         subparser.add_argument(
             "--config-file", "--legacy-config-file", action=ActionLegacyConfigFile
-        )
+        ).complete = shtab.FILE  # type: ignore
         subparser.add_argument("--experiment", action=ActionExperiment)
         subparser.add_function_arguments(func, sub_configs=True)
         subparsers[name] = subparser
@@ -456,6 +585,8 @@ def config_from_parser(parser, args):
 
 
 def main():
+    from fd_shifts import logger
+
     setup_logging()
 
     parser, subparsers = get_parser()
@@ -466,18 +597,27 @@ def main():
         _list_experiments()
         return
 
+    if args.command == "report":
+        reporting.main(**args.report)
+        return
+
     config = config_from_parser(parser, args)
 
     rich.print(config)
 
     # TODO: Check if configs are the same
-    config.test.cf_path.parent.mkdir(parents=True, exist_ok=True)
-    subparsers[args.command].save(
-        args[args.command],
-        config.test.cf_path,
-        skip_check=True,
-        overwrite=args.overwrite_config_file,
-    )
+    if not config.test.cf_path.is_file() or args.overwrite_config_file:
+        config.test.cf_path.parent.mkdir(parents=True, exist_ok=True)
+        subparsers[args.command].save(
+            args[args.command],
+            config.test.cf_path,
+            skip_check=True,
+            overwrite=args.overwrite_config_file,
+        )
+    else:
+        logger.warning(
+            "Config file already exists, use --overwrite-config-file to force"
+        )
 
     __subcommands[args.command](config=config)
 

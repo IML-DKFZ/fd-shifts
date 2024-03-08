@@ -7,7 +7,7 @@ from pytorch_lightning.trainer.connectors.logger_connector.logger_connector impo
 from rich import print
 from tqdm import tqdm
 
-from fd_shifts import configs
+from fd_shifts import configs, logger
 from fd_shifts.analysis import eval_utils
 
 DTYPES = {
@@ -70,6 +70,8 @@ class ConfidMonitor(Callback):
         self.output_paths = cf.exp.output_paths
         self.version_dir = cf.exp.version_dir
         self.val_every_n_epoch = cf.trainer.val_every_n_epoch
+        self.running_test_train_encoded = []
+        self.running_test_train_labels = []
         self.running_test_encoded = []
         self.running_test_softmax = []
         self.running_test_softmax_dist = []
@@ -476,9 +478,20 @@ class ConfidMonitor(Callback):
     def on_test_batch_end(
         self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
     ):
-        if not hasattr(pl_module, "test_results"):
+        if not isinstance(outputs, dict):
             return
-        outputs = pl_module.test_results
+
+        if self.cfg.test.compute_train_encodings and dataloader_idx == 0:
+            if outputs["encoded"] is not None:
+                self.running_test_train_encoded.extend(
+                    outputs["encoded"].to(dtype=torch.float16).cpu()
+                )
+            self.running_test_train_labels.extend(outputs["labels"].cpu())
+            return
+
+        if self.cfg.test.compute_train_encodings:
+            dataloader_idx -= 1
+
         if outputs["encoded"] is not None:
             self.running_test_encoded.extend(
                 outputs["encoded"].to(dtype=torch.float16).cpu()
@@ -501,8 +514,7 @@ class ConfidMonitor(Callback):
         )
 
     def on_test_end(self, trainer, pl_module):
-        if not hasattr(pl_module, "test_results"):
-            return
+        logger.info("Saving test outputs to disk")
 
         stacked_softmax = torch.stack(self.running_test_softmax, dim=0)
         stacked_labels = torch.stack(self.running_test_labels, dim=0).unsqueeze(1)
@@ -529,6 +541,27 @@ class ConfidMonitor(Callback):
             np.savez_compressed(
                 self.output_paths.test.encoded_output, encoded_output.cpu().data.numpy()
             )
+        if len(self.running_test_train_encoded) > 0:
+            stacked_train_encoded = torch.stack(self.running_test_train_encoded, dim=0)
+            stacked_train_labels = torch.stack(
+                self.running_test_train_labels, dim=0
+            ).unsqueeze(1)
+            encoded_train_output = torch.cat(
+                [
+                    stacked_train_encoded,
+                    stacked_train_labels,
+                ],
+                dim=1,
+            )
+            np.savez_compressed(
+                self.output_paths.test.encoded_train,
+                encoded_train_output.cpu().data.numpy(),
+            )
+            w, b = pl_module.last_layer()
+            w = w.cpu().numpy()
+            b = b.cpu().numpy()
+            np.savez_compressed(self.cfg.test.dir / "last_layer.npz", w=w, b=b)
+
         # try:
         #    trainer.datamodule.test_datasets[0].csv.to_csv(
         #        self.output_paths.test.attributions_output
@@ -538,14 +571,13 @@ class ConfidMonitor(Callback):
                 test_ds.csv.to_csv(
                     f"{self.output_paths.test.attributions_output[:-4]}{ds_idx}.csv"
                 )
-
         except:
             pass
         np.savez_compressed(
             self.output_paths.test.raw_output, raw_output.cpu().data.numpy()
         )
-        tqdm.write(
-            "saved raw test outputs to {}".format(self.output_paths.test.raw_output)
+        logger.info(
+            "Saved raw test outputs to {}".format(self.output_paths.test.raw_output)
         )
 
         if len(self.running_test_softmax_dist) > 0:

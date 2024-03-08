@@ -29,6 +29,7 @@ from wilds.datasets.wilds_dataset import WILDSSubset
 
 from fd_shifts import logger
 from fd_shifts.analysis import eval_utils
+from fd_shifts.configs import Config, DataConfig
 from fd_shifts.data import SVHN
 from fd_shifts.loaders import breeds_hierarchies
 
@@ -802,6 +803,7 @@ class CorruptCIFAR(datasets.VisionDataset):
         download: bool,
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
+        subsample: int = 1,
         kwargs: Optional[Callable] = None,
     ) -> None:
         super(CorruptCIFAR, self).__init__(
@@ -840,7 +842,47 @@ class CorruptCIFAR(datasets.VisionDataset):
             self.targets.extend(labels)
 
         self.data = np.vstack(self.data)
+        self.targets = np.array(self.targets)
+
+        if subsample > 1:
+            self.data, self.targets = self.subsample(self.data, self.targets, subsample)
         self.classes = eval_utils.cifar100_classes
+
+    @staticmethod
+    def subsample_idx(data, targets, subsample):
+        n_classes = len(np.unique(targets))
+        n_cor_kinds = 15
+        n_cor_levels = 5
+        n_samples_per_cor = len(targets) // n_cor_kinds // n_cor_levels
+        n_samples_per_class_per_cor = n_samples_per_cor // n_classes
+
+        single_targets = targets[:n_samples_per_cor]
+
+        sort_idx = np.argsort(single_targets, kind="stable")
+        single_idx = np.sort(
+            np.concatenate(
+                [
+                    i * n_samples_per_class_per_cor
+                    + np.arange(n_samples_per_class_per_cor // subsample)
+                    for i in range(n_classes)
+                ]
+            )
+        )
+        idx = np.concatenate(
+            [
+                cor_kind_idx * n_samples_per_cor * n_cor_levels
+                + cor_level_idx * n_samples_per_cor
+                + single_idx
+                for cor_kind_idx in range(n_cor_kinds)
+                for cor_level_idx in range(n_cor_levels)
+            ]
+        )
+        return idx
+
+    @staticmethod
+    def subsample(data, targets, subsample):
+        idx = CorruptCIFAR.subsample_idx(data, targets, subsample)
+        return data[idx, :], targets[idx]
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         """
@@ -963,6 +1005,8 @@ class WILDSAnimals(IWildCamDataset):
         )
 
         logger.debug("CHECK ROOT !!! {}", root)
+        if isinstance(root, str):
+            root = Path(root)
         categories = {
             r[1]: r[2]
             for r in pd.read_csv(root / "iwildcam_v2.0" / "categories.csv")[
@@ -1253,6 +1297,7 @@ def get_dataset(
     transform: Callable,
     target_transform: Callable | None,
     kwargs: dict[str, Any],
+    config: DataConfig | None = None,
 ) -> Any:
     """Return a new instance of a dataset
 
@@ -1274,6 +1319,14 @@ def get_dataset(
         "download": download,
         "transform": transform,
     }
+    if name.startswith("corrupt_cifar"):
+        pass_kwargs = {
+            "root": root,
+            "train": train,
+            "download": download,
+            "transform": transform,
+            "subsample": config.subsample_corruptions if config else 1,
+        }
     if name.startswith("svhn"):
         pass_kwargs = {
             "root": root,

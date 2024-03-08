@@ -8,28 +8,20 @@ from dataclasses import field
 from enum import Enum, auto
 from pathlib import Path
 from random import randint
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Iterable, Optional, TypeVar
 
-import pl_bolts
-import torch
 from hydra.core.config_store import ConfigStore
-from hydra_zen import builds  # type: ignore
 from omegaconf import SI, DictConfig, OmegaConf
-from omegaconf.omegaconf import MISSING
 from pydantic import ConfigDict, validator
 from pydantic.dataclasses import dataclass
 from typing_extensions import dataclass_transform
 
-import fd_shifts
-from fd_shifts import models
-from fd_shifts.analysis import confid_scores, metrics
-from fd_shifts.loaders import dataset_collection
-from fd_shifts.utils import exp_utils
+from fd_shifts import get_version
 
-from ..models import networks
 from .iterable_mixin import _IterableMixin
 
 if TYPE_CHECKING:
+    import torch
     from pydantic.dataclasses import Dataclass
 
     ConfigT = TypeVar("ConfigT", bound=Dataclass)
@@ -80,13 +72,14 @@ def defer_validation(original_class: type[ConfigT]) -> type[ConfigT]:
 class OutputPathsConfig(_IterableMixin):
     """Where outputs are stored"""
 
-    raw_output: Path | None = None
-    raw_output_dist: Path | None = None
-    external_confids: Path | None = None
-    external_confids_dist: Path | None = None
+    raw_output: Path
+    raw_output_dist: Path
+    external_confids: Path
+    external_confids_dist: Path
+    encoded_output: Path
+    encoded_train: Path
+    attributions_output: Path
     input_imgs_plot: Optional[Path] = None
-    encoded_output: Optional[Path] = None
-    attributions_output: Optional[Path] = None
 
 
 @defer_validation
@@ -100,8 +93,9 @@ class OutputPathsPerMode(_IterableMixin):
         external_confids=Path("${exp.version_dir}/external_confids.npz"),
         external_confids_dist=Path("${exp.version_dir}/external_confids_dist.npz"),
         input_imgs_plot=Path("${exp.dir}/input_imgs.png"),
-        encoded_output=None,
-        attributions_output=None,
+        encoded_output=Path("${test.dir}/encoded_output.npz"),
+        encoded_train=Path("${test.dir}/train_features.npz"),
+        attributions_output=Path("${test.dir}/attributions.csv"),
     )
     test: OutputPathsConfig = OutputPathsConfig(
         raw_output=Path("${test.dir}/raw_logits.npz"),
@@ -110,8 +104,10 @@ class OutputPathsPerMode(_IterableMixin):
         external_confids_dist=Path("${test.dir}/external_confids_dist.npz"),
         input_imgs_plot=None,
         encoded_output=Path("${test.dir}/encoded_output.npz"),
+        encoded_train=Path("${test.dir}/train_features.npz"),
         attributions_output=Path("${test.dir}/attributions.csv"),
     )
+    analysis: Path = SI("${test.dir}")
 
 
 @defer_validation
@@ -309,6 +305,8 @@ class NetworkConfig(_IterableMixin):
         Returns:
             name
         """
+        from ..models import networks
+
         if name is not None and not networks.network_exists(name):
             raise ValueError(f'Network "{name}" does not exist.')
         return name
@@ -343,6 +341,8 @@ class ModelConfig(_IterableMixin):
         Returns:
             name
         """
+        from fd_shifts import models
+
         if name is not None and not models.model_exists(name):
             raise ValueError(f'Model "{name}" does not exist.')
         return name
@@ -415,6 +415,8 @@ class ConfidMetricsConfig(_IterableMixin):
         Returns:
             name
         """
+        from fd_shifts.analysis import metrics
+
         if not metrics.metric_function_exists(name):
             raise ValueError(f'Confid metric function "{name}" does not exist.')
         return name
@@ -439,6 +441,8 @@ class ConfidMeasuresConfig(_IterableMixin):
         Returns:
             name
         """
+        from fd_shifts.analysis import confid_scores
+
         if not confid_scores.confid_function_exists(name):
             raise ValueError(f'Confid function "{name}" does not exist.')
         return name
@@ -450,7 +454,7 @@ class QueryStudiesConfig(_IterableMixin):
     """Query Studies Configuration"""
 
     iid_study: str | None = None
-    noise_study: list[DataConfig] = field(default_factory=lambda: [])
+    noise_study: DataConfig = field(default_factory=lambda: DataConfig())
     in_class_study: list[DataConfig] = field(default_factory=lambda: [])
     new_class_study: list[DataConfig] = field(default_factory=lambda: [])
 
@@ -466,6 +470,8 @@ class QueryStudiesConfig(_IterableMixin):
         Returns:
             name
         """
+        from fd_shifts.loaders import dataset_collection
+
         if not dataset_collection.dataset_exists(name):
             raise ValueError(f'Dataset "{name}" does not exist.')
         return name
@@ -522,6 +528,7 @@ class TestConfig(_IterableMixin):
     external_confids_output_path: str = "external_confids.npz"
     output_precision: int = 16
     selection_mode: Optional[str] = "max"
+    compute_train_encodings: bool = False
 
 
 @defer_validation
@@ -538,6 +545,7 @@ class DataConfig(_IterableMixin):
     reproduce_confidnet_splits: bool = False
     augmentations: dict[str, dict[str, Any]] | None = None
     target_transforms: Optional[Any] = None
+    subsample_corruptions: int = 10
     kwargs: Optional[dict[Any, Any]] = None
 
 
@@ -548,7 +556,7 @@ class Config(_IterableMixin):
 
     exp: ExperimentConfig
 
-    pkgversion: str = fd_shifts.get_version()
+    pkgversion: str = get_version()
 
     data: DataConfig = field(default_factory=lambda: DataConfig())
 
@@ -560,6 +568,8 @@ class Config(_IterableMixin):
     test: TestConfig = field(default_factory=lambda: TestConfig())
 
     def update_experiment(self, name: str):
+        from fd_shifts.utils import exp_utils
+
         config = deepcopy(self)
         group_name = config.data.dataset
         group_dir = config.exp.group_dir.parent / group_name

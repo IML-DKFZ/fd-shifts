@@ -24,6 +24,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
 
     def __init__(self, cf: configs.Config, no_norm_flag=False):
         super().__init__()
+        self.cf = cf
         self.crossval_ids_path = cf.exp.crossval_ids_path
         self.crossval_n_folds = cf.exp.crossval_n_folds
         self.fold = cf.exp.fold
@@ -50,10 +51,15 @@ class FDShiftsDataLoader(pl.LightningDataModule):
         if self.query_studies is not None:
             self.external_test_sets = []
             for key, values in self.query_studies:
-                if key != "iid_study" and values is not None:
+                if (
+                    isinstance(values, configs.DataConfig)
+                    and values.dataset is not None
+                ):
+                    self.external_test_sets.append(values)
+                elif isinstance(values, list):
                     self.external_test_sets.extend(list(values))
-            logging.debug(
-                "CHECK flat list of external datasets %s", self.external_test_sets
+            logger.debug(
+                f"CHECK flat list of external datasets {self.external_test_sets}"
             )
 
             if len(self.external_test_sets) > 0:
@@ -244,6 +250,13 @@ class FDShiftsDataLoader(pl.LightningDataModule):
 
         self.test_datasets = []
 
+        if self.cf.test.compute_train_encodings:
+            self.test_datasets.append(self.train_dataset)
+            logging.debug(
+                "Adding training data. (preliminary) len: %s",
+                len(self.test_datasets[-1]),
+            )
+
         if self.add_val_tuning:
             self.test_datasets.append(self.val_dataset)
             logging.debug(
@@ -267,6 +280,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                     target_transform=self.target_transforms,
                     transform=self.augmentations["external_{}".format(ext_set)],
                     kwargs=self.dataset_kwargs,
+                    config=self.external_test_configs[ext_set],
                 )
                 if (
                     self.devries_repro_ood_split
