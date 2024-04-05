@@ -219,7 +219,7 @@ class TrainerConfig(_IterableMixin):
     do_val: bool = True
     batch_size: int = 128
     resume_from_ckpt: bool = False
-    benchmark: bool = True
+    benchmark: bool = False
     fast_dev_run: bool | int = False
     # lr_scheduler: Callable[
     #     [torch.optim.Optimizer], torch.optim.lr_scheduler._LRScheduler
