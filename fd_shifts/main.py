@@ -355,11 +355,11 @@ def setup_logging():
 
 @subcommand
 def train(config: Config):
-    import pytorch_lightning as pl
-    from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBar
-    from pytorch_lightning.loggers.csv_logs import CSVLogger
-    from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
-    from pytorch_lightning.loggers.wandb import WandbLogger
+    import lightning as L
+    from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBar
+    from lightning.pytorch.loggers.csv_logs import CSVLogger
+    from lightning.pytorch.loggers.tensorboard import TensorBoardLogger
+    from lightning.pytorch.loggers.wandb import WandbLogger
 
     from fd_shifts import logger
     from fd_shifts.loaders.data_loader import FDShiftsDataLoader
@@ -426,23 +426,25 @@ def train(config: Config):
         name=config.exp.name,
     )
 
-    trainer = pl.Trainer(
+    trainer = L.Trainer(
         accelerator="auto",
         devices="auto",
         logger=[tb_logger, csv_logger, wandb_logger],
         log_every_n_steps=log_every_n_steps,
         max_epochs=num_epochs,
-        max_steps=max_steps,  # type: ignore
+        max_steps=-1 if max_steps is None else max_steps,
         callbacks=[progress] + get_callbacks(config),
         benchmark=config.trainer.benchmark,
-        precision=16,
+        precision="16-mixed",
         check_val_every_n_epoch=val_every_n_epoch,
         num_sanity_val_steps=5,
         limit_train_batches=limit_batches,
         limit_val_batches=0 if config.trainer.do_val is False else limit_batches,
         limit_test_batches=limit_batches,
-        gradient_clip_val=1,
-        accumulate_grad_batches=accumulate_grad_batches,
+        gradient_clip_val=None if config.model.name == "confidnet_model" else 1,
+        accumulate_grad_batches=1
+        if config.model.name == "confidnet_model"
+        else accumulate_grad_batches,
     )
 
     logger.info(
@@ -455,9 +457,9 @@ def train(config: Config):
 
 @subcommand
 def test(config: Config):
-    import pytorch_lightning as pl
-    from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBar
-    from pytorch_lightning.loggers.wandb import WandbLogger
+    import lightning as L
+    from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBar
+    from lightning.pytorch.loggers.wandb import WandbLogger
 
     from fd_shifts import logger
     from fd_shifts.loaders.data_loader import FDShiftsDataLoader
@@ -510,14 +512,14 @@ def test(config: Config):
         name=config.exp.name,
     )
 
-    trainer = pl.Trainer(
+    trainer = L.Trainer(
         accelerator="auto",
         devices="auto",
         logger=wandb_logger,
         log_every_n_steps=log_every_n_steps,
         callbacks=[progress] + get_callbacks(config),
         limit_test_batches=limit_batches,
-        precision=16,
+        precision="bf16-mixed",
     )
     trainer.test(model=module, datamodule=datamodule)
 

@@ -5,8 +5,8 @@ from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
 
+import lightning as L
 import numpy as np
-import pytorch_lightning as pl
 import torch
 from omegaconf import OmegaConf
 from sklearn.model_selection import KFold
@@ -19,7 +19,7 @@ from fd_shifts.loaders.dataset_collection import get_dataset
 from fd_shifts.utils.aug_utils import get_transform, target_transforms_collection
 
 
-class FDShiftsDataLoader(pl.LightningDataModule):
+class FDShiftsDataLoader(L.LightningDataModule):
     """Data module class for combination of multiple datasets for testing with shifts"""
 
     def __init__(self, cf: configs.Config, no_norm_flag=False):

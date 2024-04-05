@@ -1,9 +1,6 @@
 import numpy as np
 import torch
-from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.trainer.connectors.logger_connector.logger_connector import (
-    LoggerConnector,
-)
+from lightning import Callback
 from rich import print
 from tqdm import tqdm
 
@@ -108,9 +105,7 @@ class ConfidMonitor(Callback):
             )
             pl_module.loggers[0].log_hyperparams(self.tensorboard_hparams, hp_metrics)
 
-    def on_train_batch_end(
-        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
-    ):
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         loss = outputs["loss"].cpu()
         softmax = outputs["softmax"].cpu()
         y = outputs["labels"].cpu()
@@ -224,7 +219,7 @@ class ConfidMonitor(Callback):
         self.running_train_correct_sum_sanity = 0
 
     def on_validation_batch_end(
-        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0
     ):
         tmp_correct = None
         loss = outputs["loss"]

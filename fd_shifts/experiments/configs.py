@@ -453,6 +453,8 @@ def cnn_animals_modelconfidnet(run: int, do: int, **kwargs):
     config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 12
     config.trainer.callbacks["training_stages"] = {}
     config.trainer.callbacks["training_stages"]["milestones"] = [12, 17]
+    config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
+    config.trainer.callbacks["training_stages"]["pretrained_confidnet_path"] = None
     config.trainer.callbacks["training_stages"]["disable_dropout_at_finetuning"] = True
     config.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"] = False
     config.model.name = "confidnet_model"
@@ -511,6 +513,8 @@ def cnn_camelyon_modelconfidnet(run: int, do: int, **kwargs):
     config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 5
     config.trainer.callbacks["training_stages"] = {}
     config.trainer.callbacks["training_stages"]["milestones"] = [5, 8]
+    config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
+    config.trainer.callbacks["training_stages"]["pretrained_confidnet_path"] = None
     config.trainer.callbacks["training_stages"]["disable_dropout_at_finetuning"] = True
     config.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"] = False
     config.model.name = "confidnet_model"
@@ -569,6 +573,8 @@ def cnn_svhn_modelconfidnet(run: int, do: int, **kwargs):
     config.trainer.learning_rate_confidnet_finetune = 1e-06
     config.trainer.callbacks["training_stages"] = {}
     config.trainer.callbacks["training_stages"]["milestones"] = [100, 300]
+    config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
+    config.trainer.callbacks["training_stages"]["pretrained_confidnet_path"] = None
     config.trainer.callbacks["training_stages"]["disable_dropout_at_finetuning"] = True
     config.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"] = False
     config.model.name = "confidnet_model"
@@ -626,6 +632,8 @@ def cnn_cifar10_modelconfidnet(run: int, do: int, **kwargs):
     config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 250
     config.trainer.callbacks["training_stages"] = {}
     config.trainer.callbacks["training_stages"]["milestones"] = [250, 450]
+    config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
+    config.trainer.callbacks["training_stages"]["pretrained_confidnet_path"] = None
     config.trainer.callbacks["training_stages"]["disable_dropout_at_finetuning"] = True
     config.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"] = False
     config.model.name = "confidnet_model"
@@ -686,6 +694,8 @@ def cnn_cifar100_modelconfidnet(run: int, do: int, **kwargs):
     config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 250
     config.trainer.callbacks["training_stages"] = {}
     config.trainer.callbacks["training_stages"]["milestones"] = [250, 450]
+    config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
+    config.trainer.callbacks["training_stages"]["pretrained_confidnet_path"] = None
     config.trainer.callbacks["training_stages"]["disable_dropout_at_finetuning"] = True
     config.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"] = False
     config.model.name = "confidnet_model"
@@ -777,6 +787,8 @@ def cnn_breeds_modelconfidnet(run: int, do: int, **kwargs):
     config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 300
     config.trainer.callbacks["training_stages"] = {}
     config.trainer.callbacks["training_stages"]["milestones"] = [300, 500]
+    config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
+    config.trainer.callbacks["training_stages"]["pretrained_confidnet_path"] = None
     config.trainer.callbacks["training_stages"]["disable_dropout_at_finetuning"] = True
     config.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"] = False
     config.model.name = "confidnet_model"

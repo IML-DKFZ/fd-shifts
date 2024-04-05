@@ -3,9 +3,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-import hydra
-import pl_bolts
-import pytorch_lightning as pl
+import lightning as L
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -19,7 +17,7 @@ if TYPE_CHECKING:
     from fd_shifts import configs
 
 
-class net(pl.LightningModule):
+class net(L.LightningModule):
     """
 
     Attributes:
@@ -119,7 +117,7 @@ class net(pl.LightningModule):
 
         return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
 
-    def on_epoch_end(self):
+    def on_train_epoch_end(self):
         if (
             self.ext_confid_name == "dg"
             and (
