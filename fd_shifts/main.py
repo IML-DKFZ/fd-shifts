@@ -7,19 +7,23 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any
 
 import jsonargparse
 import rich
 import shtab
 import yaml
-from jsonargparse import ActionConfigFile, ArgumentParser
+from jsonargparse import ActionConfigFile, ArgumentParser, Namespace
 from jsonargparse._actions import Action
 from omegaconf import OmegaConf
 from rich.pretty import pretty_repr
 
 from fd_shifts import reporting
 from fd_shifts.configs import Config, DataConfig, OutputPathsPerMode
+from fd_shifts.experiments.configs import list_experiment_configs
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 __subcommands = {}
 
@@ -89,7 +93,7 @@ class ActionExperiment(Action):
 class ActionLegacyConfigFile(ActionConfigFile):
     """Action to indicate that an argument is a configuration file or a configuration string."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         """Initializer for ActionLegacyConfigFile instance."""
         if "default" in kwargs:
             self.set_default_error()
@@ -105,7 +109,7 @@ class ActionLegacyConfigFile(ActionConfigFile):
             kwargs["help"] = "Path to a configuration file."
         super().__init__(**kwargs)
 
-    def __call__(self, parser, cfg, values, option_string=None):
+    def __call__(self, parser, cfg, values, option_string=None) -> None:
         """Parses the given configuration and adds all the corresponding keys to the namespace.
 
         Raises:
@@ -114,26 +118,28 @@ class ActionLegacyConfigFile(ActionConfigFile):
         self.apply_config(parser, cfg, self.dest, values, option_string)
 
     @staticmethod
-    def set_default_error():
+    def set_default_error() -> typing.NoReturn:
         raise ValueError(
             "ActionLegacyConfigFile does not accept a default, use default_config_files."
         )
 
     @staticmethod
-    def apply_config(parser, cfg, dest, value, option_string) -> None:
+    def apply_config(parser, cfg, dest, value, option_string) -> None:  # type: ignore
         from jsonargparse._link_arguments import skip_apply_links
 
         from fd_shifts.experiments.configs import get_dataset_config
 
-        with jsonargparse._actions._ActionSubCommands.not_single_subcommand(), previous_config_context(
-            cfg
-        ), skip_apply_links():
+        with (
+            jsonargparse._actions._ActionSubCommands.not_single_subcommand(),
+            previous_config_context(cfg),
+            skip_apply_links(),
+        ):
             kwargs = {
                 "env": False,
                 "defaults": False,
                 "_skip_check": True,
             }
-            cfg_path: Optional[jsonargparse.Path] = jsonargparse.Path(
+            cfg_path: jsonargparse.Path | None = jsonargparse.Path(
                 value, mode=jsonargparse._optionals.get_config_read_mode()
             )
 
@@ -193,7 +199,8 @@ class ActionLegacyConfigFile(ActionConfigFile):
                     else:
                         raise ValueError(f"Unknown query study {k}")
 
-                # for specific experiments, the seed should be fixed, if "random_seed" was written fix it
+                # for specific experiments, the seed should be fixed, if "random_seed"
+                # was written fix it
                 if isinstance(cfg_file["config"]["exp"]["global_seed"], str):
                     warnings.warn(
                         "global_seed is set to random in file, setting it to -1"
@@ -226,10 +233,13 @@ class ActionLegacyConfigFile(ActionConfigFile):
 
                 # resolve everything else
                 oc_config = OmegaConf.create(cfg_file["config"])
-                dict_config: dict[str, Any] = OmegaConf.to_object(oc_config)  # type: ignore
+                dict_config: dict[str, Any] = OmegaConf.to_object(
+                    oc_config
+                )  # pyright: ignore [reportAssignmentType]
                 cfg_file["config"] = dict_config
 
-                # don't need to comply with accumulate_grad_batches, that's runtime env dependent
+                # don't need to comply with accumulate_grad_batches, that's runtime env
+                # dependent
                 cfg_file["config"]["trainer"]["batch_size"] *= cfg_file["config"][
                     "trainer"
                 ].get("accumulate_grad_batches", 1)
@@ -247,8 +257,8 @@ class ActionLegacyConfigFile(ActionConfigFile):
             cfg[dest].append(cfg_path)
 
 
-def _path_to_str(cfg) -> dict:
-    def __path_to_str(cfg):
+def _path_to_str(cfg: dict | Config) -> dict:
+    def __path_to_str(cfg):  # noqa: ANN202,ANN001
         if isinstance(cfg, dict):
             return {k: __path_to_str(v) for k, v in cfg.items()}
         if is_dataclass(cfg):
@@ -261,11 +271,11 @@ def _path_to_str(cfg) -> dict:
             return str(cfg)
         return cfg
 
-    return __path_to_str(cfg)  # type: ignore
+    return __path_to_str(cfg)  # pyright: ignore [reportReturnType]
 
 
-def _dict_to_dataclass(cfg) -> Config:
-    def __dict_to_dataclass(cfg, cls, key):
+def _dict_to_dataclass(cfg: dict) -> Config:
+    def __dict_to_dataclass(cfg, cls: type, key: str):  # noqa: ANN202,ANN001
         try:
             if is_dataclass(cls):
                 fieldtypes = typing.get_type_hints(cls)
@@ -304,11 +314,11 @@ def _dict_to_dataclass(cfg) -> Config:
             raise
         return cfg
 
-    return __dict_to_dataclass(cfg, Config, "")  # type: ignore
+    return __dict_to_dataclass(cfg, Config, "")  # pyright: ignore [reportReturnType]
 
 
-def omegaconf_resolve(config: Config):
-    """Resolve all variable interpolations in config object with OmegaConf
+def omegaconf_resolve(config: Config) -> Config:
+    """Resolve all variable interpolations in config object with OmegaConf.
 
     Args:
         config: Config object to resolve
@@ -318,31 +328,35 @@ def omegaconf_resolve(config: Config):
     """
     dict_config = asdict(config)
 
-    # convert all paths to string, omegaconf does not do variable interpolation in anything that's not a string
+    # convert all paths to string, omegaconf does not do variable interpolation in
+    # anything that's not a string
     dict_config = _path_to_str(dict_config)
 
-    # omegaconf can't handle callables, may need to extend this list if other callable configs get added
+    # omegaconf can't handle callables, may need to extend this list if other callable
+    # configs get added
     del dict_config["trainer"]["lr_scheduler"]
     del dict_config["trainer"]["optimizer"]
 
     oc_config = OmegaConf.create(dict_config)
-    dict_config: dict[str, Any] = OmegaConf.to_object(oc_config)  # type: ignore
+    dict_config: dict[str, Any] = OmegaConf.to_object(
+        oc_config
+    )  # pyright: ignore [reportAssignmentType]
 
     dict_config["trainer"]["lr_scheduler"] = config.trainer.lr_scheduler
     dict_config["trainer"]["optimizer"] = config.trainer.optimizer
 
-    new_config = _dict_to_dataclass(dict_config)
-    return new_config
+    return _dict_to_dataclass(dict_config)
 
 
-def setup_logging():
+def setup_logging() -> None:
     from fd_shifts import logger
 
     rich.reconfigure(stderr=True, force_terminal=True)
     logger.remove()  # Remove default 'stderr' handler
 
-    # We need to specify end=''" as log message already ends with \n (thus the lambda function)
-    # Also forcing 'colorize=True' otherwise Loguru won't recognize that the sink support colors
+    # We need to specify end=''" as log message already ends with \n (thus the lambda
+    # function). Also forcing 'colorize=True' otherwise Loguru won't recognize that the
+    # sink support colors
     logger.add(
         lambda m: rich.get_console().print(m, end="", markup=False, highlight=False),
         colorize=True,
@@ -433,7 +447,7 @@ def train(config: Config):
         log_every_n_steps=log_every_n_steps,
         max_epochs=num_epochs,
         max_steps=-1 if max_steps is None else max_steps,
-        callbacks=[progress] + get_callbacks(config),
+        callbacks=[progress, *get_callbacks(config)],
         benchmark=config.trainer.benchmark,
         precision="16-mixed",
         check_val_every_n_epoch=val_every_n_epoch,
@@ -447,11 +461,7 @@ def train(config: Config):
         else accumulate_grad_batches,
     )
 
-    logger.info(
-        "logging training to: {}, version: {}".format(
-            config.exp.dir, config.exp.version
-        )
-    )
+    logger.info(f"logging training to: {config.exp.dir}, version: {config.exp.version}")
     trainer.fit(model=model, datamodule=datamodule)
 
 
@@ -482,16 +492,16 @@ def test(config: Config):
     ckpt_path = exp_utils._get_resume_ckpt_path(config)
 
     logger.info(
-        "testing model from checkpoint: {} from model selection tpye {}".format(
+        "testing model from checkpoint: {} from model selection type {}".format(
             ckpt_path, config.test.selection_criterion
         )
     )
-    logger.info("logging testing to: {}".format(config.test.dir))
+    logger.info(f"logging testing to: {config.test.dir}")
 
     module = get_model(config.model.name)(config)
 
     # TODO: make common module class with this method
-    module.load_only_state_dict(ckpt_path)  # type: ignore
+    module.load_only_state_dict(ckpt_path)  # pyright: ignore [reportCallIssue]
 
     datamodule = FDShiftsDataLoader(config)
 
@@ -517,15 +527,17 @@ def test(config: Config):
         devices="auto",
         logger=wandb_logger,
         log_every_n_steps=log_every_n_steps,
-        callbacks=[progress] + get_callbacks(config),
+        callbacks=[progress, *get_callbacks(config)],
         limit_test_batches=limit_batches,
         precision="bf16-mixed",
     )
     trainer.test(model=module, datamodule=datamodule)
+    analysis(config)
 
 
 @subcommand
-def analysis(config: Config):
+def analysis(config: Config) -> None:
+    """Run analysis on the results of the experiment."""
     from fd_shifts import analysis as ana
 
     ana.main(
@@ -539,18 +551,19 @@ def analysis(config: Config):
 
 
 @subcommand
-def debug(config: Config):
-    pass
+def debug(config: Config) -> None:  # noqa: ARG001
+    """Noop function for debugging purposes."""
 
 
-def _list_experiments():
+def _list_experiments() -> None:
     from fd_shifts.experiments.configs import list_experiment_configs
 
     for exp in sorted(list_experiment_configs()):
-        print(exp)
+        print(exp)  # noqa: T201
 
 
-def get_parser():
+def get_parser() -> tuple[ArgumentParser, dict[str, ArgumentParser]]:
+    """Return the parser and subparsers for the command line interface."""
     from fd_shifts import get_version
 
     parser = ArgumentParser(version=get_version())
@@ -571,8 +584,12 @@ def get_parser():
         subparser = ArgumentParser()
         subparser.add_argument(
             "--config-file", "--legacy-config-file", action=ActionLegacyConfigFile
-        ).complete = shtab.FILE  # type: ignore
-        subparser.add_argument("--experiment", action=ActionExperiment)
+        ).complete = (  # pyright: ignore [reportAttributeAccessIssue,reportOptionalMemberAccess]
+            shtab.FILE
+        )
+        subparser.add_argument(
+            "--experiment", action=ActionExperiment, choices=list_experiment_configs()
+        )
         subparser.add_function_arguments(func, sub_configs=True)
         subparsers[name] = subparser
         subcommands.add_subcommand(name, subparser)
@@ -580,13 +597,14 @@ def get_parser():
     return parser, subparsers
 
 
-def config_from_parser(parser, args):
+def config_from_parser(parser: ArgumentParser, args: Namespace) -> Config:
+    """Parse the command line arguments and return the configuration object."""
     config = parser.instantiate_classes(args)[args.command].config
-    config = omegaconf_resolve(config)
-    return config
+    return omegaconf_resolve(config)
 
 
-def main():
+def main() -> None:
+    """Main entry point for the command line interface."""
     from fd_shifts import logger
 
     setup_logging()
