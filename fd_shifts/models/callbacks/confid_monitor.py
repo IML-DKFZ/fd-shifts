@@ -496,13 +496,17 @@ class ConfidMonitor(Callback):
         )
         self.running_test_labels.extend(outputs["labels"].cpu())
         if "ext" in self.query_confids.test:
-            self.running_test_external_confids.extend(outputs["confid"].cpu())
+            self.running_test_external_confids.extend(
+                outputs["confid"].to(dtype=self.output_dtype).cpu()
+            )
         if outputs.get("logits_dist") is not None:
             self.running_test_softmax_dist.extend(
                 outputs["logits_dist"].to(dtype=self.output_dtype).cpu()
             )
         if outputs.get("confid_dist") is not None:
-            self.running_test_external_confids_dist.extend(outputs["confid_dist"].cpu())
+            self.running_test_external_confids_dist.extend(
+                outputs["confid_dist"].to(dtype=self.output_dtype).cpu()
+            )
 
         self.running_test_dataset_idx.extend(
             torch.ones_like(outputs["labels"].cpu()) * dataloader_idx
@@ -590,7 +594,7 @@ class ConfidMonitor(Callback):
         if len(self.running_test_external_confids) > 0:
             stacked_external_confids = torch.stack(
                 self.running_test_external_confids, dim=0
-            )
+            ).squeeze()
             np.savez_compressed(
                 self.output_paths.test.external_confids,
                 stacked_external_confids.cpu().data.numpy(),
