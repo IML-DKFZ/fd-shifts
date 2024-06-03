@@ -47,6 +47,7 @@ class ValSplit(StrEnum):
     repro_confidnet = auto()
     cv = auto()
     zhang = auto()
+    none = auto()
 
 
 @dataclass

@@ -304,7 +304,7 @@ class FDShiftsDataLoader(L.LightningDataModule):
                 self.test_datasets.append(tmp_external_set)
                 logging.debug("Len external Test data: %s", len(self.test_datasets[-1]))
 
-        if self.val_split is None or self.val_split == "devries":
+        if self.val_split in ("none", "devries"):
             val_idx = []
             train_idx = []
             self.val_sampler = None
