@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 import jsonargparse
 import rich
 import shtab
+import torch
 import yaml
 from jsonargparse import ActionConfigFile, ArgumentParser, Namespace
 from jsonargparse._actions import Action
@@ -456,9 +457,9 @@ def train(config: Config):
         limit_val_batches=0 if config.trainer.do_val is False else limit_batches,
         limit_test_batches=limit_batches,
         gradient_clip_val=None if config.model.name == "confidnet_model" else 1,
-        accumulate_grad_batches=1
-        if config.model.name == "confidnet_model"
-        else accumulate_grad_batches,
+        accumulate_grad_batches=(
+            1 if config.model.name == "confidnet_model" else accumulate_grad_batches
+        ),
     )
 
     logger.info(f"logging training to: {config.exp.dir}, version: {config.exp.version}")
@@ -502,6 +503,7 @@ def test(config: Config):
 
     # TODO: make common module class with this method
     module.load_only_state_dict(ckpt_path)  # pyright: ignore [reportCallIssue]
+    module = torch.compile(module)
 
     datamodule = FDShiftsDataLoader(config)
 
