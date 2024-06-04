@@ -24,6 +24,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
 
     def __init__(self, cf: configs.Config, no_norm_flag=False):
         super().__init__()
+        self.cf = cf
         self.crossval_ids_path = cf.exp.crossval_ids_path
         self.crossval_n_folds = cf.exp.crossval_n_folds
         self.fold = cf.exp.fold
@@ -246,6 +247,13 @@ class FDShiftsDataLoader(pl.LightningDataModule):
         logging.debug("Len iid test data: %s", len(self.iid_test_set))
 
         self.test_datasets = []
+
+        if self.cf.test.compute_train_encodings:
+            self.test_datasets.append(self.train_dataset)
+            logging.debug(
+                "Adding training data. (preliminary) len: %s",
+                len(self.test_datasets[-1]),
+            )
 
         if self.add_val_tuning:
             self.test_datasets.append(self.val_dataset)

@@ -256,7 +256,7 @@ class Module(pl.LightningModule):
         batch: tuple[torch.Tensor, torch.Tensor],
         batch_idx: int,
         dataloader_id: int | None = None,
-    ) -> None:
+    ) -> dict[str, torch.Tensor | None]:
         x, y = batch
 
         z = self.backbone.forward_features(x)
@@ -272,7 +272,7 @@ class Module(pl.LightningModule):
                 x=x, n_samples=self.test_mcd_samples
             )
 
-        self.test_results = {
+        return {
             "logits": logits,
             "logits_dist": logits_dist,
             "labels": y,
