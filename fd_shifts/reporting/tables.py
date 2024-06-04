@@ -8,6 +8,8 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
+from fd_shifts import logger
+
 LATEX_TABLE_TEMPLATE = r"""
 \documentclass{article} % For LaTeX2e
 \usepackage[table]{xcolor}
@@ -89,6 +91,7 @@ def aggregate_over_runs(data: pd.DataFrame) -> pd.DataFrame:
     Returns:
         aggregated experiment data
     """
+    logger.info("Aggregating over runs")
     fixed_columns = ["study", "confid"]
     metrics_columns = ["accuracy", "aurc", "ece", "failauc", "fail-NLL"]
 
@@ -167,6 +170,9 @@ def _study_name_to_multilabel(study_name):
     if study_name in ["confid", "classifier"]:
         return (study_name, "", "")
 
+    if study_name.startswith("wilds_"):
+        study_name = study_name.replace("wilds_", "")
+
     return (
         study_name.split("_")[0],
         study_name.split("_")[1]
@@ -230,7 +236,7 @@ def _reorder_studies(
     ordered_columns = [
         ("animals", "iid", ""),
         ("animals", "sub", ""),
-        ("animals", "s-ncs", ""),
+        # ("animals", "s-ncs", ""),
         ("animals", "rank", ""),
         ("breeds", "iid", ""),
         ("breeds", "sub", ""),
@@ -252,7 +258,7 @@ def _reorder_studies(
         ("cifar10", "ns-ncs", "ti"),
         ("cifar10", "rank", ""),
         ("svhn", "iid", ""),
-        ("svhn", "s-ncs", ""),
+        # ("svhn", "s-ncs", ""),
         ("svhn", "ns-ncs", "c10"),
         ("svhn", "ns-ncs", "c100"),
         ("svhn", "ns-ncs", "ti"),
@@ -411,16 +417,17 @@ def paper_results(
         out_dir (Path): where to save the output to
         rank_cols: (bool): whether to report ranks instead of absolute values
     """
+    logger.info(f"Creating results table for {metric}")
+
     _formatter = (
         lambda x: f"{x:>3.2f}"[:4] if "." in f"{x:>3.2f}"[:3] else f"{x:>3.2f}"[:3]
     )
+
     results_table = build_results_table(data, metric)
     cmap = "Oranges_r" if invert else "Oranges"
 
     if rank_cols:
         results_table = _add_rank_columns(results_table)
-        print(f"{metric}")
-        print(results_table)
         _formatter = lambda x: f"{int(x):>3d}"
         cmap = "Oranges"
 
@@ -436,15 +443,6 @@ def paper_results(
         lambda val: round(val, 2) if val < 10 else round(val, 1)
     )
 
-    gmap_vit = _compute_gmap(
-        results_table.loc[
-            results_table.index[
-                results_table.index.get_level_values(1).str.contains("ViT")
-            ],
-            results_table.columns,
-        ],
-        invert,
-    )
     gmap_cnn = _compute_gmap(
         results_table.loc[
             results_table.index[
@@ -455,8 +453,29 @@ def paper_results(
         invert,
     )
 
-    ltex = (
-        results_table.style.background_gradient(
+    ltex = results_table.style.background_gradient(
+        cmap,
+        axis=None,
+        subset=(
+            results_table.index[
+                ~results_table.index.get_level_values(1).str.contains("ViT")
+            ],
+            results_table.columns,
+        ),
+        gmap=gmap_cnn,
+    )
+
+    if results_table.index.get_level_values(1).str.contains("ViT").any():
+        gmap_vit = _compute_gmap(
+            results_table.loc[
+                results_table.index[
+                    results_table.index.get_level_values(1).str.contains("ViT")
+                ],
+                results_table.columns,
+            ],
+            invert,
+        )
+        ltex = ltex.background_gradient(
             cmap,
             axis=None,
             subset=(
@@ -467,32 +486,22 @@ def paper_results(
             ),
             gmap=gmap_vit,
         )
-        .background_gradient(
-            cmap,
-            axis=None,
-            subset=(
-                results_table.index[
-                    ~results_table.index.get_level_values(1).str.contains("ViT")
-                ],
-                results_table.columns,
-            ),
-            gmap=gmap_cnn,
-        )
-        .highlight_null(props="background-color: white;color: black")
-        .format(
-            _formatter,
-            na_rep="*",
-        )
+
+    ltex = ltex.highlight_null(props="background-color: white;color: black").format(
+        _formatter,
+        na_rep="*",
     )
 
     ltex.data.columns = ltex.data.columns.set_names(
         ["\\multicolumn{1}{c}{}", "study", "ncs-data set"]
     )
+    print(ltex.data)
     ltex = ltex.to_latex(
         convert_css=True,
         hrules=True,
         multicol_align="c?",
-        column_format="ll?rrr?xx?xx?rrrrrr?rrrrr?rrrrr",
+        # column_format="ll?rrr?xx?xx?rrrrrr?rrrrr?rrrrr",
+        column_format="ll?rr?xx?xx?rrrrrr?rrrrr?rrrr",
     )
 
     # Remove toprule
@@ -782,7 +791,6 @@ def rank_comparison_mode(data: pd.DataFrame, out_dir: Path, rank: bool = True):
     ltex.data.columns = ltex.data.columns.set_names(
         ["\\multicolumn{1}{c}{}", "study", "ncs-data set", "ood protocol"]
     )
-    print(len(results_table.columns))
     ltex = ltex.to_latex(
         convert_css=True,
         hrules=True,

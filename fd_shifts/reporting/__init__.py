@@ -1,10 +1,16 @@
+import concurrent.futures
+import functools
 import os
 from pathlib import Path
 from typing import cast
 
 import pandas as pd
 
+from fd_shifts import logger
+from fd_shifts.configs import Config
 from fd_shifts.experiments import Experiment, get_all_experiments
+from fd_shifts.experiments.configs import get_experiment_config, list_experiment_configs
+from fd_shifts.experiments.tracker import list_analysis_output_files
 
 DATASETS = (
     "svhn",
@@ -17,162 +23,75 @@ DATASETS = (
 )
 
 
-def _filter_experiment_by_dataset(experiments: list[Experiment], dataset: str):
-    match dataset:
-        case "super_cifar100":
-            _experiments = list(
-                filter(
-                    lambda exp: exp.dataset in ("super_cifar100", "supercifar"),
-                    experiments,
-                )
-            )
-        case "animals":
-            _experiments = list(
-                filter(
-                    lambda exp: exp.dataset in ("animals", "wilds_animals"), experiments
-                )
-            )
-        case "animals_openset":
-            _experiments = list(
-                filter(
-                    lambda exp: exp.dataset
-                    in ("animals_openset", "wilds_animals_openset"),
-                    experiments,
-                )
-            )
-        case "camelyon":
-            _experiments = list(
-                filter(
-                    lambda exp: exp.dataset in ("camelyon", "wilds_camelyon"),
-                    experiments,
-                )
-            )
-        case _:
-            _experiments = list(filter(lambda exp: exp.dataset == dataset, experiments))
-
-    return _experiments
+def __find_in_store(config: Config, file: str) -> Path | None:
+    store_paths = map(Path, os.getenv("FD_SHIFTS_STORE_PATH", "").split(":"))
+    test_dir = config.test.dir.relative_to(os.getenv("EXPERIMENT_ROOT_DIR", ""))
+    for store_path in store_paths:
+        if (store_path / test_dir / file).is_file():
+            logger.info(f"Loading {store_path / test_dir / file}")
+            return store_path / test_dir / file
 
 
-def gather_data(data_dir: Path):
-    """Collect all csv files from experiments into one location
+def __load_file(config: Config, name: str, file: str):
+    if f := __find_in_store(config, file):
+        return pd.read_csv(f)
+    else:
+        logger.error(f"Could not find {name}: {file} in store")
+        return None
 
-    Args:
-        data_dir (Path): where to collect to
-    """
-    experiment_dirs = [
-        Path(os.environ["EXPERIMENT_ROOT_DIR"]),
-    ]
 
-    if add_dirs := os.getenv("EXPERIMENT_ADD_DIRS"):
-        (
-            experiment_dirs.extend(
-                map(
-                    lambda path: Path(path),
-                    add_dirs.split(os.pathsep),
-                )
-            ),
+def __load_experiment(name: str) -> pd.DataFrame | None:
+    from fd_shifts.main import omegaconf_resolve
+
+    config = get_experiment_config(name)
+    config = omegaconf_resolve(config)
+
+    # data = list(executor.map(functools.partial(__load_file, config, name), list_analysis_output_files(config)))
+    data = list(
+        map(
+            functools.partial(__load_file, config, name),
+            list_analysis_output_files(config),
         )
-
-    experiments = get_all_experiments(
-        with_ms_runs=False, with_precision_study=False, with_vit_special_runs=False
     )
-
-    for dataset in DATASETS + ("animals_openset", "svhn_openset"):
-        print(dataset)
-        _experiments = _filter_experiment_by_dataset(experiments, dataset)
-
-        _paths = []
-        _vit_paths = []
-
-        for experiment_dir in experiment_dirs:
-            for experiment in _experiments:
-                if experiment.model == "vit":
-                    _vit_paths.extend(
-                        (experiment_dir / experiment.to_path() / "test_results").glob(
-                            "*.csv"
-                        )
-                    )
-                else:
-                    _paths.extend(
-                        (experiment_dir / experiment.to_path() / "test_results").glob(
-                            "*.csv"
-                        )
-                    )
-
-        if len(_paths) > 0:
-            dframe: pd.DataFrame = pd.concat(
-                [cast(pd.DataFrame, pd.read_csv(p)) for p in _paths]
-            )
-            dframe.to_csv(data_dir / f"{dataset}.csv")
-
-        if len(_vit_paths) > 0:
-            dframe: pd.DataFrame = pd.concat(
-                [cast(pd.DataFrame, pd.read_csv(p)) for p in _vit_paths]
-            )
-            dframe.to_csv(data_dir / f"{dataset}vit.csv")
-
-
-def load_file(path: Path, experiment_override: str | None = None) -> pd.DataFrame:
-    """Load experiment result csv into dataframe and set experiment accordingly
-
-    Args:
-        path (Path): path to csv file
-        experiment_override (str | None): use this experiment instead of inferring it from the file
-
-    Returns:
-        Dataframe created from csv including some cleanup
-
-    Raises:
-        FileNotFoundError: if the file at path does not exist
-        RuntimeError: if loading does not result in a dataframe
-    """
-    result = pd.read_csv(path)
-
-    if not isinstance(result, pd.DataFrame):
-        raise FileNotFoundError
-
-    result = (
-        result.assign(
-            experiment=experiment_override
-            if experiment_override is not None
-            else path.stem
+    if len(data) == 0 or any(map(lambda d: d is None, data)):
+        return
+    data = pd.concat(data)  # type: ignore
+    data = (
+        data.assign(
+            experiment=config.data.dataset + ("vit" if "vit" in name else ""),
+            run=int(name.split("run")[1].split("_")[0]),
+            dropout=config.model.dropout_rate,
+            rew=config.model.dg_reward if config.model.dg_reward is not None else 0,
+            lr=config.trainer.optimizer.init_args["init_args"]["lr"],
         )
         .dropna(subset=["name", "model"])
         .drop_duplicates(subset=["name", "study", "model", "network", "confid"])
     )
-
-    if not isinstance(result, pd.DataFrame):
-        raise RuntimeError
-
-    return result
+    return data
 
 
-def load_data(data_dir: Path) -> tuple[pd.DataFrame, list[str]]:
-    """
-    Args:
-        data_dir (Path): the directory where all experiment results are
-
-    Returns:
-        dataframe with all experiments and list of experiments that were loaded
-
-    """
-    data = pd.concat(
-        [
-            load_file(path)
-            for path in filter(
-                lambda path: str(path.stem).startswith(DATASETS),
-                data_dir.glob("*.csv"),
+def load_all():
+    dataframes = []
+    # TODO: make this async
+    with concurrent.futures.ProcessPoolExecutor(max_workers=12) as executor:
+        dataframes = list(
+            filter(
+                lambda d: d is not None,
+                executor.map(
+                    __load_experiment,
+                    list_experiment_configs(),
+                ),
             )
-        ]
-    )
+        )
 
+    data = pd.concat(dataframes)  # type: ignore
     data = data.loc[~data["study"].str.contains("tinyimagenet_original")]
     data = data.loc[~data["study"].str.contains("tinyimagenet_proposed")]
 
-    data = data.query(
-        'not (experiment in ["cifar10", "cifar100", "super_cifar100"]'
-        'and not name.str.contains("vgg13"))'
-    )
+    # data = data.query(
+    #     'not (experiment in ["cifar10", "cifar100", "super_cifar100"]'
+    #     'and not name.str.contains("vgg13"))'
+    # )
 
     data = data.query(
         'not ((experiment.str.contains("super_cifar100")'
@@ -208,14 +127,7 @@ def load_data(data_dir: Path) -> tuple[pd.DataFrame, list[str]]:
 
     data = data.assign(ece=data.ece.mask(data.ece < 0))
 
-    exp_names = list(
-        filter(
-            lambda exp: not exp.startswith("super_cifar100"),
-            data.experiment.unique(),
-        )
-    )
-
-    return data, exp_names
+    return data
 
 
 def _extract_hparam(
@@ -234,6 +146,7 @@ def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
     Returns:
         experiment data with additional columns
     """
+    logger.info("Assigning hyperparameters from experiment names")
     data = data.assign(
         backbone=lambda data: _extract_hparam(
             data.name, r"bb([a-z0-9]+)(_small_conv)?"
@@ -245,20 +158,19 @@ def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
         .mask(data["backbone"] == "vit", "vit_")
         + data.model.where(
             data.backbone == "vit", data.name.str.split("_", expand=True)[0]
+        ).mask(
+            data.backbone == "vit",
+            data.name.str.split("model", expand=True)[1].str.split("_", expand=True)[0],
         ),
-        run=lambda data: _extract_hparam(data.name, r"run([0-9]+)"),
-        dropout=lambda data: _extract_hparam(data.name, r"do([01])"),
-        rew=lambda data: _extract_hparam(data.name, r"rew([0-9.]+)"),
-        lr=lambda data: _extract_hparam(data.name, r"lr([0-9.]+)", "0.1"),
         # Encode every detail into confid name
         _confid=data.confid,
         confid=lambda data: data.model
         + "_"
         + data.confid
         + "_"
-        + data.dropout
+        + data.dropout.astype(str)
         + "_"
-        + data.rew,
+        + data.rew.astype(str),
     )
 
     return data
@@ -276,6 +188,7 @@ def filter_best_lr(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFrame:
     Returns:
         filtered data
     """
+    logger.info("Filtering best learning rates")
 
     def _filter_row(row, selection_df, optimization_columns, fixed_columns):
         if "openset" in row["study"]:
@@ -347,6 +260,8 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
         filtered data
     """
 
+    logger.info("Filtering best hyperparameters")
+
     def _filter_row(row, selection_df, optimization_columns, fixed_columns):
         if "openset" in row["study"]:
             return True
@@ -355,10 +270,19 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
             & (row._confid == selection_df._confid)
             & (row.model == selection_df.model)
         ]
+        if len(temp) > 1:
+            print(f"{len(temp)=}")
+            raise ValueError("More than one row")
+
+        if len(temp) == 0:
+            return False
+
+        temp = temp.iloc[0]
 
         result = row[optimization_columns] == temp[optimization_columns]
-        if result.all(axis=1).any().item():
-            return True
+        # if result.all(axis=1).any().item():
+        #     return True
+        return result.all()
 
         return False
 
@@ -489,7 +413,7 @@ def str_format_metrics(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def main(base_path: str | Path):
+def main(out_path: str | Path):
     """Main entrypoint for CLI report generation
 
     Args:
@@ -508,12 +432,10 @@ def main(base_path: str | Path):
     pd.set_option("display.width", None)
     pd.set_option("display.max_colwidth", None)
 
-    data_dir: Path = Path(base_path).expanduser().resolve()
+    data_dir: Path = Path(out_path).expanduser().resolve()
     data_dir.mkdir(exist_ok=True, parents=True)
 
-    gather_data(data_dir)
-
-    data, exp_names = load_data(data_dir)
+    data = load_all()
 
     data = assign_hparams_from_names(data)
 
@@ -524,19 +446,19 @@ def main(base_path: str | Path):
     data = rename_confids(data)
     data = rename_studies(data)
 
-    plot_rank_style(data, "cifar10", "aurc", data_dir)
-    vit_v_cnn_box(data, data_dir)
+    # plot_rank_style(data, "cifar10", "aurc", data_dir)
+    # vit_v_cnn_box(data, data_dir)
 
-    data = tables.aggregate_over_runs(data)
+    data, std = tables.aggregate_over_runs(data)
     data = str_format_metrics(data)
 
     paper_results(data, "aurc", False, data_dir)
-    paper_results(data, "aurc", False, data_dir, True)
-    paper_results(data, "ece", False, data_dir)
-    paper_results(data, "failauc", True, data_dir)
-    paper_results(data, "accuracy", True, data_dir)
-    paper_results(data, "fail-NLL", False, data_dir)
+    # paper_results(data, "aurc", False, data_dir, rank_cols=True)
+    # paper_results(data, "ece", False, data_dir)
+    # paper_results(data, "failauc", True, data_dir)
+    # paper_results(data, "accuracy", True, data_dir)
+    # paper_results(data, "fail-NLL", False, data_dir)
 
-    rank_comparison_metric(data, data_dir)
-    rank_comparison_mode(data, data_dir)
-    rank_comparison_mode(data, data_dir, False)
+    # rank_comparison_metric(data, data_dir)
+    # rank_comparison_mode(data, data_dir)
+    # rank_comparison_mode(data, data_dir, False)

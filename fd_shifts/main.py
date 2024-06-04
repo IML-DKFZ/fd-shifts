@@ -18,6 +18,7 @@ from jsonargparse._actions import Action
 from omegaconf import OmegaConf
 from rich.pretty import pretty_repr
 
+from fd_shifts import reporting
 from fd_shifts.configs import Config, DataConfig, OutputPathsPerMode
 
 __subcommands = {}
@@ -559,6 +560,11 @@ def get_parser():
     subparser = ArgumentParser()
     subcommands.add_subcommand("list-experiments", subparser)
 
+    subparser = ArgumentParser()
+    subparser.add_function_arguments(reporting.main)
+    subparsers["report"] = subparser
+    subcommands.add_subcommand("report", subparser)
+
     for name, func in __subcommands.items():
         subparser = ArgumentParser()
         subparser.add_argument(
@@ -589,6 +595,10 @@ def main():
 
     if args.command == "list-experiments":
         _list_experiments()
+        return
+
+    if args.command == "report":
+        reporting.main(**args.report)
         return
 
     config = config_from_parser(parser, args)
