@@ -1296,7 +1296,7 @@ def get_dataset(
     transform: Callable,
     target_transform: Callable | None,
     kwargs: dict[str, Any],
-    config: DataConfig | None = None,
+    subsample_corruptions: int = 1,
 ) -> Any:
     """Return a new instance of a dataset
 
@@ -1324,7 +1324,7 @@ def get_dataset(
             "train": train,
             "download": download,
             "transform": transform,
-            "subsample": config.subsample_corruptions if config else 1,
+            "subsample": subsample_corruptions,
         }
     if name.startswith("svhn"):
         pass_kwargs = {

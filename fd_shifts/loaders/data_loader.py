@@ -63,7 +63,7 @@ class FDShiftsDataLoader(L.LightningDataModule):
             )
 
             if len(self.external_test_sets) > 0:
-                self.external_test_configs = {}
+                self.external_test_configs: dict[str, configs.DataConfig] = {}
                 for i, ext_set in enumerate(self.external_test_sets):
                     overwrite_dataset = False
                     if isinstance(ext_set, str):
@@ -280,7 +280,9 @@ class FDShiftsDataLoader(L.LightningDataModule):
                     target_transform=self.target_transforms,
                     transform=self.augmentations["external_{}".format(ext_set)],
                     kwargs=self.dataset_kwargs,
-                    config=self.external_test_configs[ext_set],
+                    subsample_corruptions=self.external_test_configs[
+                        ext_set
+                    ].subsample_corruptions,
                 )
                 if (
                     self.devries_repro_ood_split
