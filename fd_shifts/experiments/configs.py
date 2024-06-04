@@ -181,17 +181,21 @@ def cifar100_query_config(
 
     return QueryStudiesConfig(
         iid_study=dataset + ("_384" if img_size[0] == 384 else ""),
-        noise_study=cifar100_data_config("corrupt_cifar100", img_size)
-        if dataset == "cifar100"
-        else DataConfig(),
+        noise_study=(
+            cifar100_data_config("corrupt_cifar100", img_size)
+            if dataset == "cifar100"
+            else DataConfig()
+        ),
         in_class_study=[],
-        new_class_study=[
-            cifar10_data_config(img_size=img_size),
-            svhn_data_config("svhn", img_size),
-            tinyimagenet_data_config(img_size),
-        ]
-        if dataset == "cifar100"
-        else [],
+        new_class_study=(
+            [
+                cifar10_data_config(img_size=img_size),
+                svhn_data_config("svhn", img_size),
+                tinyimagenet_data_config(img_size),
+            ]
+            if dataset == "cifar100"
+            else []
+        ),
     )
 
 
@@ -385,23 +389,40 @@ __dataset_configs: dict[str, DataConfig] = {
     "corrupt_cifar100_384": cifar100_data_config(
         dataset="corrupt_cifar100", img_size=384
     ),
+    "wilds_animals": wilds_animals_data_config(),
     "wilds_animals_ood_test": wilds_animals_data_config("wilds_animals_ood_test"),
     "wilds_animals_ood_test_384": wilds_animals_data_config(
         "wilds_animals_ood_test", 384
     ),
+    "wilds_camelyon": wilds_camelyon_data_config(),
     "wilds_camelyon_ood_test": wilds_camelyon_data_config("wilds_camelyon_ood_test"),
     "wilds_camelyon_ood_test_384": wilds_camelyon_data_config(
         "wilds_camelyon_ood_test", 384
     ),
+    "breeds": breeds_data_config(),
     "breeds_ood_test": breeds_data_config("breeds_ood_test"),
     "breeds_ood_test_384": breeds_data_config("breeds_ood_test", 384),
     "tinyimagenet_384": tinyimagenet_data_config(384),
     "tinyimagenet_resize": tinyimagenet_data_config(32),
 }
 
+__query_configs: dict[str, QueryStudiesConfig] = {
+    "svhn": svhn_query_config("svhn", 32),
+    "cifar10": cifar10_query_config(32),
+    "cifar100": cifar100_query_config(32),
+    "super_cifar100": cifar100_query_config(32, "super_cifar100"),
+    "wilds_animals": wilds_animals_query_config(),
+    "wilds_camelyon": wilds_camelyon_query_config(),
+    "breeds": breeds_query_config(),
+}
+
 
 def get_dataset_config(name: str) -> DataConfig:
     return __dataset_configs[name]
+
+
+def get_query_config(name: str) -> QueryStudiesConfig:
+    return __query_configs[name]
 
 
 __experiments: dict[str, Config] = {}

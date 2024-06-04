@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 class StrEnum(str, Enum):
-    """Enum where members are also (and must be) strings"""
+    """Enum where members are also (and must be) strings."""
 
     # pylint: disable=no-self-argument
     def _generate_next_value_(name, start, count, last_values):  # type: ignore
@@ -269,8 +269,8 @@ class ModelConfig(_IterableMixin):
     dropout_rate: int = 0
     monitor_mcd_samples: int = 50
     test_mcd_samples: int = 50
-    confidnet_fc_dim: Optional[int] = None
-    dg_reward: Optional[float] = None
+    confidnet_fc_dim: int | None = None
+    dg_reward: float | None = None
     balanced_sampeling: bool = False
     budget: float = 0.3
 
@@ -413,9 +413,9 @@ class DataConfig(_IterableMixin):
     num_classes: int | None = None
     reproduce_confidnet_splits: bool = False
     augmentations: dict[str, dict[str, Any]] | None = None
-    target_transforms: Optional[Any] = None
+    target_transforms: Any | None = None
     subsample_corruptions: int = 10
-    kwargs: Optional[dict[Any, Any]] = None
+    kwargs: dict[Any, Any] | None = None
 
 
 @dataclass
