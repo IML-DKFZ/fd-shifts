@@ -229,6 +229,7 @@ class TrainerConfig(_IterableMixin):
     lr_scheduler: LRSchedulerConfig | None = None
     optimizer: OptimizerConfig | None = None
     accumulate_grad_batches: int = 1
+    use_compile: bool = True
     resume_from_ckpt_confidnet: bool = False
     dg_pretrain_epochs: int | None = 100
     dg_pretrain_steps: Optional[int] = None

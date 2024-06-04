@@ -424,6 +424,9 @@ def train(config: Config):
 
     datamodule = FDShiftsDataLoader(config)
     model = get_model(config.model.name)(config)
+    if config.trainer.use_compile:
+        logger.info("Compiling model")
+        model = torch.compile(model)
     csv_logger = CSVLogger(
         save_dir=str(config.exp.group_dir),
         name=config.exp.name,
@@ -471,8 +474,8 @@ def test(config: Config):
     import lightning as L
     from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBar
     from lightning.pytorch.loggers.wandb import WandbLogger
+    from loguru import logger
 
-    from fd_shifts import logger
     from fd_shifts.loaders.data_loader import FDShiftsDataLoader
     from fd_shifts.models import get_model
     from fd_shifts.models.callbacks import get_callbacks
@@ -503,7 +506,9 @@ def test(config: Config):
 
     # TODO: make common module class with this method
     module.load_only_state_dict(ckpt_path)  # pyright: ignore [reportCallIssue]
-    module = torch.compile(module)
+    if config.trainer.use_compile:
+        logger.info("Compiling model")
+        module = torch.compile(module)
 
     datamodule = FDShiftsDataLoader(config)
 
