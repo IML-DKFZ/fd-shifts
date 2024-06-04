@@ -1,6 +1,6 @@
+from collections.abc import Callable
 from copy import deepcopy
-from pathlib import Path
-from typing import Callable, Literal
+from typing import Literal
 
 from omegaconf import SI
 
@@ -14,6 +14,11 @@ from fd_shifts.configs import (
     OptimizerConfig,
     QueryStudiesConfig,
 )
+
+DEFAULT_VIT_INFERENCE_IMG_SIZE = 384
+DEFAULT_VIT_PRETRAIN_IMG_SIZE = 224
+DEFAULT_SMALL_IMG_SIZE = 32
+DEFAULT_CAMELYON_IMG_SIZE = 96
 
 
 def svhn_data_config(
@@ -30,7 +35,7 @@ def svhn_data_config(
     if isinstance(img_size, int):
         img_size = (img_size, img_size)
 
-    if img_size[0] != 32:
+    if img_size[0] != DEFAULT_SMALL_IMG_SIZE:
         augmentations["resize"] = img_size[0]
 
     return DataConfig(
@@ -58,7 +63,8 @@ def svhn_query_config(
         img_size = (img_size, img_size)
 
     return QueryStudiesConfig(
-        iid_study="svhn" + ("_384" if img_size[0] == 384 else ""),
+        iid_study="svhn"
+        + ("_384" if img_size[0] == DEFAULT_VIT_INFERENCE_IMG_SIZE else ""),
         new_class_study=[
             cifar10_data_config(img_size=img_size),
             cifar100_data_config(img_size=img_size),
@@ -69,7 +75,7 @@ def svhn_query_config(
 
 def cifar10_data_config(
     dataset: Literal["cifar10", "corrupt_cifar10"] = "cifar10",
-    img_size: int | tuple[int, int] = 32,
+    img_size: int | tuple[int, int] = DEFAULT_SMALL_IMG_SIZE,
 ) -> DataConfig:
     if isinstance(img_size, int):
         img_size = (img_size, img_size)
@@ -78,13 +84,13 @@ def cifar10_data_config(
         "to_tensor": None,
         "normalize": [[0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.201]],
     }
-    if img_size[0] != 32:
+    if img_size[0] != DEFAULT_SMALL_IMG_SIZE:
         augmentations["resize"] = img_size[0]
 
     train_augmentations = deepcopy(augmentations)
 
-    if img_size[0] != 384:
-        train_augmentations["random_crop"] = [32, 4]
+    if img_size[0] != DEFAULT_VIT_INFERENCE_IMG_SIZE:
+        train_augmentations["random_crop"] = [DEFAULT_SMALL_IMG_SIZE, 4]
         train_augmentations["hflip"] = True
         if dataset == "corrupt_cifar10":
             train_augmentations["rotate"] = 15
@@ -117,7 +123,8 @@ def cifar10_query_config(img_size: int | tuple[int, int]) -> QueryStudiesConfig:
         img_size = (img_size, img_size)
 
     return QueryStudiesConfig(
-        iid_study="cifar10" + ("_384" if img_size[0] == 384 else ""),
+        iid_study="cifar10"
+        + ("_384" if img_size[0] == DEFAULT_VIT_INFERENCE_IMG_SIZE else ""),
         noise_study=cifar10_data_config("corrupt_cifar10", img_size),
         new_class_study=[
             cifar100_data_config(img_size=img_size),
@@ -129,7 +136,7 @@ def cifar10_query_config(img_size: int | tuple[int, int]) -> QueryStudiesConfig:
 
 def cifar100_data_config(
     dataset: Literal["cifar100", "corrupt_cifar100", "super_cifar100"] = "cifar100",
-    img_size: int | tuple[int, int] = 32,
+    img_size: int | tuple[int, int] = DEFAULT_SMALL_IMG_SIZE,
 ) -> DataConfig:
     if isinstance(img_size, int):
         img_size = (img_size, img_size)
@@ -138,13 +145,13 @@ def cifar100_data_config(
         "to_tensor": None,
         "normalize": [[0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.201]],
     }
-    if img_size[0] != 32:
+    if img_size[0] != DEFAULT_SMALL_IMG_SIZE:
         augmentations["resize"] = img_size[0]
 
     train_augmentations = deepcopy(augmentations)
 
-    if img_size[0] != 384:
-        train_augmentations["random_crop"] = [32, 4]
+    if img_size[0] != DEFAULT_VIT_INFERENCE_IMG_SIZE:
+        train_augmentations["random_crop"] = [DEFAULT_SMALL_IMG_SIZE, 4]
         train_augmentations["hflip"] = True
         if dataset == "corrupt_cifar100":
             train_augmentations["rotate"] = 15
@@ -180,7 +187,8 @@ def cifar100_query_config(
         img_size = (img_size, img_size)
 
     return QueryStudiesConfig(
-        iid_study=dataset + ("_384" if img_size[0] == 384 else ""),
+        iid_study=dataset
+        + ("_384" if img_size[0] == DEFAULT_VIT_INFERENCE_IMG_SIZE else ""),
         noise_study=(
             cifar100_data_config("corrupt_cifar100", img_size)
             if dataset == "cifar100"
@@ -208,11 +216,13 @@ def wilds_animals_data_config(
 
     augmentations = {
         "to_tensor": None,
-        "resize": img_size[0] if img_size[0] == 384 else img_size,
+        "resize": (
+            img_size[0] if img_size[0] == DEFAULT_VIT_INFERENCE_IMG_SIZE else img_size
+        ),
         "normalize": [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]],
     }
 
-    if img_size[0] == 384:
+    if img_size[0] == DEFAULT_VIT_INFERENCE_IMG_SIZE:
         augmentations["center_crop"] = 384
 
     return DataConfig(
@@ -240,7 +250,8 @@ def wilds_animals_query_config(
         img_size = (img_size, img_size)
 
     return QueryStudiesConfig(
-        iid_study="wilds_animals" + ("_384" if img_size[0] == 384 else ""),
+        iid_study="wilds_animals"
+        + ("_384" if img_size[0] == DEFAULT_VIT_INFERENCE_IMG_SIZE else ""),
         in_class_study=[wilds_animals_data_config("wilds_animals_ood_test", img_size)],
         new_class_study=[],
     )
@@ -248,7 +259,7 @@ def wilds_animals_query_config(
 
 def wilds_camelyon_data_config(
     dataset: Literal["wilds_camelyon", "wilds_camelyon_ood_test"] = "wilds_camelyon",
-    img_size: int | tuple[int, int] = 96,
+    img_size: int | tuple[int, int] = DEFAULT_CAMELYON_IMG_SIZE,
 ) -> DataConfig:
     if isinstance(img_size, int):
         img_size = (img_size, img_size)
@@ -257,11 +268,15 @@ def wilds_camelyon_data_config(
         "to_tensor": None,
         "normalize": [
             [0.485, 0.456, 0.406],
-            [0.229, 0.384 if img_size[0] == 384 else 0.224, 0.225],
+            [
+                0.229,
+                0.384 if img_size[0] == DEFAULT_VIT_INFERENCE_IMG_SIZE else 0.224,
+                0.225,
+            ],
         ],
     }
 
-    if img_size[0] != 96:
+    if img_size[0] != DEFAULT_CAMELYON_IMG_SIZE:
         augmentations["resize"] = img_size[0]
 
     return DataConfig(
@@ -289,7 +304,8 @@ def wilds_camelyon_query_config(
         img_size = (img_size, img_size)
 
     return QueryStudiesConfig(
-        iid_study="wilds_camelyon" + ("_384" if img_size[0] == 384 else ""),
+        iid_study="wilds_camelyon"
+        + ("_384" if img_size[0] == DEFAULT_VIT_INFERENCE_IMG_SIZE else ""),
         in_class_study=[
             wilds_camelyon_data_config("wilds_camelyon_ood_test", img_size)
         ],
@@ -299,13 +315,13 @@ def wilds_camelyon_query_config(
 
 def breeds_data_config(
     dataset: Literal["breeds", "breeds_ood_test"] = "breeds",
-    img_size: int | tuple[int, int] = 224,
+    img_size: int | tuple[int, int] = DEFAULT_VIT_PRETRAIN_IMG_SIZE,
 ) -> DataConfig:
     if isinstance(img_size, int):
         img_size = (img_size, img_size)
 
     augmentations = {
-        "resize": 256 if img_size[0] == 224 else img_size[0],
+        "resize": 256 if img_size[0] == DEFAULT_VIT_PRETRAIN_IMG_SIZE else img_size[0],
         "center_crop": img_size[0],
         "to_tensor": None,
         "normalize": [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]],
@@ -313,7 +329,7 @@ def breeds_data_config(
 
     train_augmentations = deepcopy(augmentations)
 
-    if img_size[0] != 384:
+    if img_size[0] != DEFAULT_VIT_INFERENCE_IMG_SIZE:
         train_augmentations["randomresized_crop"] = img_size[0]
         train_augmentations["hflip"] = True
         train_augmentations["color_jitter"] = [0.1, 0.1, 0.1]
@@ -334,12 +350,15 @@ def breeds_data_config(
     )
 
 
-def breeds_query_config(img_size: int | tuple[int, int] = 224) -> QueryStudiesConfig:
+def breeds_query_config(
+    img_size: int | tuple[int, int] = DEFAULT_VIT_PRETRAIN_IMG_SIZE
+) -> QueryStudiesConfig:
     if isinstance(img_size, int):
         img_size = (img_size, img_size)
 
     return QueryStudiesConfig(
-        iid_study="breeds" + ("_384" if img_size[0] == 384 else ""),
+        iid_study="breeds"
+        + ("_384" if img_size[0] == DEFAULT_VIT_INFERENCE_IMG_SIZE else ""),
         in_class_study=[breeds_data_config("breeds_ood_test", img_size)],
     )
 
@@ -353,15 +372,15 @@ def tinyimagenet_data_config(img_size: int | tuple[int, int] = 64) -> DataConfig
         "normalize": [[0.485, 0.456, 0.406], [0.229, 0.384, 0.225]],
     }
 
-    if img_size[0] != 64:
+    if img_size[0] != 64:  # noqa: PLR2004
         augmentations["resize"] = img_size
 
     return DataConfig(
-        dataset="tinyimagenet" + ("_384" if img_size[0] == 384 else "_resize"),
+        dataset="tinyimagenet"
+        + ("_384" if img_size[0] == DEFAULT_VIT_INFERENCE_IMG_SIZE else "_resize"),
         data_dir=SI(
-            "${oc.env:DATASET_ROOT_DIR}/"
-            + "tinyimagenet"
-            + ("" if img_size[0] == 384 else "_resize")
+            "${oc.env:DATASET_ROOT_DIR}/tinyimagenet"
+            + ("" if img_size[0] == DEFAULT_VIT_INFERENCE_IMG_SIZE else "_resize")
         ),
         img_size=(img_size[0], img_size[1], 3),
         num_classes=200,
@@ -376,15 +395,19 @@ def tinyimagenet_data_config(img_size: int | tuple[int, int] = 64) -> DataConfig
 
 __dataset_configs: dict[str, DataConfig] = {
     "svhn": svhn_data_config("svhn"),
-    "svhn_384": svhn_data_config("svhn", 384),
+    "svhn_384": svhn_data_config("svhn", DEFAULT_VIT_INFERENCE_IMG_SIZE),
     "cifar10": cifar10_data_config(),
-    "cifar10_384": cifar10_data_config(img_size=384),
+    "cifar10_384": cifar10_data_config(img_size=DEFAULT_VIT_INFERENCE_IMG_SIZE),
     "cifar100": cifar100_data_config(),
-    "cifar100_384": cifar100_data_config(img_size=384),
+    "cifar100_384": cifar100_data_config(img_size=DEFAULT_VIT_INFERENCE_IMG_SIZE),
     "super_cifar100": cifar100_data_config(dataset="super_cifar100"),
-    "super_cifar100_384": cifar100_data_config(img_size=384, dataset="super_cifar100"),
+    "super_cifar100_384": cifar100_data_config(
+        img_size=DEFAULT_VIT_INFERENCE_IMG_SIZE, dataset="super_cifar100"
+    ),
     "corrupt_cifar10": cifar10_data_config(dataset="corrupt_cifar10"),
-    "corrupt_cifar10_384": cifar10_data_config(dataset="corrupt_cifar10", img_size=384),
+    "corrupt_cifar10_384": cifar10_data_config(
+        dataset="corrupt_cifar10", img_size=DEFAULT_VIT_INFERENCE_IMG_SIZE
+    ),
     "corrupt_cifar100": cifar100_data_config(dataset="corrupt_cifar100"),
     "corrupt_cifar100_384": cifar100_data_config(
         dataset="corrupt_cifar100", img_size=384
@@ -401,16 +424,18 @@ __dataset_configs: dict[str, DataConfig] = {
     ),
     "breeds": breeds_data_config(),
     "breeds_ood_test": breeds_data_config("breeds_ood_test"),
-    "breeds_ood_test_384": breeds_data_config("breeds_ood_test", 384),
-    "tinyimagenet_384": tinyimagenet_data_config(384),
-    "tinyimagenet_resize": tinyimagenet_data_config(32),
+    "breeds_ood_test_384": breeds_data_config(
+        "breeds_ood_test", DEFAULT_VIT_INFERENCE_IMG_SIZE
+    ),
+    "tinyimagenet_384": tinyimagenet_data_config(DEFAULT_VIT_INFERENCE_IMG_SIZE),
+    "tinyimagenet_resize": tinyimagenet_data_config(DEFAULT_SMALL_IMG_SIZE),
 }
 
 __query_configs: dict[str, QueryStudiesConfig] = {
-    "svhn": svhn_query_config("svhn", 32),
-    "cifar10": cifar10_query_config(32),
-    "cifar100": cifar100_query_config(32),
-    "super_cifar100": cifar100_query_config(32, "super_cifar100"),
+    "svhn": svhn_query_config("svhn", DEFAULT_SMALL_IMG_SIZE),
+    "cifar10": cifar10_query_config(DEFAULT_SMALL_IMG_SIZE),
+    "cifar100": cifar100_query_config(DEFAULT_SMALL_IMG_SIZE),
+    "super_cifar100": cifar100_query_config(DEFAULT_SMALL_IMG_SIZE, "super_cifar100"),
     "wilds_animals": wilds_animals_query_config(),
     "wilds_camelyon": wilds_camelyon_query_config(),
     "breeds": breeds_query_config(),
@@ -428,7 +453,7 @@ def get_query_config(name: str) -> QueryStudiesConfig:
 __experiments: dict[str, Config] = {}
 
 
-def cnn(group_name: str, name: str):
+def cnn(group_name: str, name: str) -> Config:
     config = Config(exp=ExperimentConfig(group_name=group_name, name=name))
     config.trainer.batch_size = 128
     config.trainer.lr_scheduler = LRSchedulerConfig(
@@ -455,23 +480,23 @@ def cnn(group_name: str, name: str):
     return config
 
 
-def cnn_animals(name: str):
+def cnn_animals(name: str) -> Config:
     config = cnn("animals_paper_sweep", name=name)
     config.data = wilds_animals_data_config()
-    config.trainer.optimizer.init_args["init_args"]["lr"] = 0.001
+    config.trainer.optimizer.init_args["init_args"]["lr"] = 0.001  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.fc_dim = 2048
     config.model.avg_pool = True
     config.eval.query_studies = wilds_animals_query_config()
     return config
 
 
-def cnn_animals_modelconfidnet(run: int, do: int, **kwargs):
+def cnn_animals_modelconfidnet(run: int, do: int, **kwargs) -> Config:
     config = cnn_animals(name=f"confidnet_bbresnet50_do{do}_run{run + 1}_rew2.2")
     config.trainer.num_epochs = 20
     config.trainer.num_epochs_backbone = 12
     config.trainer.learning_rate_confidnet = 0.0001
     config.trainer.learning_rate_confidnet_finetune = 1e-06
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 12
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 12  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.trainer.callbacks["training_stages"] = {}
     config.trainer.callbacks["training_stages"]["milestones"] = [12, 17]
     config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
@@ -486,11 +511,11 @@ def cnn_animals_modelconfidnet(run: int, do: int, **kwargs):
     return config
 
 
-def cnn_animals_modeldevries(run: int, do: int, **kwargs):
+def cnn_animals_modeldevries(run: int, do: int, **kwargs) -> Config:
     config = cnn_animals(name=f"devries_bbresnet50_do{do}_run{run + 1}_rew2.2")
     config.trainer.num_epochs = 12
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 12
-    config.trainer.optimizer.init_args["init_args"]["nesterov"] = True
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 12  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["nesterov"] = True  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.name = "devries_model"
     config.model.dg_reward = -1
     config.model.dropout_rate = do
@@ -500,12 +525,12 @@ def cnn_animals_modeldevries(run: int, do: int, **kwargs):
     return config
 
 
-def cnn_animals_modeldg(run: int, do: int, rew: float):
+def cnn_animals_modeldg(run: int, do: int, rew: float) -> Config:
     config = cnn_animals(name=f"dg_bbresnet50_do{do}_run{run + 1}_rew{rew}")
     config.trainer.num_epochs = 18
     config.trainer.dg_pretrain_epochs = 6
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 18
-    config.trainer.optimizer.init_args["init_args"]["nesterov"] = False
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 18  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["nesterov"] = False  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.name = "devries_model"
     config.model.dropout_rate = do
     config.model.dg_reward = rew
@@ -514,24 +539,24 @@ def cnn_animals_modeldg(run: int, do: int, rew: float):
     return config
 
 
-def cnn_camelyon(name: str):
+def cnn_camelyon(name: str) -> Config:
     config = cnn("camelyon_paper_sweep", name=name)
     config.data = wilds_camelyon_data_config()
-    config.trainer.optimizer.init_args["init_args"]["lr"] = 0.01
-    config.trainer.optimizer.init_args["init_args"]["weight_decay"] = 0.01
+    config.trainer.optimizer.init_args["init_args"]["lr"] = 0.01  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["weight_decay"] = 0.01  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.fc_dim = 2048
     config.model.avg_pool = True
     config.eval.query_studies = wilds_camelyon_query_config()
     return config
 
 
-def cnn_camelyon_modelconfidnet(run: int, do: int, **kwargs):
+def cnn_camelyon_modelconfidnet(run: int, do: int, **kwargs) -> Config:
     config = cnn_camelyon(f"confidnet_bbresnet50_do{do}_run{run + 1}_rew2.2")
     config.trainer.num_epochs = 9
     config.trainer.num_epochs_backbone = 5
     config.trainer.learning_rate_confidnet = 0.0001
     config.trainer.learning_rate_confidnet_finetune = 1e-06
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 5
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 5  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.trainer.callbacks["training_stages"] = {}
     config.trainer.callbacks["training_stages"]["milestones"] = [5, 8]
     config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
@@ -546,11 +571,11 @@ def cnn_camelyon_modelconfidnet(run: int, do: int, **kwargs):
     return config
 
 
-def cnn_camelyon_modeldevries(run: int, do: int, **kwargs):
+def cnn_camelyon_modeldevries(run: int, do: int, **kwargs) -> Config:
     config = cnn_camelyon(f"devries_bbresnet50_do{do}_run{run + 1}_rew2.2")
     config.trainer.num_epochs = 5
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 5
-    config.trainer.optimizer.init_args["init_args"]["nesterov"] = True
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 5  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["nesterov"] = True  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.name = "devries_model"
     config.model.dropout_rate = do
     config.model.dg_reward = -1
@@ -560,12 +585,12 @@ def cnn_camelyon_modeldevries(run: int, do: int, **kwargs):
     return config
 
 
-def cnn_camelyon_modeldg(run: int, do: int, rew: float):
+def cnn_camelyon_modeldg(run: int, do: int, rew: float) -> Config:
     config = cnn_camelyon(f"dg_bbresnet50_do{do}_run{run + 1}_rew{rew}")
     config.trainer.num_epochs = 8
     config.trainer.dg_pretrain_epochs = 3
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 8
-    config.trainer.optimizer.init_args["init_args"]["nesterov"] = False
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 8  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["nesterov"] = False  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.name = "devries_model"
     config.model.dg_reward = rew
     config.model.dropout_rate = do
@@ -574,22 +599,24 @@ def cnn_camelyon_modeldg(run: int, do: int, rew: float):
     return config
 
 
-def cnn_svhn(name: str):
+def cnn_svhn(name: str) -> Config:
     config = cnn("svhn_paper_sweep", name=name)
-    config.data = svhn_data_config("svhn", img_size=32)
-    config.trainer.optimizer.init_args["init_args"]["lr"] = 0.01
-    config.trainer.optimizer.init_args["init_args"]["weight_decay"] = 0.0005
+    config.data = svhn_data_config("svhn", img_size=DEFAULT_SMALL_IMG_SIZE)
+    config.trainer.optimizer.init_args["init_args"]["lr"] = 0.01  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["weight_decay"] = 0.0005  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.fc_dim = 512
     config.model.avg_pool = True
-    config.eval.query_studies = svhn_query_config("svhn", img_size=32)
+    config.eval.query_studies = svhn_query_config(
+        "svhn", img_size=DEFAULT_SMALL_IMG_SIZE
+    )
     return config
 
 
-def cnn_svhn_modelconfidnet(run: int, do: int, **kwargs):
+def cnn_svhn_modelconfidnet(run: int, do: int, **kwargs) -> Config:
     config = cnn_svhn(f"confidnet_bbsvhn_small_conv_do{do}_run{run + 1}_rew2.2")
     config.trainer.num_epochs = 320
     config.trainer.num_epochs_backbone = 100
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 100
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 100  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.trainer.learning_rate_confidnet = 0.0001
     config.trainer.learning_rate_confidnet_finetune = 1e-06
     config.trainer.callbacks["training_stages"] = {}
@@ -606,11 +633,11 @@ def cnn_svhn_modelconfidnet(run: int, do: int, **kwargs):
     return config
 
 
-def cnn_svhn_modeldevries(run: int, do: int, **kwargs):
+def cnn_svhn_modeldevries(run: int, do: int, **kwargs) -> Config:
     config = cnn_svhn(f"devries_bbsvhn_small_conv_do{do}_run{run + 1}_rew2.2")
     config.trainer.num_epochs = 100
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 100
-    config.trainer.optimizer.init_args["init_args"]["nesterov"] = True
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 100  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["nesterov"] = True  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.name = "devries_model"
     config.model.dropout_rate = do
     config.model.dg_reward = -1
@@ -620,12 +647,12 @@ def cnn_svhn_modeldevries(run: int, do: int, **kwargs):
     return config
 
 
-def cnn_svhn_modeldg(run: int, do: int, rew: float):
+def cnn_svhn_modeldg(run: int, do: int, rew: float) -> Config:
     config = cnn_svhn(f"dg_bbsvhn_small_conv_do{do}_run{run + 1}_rew{rew}")
     config.trainer.num_epochs = 150
     config.trainer.dg_pretrain_epochs = 50
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 150
-    config.trainer.optimizer.init_args["init_args"]["nesterov"] = False
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 150  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["nesterov"] = False  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.name = "devries_model"
     config.model.dg_reward = rew
     config.model.dropout_rate = do
@@ -634,23 +661,23 @@ def cnn_svhn_modeldg(run: int, do: int, rew: float):
     return config
 
 
-def cnn_cifar10(name: str):
+def cnn_cifar10(name: str) -> Config:
     config = cnn("cifar10_paper_sweep", name=name)
-    config.data = cifar10_data_config(img_size=32)
-    config.trainer.optimizer.init_args["init_args"]["lr"] = 0.1
-    config.trainer.optimizer.init_args["init_args"]["weight_decay"] = 0.0005
+    config.data = cifar10_data_config(img_size=DEFAULT_SMALL_IMG_SIZE)
+    config.trainer.optimizer.init_args["init_args"]["lr"] = 0.1  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["weight_decay"] = 0.0005  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.fc_dim = 512
-    config.eval.query_studies = cifar10_query_config(img_size=32)
+    config.eval.query_studies = cifar10_query_config(img_size=DEFAULT_SMALL_IMG_SIZE)
     return config
 
 
-def cnn_cifar10_modelconfidnet(run: int, do: int, **kwargs):
+def cnn_cifar10_modelconfidnet(run: int, do: int, **kwargs) -> Config:
     config = cnn_cifar10(f"confidnet_bbvgg13_do{do}_run{run + 1}_rew2.2")
     config.trainer.num_epochs = 470
     config.trainer.num_epochs_backbone = 250
     config.trainer.learning_rate_confidnet = 0.0001
     config.trainer.learning_rate_confidnet_finetune = 1e-06
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 250
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 250  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.trainer.callbacks["training_stages"] = {}
     config.trainer.callbacks["training_stages"]["milestones"] = [250, 450]
     config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
@@ -666,11 +693,11 @@ def cnn_cifar10_modelconfidnet(run: int, do: int, **kwargs):
     return config
 
 
-def cnn_cifar10_modeldevries(run: int, do: int, **kwargs):
+def cnn_cifar10_modeldevries(run: int, do: int, **kwargs) -> Config:
     config = cnn_cifar10(f"devries_bbvgg13_do{do}_run{run + 1}_rew2.2")
     config.trainer.num_epochs = 250
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 250
-    config.trainer.optimizer.init_args["init_args"]["nesterov"] = True
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 250  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["nesterov"] = True  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.name = "devries_model"
     config.model.dropout_rate = do
     config.model.avg_pool = do == 0
@@ -681,12 +708,12 @@ def cnn_cifar10_modeldevries(run: int, do: int, **kwargs):
     return config
 
 
-def cnn_cifar10_modeldg(run: int, do: int, rew: float):
+def cnn_cifar10_modeldg(run: int, do: int, rew: float) -> Config:
     config = cnn_cifar10(f"dg_bbvgg13_do{do}_run{run + 1}_rew{rew}")
     config.trainer.num_epochs = 300
     config.trainer.dg_pretrain_epochs = 100
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 300
-    config.trainer.optimizer.init_args["init_args"]["nesterov"] = False
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 300  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["nesterov"] = False  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.name = "devries_model"
     config.model.dg_reward = rew
     config.model.dropout_rate = do
@@ -696,23 +723,23 @@ def cnn_cifar10_modeldg(run: int, do: int, rew: float):
     return config
 
 
-def cnn_cifar100(name: str):
+def cnn_cifar100(name: str) -> Config:
     config = cnn("cifar100_paper_sweep", name=name)
-    config.data = cifar100_data_config(img_size=32)
-    config.trainer.optimizer.init_args["init_args"]["lr"] = 0.1
-    config.trainer.optimizer.init_args["init_args"]["weight_decay"] = 0.0005
+    config.data = cifar100_data_config(img_size=DEFAULT_SMALL_IMG_SIZE)
+    config.trainer.optimizer.init_args["init_args"]["lr"] = 0.1  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["weight_decay"] = 0.0005  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.fc_dim = 512
-    config.eval.query_studies = cifar100_query_config(img_size=32)
+    config.eval.query_studies = cifar100_query_config(img_size=DEFAULT_SMALL_IMG_SIZE)
     return config
 
 
-def cnn_cifar100_modelconfidnet(run: int, do: int, **kwargs):
+def cnn_cifar100_modelconfidnet(run: int, do: int, **kwargs) -> Config:
     config = cnn_cifar100(f"confidnet_bbvgg13_do{do}_run{run + 1}_rew2.2")
     config.trainer.num_epochs = 470
     config.trainer.num_epochs_backbone = 250
     config.trainer.learning_rate_confidnet = 0.0001
     config.trainer.learning_rate_confidnet_finetune = 1e-06
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 250
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 250  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.trainer.callbacks["training_stages"] = {}
     config.trainer.callbacks["training_stages"]["milestones"] = [250, 450]
     config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
@@ -728,11 +755,11 @@ def cnn_cifar100_modelconfidnet(run: int, do: int, **kwargs):
     return config
 
 
-def cnn_cifar100_modeldevries(run: int, do: int, **kwargs):
+def cnn_cifar100_modeldevries(run: int, do: int, **kwargs) -> Config:
     config = cnn_cifar100(f"devries_bbvgg13_do{do}_run{run + 1}_rew2.2")
     config.trainer.num_epochs = 250
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 250
-    config.trainer.optimizer.init_args["init_args"]["nesterov"] = True
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 250  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["nesterov"] = True  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.name = "devries_model"
     config.model.dropout_rate = do
     config.model.dg_reward = -1
@@ -743,12 +770,12 @@ def cnn_cifar100_modeldevries(run: int, do: int, **kwargs):
     return config
 
 
-def cnn_cifar100_modeldg(run: int, do: int, rew: float):
+def cnn_cifar100_modeldg(run: int, do: int, rew: float) -> Config:
     config = cnn_cifar100(f"dg_bbvgg13_do{do}_run{run + 1}_rew{rew}")
     config.trainer.num_epochs = 300
     config.trainer.dg_pretrain_epochs = 100
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 300
-    config.trainer.optimizer.init_args["init_args"]["nesterov"] = False
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 300  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["nesterov"] = False  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.name = "devries_model"
     config.model.dg_reward = rew
     config.model.dropout_rate = do
@@ -758,54 +785,60 @@ def cnn_cifar100_modeldg(run: int, do: int, rew: float):
     return config
 
 
-def cnn_super_cifar100_modelconfidnet(run: int, do: int, **kwargs):
+def cnn_super_cifar100_modelconfidnet(run: int, do: int, **kwargs) -> Config:
     config = cnn_cifar100_modelconfidnet(run, do, **kwargs)
     config.exp.group_name = "supercifar_paper_sweep"
-    config.data = cifar100_data_config(dataset="super_cifar100", img_size=32)
+    config.data = cifar100_data_config(
+        dataset="super_cifar100", img_size=DEFAULT_SMALL_IMG_SIZE
+    )
     config.eval.query_studies = cifar100_query_config(
         dataset="super_cifar100", img_size=32
     )
     return config
 
 
-def cnn_super_cifar100_modeldevries(run: int, do: int, **kwargs):
+def cnn_super_cifar100_modeldevries(run: int, do: int, **kwargs) -> Config:
     config = cnn_cifar100_modeldevries(run, do, **kwargs)
     config.exp.group_name = "supercifar_paper_sweep"
-    config.data = cifar100_data_config(dataset="super_cifar100", img_size=32)
+    config.data = cifar100_data_config(
+        dataset="super_cifar100", img_size=DEFAULT_SMALL_IMG_SIZE
+    )
     config.eval.query_studies = cifar100_query_config(
         dataset="super_cifar100", img_size=32
     )
     return config
 
 
-def cnn_super_cifar100_modeldg(run: int, do: int, rew: float):
+def cnn_super_cifar100_modeldg(run: int, do: int, rew: float) -> Config:
     config = cnn_cifar100_modeldg(run, do, rew)
     config.exp.group_name = "supercifar_paper_sweep"
-    config.data = cifar100_data_config(dataset="super_cifar100", img_size=32)
+    config.data = cifar100_data_config(
+        dataset="super_cifar100", img_size=DEFAULT_SMALL_IMG_SIZE
+    )
     config.eval.query_studies = cifar100_query_config(
         dataset="super_cifar100", img_size=32
     )
     return config
 
 
-def cnn_breeds(name: str):
+def cnn_breeds(name: str) -> Config:
     config = cnn("breeds_paper_sweep", name=name)
     config.data = breeds_data_config()
-    config.trainer.optimizer.init_args["init_args"]["lr"] = 0.1
-    config.trainer.optimizer.init_args["init_args"]["weight_decay"] = 0.0001
+    config.trainer.optimizer.init_args["init_args"]["lr"] = 0.1  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["weight_decay"] = 0.0001  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.fc_dim = 2048
     config.model.avg_pool = True
     config.eval.query_studies = breeds_query_config()
     return config
 
 
-def cnn_breeds_modelconfidnet(run: int, do: int, **kwargs):
+def cnn_breeds_modelconfidnet(run: int, do: int, **kwargs) -> Config:
     config = cnn_breeds(f"confidnet_bbresnet50_do{do}_run{run + 1}_rew2.2")
     config.trainer.num_epochs = 520
     config.trainer.num_epochs_backbone = 300
     config.trainer.learning_rate_confidnet = 0.0001
     config.trainer.learning_rate_confidnet_finetune = 1e-06
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 300
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 300  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.trainer.callbacks["training_stages"] = {}
     config.trainer.callbacks["training_stages"]["milestones"] = [300, 500]
     config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
@@ -820,11 +853,11 @@ def cnn_breeds_modelconfidnet(run: int, do: int, **kwargs):
     return config
 
 
-def cnn_breeds_modeldevries(run: int, do: int, **kwargs):
+def cnn_breeds_modeldevries(run: int, do: int, **kwargs) -> Config:
     config = cnn_breeds(f"devries_bbresnet50_do{do}_run{run + 1}_rew2.2")
     config.trainer.num_epochs = 300
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 300
-    config.trainer.optimizer.init_args["init_args"]["nesterov"] = True
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 300  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["nesterov"] = True  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.name = "devries_model"
     config.model.dropout_rate = do
     config.model.dg_reward = -1
@@ -834,12 +867,12 @@ def cnn_breeds_modeldevries(run: int, do: int, **kwargs):
     return config
 
 
-def cnn_breeds_modeldg(run: int, do: int, rew: float):
+def cnn_breeds_modeldg(run: int, do: int, rew: float) -> Config:
     config = cnn_breeds(f"dg_bbresnet50_do{do}_run{run + 1}_rew{rew}")
     config.trainer.num_epochs = 350
     config.trainer.dg_pretrain_epochs = 50
-    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 350
-    config.trainer.optimizer.init_args["init_args"]["nesterov"] = False
+    config.trainer.lr_scheduler.init_args["init_args"]["T_max"] = 350  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["nesterov"] = False  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.name = "devries_model"
     config.model.dg_reward = rew
     config.model.dropout_rate = do
@@ -848,7 +881,7 @@ def cnn_breeds_modeldg(run: int, do: int, rew: float):
     return config
 
 
-def vit(name: str):
+def vit(name: str) -> Config:
     config = Config(exp=ExperimentConfig(group_name="vit", name=name))
     config.trainer.num_epochs = None
     config.trainer.num_steps = 40000
@@ -887,7 +920,7 @@ def vit(name: str):
     return config
 
 
-def vit_modeldg(name: str):
+def vit_modeldg(name: str) -> Config:
     config = vit(name)
     config.model.name = "devries_model"
     config.trainer.lr_scheduler_interval = "step"
@@ -897,202 +930,226 @@ def vit_modeldg(name: str):
     return config
 
 
-def vit_wilds_animals_modeldg(run: int, lr: float, do: int, rew: float):
+def vit_wilds_animals_modeldg(run: int, lr: float, do: int, rew: float) -> Config:
     config = vit_modeldg(
         name=f"wilds_animals_modeldg_bbvit_lr{lr}_bs128_run{run}_do{do}_rew{rew}",
     )
-    config.data = wilds_animals_data_config("wilds_animals", 384)
+    config.data = wilds_animals_data_config(
+        "wilds_animals", DEFAULT_VIT_INFERENCE_IMG_SIZE
+    )
     config.trainer.num_steps = 60000
     config.trainer.batch_size = 512
     config.trainer.dg_pretrain_steps = 20000
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 60000
-    config.trainer.optimizer.init_args["init_args"]["lr"] = lr
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 60000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["lr"] = lr  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.dropout_rate = do
     config.model.dg_reward = rew
-    config.eval.query_studies = wilds_animals_query_config(384)
+    config.eval.query_studies = wilds_animals_query_config(
+        DEFAULT_VIT_INFERENCE_IMG_SIZE
+    )
     return config
 
 
-def vit_wilds_camelyon_modeldg(run: int, lr: float, do: int, rew: float):
+def vit_wilds_camelyon_modeldg(run: int, lr: float, do: int, rew: float) -> Config:
     config = vit_modeldg(
         name=f"wilds_camelyon_modeldg_bbvit_lr{lr}_bs128_run{run}_do{do}_rew{rew}",
     )
-    config.data = wilds_camelyon_data_config("wilds_camelyon", 384)
+    config.data = wilds_camelyon_data_config(
+        "wilds_camelyon", DEFAULT_VIT_INFERENCE_IMG_SIZE
+    )
     config.trainer.num_steps = 60000
     config.trainer.dg_pretrain_steps = 20000
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 60000
-    config.trainer.optimizer.init_args["init_args"]["lr"] = lr
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 60000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["lr"] = lr  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.dropout_rate = do
     config.model.dg_reward = rew
-    config.eval.query_studies = wilds_camelyon_query_config(384)
+    config.eval.query_studies = wilds_camelyon_query_config(
+        DEFAULT_VIT_INFERENCE_IMG_SIZE
+    )
     return config
 
 
-def vit_svhn_modeldg(run: int, lr: float, do: int, rew: float):
+def vit_svhn_modeldg(run: int, lr: float, do: int, rew: float) -> Config:
     config = vit_modeldg(
         name=f"svhn_modeldg_bbvit_lr{lr}_bs128_run{run}_do{do}_rew{rew}",
     )
-    config.data = svhn_data_config("svhn", 384)
+    config.data = svhn_data_config("svhn", DEFAULT_VIT_INFERENCE_IMG_SIZE)
     config.trainer.num_steps = 60000
     config.trainer.dg_pretrain_steps = 20000
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 60000
-    config.trainer.optimizer.init_args["init_args"]["lr"] = lr
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 60000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["lr"] = lr  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.dropout_rate = do
     config.model.dg_reward = rew
-    config.eval.query_studies = svhn_query_config("svhn", 384)
+    config.eval.query_studies = svhn_query_config(
+        "svhn", DEFAULT_VIT_INFERENCE_IMG_SIZE
+    )
     return config
 
 
-def vit_cifar10_modeldg(run: int, lr: float, do: int, rew: float):
+def vit_cifar10_modeldg(run: int, lr: float, do: int, rew: float) -> Config:
     config = vit_modeldg(
         name=f"cifar10_modeldg_bbvit_lr{lr}_bs128_run{run}_do{do}_rew{rew}",
     )
-    config.data = cifar10_data_config(img_size=384)
+    config.data = cifar10_data_config(img_size=DEFAULT_VIT_INFERENCE_IMG_SIZE)
     config.trainer.num_steps = 60000
     config.trainer.dg_pretrain_steps = 20000
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 60000
-    config.trainer.optimizer.init_args["init_args"]["lr"] = lr
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 60000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["lr"] = lr  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.dropout_rate = do
     config.model.dg_reward = rew
     config.model.avg_pool = do == 0
-    config.eval.query_studies = cifar10_query_config(384)
+    config.eval.query_studies = cifar10_query_config(DEFAULT_VIT_INFERENCE_IMG_SIZE)
     return config
 
 
-def vit_cifar100_modeldg(run: int, lr: float, do: int, rew: float):
+def vit_cifar100_modeldg(run: int, lr: float, do: int, rew: float) -> Config:
     config = vit_modeldg(
         name=f"cifar100_modeldg_bbvit_lr{lr}_bs128_run{run}_do{do}_rew{rew}",
     )
-    config.data = cifar100_data_config(img_size=384)
+    config.data = cifar100_data_config(img_size=DEFAULT_VIT_INFERENCE_IMG_SIZE)
     config.trainer.num_steps = 15000
     config.trainer.batch_size = 512
     config.trainer.dg_pretrain_steps = 5000
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 15000
-    config.trainer.optimizer.init_args["init_args"]["lr"] = lr
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 15000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["lr"] = lr  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.dropout_rate = do
     config.model.dg_reward = rew
-    config.eval.query_studies = cifar100_query_config(384)
+    config.eval.query_studies = cifar100_query_config(DEFAULT_VIT_INFERENCE_IMG_SIZE)
     return config
 
 
-def vit_super_cifar100_modeldg(run: int, lr: float, do: int, rew: float):
+def vit_super_cifar100_modeldg(run: int, lr: float, do: int, rew: float) -> Config:
     config = vit_cifar100_modeldg(run, lr, do, rew)
     config.exp.name = "super_" + config.exp.name
-    config.data = cifar100_data_config(dataset="super_cifar100", img_size=384)
+    config.data = cifar100_data_config(
+        dataset="super_cifar100", img_size=DEFAULT_VIT_INFERENCE_IMG_SIZE
+    )
     config.eval.query_studies = cifar100_query_config(
         dataset="super_cifar100", img_size=384
     )
     return config
 
 
-def vit_breeds_modeldg(run: int, lr: float, do: int, rew: float):
+def vit_breeds_modeldg(run: int, lr: float, do: int, rew: float) -> Config:
     config = vit_modeldg(
         name=f"breeds_modeldg_bbvit_lr{lr}_bs128_run{run}_do{do}_rew{rew}",
     )
-    config.data = breeds_data_config("breeds", 384)
+    config.data = breeds_data_config("breeds", DEFAULT_VIT_INFERENCE_IMG_SIZE)
     config.trainer.num_steps = 60000
     config.trainer.dg_pretrain_steps = 20000
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 60000
-    config.trainer.optimizer.init_args["init_args"]["lr"] = lr
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 60000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["lr"] = lr  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.dropout_rate = do
     config.model.dg_reward = rew
-    config.eval.query_studies = breeds_query_config(384)
+    config.eval.query_studies = breeds_query_config(DEFAULT_VIT_INFERENCE_IMG_SIZE)
     return config
 
 
-def vit_wilds_animals_modelvit(run: int, lr: float, do: int, **kwargs):
+def vit_wilds_animals_modelvit(run: int, lr: float, do: int, **kwargs) -> Config:
     config = vit(
         name=f"wilds_animals_modelvit_bbvit_lr{lr}_bs128_run{run}_do{do}_rew0",
     )
-    config.data = wilds_animals_data_config("wilds_animals", 384)
+    config.data = wilds_animals_data_config(
+        "wilds_animals", DEFAULT_VIT_INFERENCE_IMG_SIZE
+    )
     config.trainer.num_steps = 40000
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000
-    config.trainer.optimizer.init_args["init_args"]["lr"] = lr
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["lr"] = lr  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.dropout_rate = do
-    config.eval.query_studies = wilds_animals_query_config(384)
+    config.eval.query_studies = wilds_animals_query_config(
+        DEFAULT_VIT_INFERENCE_IMG_SIZE
+    )
     return config
 
 
-def vit_wilds_camelyon_modelvit(run: int, lr: float, do: int, **kwargs):
+def vit_wilds_camelyon_modelvit(run: int, lr: float, do: int, **kwargs) -> Config:
     config = vit(
         name=f"wilds_camelyon_modelvit_bbvit_lr{lr}_bs128_run{run}_do{do}_rew0",
     )
-    config.data = wilds_camelyon_data_config("wilds_camelyon", 384)
+    config.data = wilds_camelyon_data_config(
+        "wilds_camelyon", DEFAULT_VIT_INFERENCE_IMG_SIZE
+    )
     config.trainer.num_steps = 40000
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000
-    config.trainer.optimizer.init_args["init_args"]["lr"] = lr
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["lr"] = lr  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.dropout_rate = do
-    config.eval.query_studies = wilds_camelyon_query_config(384)
+    config.eval.query_studies = wilds_camelyon_query_config(
+        DEFAULT_VIT_INFERENCE_IMG_SIZE
+    )
     return config
 
 
-def vit_svhn_modelvit(run: int, lr: float, do: int, **kwargs):
+def vit_svhn_modelvit(run: int, lr: float, do: int, **kwargs) -> Config:
     config = vit(
         name=f"svhn_modelvit_bbvit_lr{lr}_bs128_run{run}_do{do}_rew0",
     )
-    config.data = svhn_data_config("svhn", 384)
+    config.data = svhn_data_config("svhn", DEFAULT_VIT_INFERENCE_IMG_SIZE)
     config.trainer.num_steps = 40000
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000
-    config.trainer.optimizer.init_args["init_args"]["lr"] = lr
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["lr"] = lr  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.dropout_rate = do
-    config.eval.query_studies = svhn_query_config("svhn", 384)
+    config.eval.query_studies = svhn_query_config(
+        "svhn", DEFAULT_VIT_INFERENCE_IMG_SIZE
+    )
     return config
 
 
-def vit_cifar10_modelvit(run: int, lr: float, do: int, **kwargs):
+def vit_cifar10_modelvit(run: int, lr: float, do: int, **kwargs) -> Config:
     config = vit(
         name=f"cifar10_modelvit_bbvit_lr{lr}_bs128_run{run}_do{do}_rew0",
     )
-    config.data = cifar10_data_config(img_size=384)
+    config.data = cifar10_data_config(img_size=DEFAULT_VIT_INFERENCE_IMG_SIZE)
     config.trainer.num_steps = 40000
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000
-    config.trainer.optimizer.init_args["init_args"]["lr"] = lr
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["lr"] = lr  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.dropout_rate = do
     config.model.avg_pool = do == 0
-    config.eval.query_studies = cifar10_query_config(384)
+    config.eval.query_studies = cifar10_query_config(DEFAULT_VIT_INFERENCE_IMG_SIZE)
     return config
 
 
-def vit_cifar100_modelvit(run: int, lr: float, do: int, **kwargs):
+def vit_cifar100_modelvit(run: int, lr: float, do: int, **kwargs) -> Config:
     config = vit(
         name=f"cifar100_modelvit_bbvit_lr{lr}_bs128_run{run}_do{do}_rew0",
     )
-    config.data = cifar100_data_config(img_size=384)
+    config.data = cifar100_data_config(img_size=DEFAULT_VIT_INFERENCE_IMG_SIZE)
     config.trainer.num_steps = 10000
     config.trainer.batch_size = 512
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 10000
-    config.trainer.optimizer.init_args["init_args"]["lr"] = lr
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 10000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["lr"] = lr  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.dropout_rate = do
-    config.eval.query_studies = cifar100_query_config(384)
+    config.eval.query_studies = cifar100_query_config(DEFAULT_VIT_INFERENCE_IMG_SIZE)
     return config
 
 
-def vit_super_cifar100_modelvit(run: int, lr: float, do: int, **kwargs):
+def vit_super_cifar100_modelvit(run: int, lr: float, do: int, **kwargs) -> Config:
     config = vit_cifar100_modelvit(run, lr, do, **kwargs)
     config.exp.name = "super_" + config.exp.name
-    config.data = cifar100_data_config(dataset="super_cifar100", img_size=384)
+    config.data = cifar100_data_config(
+        dataset="super_cifar100", img_size=DEFAULT_VIT_INFERENCE_IMG_SIZE
+    )
     config.eval.query_studies = cifar100_query_config(
         dataset="super_cifar100", img_size=384
     )
     config.trainer.num_steps = 40000
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     return config
 
 
-def vit_breeds_modelvit(run: int, lr: float, do: int, **kwargs):
+def vit_breeds_modelvit(run: int, lr: float, do: int, **kwargs) -> Config:
     config = vit(
         name=f"breeds_modelvit_bbvit_lr{lr}_bs128_run{run}_do{do}_rew0",
     )
-    config.data = breeds_data_config("breeds", 384)
+    config.data = breeds_data_config("breeds", DEFAULT_VIT_INFERENCE_IMG_SIZE)
     config.trainer.num_steps = 40000
-    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000
-    config.trainer.optimizer.init_args["init_args"]["lr"] = lr
+    config.trainer.lr_scheduler.init_args["init_args"]["max_epochs"] = 40000  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
+    config.trainer.optimizer.init_args["init_args"]["lr"] = lr  # fmt: skip # pyright: ignore[reportOptionalMemberAccess] # noqa: E501
     config.model.dropout_rate = do
-    config.eval.query_studies = breeds_query_config(384)
+    config.eval.query_studies = breeds_query_config(DEFAULT_VIT_INFERENCE_IMG_SIZE)
     return config
 
 
-def register(config_fn: Callable[..., Config], n_runs: int = 5, **kwargs):
+def register(config_fn: Callable[..., Config], n_runs: int = 5, **kwargs) -> None:
     for run in range(n_runs):
         config = config_fn(**kwargs, run=run)
         __experiments[f"{config.exp.group_name}/{config.exp.name}"] = config
@@ -1323,4 +1380,4 @@ def get_experiment_config(name: str) -> Config:
 
 
 def list_experiment_configs() -> list[str]:
-    return list(sorted(__experiments.keys()))
+    return sorted(__experiments.keys())
