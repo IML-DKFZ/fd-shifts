@@ -64,12 +64,13 @@ def svhn_query_config(
     dataset: Literal["svhn", "svhn_openset"], img_size: int | tuple[int, int]
 ) -> QueryStudiesConfig:
     return QueryStudiesConfig(
-        iid_study="svhn_384",
+        iid_study="svhn",
         noise_study=[],
         in_class_study=[],
         new_class_study=[
-            cifar10_data_config(img_size)
-        ],  # , "cifar100_384", "tinyimagenet_384"],
+            cifar10_data_config(img_size),
+            cifar100_data_config(img_size),
+        ],  # , "tinyimagenet_384"],
     )
 
 
@@ -90,6 +91,46 @@ def cifar10_data_config(img_size: int | tuple[int, int]) -> DataConfig:
         img_size=(img_size[0], img_size[1], 3),
         num_workers=12,
         num_classes=10,
+        reproduce_confidnet_splits=True,
+        augmentations={
+            "train": augmentations,
+            "val": augmentations,
+            "test": augmentations,
+        },
+        target_transforms=None,
+        kwargs=None,
+    )
+
+
+def cifar10_query_config(img_size: int | tuple[int, int]) -> QueryStudiesConfig:
+    return QueryStudiesConfig(
+        iid_study="cifar10",
+        noise_study=[],
+        in_class_study=[],
+        new_class_study=[
+            cifar100_data_config(img_size),
+            svhn_data_config("svhn", img_size),
+        ],  # , "tinyimagenet_384"],
+    )
+
+
+def cifar100_data_config(img_size: int | tuple[int, int]) -> DataConfig:
+    augmentations = {
+        "to_tensor": None,
+        "resize": img_size,
+        "normalize": [[0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.201]],
+    }
+
+    if isinstance(img_size, int):
+        img_size = (img_size, img_size)
+
+    return DataConfig(
+        dataset="cifar100" + ("_384" if img_size[0] == 384 else ""),
+        data_dir=SI("${oc.env:DATASET_ROOT_DIR}/cifar100"),
+        pin_memory=True,
+        img_size=(img_size[0], img_size[1], 3),
+        num_workers=12,
+        num_classes=100,
         reproduce_confidnet_splits=True,
         augmentations={
             "train": augmentations,
@@ -257,13 +298,7 @@ def cifar10_modelvit_bbvit(lr: float, run: int, do: Literal[0, 1], **kwargs) -> 
             dropout_rate=do,
         ),
         eval=EvalConfig(
-            query_studies=QueryStudiesConfig(
-                iid_study="cifar10_384",
-                noise_study=["corrupt_cifar10_384"],
-                in_class_study=[],
-                new_class_study=["cifar100_384", "svhn_384", "tinyimagenet_384"],
-            ),
-            ext_confid_name="maha",
+            query_studies=cifar10_query_config(384),
         ),
     )
 
