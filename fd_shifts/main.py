@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import jsonargparse
 import rich
+import shtab
 import yaml
 from jsonargparse import ActionConfigFile, ArgumentParser
 from jsonargparse._actions import Action
@@ -542,15 +543,15 @@ def debug(config: Config):
 def _list_experiments():
     from fd_shifts.experiments.configs import list_experiment_configs
 
-    rich.print("Available experiments:")
     for exp in sorted(list_experiment_configs()):
-        rich.print(exp)
+        print(exp)
 
 
 def get_parser():
     from fd_shifts import get_version
 
     parser = ArgumentParser(version=get_version())
+    shtab.add_argument_to(parser, ["-s", "--print-completion"])
     parser.add_argument("-f", "--overwrite-config-file", action="store_true")
     subcommands = parser.add_subcommands(dest="command")
     subparsers: dict[str, ArgumentParser] = {}
@@ -562,7 +563,7 @@ def get_parser():
         subparser = ArgumentParser()
         subparser.add_argument(
             "--config-file", "--legacy-config-file", action=ActionLegacyConfigFile
-        )
+        ).complete = shtab.FILE  # type: ignore
         subparser.add_argument("--experiment", action=ActionExperiment)
         subparser.add_function_arguments(func, sub_configs=True)
         subparsers[name] = subparser
@@ -578,6 +579,8 @@ def config_from_parser(parser, args):
 
 
 def main():
+    from fd_shifts import logger
+
     setup_logging()
 
     parser, subparsers = get_parser()
@@ -600,6 +603,10 @@ def main():
             config.test.cf_path,
             skip_check=True,
             overwrite=args.overwrite_config_file,
+        )
+    else:
+        logger.warning(
+            "Config file already exists, use --overwrite-config-file to force"
         )
 
     __subcommands[args.command](config=config)
