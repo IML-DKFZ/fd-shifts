@@ -37,7 +37,7 @@ def __find_in_store(config: Config, file: str) -> Path | None:
 
 
 def _load_file(config: Config, name: str, file: str):
-    if f := _find_in_store(config, file):
+    if f := __find_in_store(config, file):
         return pd.read_csv(f)
     else:
         logger.error(f"Could not find {name}: {file} in store")
