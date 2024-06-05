@@ -500,7 +500,7 @@ class ConfidMonitor(Callback):
             outputs["logits"].to(dtype=self.output_dtype).cpu()
         )
         self.running_test_labels.extend(outputs["labels"].cpu())
-        if "ext" in self.query_confids.test:
+        if "ext" in self.query_confids.test and outputs.get("confid") is not None:
             self.running_test_external_confids.extend(outputs["confid"].cpu())
         if outputs.get("logits_dist") is not None:
             self.running_test_softmax_dist.extend(

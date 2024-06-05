@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from itertools import product
 from numbers import Number
 from pathlib import Path
 from typing import Any, Literal, overload
@@ -17,6 +18,7 @@ from scipy import special as scpspecial
 from sklearn.calibration import _sigmoid_calibration as calib
 
 from fd_shifts import configs
+from fd_shifts.analysis.rc_stats import RiskCoverageStats
 
 from .confid_scores import ConfidScore, SecondaryConfidScore, is_external_confid
 from .eval_utils import (
@@ -200,7 +202,7 @@ class ExperimentData:
             elif isinstance(datasets, str):
                 flat_test_set_list.append(datasets)
 
-        logger.error(f"{flat_test_set_list=}")
+        logger.info(f"{flat_test_set_list=}")
 
         dataset_idx = flat_test_set_list.index(dataset_name)
 
@@ -677,6 +679,8 @@ class Analysis:
                     self.method_dict["query_confids"],
                 )
             )
+
+        # self.method_dict["query_confids"].append("temp_logits")
 
         self.secondary_confids = []
 
@@ -1245,7 +1249,7 @@ def main(
     cf: configs.Config,
     query_studies: configs.QueryStudiesConfig,
     add_val_tuning: bool = True,
-    threshold_plot_confid: str | None = "tcp_mcd",
+    threshold_plot_confid: str | None = None,
     qual_plot_confid=None,
 ):
     path_to_test_dir = in_path
@@ -1263,6 +1267,13 @@ def main(
         "e-aurc",
         "b-aurc",
         "aurc",
+        "augrc",
+        # "augrc-CI95-l",
+        # "augrc-CI95-h",
+        # "augrc-CI95",
+        "e-augrc",
+        "augrc-ba",
+        "aurc-ba",
         "fpr@95tpr",
         "risk@100cov",
         "risk@95cov",

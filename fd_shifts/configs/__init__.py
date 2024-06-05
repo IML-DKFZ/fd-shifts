@@ -136,69 +136,6 @@ class ExperimentConfig(_IterableMixin):
     output_paths: OutputPathsPerMode = OutputPathsPerMode()
 
 
-# @defer_validation
-# @dataclass(config=ConfigDict(validate_assignment=True))
-# class LRSchedulerConfig:
-#     """Base class for LR scheduler configuration"""
-
-#     _target_: str = MISSING
-#     _partial_: Optional[bool] = None
-
-
-# CosineAnnealingLR = builds(
-#     torch.optim.lr_scheduler.CosineAnnealingLR,
-#     builds_bases=(LRSchedulerConfig,),
-#     zen_partial=True,
-#     populate_full_signature=True,
-#     T_max="${trainer.num_steps}",
-# )
-
-# LinearWarmupCosineAnnealingLR = builds(
-#     pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR,
-#     builds_bases=(LRSchedulerConfig,),
-#     zen_partial=True,
-#     populate_full_signature=True,
-#     max_epochs="${trainer.num_steps}",
-#     warmup_epochs=500,
-# )
-
-
-# @defer_validation
-# @dataclass(config=ConfigDict(validate_assignment=True))
-# class OptimizerConfig:
-#     """Base class for optimizer configuration"""
-
-#     _target_: str = MISSING
-#     _partial_: Optional[bool] = True
-
-
-# @defer_validation
-# @dataclass(config=ConfigDict(validate_assignment=True))
-# class SGD(OptimizerConfig):
-#     """Configuration for SGD optimizer"""
-
-#     _target_: str = "torch.optim.sgd.SGD"
-#     lr: float = 0.003  # pylint: disable=invalid-name
-#     dampening: float = 0.0
-#     momentum: float = 0.9
-#     nesterov: bool = False
-#     maximize: bool = False
-#     weight_decay: float = 0.0
-
-
-# @defer_validation
-# @dataclass(config=ConfigDict(validate_assignment=True))
-# class Adam(OptimizerConfig):
-#     """Configuration for ADAM optimizer"""
-
-#     _target_: str = "torch.optim.adam.Adam"
-#     lr: float = 0.003  # pylint: disable=invalid-name
-#     betas: tuple[float, float] = (0.9, 0.999)
-#     eps: float = 1e-08
-#     maximize: bool = False
-#     weight_decay: float = 0.0
-
-
 @dataclass
 class LRSchedulerConfig:
     init_args: dict

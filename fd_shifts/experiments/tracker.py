@@ -51,3 +51,60 @@ def list_analysis_output_files(config: Config) -> list:
         files.append("analysis_metrics_val_tuning.csv")
 
     return files
+
+
+def list_bootstrap_analysis_output_files(
+    config: Config,
+    stratified_bs: bool,
+    filter_study_name: list = None,
+    original_new_class_mode: bool = False,
+) -> list:
+    subdir = f"bootstrap{'-stratified' if stratified_bs else ''}/"
+    files = []
+    for study_name, testset in config.eval.query_studies:
+        # Keep only studies that are in filter_study_name
+        if filter_study_name is not None and study_name not in filter_study_name:
+            continue
+
+        if study_name == "iid_study":
+            files.append(subdir + "analysis_metrics_iid_study.csv")
+            continue
+        if study_name == "noise_study":
+            if isinstance(testset, DataConfig) and testset.dataset is not None:
+                files.extend(
+                    subdir + f"analysis_metrics_noise_study_{i}.csv"
+                    for i in range(1, 6)
+                )
+            continue
+
+        if isinstance(testset, list):
+            if len(testset) > 0:
+                if isinstance(testset[0], DataConfig):
+                    testset = map(
+                        lambda d: d.dataset + ("_384" if d.img_size[0] == 384 else ""),
+                        testset,
+                    )
+
+                testset = [
+                    subdir + f"analysis_metrics_{study_name}_{d}.csv" for d in testset
+                ]
+                if study_name == "new_class_study":
+                    testset = [
+                        d.replace(
+                            ".csv",
+                            "_original_mode.csv"
+                            if original_new_class_mode
+                            else "_proposed_mode.csv",
+                        )
+                        for d in testset
+                    ]
+                files.extend(list(testset))
+        elif isinstance(testset, DataConfig) and testset.dataset is not None:
+            files.append(subdir + testset.dataset)
+        elif isinstance(testset, str):
+            files.append(subdir + testset)
+
+    if config.eval.val_tuning:
+        files.append(subdir + "analysis_metrics_val_tuning.csv")
+
+    return files

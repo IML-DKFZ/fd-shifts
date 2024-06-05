@@ -13,6 +13,8 @@ from sklearn import preprocessing as skp
 from sklearn import utils as sku
 from typing_extensions import ParamSpec
 
+from fd_shifts.analysis.rc_stats import RiskCoverageStatsMixin
+
 from . import logger
 
 AURC_DISPLAY_SCALE = 1000
@@ -40,8 +42,7 @@ def may_raise_sklearn_exception(func: Callable[P, T]) -> Callable[P, T]:
     return _inner_wrapper
 
 
-@dataclass
-class StatsCache:
+class StatsCache(RiskCoverageStatsMixin):
     """Cache for stats computed by scikit used by multiple metrics.
 
     Attributes:
@@ -49,10 +50,22 @@ class StatsCache:
         correct (array_like): Boolean array (best converted to int) where predictions were correct
     """
 
-    confids: npt.NDArray[Any]
-    correct: npt.NDArray[Any]
-    n_bins: int
-    labels: npt.NDArray[Any] | None = None
+    def __init__(
+        self,
+        confids,
+        correct,
+        n_bins,
+        labels=None,
+        prevalence_ratios=None,
+        legacy=False,
+    ) -> None:
+        super().__init__()
+        self.confids: npt.NDArray[Any] = confids
+        self.correct: npt.NDArray[Any] = correct
+        self.n_bins: int = n_bins
+        self.labels = labels
+        self.prevalence_ratios = prevalence_ratios
+        self.legacy = legacy
 
     @cached_property
     def roc_curve_stats(self) -> tuple[npt.NDArray[Any], npt.NDArray[Any]]:
@@ -345,11 +358,31 @@ def aurc(stats_cache: StatsCache) -> float:
     Returns:
         metric value
     """
-    _, risks, weights = stats_cache.rc_curve_stats
-    return (
-        sum([(risks[i] + risks[i + 1]) * 0.5 * weights[i] for i in range(len(weights))])
-        * AURC_DISPLAY_SCALE
-    )
+    if stats_cache.legacy:
+        _, risks, weights = stats_cache.rc_curve_stats
+        return (
+            sum(
+                [
+                    (risks[i] + risks[i + 1]) * 0.5 * weights[i]
+                    for i in range(len(weights))
+                ]
+            )
+            * AURC_DISPLAY_SCALE
+        )
+
+    return stats_cache.aurc
+
+
+@register_metric_func("aurc-CI95-l")
+@may_raise_sklearn_exception
+def aurc_ci95_l(stats_cache: StatsCache):
+    return stats_cache.aurc_ci_bs[0]
+
+
+@register_metric_func("aurc-CI95-h")
+@may_raise_sklearn_exception
+def aurc_ci95_h(stats_cache: StatsCache):
+    return stats_cache.aurc_ci_bs[1]
 
 
 @register_metric_func("b-aurc")
@@ -360,6 +393,48 @@ def baurc(stats_cache: StatsCache):
         sum([(risks[i] + risks[i + 1]) * 0.5 * weights[i] for i in range(len(weights))])
         * AURC_DISPLAY_SCALE
     )
+
+
+@register_metric_func("aurc-ba")
+@may_raise_sklearn_exception
+def aurc_ba(stats_cache: StatsCache):
+    return stats_cache.aurc_ba
+
+
+@register_metric_func("augrc")
+@may_raise_sklearn_exception
+def augrc(stats_cache: StatsCache):
+    return stats_cache.augrc
+
+
+@register_metric_func("augrc-CI95")
+@may_raise_sklearn_exception
+def augrc_ci95(stats_cache: StatsCache):
+    return stats_cache.augrc_ci_bs[1] - stats_cache.augrc_ci_bs[0]
+
+
+@register_metric_func("augrc-CI95-l")
+@may_raise_sklearn_exception
+def augrc_ci95_l(stats_cache: StatsCache):
+    return stats_cache.augrc_ci_bs[0]
+
+
+@register_metric_func("augrc-CI95-h")
+@may_raise_sklearn_exception
+def augrc_ci95_h(stats_cache: StatsCache):
+    return stats_cache.augrc_ci_bs[1]
+
+
+@register_metric_func("e-augrc")
+@may_raise_sklearn_exception
+def eaugrc(stats_cache: StatsCache):
+    return stats_cache.eaugrc
+
+
+@register_metric_func("augrc-ba")
+@may_raise_sklearn_exception
+def augrc_ba(stats_cache: StatsCache):
+    return stats_cache.augrc_ba
 
 
 @register_metric_func("e-aurc")
@@ -373,9 +448,12 @@ def eaurc(stats_cache: StatsCache) -> float:
     Returns:
         metric value
     """
-    err = np.mean(stats_cache.residuals)
-    kappa_star_aurc = err + (1 - err) * (np.log(1 - err + np.finfo(err.dtype).eps))
-    return aurc(stats_cache) - kappa_star_aurc * AURC_DISPLAY_SCALE
+    if stats_cache.legacy:
+        err = np.mean(stats_cache.residuals)
+        kappa_star_aurc = err + (1 - err) * (np.log(1 - err + np.finfo(err.dtype).eps))
+        return aurc(stats_cache) - kappa_star_aurc * AURC_DISPLAY_SCALE
+
+    return stats_cache.eaurc
 
 
 @register_metric_func("mce")

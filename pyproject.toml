@@ -24,6 +24,7 @@ dependencies = [
   "omegaconf>=2.1.1",
   "open_clip_torch",
   "opencv-python-headless",
+  "pandarallel>=1.6.5",
   "pandas>=1.2.3",
   "Pillow==9.5.0",
   "protobuf<=3.20.0",

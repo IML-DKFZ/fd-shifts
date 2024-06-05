@@ -326,7 +326,7 @@ def breeds_data_config(
             "val": augmentations,
             "test": augmentations,
         },
-        kwargs={"info_dir_path": "loaders/breeds_hierarchies"},
+        kwargs=None,
     )
 
 
@@ -455,6 +455,8 @@ def cnn_animals_modelconfidnet(run: int, do: int, **kwargs):
     config.trainer.callbacks["training_stages"]["milestones"] = [12, 17]
     config.trainer.callbacks["training_stages"]["disable_dropout_at_finetuning"] = True
     config.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"] = False
+    config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
+    config.trainer.callbacks["training_stages"]["pretrained_confidnet_path"] = None
     config.model.name = "confidnet_model"
     config.model.dropout_rate = do
     config.model.network.name = "confidnet_and_enc"
@@ -513,6 +515,8 @@ def cnn_camelyon_modelconfidnet(run: int, do: int, **kwargs):
     config.trainer.callbacks["training_stages"]["milestones"] = [5, 8]
     config.trainer.callbacks["training_stages"]["disable_dropout_at_finetuning"] = True
     config.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"] = False
+    config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
+    config.trainer.callbacks["training_stages"]["pretrained_confidnet_path"] = None
     config.model.name = "confidnet_model"
     config.model.dropout_rate = do
     config.model.network.name = "confidnet_and_enc"
@@ -571,6 +575,8 @@ def cnn_svhn_modelconfidnet(run: int, do: int, **kwargs):
     config.trainer.callbacks["training_stages"]["milestones"] = [100, 300]
     config.trainer.callbacks["training_stages"]["disable_dropout_at_finetuning"] = True
     config.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"] = False
+    config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
+    config.trainer.callbacks["training_stages"]["pretrained_confidnet_path"] = None
     config.model.name = "confidnet_model"
     config.model.dropout_rate = do
     config.model.network.name = "confidnet_and_enc"
@@ -628,6 +634,8 @@ def cnn_cifar10_modelconfidnet(run: int, do: int, **kwargs):
     config.trainer.callbacks["training_stages"]["milestones"] = [250, 450]
     config.trainer.callbacks["training_stages"]["disable_dropout_at_finetuning"] = True
     config.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"] = False
+    config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
+    config.trainer.callbacks["training_stages"]["pretrained_confidnet_path"] = None
     config.model.name = "confidnet_model"
     config.model.dropout_rate = do
     config.model.avg_pool = do == 0
@@ -688,6 +696,8 @@ def cnn_cifar100_modelconfidnet(run: int, do: int, **kwargs):
     config.trainer.callbacks["training_stages"]["milestones"] = [250, 450]
     config.trainer.callbacks["training_stages"]["disable_dropout_at_finetuning"] = True
     config.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"] = False
+    config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
+    config.trainer.callbacks["training_stages"]["pretrained_confidnet_path"] = None
     config.model.name = "confidnet_model"
     config.model.avg_pool = do == 0
     config.model.dropout_rate = do
@@ -779,6 +789,8 @@ def cnn_breeds_modelconfidnet(run: int, do: int, **kwargs):
     config.trainer.callbacks["training_stages"]["milestones"] = [300, 500]
     config.trainer.callbacks["training_stages"]["disable_dropout_at_finetuning"] = True
     config.trainer.callbacks["training_stages"]["confidnet_lr_scheduler"] = False
+    config.trainer.callbacks["training_stages"]["pretrained_backbone_path"] = None
+    config.trainer.callbacks["training_stages"]["pretrained_confidnet_path"] = None
     config.model.name = "confidnet_model"
     config.model.dropout_rate = do
     config.model.network.name = "confidnet_and_enc"
@@ -1085,6 +1097,20 @@ def register(config_fn: Callable[..., Config], n_runs: int = 5, **kwargs):
     for run in range(n_runs):
         config = config_fn(**kwargs, run=run)
         __experiments[f"{config.exp.group_name}/{config.exp.name}"] = config
+
+        # Add external CSF to the set of computed scores
+        if config.eval.ext_confid_name is not None:
+            # if config.model.name != "vit_model":
+            config.eval.confidence_measures.test += ["ext"]
+
+        # Add MCD-based CSFs to the set of computed scores
+        if config.model.dropout_rate:
+            config.eval.confidence_measures.test += [
+                "mcd_mcp",
+                "mcd_pe",
+                "mcd_ee",
+                "mcd_mi",  # , "mcd_sv", "mcd_waic"
+            ]
 
 
 register(vit_svhn_modelvit, lr=0.03, do=1, rew=0)

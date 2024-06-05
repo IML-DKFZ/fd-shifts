@@ -20,6 +20,7 @@ from rich.pretty import pretty_repr
 
 from fd_shifts import reporting
 from fd_shifts.configs import Config, DataConfig, OutputPathsPerMode
+from fd_shifts.reporting.report_bootstrap import report_bootstrap_results
 
 __subcommands = {}
 
@@ -422,8 +423,10 @@ def train(config: Config):
     )
 
     wandb_logger = WandbLogger(
-        project="fd_shifts_proto",
         name=config.exp.name,
+        project="fd_shifts",
+        group=config.exp.group_name,
+        tags=["dev"],
     )
 
     trainer = pl.Trainer(
@@ -537,6 +540,13 @@ def analysis(config: Config):
 
 
 @subcommand
+def analysis_bootstrap(config: Config, **kwargs):
+    from fd_shifts.analysis.bootstrap import run_bs_analysis
+
+    run_bs_analysis(config=config, **kwargs)
+
+
+@subcommand
 def debug(config: Config):
     pass
 
@@ -564,6 +574,11 @@ def get_parser():
     subparser.add_function_arguments(reporting.main)
     subparsers["report"] = subparser
     subcommands.add_subcommand("report", subparser)
+
+    subparser = ArgumentParser()
+    subparser.add_function_arguments(report_bootstrap_results)
+    subparsers["report_bootstrap"] = subparser
+    subcommands.add_subcommand("report_bootstrap", subparser)
 
     for name, func in __subcommands.items():
         subparser = ArgumentParser()
@@ -601,9 +616,13 @@ def main():
         reporting.main(**args.report)
         return
 
+    if args.command == "report_bootstrap":
+        report_bootstrap_results(**args.report_bootstrap)
+        return
+
     config = config_from_parser(parser, args)
 
-    rich.print(config)
+    # rich.print(config)
 
     # TODO: Check if configs are the same
     if not config.test.cf_path.is_file() or args.overwrite_config_file:
@@ -618,6 +637,18 @@ def main():
         logger.warning(
             "Config file already exists, use --overwrite-config-file to force"
         )
+
+    if args.command == "analysis_bootstrap":
+        __subcommands[args.command](
+            config=config,
+            regenerate_bs_indices=args[args.command].regenerate_bs_indices,
+            stratified_bs=args[args.command].stratified_bs,
+            n_bs=args[args.command].n_bs,
+            iid_only=args[args.command].iid_only,
+            no_iid=args[args.command].no_iid,
+            exclude_noise_study=args[args.command].exclude_noise_study,
+        )
+        return
 
     __subcommands[args.command](config=config)
 
