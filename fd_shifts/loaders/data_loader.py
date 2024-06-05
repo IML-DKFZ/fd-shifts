@@ -5,8 +5,8 @@ from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
 
+import lightning as L
 import numpy as np
-import pytorch_lightning as pl
 import torch
 from omegaconf import OmegaConf
 from sklearn.model_selection import KFold
@@ -19,7 +19,7 @@ from fd_shifts.loaders.dataset_collection import get_dataset
 from fd_shifts.utils.aug_utils import get_transform, target_transforms_collection
 
 
-class FDShiftsDataLoader(pl.LightningDataModule):
+class FDShiftsDataLoader(L.LightningDataModule):
     """Data module class for combination of multiple datasets for testing with shifts"""
 
     def __init__(self, cf: configs.Config, no_norm_flag=False):
@@ -63,7 +63,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             )
 
             if len(self.external_test_sets) > 0:
-                self.external_test_configs = {}
+                self.external_test_configs: dict[str, configs.DataConfig] = {}
                 for i, ext_set in enumerate(self.external_test_sets):
                     overwrite_dataset = False
                     if isinstance(ext_set, str):
@@ -280,7 +280,9 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                     target_transform=self.target_transforms,
                     transform=self.augmentations["external_{}".format(ext_set)],
                     kwargs=self.dataset_kwargs,
-                    config=self.external_test_configs[ext_set],
+                    subsample_corruptions=self.external_test_configs[
+                        ext_set
+                    ].subsample_corruptions,
                 )
                 if (
                     self.devries_repro_ood_split
@@ -302,7 +304,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 self.test_datasets.append(tmp_external_set)
                 logging.debug("Len external Test data: %s", len(self.test_datasets[-1]))
 
-        if self.val_split is None or self.val_split == "devries":
+        if self.val_split in ("none", "devries"):
             val_idx = []
             train_idx = []
             self.val_sampler = None

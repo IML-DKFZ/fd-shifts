@@ -1,9 +1,6 @@
 import numpy as np
 import torch
-from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.trainer.connectors.logger_connector.logger_connector import (
-    LoggerConnector,
-)
+from lightning import Callback
 from rich import print
 from tqdm import tqdm
 
@@ -108,9 +105,7 @@ class ConfidMonitor(Callback):
             )
             pl_module.loggers[0].log_hyperparams(self.tensorboard_hparams, hp_metrics)
 
-    def on_train_batch_end(
-        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
-    ):
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         loss = outputs["loss"].cpu()
         softmax = outputs["softmax"].cpu()
         y = outputs["labels"].cpu()
@@ -224,7 +219,7 @@ class ConfidMonitor(Callback):
         self.running_train_correct_sum_sanity = 0
 
     def on_validation_batch_end(
-        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0
     ):
         tmp_correct = None
         loss = outputs["loss"]
@@ -501,13 +496,17 @@ class ConfidMonitor(Callback):
         )
         self.running_test_labels.extend(outputs["labels"].cpu())
         if "ext" in self.query_confids.test and outputs.get("confid") is not None:
-            self.running_test_external_confids.extend(outputs["confid"].cpu())
+            self.running_test_external_confids.extend(
+                outputs["confid"].to(dtype=self.output_dtype).cpu()
+            )
         if outputs.get("logits_dist") is not None:
             self.running_test_softmax_dist.extend(
                 outputs["logits_dist"].to(dtype=self.output_dtype).cpu()
             )
         if outputs.get("confid_dist") is not None:
-            self.running_test_external_confids_dist.extend(outputs["confid_dist"].cpu())
+            self.running_test_external_confids_dist.extend(
+                outputs["confid_dist"].to(dtype=self.output_dtype).cpu()
+            )
 
         self.running_test_dataset_idx.extend(
             torch.ones_like(outputs["labels"].cpu()) * dataloader_idx
@@ -595,7 +594,7 @@ class ConfidMonitor(Callback):
         if len(self.running_test_external_confids) > 0:
             stacked_external_confids = torch.stack(
                 self.running_test_external_confids, dim=0
-            )
+            ).squeeze()
             np.savez_compressed(
                 self.output_paths.test.external_confids,
                 stacked_external_confids.cpu().data.numpy(),

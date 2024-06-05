@@ -1,13 +1,12 @@
-from pytorch_lightning import Callback
-from pytorch_lightning.callbacks import (
-    GPUStatsMonitor,
+from lightning import Callback
+from lightning.pytorch.callbacks import (
     LearningRateMonitor,
     ModelCheckpoint,
     RichProgressBar,
 )
 
 from fd_shifts import configs, logger
-from fd_shifts.models.callbacks import confid_monitor, training_stages
+from fd_shifts.models.callbacks import confid_monitor
 
 
 def get_callbacks(cfg: configs.Config) -> list[Callback]:
@@ -49,14 +48,6 @@ def get_callbacks(cfg: configs.Config) -> list[Callback]:
 
         if k == "confid_monitor":
             out_cb_list.append(confid_monitor.ConfidMonitor(cfg))
-
-        if k == "training_stages":
-            out_cb_list.append(
-                training_stages.TrainingStages(
-                    milestones=v["milestones"],
-                    disable_dropout_at_finetuning=v["disable_dropout_at_finetuning"],
-                )
-            )
 
         if k == "learning_rate_monitor":
             out_cb_list.append(LearningRateMonitor(logging_interval="epoch"))

@@ -27,7 +27,7 @@ DATASETS = (
 )
 
 
-def _find_in_store(config: Config, file: str) -> Path | None:
+def __find_in_store(config: Config, file: str) -> Path | None:
     store_paths = map(Path, os.getenv("FD_SHIFTS_STORE_PATH", "").split(":"))
     test_dir = config.test.dir.relative_to(os.getenv("EXPERIMENT_ROOT_DIR", ""))
     for store_path in store_paths:
@@ -188,7 +188,6 @@ def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
         experiment data with additional columns
     """
     logger.info("Assigning hyperparameters from experiment names")
-
     data = data.assign(
         backbone=lambda data: _extract_hparam(
             data.name, r"bb([a-z0-9]+)(_small_conv)?"
@@ -199,11 +198,10 @@ def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
         .mask(data["backbone"] != "vit", "")
         .mask(data["backbone"] == "vit", "vit_")
         + data.model.where(
+            data.backbone == "vit", data.name.str.split("_", expand=True)[0]
+        ).mask(
             data.backbone == "vit",
-            data.name.str.split("_", expand=True)[0]
-            # ).mask(
-            #     data.backbone == "vit",
-            #     data.name.str.split("model", expand=True)[1].str.split("_", expand=True)[0],
+            data.name.str.split("model", expand=True)[1].str.split("_", expand=True)[0],
         ),
         # Encode every detail into confid name
         _confid=data.confid,
@@ -305,6 +303,8 @@ def filter_best_hparams(
         filtered data
     """
     logger.info(f"Filtering best hyperparameters, optimizing {metric}")
+
+    logger.info("Filtering best hyperparameters")
 
     def _filter_row(row, selection_df, optimization_columns, fixed_columns):
         if "openset" in row["study"]:

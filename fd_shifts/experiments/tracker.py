@@ -30,7 +30,12 @@ def list_analysis_output_files(config: Config) -> list:
             if len(testset) > 0:
                 if isinstance(testset[0], DataConfig):
                     testset = map(
-                        lambda d: d.dataset + ("_384" if d.img_size[0] == 384 else ""),
+                        lambda d: d.dataset
+                        + (
+                            "_384"
+                            if d.img_size[0] == 384 and "384" not in d.dataset
+                            else ""
+                        ),
                         testset,
                     )
 
@@ -92,9 +97,11 @@ def list_bootstrap_analysis_output_files(
                     testset = [
                         d.replace(
                             ".csv",
-                            "_original_mode.csv"
-                            if original_new_class_mode
-                            else "_proposed_mode.csv",
+                            (
+                                "_original_mode.csv"
+                                if original_new_class_mode
+                                else "_proposed_mode.csv"
+                            ),
                         )
                         for d in testset
                     ]

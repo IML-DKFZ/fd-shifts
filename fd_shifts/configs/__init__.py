@@ -2,19 +2,14 @@ from __future__ import annotations
 
 import importlib
 import os
-from collections.abc import Mapping
 from copy import deepcopy
-from dataclasses import field
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
 from random import randint
-from typing import TYPE_CHECKING, Any, Iterable, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, TypeVar
 
-from hydra.core.config_store import ConfigStore
 from omegaconf import SI, DictConfig, OmegaConf
-from pydantic import ConfigDict, validator
-from pydantic.dataclasses import dataclass
-from typing_extensions import dataclass_transform
 
 from fd_shifts import get_version
 
@@ -28,7 +23,7 @@ if TYPE_CHECKING:
 
 
 class StrEnum(str, Enum):
-    """Enum where members are also (and must be) strings"""
+    """Enum where members are also (and must be) strings."""
 
     # pylint: disable=no-self-argument
     def _generate_next_value_(name, start, count, last_values):  # type: ignore
@@ -52,23 +47,10 @@ class ValSplit(StrEnum):
     repro_confidnet = auto()
     cv = auto()
     zhang = auto()
+    none = auto()
 
 
-@dataclass_transform()
-def defer_validation(original_class: type[ConfigT]) -> type[ConfigT]:
-    """Disable validation for a pydantic dataclass
-
-        original_class (type[T]): original pydantic dataclass
-
-    Returns:
-        original_class but with validation disabled
-    """
-    original_class.__pydantic_run_validation__ = False
-    return original_class
-
-
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class OutputPathsConfig(_IterableMixin):
     """Where outputs are stored"""
 
@@ -82,36 +64,38 @@ class OutputPathsConfig(_IterableMixin):
     input_imgs_plot: Optional[Path] = None
 
 
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class OutputPathsPerMode(_IterableMixin):
     """Container for per-mode output paths"""
 
-    fit: OutputPathsConfig = OutputPathsConfig(
-        raw_output=Path("${exp.version_dir}/raw_output.npz"),
-        raw_output_dist=Path("${exp.version_dir}/raw_output_dist.npz"),
-        external_confids=Path("${exp.version_dir}/external_confids.npz"),
-        external_confids_dist=Path("${exp.version_dir}/external_confids_dist.npz"),
-        input_imgs_plot=Path("${exp.dir}/input_imgs.png"),
-        encoded_output=Path("${test.dir}/encoded_output.npz"),
-        encoded_train=Path("${test.dir}/train_features.npz"),
-        attributions_output=Path("${test.dir}/attributions.csv"),
+    fit: OutputPathsConfig = field(
+        default_factory=lambda: OutputPathsConfig(
+            raw_output=Path("${exp.version_dir}/raw_output.npz"),
+            raw_output_dist=Path("${exp.version_dir}/raw_output_dist.npz"),
+            external_confids=Path("${exp.version_dir}/external_confids.npz"),
+            external_confids_dist=Path("${exp.version_dir}/external_confids_dist.npz"),
+            input_imgs_plot=Path("${exp.dir}/input_imgs.png"),
+            encoded_output=Path("${test.dir}/encoded_output.npz"),
+            encoded_train=Path("${test.dir}/train_features.npz"),
+            attributions_output=Path("${test.dir}/attributions.csv"),
+        )
     )
-    test: OutputPathsConfig = OutputPathsConfig(
-        raw_output=Path("${test.dir}/raw_logits.npz"),
-        raw_output_dist=Path("${test.dir}/raw_logits_dist.npz"),
-        external_confids=Path("${test.dir}/external_confids.npz"),
-        external_confids_dist=Path("${test.dir}/external_confids_dist.npz"),
-        input_imgs_plot=None,
-        encoded_output=Path("${test.dir}/encoded_output.npz"),
-        encoded_train=Path("${test.dir}/train_features.npz"),
-        attributions_output=Path("${test.dir}/attributions.csv"),
+    test: OutputPathsConfig = field(
+        default_factory=lambda: OutputPathsConfig(
+            raw_output=Path("${test.dir}/raw_logits.npz"),
+            raw_output_dist=Path("${test.dir}/raw_logits_dist.npz"),
+            external_confids=Path("${test.dir}/external_confids.npz"),
+            external_confids_dist=Path("${test.dir}/external_confids_dist.npz"),
+            input_imgs_plot=None,
+            encoded_output=Path("${test.dir}/encoded_output.npz"),
+            encoded_train=Path("${test.dir}/train_features.npz"),
+            attributions_output=Path("${test.dir}/attributions.csv"),
+        )
     )
     analysis: Path = SI("${test.dir}")
 
 
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class ExperimentConfig(_IterableMixin):
     """Main experiment config"""
 
@@ -133,7 +117,72 @@ class ExperimentConfig(_IterableMixin):
     crossval_ids_path: Path = Path("${exp.dir}/crossval_ids.pickle")
     log_path: Path = Path("log.txt")
     global_seed: int = randint(0, 1_000_000)
-    output_paths: OutputPathsPerMode = OutputPathsPerMode()
+    output_paths: OutputPathsPerMode = field(
+        default_factory=lambda: OutputPathsPerMode()
+    )
+
+
+# @defer_validation
+# @dataclass(config=ConfigDict(validate_assignment=True))
+# class LRSchedulerConfig:
+#     """Base class for LR scheduler configuration"""
+
+#     _target_: str = MISSING
+#     _partial_: Optional[bool] = None
+
+
+# CosineAnnealingLR = builds(
+#     torch.optim.lr_scheduler.CosineAnnealingLR,
+#     builds_bases=(LRSchedulerConfig,),
+#     zen_partial=True,
+#     populate_full_signature=True,
+#     T_max="${trainer.num_steps}",
+# )
+
+# LinearWarmupCosineAnnealingLR = builds(
+#     pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR,
+#     builds_bases=(LRSchedulerConfig,),
+#     zen_partial=True,
+#     populate_full_signature=True,
+#     max_epochs="${trainer.num_steps}",
+#     warmup_epochs=500,
+# )
+
+
+# @defer_validation
+# @dataclass(config=ConfigDict(validate_assignment=True))
+# class OptimizerConfig:
+#     """Base class for optimizer configuration"""
+
+#     _target_: str = MISSING
+#     _partial_: Optional[bool] = True
+
+
+# @defer_validation
+# @dataclass(config=ConfigDict(validate_assignment=True))
+# class SGD(OptimizerConfig):
+#     """Configuration for SGD optimizer"""
+
+#     _target_: str = "torch.optim.sgd.SGD"
+#     lr: float = 0.003  # pylint: disable=invalid-name
+#     dampening: float = 0.0
+#     momentum: float = 0.9
+#     nesterov: bool = False
+#     maximize: bool = False
+#     weight_decay: float = 0.0
+
+
+# @defer_validation
+# @dataclass(config=ConfigDict(validate_assignment=True))
+# class Adam(OptimizerConfig):
+#     """Configuration for ADAM optimizer"""
+
+#     _target_: str = "torch.optim.adam.Adam"
+#     lr: float = 0.003  # pylint: disable=invalid-name
+#     betas: tuple[float, float] = (0.9, 0.999)
+#     eps: float = 1e-08
+#     maximize: bool = False
+#     weight_decay: float = 0.0
 
 
 @dataclass
@@ -160,8 +209,7 @@ class OptimizerConfig:
         return cls(params, **self.init_args["init_args"])
 
 
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True, arbitrary_types_allowed=True))
+@dataclass
 class TrainerConfig(_IterableMixin):
     """Main configuration for PyTorch Lightning Trainer"""
 
@@ -172,7 +220,7 @@ class TrainerConfig(_IterableMixin):
     do_val: bool = True
     batch_size: int = 128
     resume_from_ckpt: bool = False
-    benchmark: bool = True
+    benchmark: bool = False
     fast_dev_run: bool | int = False
     # lr_scheduler: Callable[
     #     [torch.optim.Optimizer], torch.optim.lr_scheduler._LRScheduler
@@ -181,6 +229,7 @@ class TrainerConfig(_IterableMixin):
     lr_scheduler: LRSchedulerConfig | None = None
     optimizer: OptimizerConfig | None = None
     accumulate_grad_batches: int = 1
+    use_compile: bool = True
     resume_from_ckpt_confidnet: bool = False
     dg_pretrain_epochs: int | None = 100
     dg_pretrain_steps: Optional[int] = None
@@ -199,29 +248,8 @@ class TrainerConfig(_IterableMixin):
     learning_rate_confidnet: Optional[float] = None
     learning_rate_confidnet_finetune: Optional[float] = None
 
-    # pylint: disable=no-self-argument
-    @validator("num_steps")
-    def validate_steps(
-        cls: TrainerConfig, num_steps: Optional[int], values: dict[str, Any]
-    ) -> Optional[int]:
-        """Validate either num_epochs or num_steps is set
 
-            cls (TrainerConfig): TrainerConfig
-            num_steps (Optional[int]): num_steps value
-            values (dict[str, Any]): other values
-
-        Returns:
-            num_steps
-        """
-        if (num_steps is None and values["num_epochs"] is None) or (
-            num_steps == 0 and values["num_epochs"] == 0
-        ):
-            raise ValueError("Must specify either num_steps or num_epochs")
-        return num_steps
-
-
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class NetworkConfig(_IterableMixin):
     """Model Network configuration"""
 
@@ -231,26 +259,8 @@ class NetworkConfig(_IterableMixin):
     load_dg_backbone_path: Optional[Path] = None
     save_dg_backbone_path: Optional[Path] = None
 
-    # pylint: disable=no-self-argument
-    @validator("name", "backbone")
-    def validate_network_name(cls: NetworkConfig, name: str) -> str:
-        """Check if network and backbone exist
 
-            cls (NetworkConfig): this config
-            name (str): name of the network
-
-        Returns:
-            name
-        """
-        from ..models import networks
-
-        if name is not None and not networks.network_exists(name):
-            raise ValueError(f'Network "{name}" does not exist.')
-        return name
-
-
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class ModelConfig(_IterableMixin):
     """Model Configuration"""
 
@@ -261,32 +271,13 @@ class ModelConfig(_IterableMixin):
     dropout_rate: int = 0
     monitor_mcd_samples: int = 50
     test_mcd_samples: int = 50
-    confidnet_fc_dim: Optional[int] = None
-    dg_reward: Optional[float] = None
+    confidnet_fc_dim: int | None = None
+    dg_reward: float | None = None
     balanced_sampeling: bool = False
     budget: float = 0.3
-    clip_class_prefix: Optional[str] = None
-
-    # pylint: disable=no-self-argument
-    @validator("name")
-    def validate_network_name(cls: ModelConfig, name: str) -> str:
-        """Check if the model exists
-
-            cls (ModelConfig):
-            name (str):
-
-        Returns:
-            name
-        """
-        from fd_shifts import models
-
-        if name is not None and not models.model_exists(name):
-            raise ValueError(f'Model "{name}" does not exist.')
-        return name
 
 
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class PerfMetricsConfig(_IterableMixin):
     """Performance Metrics Configuration"""
 
@@ -303,8 +294,7 @@ class PerfMetricsConfig(_IterableMixin):
     test: list[str] = field(default_factory=lambda: ["nll", "accuracy", "brier_score"])
 
 
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class ConfidMetricsConfig(_IterableMixin):
     """Confidence Metrics Configuration"""
 
@@ -341,26 +331,8 @@ class ConfidMetricsConfig(_IterableMixin):
         ]
     )
 
-    # pylint: disable=no-self-argument
-    @validator("train", "val", "test", each_item=True)
-    def validate(cls: ConfidMetricsConfig, name: str) -> str:
-        """Check all metric functions exist
 
-            cls (ConfidMetricsConfig)
-            name (str)
-
-        Returns:
-            name
-        """
-        from fd_shifts.analysis import metrics
-
-        if not metrics.metric_function_exists(name):
-            raise ValueError(f'Confid metric function "{name}" does not exist.')
-        return name
-
-
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class ConfidMeasuresConfig(_IterableMixin):
     """Confidence Measures Configuration"""
 
@@ -368,25 +340,8 @@ class ConfidMeasuresConfig(_IterableMixin):
     val: list[str] = field(default_factory=lambda: ["det_mcp"])
     test: list[str] = field(default_factory=lambda: ["det_mcp", "det_pe"])
 
-    # pylint: disable=no-self-argument
-    @validator("train", "val", "test", each_item=True)
-    def validate(cls: ConfidMeasuresConfig, name: str) -> str:
-        """Check all confid functions exist
-            cls (type[ConfidMeasuresConfig]):
-            name (str):
 
-        Returns:
-            name
-        """
-        from fd_shifts.analysis import confid_scores
-
-        if not confid_scores.confid_function_exists(name):
-            raise ValueError(f'Confid function "{name}" does not exist.')
-        return name
-
-
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class QueryStudiesConfig(_IterableMixin):
     """Query Studies Configuration"""
 
@@ -395,27 +350,8 @@ class QueryStudiesConfig(_IterableMixin):
     in_class_study: list[DataConfig] = field(default_factory=lambda: [])
     new_class_study: list[DataConfig] = field(default_factory=lambda: [])
 
-    # pylint: disable=no-self-argument
-    @validator(
-        "iid_study", "in_class_study", "noise_study", "new_class_study", each_item=True
-    )
-    def validate(cls, name: str) -> str:
-        """Check all datasets exist
-            cls ():
-            name (str):
 
-        Returns:
-            name
-        """
-        from fd_shifts.loaders import dataset_collection
-
-        if not dataset_collection.dataset_exists(name):
-            raise ValueError(f'Dataset "{name}" does not exist.')
-        return name
-
-
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class EvalConfig(_IterableMixin):
     """Evaluation Configuration container"""
 
@@ -447,8 +383,7 @@ class EvalConfig(_IterableMixin):
     ext_confid_name: Optional[str] = None
 
 
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class TestConfig(_IterableMixin):
     """Inference time configuration"""
 
@@ -468,8 +403,7 @@ class TestConfig(_IterableMixin):
     compute_train_encodings: bool = False
 
 
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class DataConfig(_IterableMixin):
     """Dataset Configuration"""
 
@@ -481,13 +415,12 @@ class DataConfig(_IterableMixin):
     num_classes: int | None = None
     reproduce_confidnet_splits: bool = False
     augmentations: dict[str, dict[str, Any]] | None = None
-    target_transforms: Optional[Any] = None
+    target_transforms: Any | None = None
     subsample_corruptions: int = 10
-    kwargs: Optional[dict[Any, Any]] = None
+    kwargs: dict[Any, Any] | None = None
 
 
-@defer_validation
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class Config(_IterableMixin):
     """Main Configuration Class"""
 
@@ -602,18 +535,6 @@ class Config(_IterableMixin):
 
         return config
 
-    # pylint: disable=no-self-argument
-    @validator("pkgversion")
-    def validate_version(cls, version: str) -> str:
-        """Check if the running version is the same as the version of the configuration
-            cls ():
-            version (str):
-
-        Returns:
-            version
-        """
-        return version
-
 
 def _update(d, u):
     for k, v in u.items():
@@ -622,34 +543,3 @@ def _update(d, u):
         else:
             d[k] = v
     return d
-
-
-def init() -> None:
-    """Initialize the hydra config store with config classes"""
-    store = ConfigStore.instance()
-    store.store(name="config_schema", node=Config)
-    store.store(group="data", name="data_schema", node=DataConfig)
-
-    store.store(
-        group="trainer/lr_scheduler",
-        name="LinearWarmupCosineAnnealingLR",
-        node=LinearWarmupCosineAnnealingLR,
-    )
-
-    store.store(
-        group="trainer/lr_scheduler",
-        name="CosineAnnealingLR",
-        node=CosineAnnealingLR,
-    )
-
-    store.store(
-        group="trainer/optimizer",
-        name="SGD",
-        node=SGD,
-    )
-
-    store.store(
-        group="trainer/optimizer",
-        name="Adam",
-        node=Adam,
-    )
