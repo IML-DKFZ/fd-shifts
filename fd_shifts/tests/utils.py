@@ -21,8 +21,8 @@ class SC_test(metrics.StatsCache):
 
     AUC_DISPLAY_SCALE = 1
 
-    def __init__(self, confids, correct):
-        super().__init__(confids, correct, n_bins=20, legacy=False)
+    def __init__(self, confids, correct, **kwargs):
+        super().__init__(confids, correct, n_bins=20, legacy=False, **kwargs)
 
 
 class SC_scale1000_test(metrics.StatsCache):
@@ -30,8 +30,8 @@ class SC_scale1000_test(metrics.StatsCache):
 
     AUC_DISPLAY_SCALE = 1000
 
-    def __init__(self, confids, correct):
-        super().__init__(confids, correct, n_bins=20, legacy=False)
+    def __init__(self, confids, correct, **kwargs):
+        super().__init__(confids, correct, n_bins=20, legacy=False, **kwargs)
 
 
 N_SAMPLES = 100
@@ -432,4 +432,14 @@ RC_STATS_TEST_CASES = {
 
 
 # Testing metrics that explicitly depend on GT labels
-RC_STATS_CLASS_AWARE_TEST_CASES = {}
+RC_STATS_CLASS_AWARE_TEST_CASES = {
+    SC_test(
+        confids=np.array([0, 1, 2, 3]),
+        correct=np.array([1, 0, 1, 0]),
+        labels=np.array([0, 0, 1, 1]),
+    ): {
+        "ID": "toy-case",
+        "aurc_ba": 0.5,
+        "augrc_ba": 0.3125,
+    }
+}

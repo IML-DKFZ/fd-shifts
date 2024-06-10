@@ -56,7 +56,6 @@ class StatsCache(RiskCoverageStatsMixin):
         correct,
         n_bins,
         labels=None,
-        prevalence_ratios=None,
         legacy=False,
     ) -> None:
         super().__init__()
@@ -64,7 +63,6 @@ class StatsCache(RiskCoverageStatsMixin):
         self.correct: npt.NDArray[Any] = correct
         self.n_bins: int = n_bins
         self.labels = labels
-        self.prevalence_ratios = prevalence_ratios
         self.legacy = legacy
 
     @cached_property

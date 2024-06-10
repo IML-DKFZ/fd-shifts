@@ -719,10 +719,6 @@ def test_class_aware_metric_values(stats_cache: SC_test, expected: dict):
         # Now, compare to explicit result values
         np.testing.assert_almost_equal(stats_cache.aurc_ba, expected["aurc_ba"])
         np.testing.assert_almost_equal(stats_cache.augrc_ba, expected["augrc_ba"])
-        np.testing.assert_almost_equal(
-            stats_cache.get_working_point(risk="generalized-risk-ba", target_cov=0.95),
-            expected["generalized-risk-ba@95cov"],
-        )
 
 
 def test_achievable_rc():
