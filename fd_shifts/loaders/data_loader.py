@@ -177,6 +177,9 @@ class FDShiftsDataLoader(L.LightningDataModule):
             kwargs=self.dataset_kwargs,
         )
 
+        logger.info(f"{self.train_dataset = }")
+        logger.info(f"{self.iid_test_set = }")
+
         if self.test_iid_split == "tenPercent":
             length_test = len(self.iid_test_set)
             split = int(length_test * 0.1)
@@ -309,6 +312,7 @@ class FDShiftsDataLoader(L.LightningDataModule):
             train_idx = []
             self.val_sampler = None
             self.train_sampler = None
+
             if self.balanced_sampeling:
                 # do class balanced sampeling
                 val_idx = []

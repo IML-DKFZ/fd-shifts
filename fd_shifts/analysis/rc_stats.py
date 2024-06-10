@@ -142,7 +142,9 @@ class RiskCoverageStatsMixin:
     @cached_property
     def aurc_achievable(self) -> float:
         """Achievable area under Risk Coverage Curve"""
-        return self.evaluate_auc(risk="selective-risk", achievable=True)
+        return self.evaluate_auc(
+            risk="selective-risk", achievable=True, interpolation="non-linear"
+        )
 
     @cached_property
     def eaurc(self) -> float:
@@ -198,11 +200,12 @@ class RiskCoverageStatsMixin:
     def dominant_point_mask(self) -> list[bool]:
         """Boolean array masking the dominant RC-points"""
         if self.is_binary and not self.contains_nan:
+            num_rc_points = len(self.coverages)
+
             if sum(self.residuals) in (0, self.n):
                 # If the predictions are all correct or all wrong, the RC-Curve is a
                 # horizontal line, and thus there is one dominant point at cov=1.
                 indices = np.array([-1])
-                num_rc_points = len(self.coverages)
             else:
                 # Compute the convex hull in ROC-space, as the dominant points are the
                 # same in RC-space. Inspired by
@@ -210,11 +213,9 @@ class RiskCoverageStatsMixin:
                 fpr, tpr, _ = metrics.roc_curve(
                     1 - self.residuals, self.confids, drop_intermediate=False
                 )
-                num_rc_points = len(fpr) - 1
-
-                if num_rc_points == 1:
+                if num_rc_points == 2:
                     # If there is only one point, the convex hull is trivial
-                    return np.array([True])
+                    return np.array([True, False])
                 else:
                     # Add the (2, -1) point to make the convex hull construction easier.
                     fpr = np.concatenate((fpr, [2.0]))
@@ -222,8 +223,8 @@ class RiskCoverageStatsMixin:
                     hull = ConvexHull(
                         np.concatenate((fpr.reshape(-1, 1), tpr.reshape(-1, 1)), axis=1)
                     )
-                    indices = hull.vertices - 1
-                    indices = indices[(indices != -1) & (indices != num_rc_points)]
+                    indices = hull.vertices
+                    indices = indices[(indices != 0) & (indices != num_rc_points)]
 
             mask = np.zeros(num_rc_points, dtype=bool)
             mask[indices] = True
@@ -232,8 +233,10 @@ class RiskCoverageStatsMixin:
 
         # NOTE: For non-binary residuals, finding the subset of RC-points that minimizes
         #       the AURC is not straightforward.
-        #       Don't mask any points in this case (for now).
-        return np.ones(len(self.coverages), dtype=bool)
+        #       Don't mask any points in this case (only cov=0).
+        mask = np.ones(len(self.coverages), dtype=bool)
+        mask[-1] = 0
+        return mask
 
     @cached_property
     def aurc_optimal(self) -> float:
@@ -412,26 +415,32 @@ class RiskCoverageStatsMixin:
         if cov_max <= cov_min or cov_max <= 0 or cov_min >= 1:
             return 0.0
 
-        if achievable:
-            if interpolation == "linear" and "generalized" not in risk:
-                logging.warning(
-                    "Achievable AURC values should be estimated with 'non-linear' "
-                    f"interpolation. Currvently using: '{interpolation}' interpolation"
-                )
-            risks = risks[self.dominant_point_mask]
-            coverages = coverages[self.dominant_point_mask]
-
         assert (coverages is None) == (risks is None)
         if coverages is None:
             curve_stats = self.get_curve_stats(risk=risk)
             coverages = curve_stats["coverages"]
             risks = curve_stats["risks"]
 
+        if achievable:
+            if interpolation == "linear" and "generalized" not in risk:
+                logging.warning(
+                    "Achievable AURC values should be estimated with 'non-linear' "
+                    f"interpolation. Currvently using: '{interpolation}' interpolation"
+                )
+
+            risks = risks[self.dominant_point_mask]
+            coverages = coverages[self.dominant_point_mask]
+
         if interpolation == "linear" or "generalized" in risk:
             # Linear interpolation
             if cov_max != 1 or cov_min != 0:
                 raise NotImplementedError()
             return -np.trapz(risks, coverages) * self.AUC_DISPLAY_SCALE
+
+        # Removing the cov=0 point, this curve segment is handled separately
+        if coverages[-1] == 0:
+            coverages = coverages[:-1]
+            risks = risks[:-1]
 
         # Non-linear interpolation for selective-risk-based AUC
         # Prepare the AURC evaluation for a certain coverage range
@@ -440,8 +449,8 @@ class RiskCoverageStatsMixin:
         error_sum_below = 0
         lower_lim = 0
         cov_above = None
-        error_sum_above = None
-        upper_lim = None
+        error_sum_above = 1
+        upper_lim = 1
 
         if cov_min > 0:
             idx_range = np.argwhere(coverages >= cov_min)[:, 0]
