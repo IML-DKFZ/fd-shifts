@@ -250,28 +250,32 @@ class ExperimentData:
     @staticmethod
     def __load_from_store(
         config: configs.Config, file: str
-    ) -> npt.NDArray[np.float64] | None:
-        ...
+    ) -> npt.NDArray[np.float64] | None: ...
 
     @overload
     @staticmethod
     def __load_from_store(
         config: configs.Config, file: str, dtype: type, unpack: Literal[False]
-    ) -> dict[str, npt.NDArray[np.float64]] | None:
-        ...
+    ) -> dict[str, npt.NDArray[np.float64]] | None: ...
 
     @overload
     @staticmethod
     def __load_from_store(
         config: configs.Config, file: str, dtype: type
-    ) -> npt.NDArray[np.float64] | None:
-        ...
+    ) -> npt.NDArray[np.float64] | None: ...
 
     @staticmethod
     def __load_from_store(
         config: configs.Config, file: str, dtype: type = np.float64, unpack: bool = True
     ) -> npt.NDArray[np.float64] | dict[str, npt.NDArray[np.float64]] | None:
-        store_paths = map(Path, os.getenv("FD_SHIFTS_STORE_PATH", "").split(":"))
+        # Look for store paths in 'FD_SHIFTS_STORE_PATH', if not specified default to
+        # 'EXPERIMENT_ROOT_DIR'.
+        store_paths = map(
+            Path,
+            os.getenv(
+                "FD_SHIFTS_STORE_PATH", os.getenv("EXPERIMENT_ROOT_DIR", "")
+            ).split(":"),
+        )
 
         test_dir = config.test.dir.relative_to(os.getenv("EXPERIMENT_ROOT_DIR", ""))
 
@@ -1161,9 +1165,11 @@ class Analysis:
                 backbone,
                 self.cfg.exp.fold,
                 confid_key,
-                study_data.mcd_softmax_mean.shape[0]
-                if "mcd" in confid_key
-                else study_data.softmax_output.shape[0],
+                (
+                    study_data.mcd_softmax_mean.shape[0]
+                    if "mcd" in confid_key
+                    else study_data.softmax_output.shape[0]
+                ),
             ]
             submit_list += [
                 self.method_dict[confid_key]["metrics"][x] for x in all_metrics
