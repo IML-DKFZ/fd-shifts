@@ -65,7 +65,7 @@
 
 ## Citing This Work
 
-If you use fd-shifts please cite our [paper](https://openreview.net/pdf?id=YnkGMIh0gvX)
+If you use FD-Shifts please cite our [paper](https://openreview.net/pdf?id=YnkGMIh0gvX)
 
 ```bibtex
 @inproceedings{
@@ -88,6 +88,7 @@ If you use fd-shifts please cite our [paper](https://openreview.net/pdf?id=YnkGM
 - [Installation](#installation)
 - [How to Integrate Your Own Usecase](#how-to-integrate-your-own-usecase)
 - [Reproducing our results](#reproducing-our-results)
+- [Working with FD-Shifts](#working-with-fd-shifts)
   - [Data Folder Requirements](#data-folder-requirements)
   - [Training](#training)
   - [Model Weights](#model-weights)
@@ -104,13 +105,13 @@ install FD-Shifts in its own environment (venv, conda environment, ...).
 
 1. **Install an appropriate version of [PyTorch](https://pytorch.org/).** Check
    that CUDA is available and that the CUDA toolkit version is compatible with
-   your hardware. The currently necessary version of
+   your hardware. The currently minimum necessary version of
    [pytorch is v.1.11.0](https://pytorch.org/get-started/previous-versions/#v1110).
    Testing and Development was done with the pytorch version using CUDA 11.3.
 
 2. **Install FD-Shifts.** This will pull in all dependencies including some
    version of PyTorch, it is strongly recommended that you install a compatible
-   version of PyTorch beforehand. This will also make the `fd_shifts` cli
+   version of PyTorch beforehand. This will also make the `fd-shifts` cli
    available to you.
    ```bash
    pip install git+https://github.com/iml-dkfz/fd-shifts.git
@@ -124,8 +125,15 @@ scoring functions check out the
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iml-dkfz/fd-shifts/blob/main/docs/extending_fd-shifts.ipynb).
 
 ## Reproducing our results
+This repository contains the benchmarks for the following publications:
+- ["A Call to Reflect on Evaluation Practices for Failure Detection in Image Classification"](https://openreview.net/pdf?id=YnkGMIh0gvX) &rarr; [Documentation for reproducing](./docs/publications/iclr_2023.md)
+- ["Understanding Silent Failures in Medical Image Classification"](https://arxiv.org/abs/2307.14729) (For the visualization tool presented in that work please see [sf-visuals](https://github.com/IML-DKFZ/sf-visuals).) &rarr; [Documentation for reproducing](./docs/publications/miccai_2023.md)
 
-To use `fd_shifts` you need to set the following environment variables
+While the following section on [working with FD-Shifts](#working-with-fd-shifts) describes the general usage, descriptions for reproducing specific publications are documented [here](./docs/publications).
+
+## Working with FD-Shifts
+
+To use `fd-shifts` you need to set the following environment variables
 
 ```bash
 export EXPERIMENT_ROOT_DIR=/absolute/path/to/your/experiments
@@ -133,7 +141,7 @@ export DATASET_ROOT_DIR=/absolute/path/to/datasets
 ```
 
 Alternatively, you may write them to a file and source that before running
-`fd_shifts`, e.g.
+`fd-shifts`, e.g.
 
 ```bash
 mv example.env .env
@@ -144,6 +152,8 @@ Then edit `.env` to your needs and run
 ```bash
 source .env
 ```
+
+To get an overview of available subcommands, run `fd-shifts --help`.
 
 ### Data Folder Requirements
 
@@ -169,39 +179,41 @@ structure relative to the folder you set for `$DATASET_ROOT_DIR`.
     └── camelyon17_v1.0
 ```
 
-For information regarding where to download these datasets from and what you have to do with them please check out [the documentation](./docs/datasets.md).
+For information regarding where to download these datasets from and what you have to do with them please check out the [dataset documentation](./docs/datasets.md).
 
 ### Training
 
 To get a list of all fully qualified names for all experiments in the paper, use
 
 ```bash
-fd_shifts list
+fd-shifts list-experiments
 ```
 
-You can reproduce the results of the paper either all at once:
+To run training for a specific experiment:
 
 ```bash
-fd_shifts launch
+fd-shifts train --experiment=svhn_paper_sweep/devries_bbsvhn_small_conv_do1_run1_rew2.2
 ```
 
-Some at a time:
+Alternatively, run training from a custom configuration file:
 
 ```bash
-fd_shifts launch --model=devries --dataset=cifar10
+fd-shifts train --config=path/to/config/file
 ```
 
-Or one at a time (use `fd_shifts list` to find the names of experiments):
+Check out `fd-shifts train --help` for more training options.
+
+The `fd-shifts-launch` cli allows for running multiple experiments, e.g. filtered by dataset:
 
 ```bash
-fd_shifts launch --name=fd-shifts/svhn_paper_sweep/devries_bbsvhn_small_conv_do1_run1_rew2.2
+fd-shifts-launch --mode=train --dataset=cifar10
 ```
 
-Check out `fd_shifts launch --help` for more filtering options.
+Check out `fd-shifts-launch --help` for more filtering options. You can add custom experiment filters via the `register_filter` decorator. See [experiments/launcher.py](./fd_shifts/experiments/launcher.py) for an example.
 
 ### Model Weights
 
-All pretrained model weights used for the benchmark can be found on Zenodo under the following links:
+All pretrained model weights used for ["A Call to Reflect on Evaluation Practices for Failure Detection in Image Classification"](https://openreview.net/pdf?id=YnkGMIh0gvX) can be found on Zenodo under the following links:
 
 - [iWildCam-2020-Wilds](https://zenodo.org/record/7620946)
 - [iWildCam-2020-Wilds (OpenSet Training)](https://zenodo.org/record/7621150)
@@ -215,15 +227,27 @@ All pretrained model weights used for the benchmark can be found on Zenodo under
 
 ### Inference
 
-To run inference for one of the experiments, append `--mode=test` to any of the
-commands above.
+To run inference for one of the experiments:
+
+```bash
+fd-shifts test --experiment=svhn_paper_sweep/devries_bbsvhn_small_conv_do1_run1_rew2.2
+```
+
+Analogously, with the `fd-shifts-launch` cli:
+
+```bash
+fd-shifts-launch --mode=test --dataset=cifar10
+```
 
 ### Analysis
 
-To run analysis for some of the predefined experiments, set `--mode=analysis` in
-any of the commands above.
+To run analysis for one of the experiments:
 
-To run analysis over an already available set of model outputs the outputs have
+```bash
+fd-shifts analysis --experiment=svhn_paper_sweep/devries_bbsvhn_small_conv_do1_run1_rew2.2
+```
+
+To run analysis over an already available set of inference outputs the outputs have
 to be in the following format:
 
 For a classifier with `d` outputs and `N` samples in total (over all tested
@@ -297,6 +321,12 @@ NxdxM
 ```
 external_confids_dist.npz
 NxM
+```
+
+To load inference output from different locations than `$EXPERIMENT_ROOT_DIR`, you can specify one or multiple directories in the `FD_SHIFTS_STORE_PATH` environment variable (multiple paths are separated by `:`):
+
+```bash
+export FD_SHIFTS_STORE_PATH=/absolute/path/to/fd-shifts/inference/output
 ```
 
 You may also use the `ExperimentData` class to load your data in another way.
