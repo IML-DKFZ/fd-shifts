@@ -21,6 +21,7 @@ from rich.pretty import pretty_repr
 
 from fd_shifts import reporting
 from fd_shifts.configs import Config, DataConfig, OutputPathsPerMode
+from fd_shifts.experiments import launcher
 from fd_shifts.experiments.configs import list_experiment_configs
 
 if TYPE_CHECKING:
@@ -562,10 +563,21 @@ def debug(config: Config) -> None:  # noqa: ARG001
     """Noop function for debugging purposes."""
 
 
-def _list_experiments() -> None:
-    from fd_shifts.experiments.configs import list_experiment_configs
+def _list_experiments(args) -> None:
+    _experiments = launcher.filter_experiments(
+        dataset=args.dataset,
+        dropout=args.dropout,
+        model=args.model,
+        backbone=args.backbone,
+        exclude_model=args.exclude_model,
+        exclude_backbone=args.exclude_backbone,
+        exclude_group=args.exclude_group,
+        run_nr=args.run,
+        rew=args.reward,
+        experiment=args.experiment,
+    )
 
-    for exp in sorted(list_experiment_configs()):
+    for exp in sorted(_experiments):
         print(exp)  # noqa: T201
 
 
@@ -580,6 +592,7 @@ def get_parser() -> tuple[ArgumentParser, dict[str, ArgumentParser]]:
     subparsers: dict[str, ArgumentParser] = {}
 
     subparser = ArgumentParser()
+    launcher.add_filter_arguments(subparser)
     subcommands.add_subcommand("list-experiments", subparser)
 
     subparser = ArgumentParser()
@@ -587,6 +600,7 @@ def get_parser() -> tuple[ArgumentParser, dict[str, ArgumentParser]]:
     subparsers["report"] = subparser
     subcommands.add_subcommand("report", subparser)
 
+    experiment_choices = list_experiment_configs()
     for name, func in __subcommands.items():
         subparser = ArgumentParser()
         subparser.add_argument(
@@ -595,7 +609,13 @@ def get_parser() -> tuple[ArgumentParser, dict[str, ArgumentParser]]:
             shtab.FILE
         )
         subparser.add_argument(
-            "--experiment", action=ActionExperiment, choices=list_experiment_configs()
+            "--experiment", action=ActionExperiment, choices=experiment_choices
+        )
+        subparser.print_help = lambda: print(
+            subparser.format_help().replace(
+                ",".join(experiment_choices),
+                "Run `fd-shifts list-experiments` for a list of valid experiment names",
+            )
         )
         subparser.add_function_arguments(func, sub_configs=True)
         subparsers[name] = subparser
@@ -621,7 +641,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "list-experiments":
-        _list_experiments()
+        _list_experiments(args["list-experiments"])
         return
 
     if args.command == "report":
