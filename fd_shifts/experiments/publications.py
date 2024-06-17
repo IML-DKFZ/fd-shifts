@@ -1,3 +1,5 @@
+# Experiments for "A Call to Reflect on Evaluation Practices for Failure Detection in
+# Image Classification". The original code can be accessed under the version tag v.0.1.0.
 ICLR2023 = [
     "animals_paper_sweep/confidnet_bbresnet50_do0_run1_rew2.2",
     "animals_paper_sweep/confidnet_bbresnet50_do0_run2_rew2.2",
