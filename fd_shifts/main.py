@@ -19,7 +19,7 @@ from jsonargparse._actions import Action
 from omegaconf import OmegaConf
 from rich.pretty import pretty_repr
 
-from fd_shifts import reporting
+from fd_shifts import logger, reporting
 from fd_shifts.configs import Config, DataConfig, OutputPathsPerMode
 from fd_shifts.experiments import launcher
 from fd_shifts.experiments.configs import list_experiment_configs
@@ -600,6 +600,11 @@ def get_parser() -> tuple[ArgumentParser, dict[str, ArgumentParser]]:
     subparsers["report"] = subparser
     subcommands.add_subcommand("report", subparser)
 
+    subparser = ArgumentParser()
+    launcher.add_launch_arguments(subparser)
+    subparsers["launch"] = subparser
+    subcommands.add_subcommand("launch", subparser)
+
     experiment_choices = list_experiment_configs()
     for name, func in __subcommands.items():
         subparser = ArgumentParser()
@@ -632,8 +637,6 @@ def config_from_parser(parser: ArgumentParser, args: Namespace) -> Config:
 
 def main() -> None:
     """Main entry point for the command line interface."""
-    from fd_shifts import logger
-
     setup_logging()
 
     parser, subparsers = get_parser()
@@ -643,9 +646,11 @@ def main() -> None:
     if args.command == "list-experiments":
         _list_experiments(args["list-experiments"])
         return
-
-    if args.command == "report":
+    elif args.command == "report":
         reporting.main(**args.report)
+        return
+    elif args.command == "launch":
+        launcher.launch(args["launch"])
         return
 
     config = config_from_parser(parser, args)

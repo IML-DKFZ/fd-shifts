@@ -20,7 +20,7 @@ fd-shifts {mode} --experiment={experiment} {overrides}
 """
 
 
-async def worker(name, queue: asyncio.Queue[str]):
+async def worker(name, queue: asyncio.Queue[str], progress_bar=None):
     while True:
         # Get a "work item" out of the queue.
         cmd = await queue.get()
@@ -37,21 +37,25 @@ async def worker(name, queue: asyncio.Queue[str]):
         else:
             logger.info(f"{name} running {cmd} finished")
 
+        if progress_bar is not None:
+            progress_bar.update(1)
+
         # Notify the queue that the "work item" has been processed.
         queue.task_done()
 
 
-async def run(
+async def run_experiments(
     _experiments: list[str],
     mode: str,
     dry_run: bool,
-    overrides,
+    override: dict | None,
 ):
     if len(_experiments) == 0:
         print("Nothing to run")
         return
 
     Path("./logs").mkdir(exist_ok=True)
+    override = override if override is not None else {}
 
     # Create a queue that we will use to store our "workload".
     queue: asyncio.Queue[str] = asyncio.Queue()
@@ -60,15 +64,15 @@ async def run(
         log_file_name = f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{experiment.replace('/', '_').replace('.','_')}"
         cmd = BASH_BASE_COMMAND.format(
             experiment=experiment,
-            overrides=" ".join(overrides),
+            overrides=" ".join([f"--{k}={v}" for k, v in override.items()]),
             mode=mode,
         ).strip()
 
         cmd = BASH_LOCAL_COMMAND.format(
             command=cmd, log_file_name=log_file_name
         ).strip()
+        rich.print(Syntax(cmd, "bash", word_wrap=True, background_color="default"))
         if not dry_run:
-            rich.print(Syntax(cmd, "bash", word_wrap=True, background_color="default"))
             queue.put_nowait(cmd)
 
     if queue.empty():
@@ -89,6 +93,37 @@ async def run(
         task.cancel()
     # Wait until all worker tasks are cancelled.
     await asyncio.gather(*tasks, return_exceptions=True)
+
+
+def launch(args):
+    _experiments = filter_experiments(
+        dataset=args.dataset,
+        dropout=args.dropout,
+        model=args.model,
+        backbone=args.backbone,
+        exclude_model=args.exclude_model,
+        exclude_backbone=args.exclude_backbone,
+        exclude_group=args.exclude_group,
+        run_nr=args.run,
+        rew=args.reward,
+        experiment=args.experiment,
+    )
+    if args.custom_filter is not None:
+        print(f"Applying custom filter {args.custom_filter}...")
+        _experiments = get_filter(args.custom_filter)(_experiments)
+
+    _experiments = list(_experiments)
+
+    logger.info(f"Launching {len(_experiments)} experiments:")
+    for exp in _experiments:
+        logger.info(exp)
+
+    if args.cluster:
+        raise NotImplementedError()
+    else:
+        asyncio.run(
+            run_experiments(_experiments, args.mode, args.dry_run, args.override)
+        )
 
 
 def filter_experiments(
@@ -174,6 +209,15 @@ def register_filter(name):
     return _inner_wrapper
 
 
+def get_filter(name):
+    try:
+        return _FILTERS[name]
+    except KeyError as err:
+        raise ValueError(
+            f"Filter name '{name}' not valid. Available filters: {', '.join(_FILTERS)}"
+        ) from err
+
+
 @register_filter("iclr2023")
 def filter_iclr2023(experiments):
     from fd_shifts.experiments.publications import ICLR2023
@@ -184,55 +228,9 @@ def filter_iclr2023(experiments):
     return filter(is_valid, experiments)
 
 
-def launch(
-    dataset: str | None,
-    dropout: int | None,
-    model: str | None,
-    backbone: str | None,
-    exclude_model: str | None,
-    exclude_backbone: str | None,
-    exclude_group: str | None,
-    mode: str,
-    dry_run: bool,
-    run_nr: int | None,
-    rew: float | None,
-    cluster: bool,
-    experiment: str | None,
-    custom_filter: str | None,
-    overrides,
-):
-    _experiments = filter_experiments(
-        dataset,
-        dropout,
-        model,
-        backbone,
-        exclude_model,
-        exclude_backbone,
-        exclude_group,
-        run_nr,
-        rew,
-        experiment,
-    )
-
-    if custom_filter is not None:
-        print(f"Applying custom filter {custom_filter}...")
-        _experiments = _FILTERS[custom_filter](_experiments)
-
-    _experiments = list(_experiments)
-
-    print(f"Launching {len(_experiments)} experiments:")
-    for exp in _experiments:
-        rich.print(exp)
-
-    if cluster:
-        raise NotImplementedError()
-    else:
-        asyncio.run(run(_experiments, mode, dry_run, overrides))
-
-
 def add_filter_arguments(parser: argparse.ArgumentParser):
     parser.add_argument("--dataset", default=None, type=str)
-    parser.add_argument("--dropout", default=None, type=int, choices=(0, 1))
+    parser.add_argument("--dropout", default=None, type=int, help="0 or 1")
     parser.add_argument(
         "--model", default=None, type=str, choices=("vit", "dg", "devries", "confidnet")
     )
@@ -255,32 +253,17 @@ def add_filter_arguments(parser: argparse.ArgumentParser):
 def add_launch_arguments(parser: argparse.ArgumentParser):
     add_filter_arguments(parser)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument(
-        "--mode", default="train", choices=("train", "test", "analysis")
-    )
+    parser.add_argument("--mode", required=True, choices=("train", "test", "analysis"))
     parser.add_argument("--cluster", action="store_true")
-    return parser
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser = add_launch_arguments(parser)
-    args, unknown = parser.parse_known_args()
-
-    launch(
-        dataset=args.dataset,
-        dropout=args.dropout,
-        model=args.model,
-        backbone=args.backbone,
-        exclude_model=args.exclude_model,
-        exclude_backbone=args.exclude_backbone,
-        exclude_group=args.exclude_group,
-        mode=args.mode,
-        dry_run=args.dry_run,
-        run_nr=args.run,
-        rew=args.reward,
-        cluster=args.cluster,
-        experiment=args.experiment,
-        custom_filter=args.custom_filter,
-        overrides=unknown,
+    # https://jsonargparse.readthedocs.io/en/stable/#dict-items
+    parser.add_argument(
+        "--override",
+        type=dict,
+        default=None,
+        help=(
+            "Additional configurations passed to each `fd-shifts {mode}` call can be "
+            "specified via `--override.key=value` (e.g. "
+            "`override.config.trainer.batch_size=64`)"
+        ),
     )
+    return parser

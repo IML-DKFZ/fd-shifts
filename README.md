@@ -203,13 +203,13 @@ fd-shifts train --config=path/to/config/file
 
 Check out `fd-shifts train --help` for more training options.
 
-The `fd-shifts-launch` cli allows for running multiple experiments, e.g. filtered by dataset:
+The `launch` subcommand allows for running multiple experiments, e.g. filtered by dataset:
 
 ```bash
-fd-shifts-launch --mode=train --dataset=cifar10
+fd-shifts launch --mode=train --dataset=cifar10
 ```
 
-Check out `fd-shifts-launch --help` for more filtering options. You can add custom experiment filters via the `register_filter` decorator. See [experiments/launcher.py](./fd_shifts/experiments/launcher.py) for an example.
+Check out `fd-shifts launch --help` for more filtering options. You can add custom experiment filters via the `register_filter` decorator. See [experiments/launcher.py](./fd_shifts/experiments/launcher.py) for an example.
 
 ### Model Weights
 
@@ -233,10 +233,10 @@ To run inference for one of the experiments:
 fd-shifts test --experiment=svhn_paper_sweep/devries_bbsvhn_small_conv_do1_run1_rew2.2
 ```
 
-Analogously, with the `fd-shifts-launch` cli:
+Analogously, with the `launch` subcommand:
 
 ```bash
-fd-shifts-launch --mode=test --dataset=cifar10
+fd-shifts launch --mode=test --dataset=cifar10
 ```
 
 ### Analysis
