@@ -306,6 +306,7 @@ class ConfidMetricsConfig(_IterableMixin):
             "fpr@95tpr",
             "e-aurc",
             "aurc",
+            "augrc",
         ]
     )
     val: list[str] = field(
@@ -316,6 +317,7 @@ class ConfidMetricsConfig(_IterableMixin):
             "fpr@95tpr",
             "e-aurc",
             "aurc",
+            "augrc",
         ]
     )
     test: list[str] = field(
@@ -327,6 +329,7 @@ class ConfidMetricsConfig(_IterableMixin):
             "ece",
             "e-aurc",
             "aurc",
+            "augrc",
             "fpr@95tpr",
         ]
     )
