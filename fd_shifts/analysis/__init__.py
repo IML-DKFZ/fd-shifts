@@ -270,7 +270,14 @@ class ExperimentData:
     def __load_from_store(
         config: configs.Config, file: str, dtype: type = np.float64, unpack: bool = True
     ) -> npt.NDArray[np.float64] | dict[str, npt.NDArray[np.float64]] | None:
-        store_paths = map(Path, os.getenv("FD_SHIFTS_STORE_PATH", "").split(":"))
+        # Look for store paths in 'FD_SHIFTS_STORE_PATH', if not specified default to
+        # 'EXPERIMENT_ROOT_DIR'.
+        store_paths = map(
+            Path,
+            os.getenv(
+                "FD_SHIFTS_STORE_PATH", os.getenv("EXPERIMENT_ROOT_DIR", "")
+            ).split(":"),
+        )
 
         test_dir = config.test.dir.relative_to(os.getenv("EXPERIMENT_ROOT_DIR", ""))
 

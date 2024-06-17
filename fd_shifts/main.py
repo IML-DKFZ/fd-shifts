@@ -19,8 +19,9 @@ from jsonargparse._actions import Action
 from omegaconf import OmegaConf
 from rich.pretty import pretty_repr
 
-from fd_shifts import reporting
+from fd_shifts import logger, reporting
 from fd_shifts.configs import Config, DataConfig, OutputPathsPerMode
+from fd_shifts.experiments import launcher
 from fd_shifts.experiments.configs import list_experiment_configs
 from fd_shifts.reporting.report_bootstrap import report_bootstrap_results
 
@@ -572,8 +573,21 @@ def debug(config: Config) -> None:  # noqa: ARG001
     """Noop function for debugging purposes."""
 
 
-def _list_experiments():
-    for exp in sorted(list_experiment_configs()):
+def _list_experiments(args) -> None:
+    _experiments = launcher.filter_experiments(
+        dataset=args.dataset,
+        dropout=args.dropout,
+        model=args.model,
+        backbone=args.backbone,
+        exclude_model=args.exclude_model,
+        exclude_backbone=args.exclude_backbone,
+        exclude_group=args.exclude_group,
+        run_nr=args.run,
+        rew=args.reward,
+        experiment=args.experiment,
+    )
+
+    for exp in sorted(_experiments):
         print(exp)  # noqa: T201
 
 
@@ -588,6 +602,7 @@ def get_parser() -> tuple[ArgumentParser, dict[str, ArgumentParser]]:
     subparsers: dict[str, ArgumentParser] = {}
 
     subparser = ArgumentParser()
+    launcher.add_filter_arguments(subparser)
     subcommands.add_subcommand("list-experiments", subparser)
 
     subparser = ArgumentParser()
@@ -600,6 +615,12 @@ def get_parser() -> tuple[ArgumentParser, dict[str, ArgumentParser]]:
     subparsers["report_bootstrap"] = subparser
     subcommands.add_subcommand("report_bootstrap", subparser)
 
+    subparser = ArgumentParser()
+    launcher.add_launch_arguments(subparser)
+    subparsers["launch"] = subparser
+    subcommands.add_subcommand("launch", subparser)
+
+    experiment_choices = list_experiment_configs()
     for name, func in __subcommands.items():
         subparser = ArgumentParser()
         subparser.add_argument(
@@ -608,7 +629,13 @@ def get_parser() -> tuple[ArgumentParser, dict[str, ArgumentParser]]:
             shtab.FILE
         )
         subparser.add_argument(
-            "--experiment", action=ActionExperiment, choices=list_experiment_configs()
+            "--experiment", action=ActionExperiment, choices=experiment_choices
+        )
+        subparser.print_help = lambda: print(
+            subparser.format_help().replace(
+                ",".join(experiment_choices),
+                "Run `fd-shifts list-experiments` for a list of valid experiment names",
+            )
         )
         subparser.add_function_arguments(func, sub_configs=True)
         subparsers[name] = subparser
@@ -625,8 +652,6 @@ def config_from_parser(parser: ArgumentParser, args: Namespace) -> Config:
 
 def main() -> None:
     """Main entry point for the command line interface."""
-    from fd_shifts import logger
-
     setup_logging()
 
     parser, subparsers = get_parser()
@@ -634,11 +659,13 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "list-experiments":
-        _list_experiments()
+        _list_experiments(args["list-experiments"])
         return
-
-    if args.command == "report":
+    elif args.command == "report":
         reporting.main(**args.report)
+        return
+    elif args.command == "launch":
+        launcher.launch(args["launch"])
         return
 
     if args.command == "report_bootstrap":

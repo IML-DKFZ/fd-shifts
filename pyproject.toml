@@ -66,9 +66,7 @@ docs = ["jupyterlab", "notebook", "ipykernel"]
 launcher = ["parallel-ssh"]
 
 [project.scripts]
-fd_shifts = "fd_shifts.cli:main"
 fd-shifts = "fd_shifts.main:main"
-_fd_shifts_exec = "fd_shifts.exec:main"
 
 [tool.setuptools_scm]
 write_to = "fd_shifts/_version.py"
