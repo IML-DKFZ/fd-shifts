@@ -45,7 +45,7 @@ def _load_file(config: Config, name: str, file: str):
 
 
 def _load_experiment(
-    name: str, bootstrap_analysis: bool = False, stratified_bs: bool = False
+    name: str, bootstrap_analysis: bool = False
 ) -> pd.DataFrame | None:
     from fd_shifts.main import omegaconf_resolve
 
@@ -57,7 +57,7 @@ def _load_experiment(
         data = list(
             map(
                 functools.partial(_load_file, config, name),
-                list_bootstrap_analysis_output_files(config, stratified_bs),
+                list_bootstrap_analysis_output_files(config),
             )
         )
     else:
@@ -94,11 +94,7 @@ def _load_experiment(
     return data
 
 
-def load_all(
-    bootstrap_analysis: bool = False,
-    stratified_bs: bool = False,
-    include_vit: bool = False,
-):
+def load_all(bootstrap_analysis: bool = False, include_vit: bool = False):
     dataframes = []
     # TODO: make this async
     with concurrent.futures.ProcessPoolExecutor(max_workers=12) as executor:
@@ -107,9 +103,7 @@ def load_all(
                 lambda d: d is not None,
                 executor.map(
                     functools.partial(
-                        _load_experiment,
-                        bootstrap_analysis=bootstrap_analysis,
-                        stratified_bs=stratified_bs,
+                        _load_experiment, bootstrap_analysis=bootstrap_analysis
                     ),
                     filter(
                         (

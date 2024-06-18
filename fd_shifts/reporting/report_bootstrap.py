@@ -34,7 +34,6 @@ from fd_shifts.reporting.plots_bootstrap import (
 
 def _load_bootstrap_experiment(
     name: str,
-    stratified_bs: bool = False,
     filter_study_name: list = None,
     filter_dataset: list = None,
     original_new_class_mode: bool = False,
@@ -51,7 +50,7 @@ def _load_bootstrap_experiment(
         map(
             functools.partial(_load_file, config, name),
             list_bootstrap_analysis_output_files(
-                config, stratified_bs, filter_study_name, original_new_class_mode
+                config, filter_study_name, original_new_class_mode
             ),
         )
     )
@@ -78,7 +77,6 @@ def _load_bootstrap_experiment(
 
 
 def load_all(
-    stratified_bs: bool = False,
     filter_study_name: list = None,
     filter_dataset: list = None,
     original_new_class_mode: bool = False,
@@ -93,7 +91,6 @@ def load_all(
                 executor.map(
                     functools.partial(
                         _load_bootstrap_experiment,
-                        stratified_bs=stratified_bs,
                         filter_study_name=filter_study_name,
                         filter_dataset=filter_dataset,
                         original_new_class_mode=original_new_class_mode,
@@ -163,14 +160,12 @@ def create_plots_per_study(
     dset: str,
     metrics: list,
     out_dir: Path,
-    stratified_bs: bool = False,
     original_new_class_mode: bool = False,
     metric_hparam_search: str = None,
 ):
     logger.info(f"Reporting bootstrap results for dataset '{dset}', study '{study}'")
 
     data_raw = load_all(
-        stratified_bs=stratified_bs,
         filter_study_name=[study],
         filter_dataset=[dset],
         original_new_class_mode=original_new_class_mode,
@@ -526,14 +521,9 @@ CONFIDS_TO_REPORT = [
 
 
 def report_bootstrap_results(
-    out_path: str | Path = "./output/bootstrap",
-    stratified_bs: bool = False,
-    metric_hparam_search: str = None,
+    out_path: str | Path = "./output/bootstrap", metric_hparam_search: str = None
 ):
     """"""
-    if stratified_bs:
-        out_path = "./output/bootstrap-stratified"
-
     if metric_hparam_search is not None:
         out_path = str(out_path) + f"-optimized-{metric_hparam_search}"
 
@@ -558,7 +548,6 @@ def report_bootstrap_results(
                     dset=dset,
                     metrics=metrics,
                     out_dir=data_dir,
-                    stratified_bs=stratified_bs,
                     original_new_class_mode=False,
                     metric_hparam_search=metric_hparam_search,
                 ): dict(study=study, dset=dset)

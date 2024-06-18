@@ -27,8 +27,8 @@ def bootstrap_new_class_data_iterator(
     iid_set_name,
     dataset_name,
     n_bs: int,
-    stratified: bool,
     bs_size: int,
+    stratified: bool = False,
 ):
     assert data.correct is not None
     iid_set_ix = data.dataset_name_to_idx(iid_set_name)
@@ -137,7 +137,9 @@ def bootstrap_new_class_data_iterator(
         )
 
 
-def bootstrap_iterator(data: ExperimentData, n_bs: int, stratified: bool, bs_size: int):
+def bootstrap_iterator(
+    data: ExperimentData, n_bs: int, bs_size: int, stratified: bool = False
+):
     n = len(data.labels)
     bs_indices = np.vstack(
         [
@@ -183,11 +185,8 @@ def bootstrap_iterator(data: ExperimentData, n_bs: int, stratified: bool, bs_siz
 class AnalysisBS(Analysis):
     """Analysis wrapper function for bootstrap analysis"""
 
-    def __init__(
-        self, *args, stratified_bs: bool, n_bs: int, no_iid: bool = False, **kwargs
-    ):
+    def __init__(self, *args, n_bs: int, no_iid: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
-        self.stratified_bs = stratified_bs
         self.n_bs = n_bs
         self._create_bs_indices_only = False
         self.no_iid = no_iid
@@ -239,7 +238,6 @@ class AnalysisBS(Analysis):
                         self.query_studies.iid_study,
                         new_class,
                         self.n_bs,
-                        self.stratified_bs,
                         bs_size,
                     ):
                         self._perform_bootstrap_study(bs_idx, data)
@@ -261,7 +259,7 @@ class AnalysisBS(Analysis):
                     logger.info(f"Performing bootstrap study {self.study_name}")
 
                     for bs_idx, data in bootstrap_iterator(
-                        study_data, self.n_bs, self.stratified_bs, bs_size
+                        study_data, self.n_bs, bs_size
                     ):
                         self._perform_bootstrap_study(bs_idx, data)
 
@@ -303,9 +301,11 @@ class AnalysisBS(Analysis):
                 backbone,
                 self.cfg.exp.fold,
                 confid_key,
-                study_data.mcd_softmax_mean.shape[0]
-                if "mcd" in confid_key
-                else study_data.softmax_output.shape[0],
+                (
+                    study_data.mcd_softmax_mean.shape[0]
+                    if "mcd" in confid_key
+                    else study_data.softmax_output.shape[0]
+                ),
                 bs_index,
             ]
             submit_list += [
@@ -327,8 +327,6 @@ class AnalysisBS(Analysis):
 
 def run_bs_analysis(
     config: configs.Config,
-    regenerate_bs_indices: bool = False,
-    stratified_bs: bool = False,
     n_bs: int = 500,
     iid_only: bool = False,
     no_iid: bool = False,
@@ -338,24 +336,10 @@ def run_bs_analysis(
 
     Args:
         config (configs.Config): Complete Configuration
-        regenerate_bs_indices (bool, optional): If False, using previously generated
-            bootstrap indices. Defaults to True.
-        stratified_bs (bool, optional): Whether to stratify by failure label. Defaults to
-            False.
         n_bs (int, optional): Number of bootstrap samples. Defaults to 500.
     """
-    if regenerate_bs_indices:
-        raise NotImplementedError("No longer writing out bs indices!")
-
-    if stratified_bs:
-        raise ValueError("Stratified BS sampling makes no sense!")
-
     path_to_test_dir = config.test.dir
-    analysis_out_dir = (
-        config.exp.output_paths.analysis
-        / f"bootstrap{'-stratified' if stratified_bs else ''}"
-    )
-
+    analysis_out_dir = config.exp.output_paths.analysis / "bootstrap"
     analysis_out_dir.mkdir(exist_ok=True, parents=True)
     query_studies = config.eval.query_studies
 
@@ -413,7 +397,6 @@ def run_bs_analysis(
         threshold_plot_confid=None,
         qual_plot_confid=None,
         cf=config,
-        stratified_bs=stratified_bs,
         n_bs=n_bs,
         no_iid=no_iid,
     )

@@ -543,7 +543,7 @@ class RiskCoverageStatsMixin:
         residuals: npt.NDArray[Any] = None,
         labels: npt.NDArray[Any] = None,
         n_bs: int = 10000,
-        stratified: bool = True,
+        stratified: bool = False,
     ):
         """Compute confidence intervals based on bootstrapping."""
         confids = confids if confids is not None else self.confids

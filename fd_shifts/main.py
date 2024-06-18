@@ -693,8 +693,6 @@ def main() -> None:
     if args.command == "analysis_bootstrap":
         __subcommands[args.command](
             config=config,
-            regenerate_bs_indices=args[args.command].regenerate_bs_indices,
-            stratified_bs=args[args.command].stratified_bs,
             n_bs=args[args.command].n_bs,
             iid_only=args[args.command].iid_only,
             no_iid=args[args.command].no_iid,

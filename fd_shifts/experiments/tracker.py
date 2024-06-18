@@ -60,11 +60,10 @@ def list_analysis_output_files(config: Config) -> list:
 
 def list_bootstrap_analysis_output_files(
     config: Config,
-    stratified_bs: bool,
     filter_study_name: list = None,
     original_new_class_mode: bool = False,
 ) -> list:
-    subdir = f"bootstrap{'-stratified' if stratified_bs else ''}/"
+    subdir = "bootstrap/"
     files = []
     for study_name, testset in config.eval.query_studies:
         # Keep only studies that are in filter_study_name
