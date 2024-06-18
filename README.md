@@ -128,6 +128,7 @@ scoring functions check out the
 This repository contains the benchmarks for the following publications:
 - ["A Call to Reflect on Evaluation Practices for Failure Detection in Image Classification"](https://openreview.net/pdf?id=YnkGMIh0gvX) &rarr; [Documentation for reproducing](./docs/publications/iclr_2023.md)
 - ["Understanding Silent Failures in Medical Image Classification"](https://arxiv.org/abs/2307.14729) (For the visualization tool presented in that work please see [sf-visuals](https://github.com/IML-DKFZ/sf-visuals).) &rarr; [Documentation for reproducing](./docs/publications/miccai_2023.md)
+- ["Overcoming Common Flaws in the Evaluation of Selective Classification Systems"]() &rarr; [Documentation for reproducing](./docs/publications/augrc_2024.md)
 
 While the following section on [working with FD-Shifts](#working-with-fd-shifts) describes the general usage, descriptions for reproducing specific publications are documented [here](./docs/publications).
 

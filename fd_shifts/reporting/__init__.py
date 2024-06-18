@@ -527,7 +527,6 @@ def main(
         "DG-TEMP-MLS",
     ]
     data = data[data.confid.isin(CONFIDS_TO_REPORT)]
-    # data = data[data.confid.isin(CONFIDS_TO_REPORT + ["VIT-"+c for c in CONFIDS_TO_REPORT])]
 
     # -- Aggregate across runs ---------------------------------------------------------
     data, std = tables.aggregate_over_runs(
@@ -578,15 +577,6 @@ def main(
         data_dir,
         metric1="aurc",
         metric2="augrc",
-        metric1_higherbetter=False,
-        metric2_higherbetter=False,
-    )
-
-    rank_comparison_metric(
-        data,
-        data_dir,
-        metric1="aurc-ba",
-        metric2="augrc-ba",
         metric1_higherbetter=False,
         metric2_higherbetter=False,
     )

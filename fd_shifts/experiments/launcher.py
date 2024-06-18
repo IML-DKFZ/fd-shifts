@@ -228,6 +228,16 @@ def filter_iclr2023(experiments):
     return filter(is_valid, experiments)
 
 
+@register_filter("augrc2024")
+def filter_augrc2024(experiments):
+    from fd_shifts.experiments.publications import AUGRC2024
+
+    def is_valid(exp):
+        return exp in AUGRC2024
+
+    return filter(is_valid, experiments)
+
+
 def add_filter_arguments(parser: argparse.ArgumentParser):
     parser.add_argument("--dataset", default=None, type=str)
     parser.add_argument("--dropout", default=None, type=int, help="0 or 1")
