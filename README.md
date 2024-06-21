@@ -40,7 +40,7 @@
 
 <p align="center">
     <figure class="image">
-        <img src="./docs/new_overview.png">
+        <img src="./docs/publications/iclr_2023_overview.png">
         <figcaption style="font-size: small;">
         Holistic perspective on failure detection. Detecting failures should be seen in the
         context of the overarching goal of preventing silent failures of a classifier, which includes two tasks:
@@ -79,7 +79,7 @@ If you use FD-Shifts please cite our [paper](https://openreview.net/pdf?id=YnkGM
 ```
 
 > **Note**  
-> This repository also contains the benchmarks for our follow-up study ["Understanding Silent Failures in Medical Image Classification"](https://arxiv.org/abs/2307.14729). For the visualization tool presented in that work please see [sf-visuals](https://github.com/IML-DKFZ/sf-visuals).
+> This repository also contains the benchmarks for our follow-up study ["Understanding Silent Failures in Medical Image Classification"](https://arxiv.org/abs/2307.14729) (for the visualization tool presented in that work please see [sf-visuals](https://github.com/IML-DKFZ/sf-visuals)) and for ["Overcoming Common Flaws in the Evaluation of Selective Classification Systems"]().
 
 ## Table Of Contents
 

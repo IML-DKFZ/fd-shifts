@@ -15,7 +15,7 @@ dependencies = [
   "hydra-zen",
   "imageio>=2.9.0",
   "ipython",
-  "jsonargparse[signatures]",
+  "jsonargparse[signatures]>=4.29.0,<4.30.0",
   "loguru",
   "matplotlib>=3.3.4",
   "medmnist",
