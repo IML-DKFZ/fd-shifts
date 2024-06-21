@@ -585,6 +585,7 @@ def _list_experiments(args) -> None:
         run_nr=args.run,
         rew=args.reward,
         experiment=args.experiment,
+        custom_filter=args.custom_filter,
     )
 
     for exp in sorted(_experiments):

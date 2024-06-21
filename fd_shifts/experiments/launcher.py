@@ -107,13 +107,8 @@ def launch(args):
         run_nr=args.run,
         rew=args.reward,
         experiment=args.experiment,
+        custom_filter=args.custom_filter,
     )
-    if args.custom_filter is not None:
-        print(f"Applying custom filter {args.custom_filter}...")
-        _experiments = get_filter(args.custom_filter)(_experiments)
-
-    _experiments = list(_experiments)
-
     logger.info(f"Launching {len(_experiments)} experiments:")
     for exp in _experiments:
         logger.info(exp)
@@ -137,6 +132,7 @@ def filter_experiments(
     run_nr: int | None,
     rew: float | None,
     experiment: str | None,
+    custom_filter: str | None,
 ) -> filter:
     _experiments = list_experiment_configs()
 
@@ -194,6 +190,10 @@ def filter_experiments(
 
     if experiment is not None:
         _experiments = filter(lambda e: e == experiment, _experiments)
+
+    if custom_filter is not None:
+        logger.info(f"Applying custom filter {custom_filter}...")
+        _experiments = get_filter(custom_filter)(_experiments)
 
     return _experiments
 
