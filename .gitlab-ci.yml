@@ -8,7 +8,7 @@ variables:
   # controls whether the test job is executed
   TEST_NOTEBOOKS: "false"
 
-image: "python:3.10"
+image: "python:3.11"
 
 test:package:
   stage: test
@@ -32,6 +32,6 @@ test:notebooks:
   before_script:
     - python --version
     - pip install .[dev] .[docs]
-    - python -m ipykernel install --user --name py310
+    - python -m ipykernel install --user --name py311
   script:
     - python -m pytest -W ignore --nbmake $NOTEBOOK_DIR
