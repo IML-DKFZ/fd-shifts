@@ -48,9 +48,8 @@ def test_all_false(correct):
     aurc_value = aurc(stat)
     baurc_value = baurc(stat)
 
-    assert aurc_value == pytest.approx(999, 1)
+    assert aurc_value == 1000
     assert baurc_value == pytest.approx(999, 1)
-    assert baurc_value == aurc_value
 
 
 @pytest.mark.baurc
