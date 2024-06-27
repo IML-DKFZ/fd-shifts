@@ -80,7 +80,7 @@ def load_all(
     filter_study_name: list = None,
     filter_dataset: list = None,
     original_new_class_mode: bool = False,
-    include_vit: bool = False,
+    include_vit: bool = True,
 ):
     dataframes = []
     # TODO: make this async
@@ -97,11 +97,9 @@ def load_all(
                     ),
                     filter(
                         (
-                            (lambda exp: ("clip" not in exp))
+                            (lambda exp: True)
                             if include_vit
-                            else lambda exp: (
-                                ("clip" not in exp) and (not exp.startswith("vit"))
-                            )
+                            else lambda exp: not exp.startswith("vit")
                         ),
                         list_experiment_configs(),
                     ),
@@ -169,6 +167,7 @@ def create_plots_per_study(
         filter_study_name=[study],
         filter_dataset=[dset],
         original_new_class_mode=original_new_class_mode,
+        include_vit=False,
     )
 
     data_raw = assign_hparams_from_names(data_raw)
@@ -315,7 +314,7 @@ def create_plots_per_study(
 def create_kendall_tau_plot(out_dir: Path):
     logger.info(f"Performing iid-study kendall tau analysis across datasets...")
 
-    data_raw = load_all(filter_study_name=["iid_study"])
+    data_raw = load_all(filter_study_name=["iid_study"], include_vit=False)
     data_raw = assign_hparams_from_names(data_raw)
 
     processed_data = {}
@@ -383,7 +382,7 @@ def ranking_change_arrows(out_dir: Path):
 
     _DATASETS = ["wilds_animals", "wilds_camelyon", "cifar10", "breeds"]
 
-    data_raw = load_all(filter_dataset=_DATASETS)
+    data_raw = load_all(filter_dataset=_DATASETS, include_vit=False)
     data_raw = assign_hparams_from_names(data_raw)
 
     mean_rank_dict = {}
@@ -553,8 +552,6 @@ def report_bootstrap_results(
                 ): dict(study=study, dset=dset)
                 for dset, study in product(datasets, studies)
             }
-            # future_to_arg = {}
-
             # future_to_arg[
             #     executor.submit(ranking_change_arrows, out_dir=data_dir)
             # ] = "<bootstrap-ranking-changes>"
@@ -587,7 +584,7 @@ def report_bootstrap_results(
         executor.shutdown(wait=False, cancel_futures=True)
         logger.info(
             "Executor shut down. Kill running futures using\n"
-            "'ps -ef | grep 'main.py report_bootstrap' | grep -v grep | awk '{print $2}' | "
+            "'ps -ef | grep 'fd-shifts report_bootstrap' | grep -v grep | awk '{print $2}' | "
             "xargs -r kill -9'"
         )
         raise

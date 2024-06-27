@@ -14,7 +14,7 @@ from fd_shifts.experiments.tracker import (
     list_bootstrap_analysis_output_files,
 )
 
-pandarallel.initialize()
+pandarallel.initialize(verbose=1)
 
 DATASETS = (
     "svhn",
@@ -94,7 +94,7 @@ def _load_experiment(
     return data
 
 
-def load_all(bootstrap_analysis: bool = False, include_vit: bool = False):
+def load_all(bootstrap_analysis: bool = False, include_vit: bool = True):
     dataframes = []
     # TODO: make this async
     with concurrent.futures.ProcessPoolExecutor(max_workers=12) as executor:
@@ -107,11 +107,9 @@ def load_all(bootstrap_analysis: bool = False, include_vit: bool = False):
                     ),
                     filter(
                         (
-                            (lambda exp: ("clip" not in exp))
+                            (lambda exp: True)
                             if include_vit
-                            else lambda exp: (
-                                ("clip" not in exp) and (not exp.startswith("vit"))
-                            )
+                            else lambda exp: not exp.startswith("vit")
                         ),
                         list_experiment_configs(),
                     ),
@@ -193,9 +191,6 @@ def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
         .mask(data["backbone"] == "vit", "vit_")
         + data.model.where(
             data.backbone == "vit", data.name.str.split("_", expand=True)[0]
-        ).mask(
-            data.backbone == "vit",
-            data.name.str.split("model", expand=True)[1].str.split("_", expand=True)[0],
         ),
         # Encode every detail into confid name
         _confid=data.confid,
@@ -511,23 +506,6 @@ def main(
     data = rename_confids(data)
     data = rename_studies(data)
 
-    CONFIDS_TO_REPORT = [
-        "MSR",
-        "MLS",
-        "PE",
-        "MCD-MSR",
-        "MCD-PE",
-        "MCD-EE",
-        "DG-MCD-MSR",
-        "ConfidNet",
-        "DG-Res",
-        "Devries et al.",
-        "TEMP-MLS",
-        "DG-PE",
-        "DG-TEMP-MLS",
-    ]
-    data = data[data.confid.isin(CONFIDS_TO_REPORT)]
-
     # -- Aggregate across runs ---------------------------------------------------------
     data, std = tables.aggregate_over_runs(
         data,
@@ -550,15 +528,16 @@ def main(
 
     # # -- Relative error (evaluated across runs) --------------------------------------
     metric_list = ["aurc", "e-aurc", "augrc", "e-augrc", "aurc-ba", "augrc-ba"]
-    data_dir_std = data_dir / "rel_std"
-    data_dir_std.mkdir(exist_ok=True, parents=True)
-    for m in metric_list:
-        std[m] = std[m].astype(float) / data[m].astype(float)
-    std = str_format_metrics(std)
 
-    for m in metric_list:
-        # lower is better for all these metrics
-        paper_results(std, m, False, data_dir_std)
+    # data_dir_std = data_dir / "rel_std"
+    # data_dir_std.mkdir(exist_ok=True, parents=True)
+    # for m in metric_list:
+    #     std[m] = std[m].astype(float) / data[m].astype(float)
+    # std = str_format_metrics(std)
+
+    # for m in metric_list:
+    #     # lower is better for all these metrics
+    #     paper_results(std, m, False, data_dir_std)
 
     # # -- Metric tables -----------------------------------------------------------------
     for m in metric_list:
