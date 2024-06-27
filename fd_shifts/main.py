@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import jsonargparse
 import rich
@@ -23,6 +23,7 @@ from fd_shifts import logger, reporting
 from fd_shifts.configs import Config, DataConfig, OutputPathsPerMode
 from fd_shifts.experiments import launcher
 from fd_shifts.experiments.configs import list_experiment_configs
+from fd_shifts.reporting.report_bootstrap import report_bootstrap_results
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -441,8 +442,10 @@ def train(config: Config):
     )
 
     wandb_logger = WandbLogger(
-        project="fd_shifts_proto",
         name=config.exp.name,
+        project="fd_shifts",
+        group=config.exp.group_name,
+        tags=["dev"],
     )
 
     trainer = L.Trainer(
@@ -559,6 +562,13 @@ def analysis(config: Config) -> None:
 
 
 @subcommand
+def analysis_bootstrap(config: Config, **kwargs):
+    from fd_shifts.analysis.bootstrap import run_bs_analysis
+
+    run_bs_analysis(config=config, **kwargs)
+
+
+@subcommand
 def debug(config: Config) -> None:  # noqa: ARG001
     """Noop function for debugging purposes."""
 
@@ -575,6 +585,7 @@ def _list_experiments(args) -> None:
         run_nr=args.run,
         rew=args.reward,
         experiment=args.experiment,
+        custom_filter=args.custom_filter,
     )
 
     for exp in sorted(_experiments):
@@ -599,6 +610,11 @@ def get_parser() -> tuple[ArgumentParser, dict[str, ArgumentParser]]:
     subparser.add_function_arguments(reporting.main)
     subparsers["report"] = subparser
     subcommands.add_subcommand("report", subparser)
+
+    subparser = ArgumentParser()
+    subparser.add_function_arguments(report_bootstrap_results)
+    subparsers["report_bootstrap"] = subparser
+    subcommands.add_subcommand("report_bootstrap", subparser)
 
     subparser = ArgumentParser()
     launcher.add_launch_arguments(subparser)
@@ -653,9 +669,13 @@ def main() -> None:
         launcher.launch(args["launch"])
         return
 
+    if args.command == "report_bootstrap":
+        report_bootstrap_results(**args.report_bootstrap)
+        return
+
     config = config_from_parser(parser, args)
 
-    rich.print(config)
+    # rich.print(config)
 
     # TODO: Check if configs are the same
     if not config.test.cf_path.is_file() or args.overwrite_config_file:
@@ -670,6 +690,16 @@ def main() -> None:
         logger.warning(
             "Config file already exists, use --overwrite-config-file to force"
         )
+
+    if args.command == "analysis_bootstrap":
+        __subcommands[args.command](
+            config=config,
+            n_bs=args[args.command].n_bs,
+            iid_only=args[args.command].iid_only,
+            no_iid=args[args.command].no_iid,
+            exclude_noise_study=args[args.command].exclude_noise_study,
+        )
+        return
 
     __subcommands[args.command](config=config)
 

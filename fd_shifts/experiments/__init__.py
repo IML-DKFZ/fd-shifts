@@ -1,6 +1,6 @@
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable
 from dataclasses import dataclass
-from itertools import chain, product
+from itertools import product
 from pathlib import Path
 
 from rich import print as pprint
@@ -254,18 +254,20 @@ class Experiment:
         rewards: Iterable[float],
         learning_rates: Iterable[float | None],
     ):
-        return map(
-            lambda args: Experiment(*args),
-            product(
-                (group_dir,),
-                datasets,
-                models,
-                backbones,
-                dropouts,
-                runs,
-                rewards,
-                learning_rates,
-            ),
+        return list(
+            map(
+                lambda args: Experiment(*args),
+                product(
+                    (group_dir,),
+                    datasets,
+                    models,
+                    backbones,
+                    dropouts,
+                    runs,
+                    rewards,
+                    learning_rates,
+                ),
+            )
         )
 
 
@@ -420,13 +422,12 @@ def get_all_experiments(
     with_hyperparameter_sweep=False,
     with_vit_special_runs=True,
     with_ms_runs=True,
-    with_precision_study=True,
-) -> Iterator[Experiment]:
+    with_precision_study=False,
+) -> list[Experiment]:
     _experiments = []
 
     # ViT Best lr runs
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("svhn",),
@@ -436,11 +437,10 @@ def get_all_experiments(
             dropouts=(1,),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("svhn",),
@@ -450,11 +450,10 @@ def get_all_experiments(
             dropouts=(0, 1),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("svhn", "svhn_openset"),
@@ -464,11 +463,10 @@ def get_all_experiments(
             dropouts=(1,),
             runs=range(5),
             rewards=(2.2, 3, 6, 10),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("svhn", "svhn_openset"),
@@ -478,11 +476,10 @@ def get_all_experiments(
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2, 3, 6, 10),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("svhn_openset",),
@@ -492,11 +489,10 @@ def get_all_experiments(
             dropouts=(1,),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("svhn_openset",),
@@ -506,11 +502,10 @@ def get_all_experiments(
             dropouts=(0, 1),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("cifar10",),
@@ -520,11 +515,10 @@ def get_all_experiments(
             dropouts=(1,),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("cifar10",),
@@ -534,11 +528,10 @@ def get_all_experiments(
             dropouts=(0,),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("cifar10",),
@@ -548,11 +541,10 @@ def get_all_experiments(
             dropouts=(1,),
             runs=range(5),
             rewards=(2.2, 3, 6, 10),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("cifar10",),
@@ -562,11 +554,10 @@ def get_all_experiments(
             dropouts=(0,),
             runs=range(5),
             rewards=(2.2, 3, 6, 10),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("cifar100",),
@@ -576,11 +567,10 @@ def get_all_experiments(
             dropouts=(1, 0),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("super_cifar100",),
@@ -590,11 +580,10 @@ def get_all_experiments(
             dropouts=(0,),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("super_cifar100",),
@@ -604,11 +593,10 @@ def get_all_experiments(
             dropouts=(1,),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("cifar100",),
@@ -618,11 +606,10 @@ def get_all_experiments(
             dropouts=(1, 0),
             runs=range(5),
             rewards=(2.2, 3, 6, 10, 12, 15, 20),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("super_cifar100",),
@@ -632,11 +619,10 @@ def get_all_experiments(
             dropouts=(0,),
             runs=range(5),
             rewards=(2.2, 3, 6, 10, 12, 15, 20),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("super_cifar100",),
@@ -646,11 +632,10 @@ def get_all_experiments(
             dropouts=(1,),
             runs=range(5),
             rewards=(2.2, 3, 6, 10, 12, 15, 20),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_animals",),
@@ -660,11 +645,10 @@ def get_all_experiments(
             dropouts=(0,),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_animals",),
@@ -674,11 +658,10 @@ def get_all_experiments(
             dropouts=(0, 1),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_animals_openset",),
@@ -688,11 +671,10 @@ def get_all_experiments(
             dropouts=(0,),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_animals_openset",),
@@ -702,11 +684,10 @@ def get_all_experiments(
             dropouts=(0, 1),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=(
@@ -719,11 +700,10 @@ def get_all_experiments(
             dropouts=(0,),
             runs=range(5),
             rewards=(2.2, 3, 6, 10, 15),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=(
@@ -736,11 +716,10 @@ def get_all_experiments(
             dropouts=(0, 1),
             runs=range(5),
             rewards=(2.2, 3, 6, 10, 15),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_camelyon",),
@@ -750,11 +729,10 @@ def get_all_experiments(
             dropouts=(0,),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_camelyon",),
@@ -764,11 +742,10 @@ def get_all_experiments(
             dropouts=(1,),
             runs=range(5),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_camelyon",),
@@ -778,11 +755,10 @@ def get_all_experiments(
             dropouts=(0,),
             runs=range(5),
             rewards=(2.2, 3, 6, 10),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("wilds_camelyon",),
@@ -792,11 +768,10 @@ def get_all_experiments(
             dropouts=(1,),
             runs=range(5),
             rewards=(2.2, 3, 6, 10),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("breeds",),
@@ -806,11 +781,10 @@ def get_all_experiments(
             dropouts=(0,),
             runs=range(2),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("breeds",),
@@ -820,11 +794,10 @@ def get_all_experiments(
             dropouts=(1,),
             runs=range(2),
             rewards=(0,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("breeds",),
@@ -834,11 +807,10 @@ def get_all_experiments(
             dropouts=(0,),
             runs=range(2),
             rewards=(2.2, 3, 6, 10, 15),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts/vit"),
             datasets=("breeds",),
@@ -848,13 +820,12 @@ def get_all_experiments(
             dropouts=(1,),
             runs=range(2),
             rewards=(2.2, 3, 6, 10, 15),
-        ),
+        )
     )
     # ViT Best lr runs
 
     # Non-vit
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("svhn",),
@@ -864,11 +835,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2,),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("svhn",),
@@ -878,11 +848,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2, 3, 6, 10),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("svhn_openset",),
@@ -892,11 +861,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2,),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("svhn_openset",),
@@ -906,11 +874,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2, 3, 6, 10),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("cifar10",),
@@ -920,11 +887,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2,),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("cifar10",),
@@ -934,11 +900,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2, 3, 6, 10),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("cifar100",),
@@ -948,11 +913,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2,),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("cifar100",),
@@ -962,11 +926,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2, 3, 6, 10, 12, 15, 20),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("supercifar",),
@@ -976,11 +939,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2,),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("supercifar",),
@@ -990,11 +952,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2, 3, 6, 10, 12, 15, 20),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("animals",),
@@ -1004,11 +965,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2,),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("animals",),
@@ -1018,11 +978,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2, 3, 6, 10, 15),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("animals_openset",),
@@ -1032,11 +991,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2,),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("animals_openset",),
@@ -1046,11 +1004,10 @@ def get_all_experiments(
             runs=range(5),
             rewards=(2.2, 3, 6, 10, 15),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("camelyon",),
@@ -1060,11 +1017,10 @@ def get_all_experiments(
             runs=range(10),
             rewards=(2.2,),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("camelyon",),
@@ -1074,11 +1030,10 @@ def get_all_experiments(
             runs=range(10),
             rewards=(2.2, 3, 6, 10),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("breeds",),
@@ -1088,11 +1043,10 @@ def get_all_experiments(
             runs=range(2),
             rewards=(2.2,),
             learning_rates=(None,),
-        ),
+        )
     )
 
-    _experiments = chain(
-        _experiments,
+    _experiments.extend(
         Experiment.from_iterables(
             group_dir=Path("fd-shifts"),
             datasets=("breeds",),
@@ -1102,12 +1056,12 @@ def get_all_experiments(
             runs=range(2),
             rewards=(2.2, 3, 6, 10, 15),
             learning_rates=(None,),
-        ),
+        )
     )
 
     if with_precision_study:
-        _experiments = chain(
-            _experiments,
+        # precision study
+        _experiments.extend(
             Experiment.from_iterables(
                 group_dir=Path("fd-shifts/svhn_precision_study16"),
                 datasets=("svhn",),
@@ -1117,11 +1071,10 @@ def get_all_experiments(
                 runs=range(5),
                 rewards=(2.2,),
                 learning_rates=(None,),
-            ),
+            )
         )
 
-        _experiments = chain(
-            _experiments,
+        _experiments.extend(
             Experiment.from_iterables(
                 group_dir=Path("fd-shifts/svhn_precision_study32"),
                 datasets=("svhn",),
@@ -1131,11 +1084,10 @@ def get_all_experiments(
                 runs=range(5),
                 rewards=(2.2,),
                 learning_rates=(None,),
-            ),
+            )
         )
 
-        _experiments = chain(
-            _experiments,
+        _experiments.extend(
             Experiment.from_iterables(
                 group_dir=Path("fd-shifts/svhn_precision_study64"),
                 datasets=("svhn",),
@@ -1145,11 +1097,10 @@ def get_all_experiments(
                 runs=range(5),
                 rewards=(2.2,),
                 learning_rates=(None,),
-            ),
+            )
         )
 
-        _experiments = chain(
-            _experiments,
+        _experiments.extend(
             Experiment.from_iterables(
                 group_dir=Path("fd-shifts/camelyon_precision_study16"),
                 datasets=("camelyon",),
@@ -1159,11 +1110,10 @@ def get_all_experiments(
                 runs=range(5),
                 rewards=(2.2,),
                 learning_rates=(None,),
-            ),
+            )
         )
 
-        _experiments = chain(
-            _experiments,
+        _experiments.extend(
             Experiment.from_iterables(
                 group_dir=Path("fd-shifts/camelyon_precision_study32"),
                 datasets=("camelyon",),
@@ -1173,11 +1123,10 @@ def get_all_experiments(
                 runs=range(5),
                 rewards=(2.2,),
                 learning_rates=(None,),
-            ),
+            )
         )
 
-        _experiments = chain(
-            _experiments,
+        _experiments.extend(
             Experiment.from_iterables(
                 group_dir=Path("fd-shifts/camelyon_precision_study64"),
                 datasets=("camelyon",),
@@ -1187,11 +1136,10 @@ def get_all_experiments(
                 runs=range(5),
                 rewards=(2.2,),
                 learning_rates=(None,),
-            ),
+            )
         )
 
-        _experiments = chain(
-            _experiments,
+        _experiments.extend(
             Experiment.from_iterables(
                 group_dir=Path("fd-shifts/vit_precision_study16"),
                 datasets=("svhn",),
@@ -1201,11 +1149,10 @@ def get_all_experiments(
                 dropouts=(0, 1),
                 runs=range(5),
                 rewards=(0,),
-            ),
+            )
         )
 
-        _experiments = chain(
-            _experiments,
+        _experiments.extend(
             Experiment.from_iterables(
                 group_dir=Path("fd-shifts/vit_precision_study32"),
                 datasets=("svhn",),
@@ -1215,11 +1162,10 @@ def get_all_experiments(
                 dropouts=(0, 1),
                 runs=range(5),
                 rewards=(0,),
-            ),
+            )
         )
 
-        _experiments = chain(
-            _experiments,
+        _experiments.extend(
             Experiment.from_iterables(
                 group_dir=Path("fd-shifts/vit_precision_study64"),
                 datasets=("svhn",),
@@ -1229,16 +1175,18 @@ def get_all_experiments(
                 dropouts=(0, 1),
                 runs=range(5),
                 rewards=(0,),
-            ),
+            )
         )
 
     if not with_vit_special_runs:
-        _experiments = filter(
-            lambda exp: not (exp.backbone == "vit" and exp.model != "vit"),
-            _experiments,
+        _experiments = list(
+            filter(
+                lambda exp: not (exp.backbone == "vit" and exp.model != "vit"),
+                _experiments,
+            )
         )
 
-    if with_ms_runs:
-        _experiments = chain(_experiments, get_ms_experiments())
+    # if with_ms_runs:
+    # _experiments.extend(get_ms_experiments())
 
     return _experiments

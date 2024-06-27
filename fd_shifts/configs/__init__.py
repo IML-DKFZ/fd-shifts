@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
 from random import randint
-from typing import TYPE_CHECKING, Any, Iterable, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, TypeVar
 
 from omegaconf import SI, DictConfig, OmegaConf
 
@@ -306,6 +306,7 @@ class ConfidMetricsConfig(_IterableMixin):
             "fpr@95tpr",
             "e-aurc",
             "aurc",
+            "augrc",
         ]
     )
     val: list[str] = field(
@@ -316,6 +317,7 @@ class ConfidMetricsConfig(_IterableMixin):
             "fpr@95tpr",
             "e-aurc",
             "aurc",
+            "augrc",
         ]
     )
     test: list[str] = field(
@@ -327,6 +329,7 @@ class ConfidMetricsConfig(_IterableMixin):
             "ece",
             "e-aurc",
             "aurc",
+            "augrc",
             "fpr@95tpr",
         ]
     )
@@ -534,3 +537,12 @@ class Config(_IterableMixin):
         config.__pydantic_validate_values__()
 
         return config
+
+
+def _update(d, u):
+    for k, v in u.items():
+        if isinstance(v, Mapping):
+            d[k] = _update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d

@@ -1154,6 +1154,20 @@ def register(config_fn: Callable[..., Config], n_runs: int = 5, **kwargs) -> Non
         config = config_fn(**kwargs, run=run)
         __experiments[f"{config.exp.group_name}/{config.exp.name}"] = config
 
+        # Add external CSF to the set of computed scores
+        if config.eval.ext_confid_name is not None:
+            # if config.model.name != "vit_model":
+            config.eval.confidence_measures.test += ["ext"]
+
+        # Add MCD-based CSFs to the set of computed scores
+        if config.model.dropout_rate:
+            config.eval.confidence_measures.test += [
+                "mcd_mcp",
+                "mcd_pe",
+                "mcd_ee",
+                "mcd_mi",  # , "mcd_sv", "mcd_waic"
+            ]
+
 
 register(vit_svhn_modelvit, lr=0.03, do=1, rew=0)
 register(vit_svhn_modelvit, lr=0.01, do=0, rew=0)

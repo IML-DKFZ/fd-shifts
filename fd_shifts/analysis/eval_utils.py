@@ -133,7 +133,6 @@ class ConfidEvaluator:
         self.bin_confids = None
         self.fpr_list = None
         self.tpr_list = None
-        self.rc_curve = None
         self.precision_list = None
         self.recall_list = None
         self.labels = labels
@@ -167,18 +166,42 @@ class ConfidEvaluator:
             or "e-aurc" in self.query_metrics
             or "b-aurc" in self.query_metrics
         ):
-            if self.rc_curve is None:
-                self.get_rc_curve_stats()
             if "aurc" in self.query_metrics:
                 out_metrics["aurc"] = get_metric_function("aurc")(self.stats_cache)
             if "b-aurc" in self.query_metrics:
                 out_metrics["b-aurc"] = get_metric_function("b-aurc")(self.stats_cache)
             if "e-aurc" in self.query_metrics:
                 out_metrics["e-aurc"] = get_metric_function("e-aurc")(self.stats_cache)
+            if "aurc-ba" in self.query_metrics:
+                out_metrics["aurc-ba"] = get_metric_function("aurc-ba")(
+                    self.stats_cache
+                )
+            if "augrc" in self.query_metrics:
+                out_metrics["augrc"] = get_metric_function("augrc")(self.stats_cache)
+            if "augrc-CI95" in self.query_metrics:
+                out_metrics["augrc-CI95"] = get_metric_function("augrc-CI95")(
+                    self.stats_cache
+                )
+            if "augrc-CI95-l" in self.query_metrics:
+                out_metrics["augrc-CI95-l"] = get_metric_function("augrc-CI95-l")(
+                    self.stats_cache
+                )
+            if "augrc-CI95-h" in self.query_metrics:
+                out_metrics["augrc-CI95-h"] = get_metric_function("augrc-CI95-h")(
+                    self.stats_cache
+                )
+            if "e-augrc" in self.query_metrics:
+                out_metrics["e-augrc"] = get_metric_function("e-augrc")(
+                    self.stats_cache
+                )
+            if "augrc-ba" in self.query_metrics:
+                out_metrics["augrc-ba"] = get_metric_function("augrc-ba")(
+                    self.stats_cache
+                )
 
             if "risk@95cov" in self.query_metrics:
-                coverages = np.array(self.rc_curve[0])
-                risks = np.array(self.rc_curve[1])
+                coverages = self.stats_cache.coverages
+                risks = self.stats_cache.selective_risks
                 out_metrics["risk@100cov"] = (
                     np.min(risks[np.argwhere(coverages >= 1)]) * 100
                 )
@@ -228,10 +251,8 @@ class ConfidEvaluator:
             plot_stats_dict["bin_confids"] = self.bin_confids
 
         if "rc_curve" in self.query_plots:
-            if self.rc_curve is None:
-                self.get_rc_curve_stats()
-            plot_stats_dict["coverage_list"] = np.array(self.rc_curve[0])
-            plot_stats_dict["selective_risk_list"] = np.array(self.rc_curve[1])
+            plot_stats_dict["coverage_list"] = self.stats_cache.coverages
+            plot_stats_dict["selective_risk_list"] = self.stats_cache.selective_risks
 
         if "prc_curve" in self.query_plots:
             if self.precision_list is None:
@@ -248,11 +269,6 @@ class ConfidEvaluator:
             logger.error(
                 f"ROC Curve Failed: {self.correct.shape=}, {self.confids.shape=}, {np.min(self.correct)=}, {np.max(self.correct)=}, {np.min(self.confids)=}, {np.max(self.confids)=}"
             )
-
-    def get_rc_curve_stats(self):
-        self.rc_curve, self.aurc, self.eaurc = RC_curve(
-            (1 - self.correct), self.confids
-        )
 
     def get_err_prc_curve_stats(self):
         self.precision_list, self.recall_list, _ = skm.precision_recall_curve(
@@ -649,46 +665,6 @@ class ConfidPlotter:
         self.ax.set_title("RC Curve")
         self.ax.set_ylabel("Selective Risk [%]")
         self.ax.set_xlabel("Coverage")
-
-
-def RC_curve(residuals, confidence):
-    coverages = []
-    risks = []
-    n = len(residuals)
-    idx_sorted = np.argsort(confidence)
-    cov = n
-    error_sum = sum(residuals[idx_sorted])
-    (coverages.append(cov / n),)
-    risks.append(error_sum / n)
-    weights = []
-    tmp_weight = 0
-    for i in range(0, len(idx_sorted) - 1):
-        cov = cov - 1
-        error_sum = error_sum - residuals[idx_sorted[i]]
-        selective_risk = error_sum / (n - 1 - i)
-        tmp_weight += 1
-        if i == 0 or confidence[idx_sorted[i]] != confidence[idx_sorted[i - 1]]:
-            coverages.append(cov / n)
-            risks.append(selective_risk)
-            weights.append(tmp_weight / n)
-            tmp_weight = 0
-
-    # add a well-defined final point to the RC-curve.
-    if tmp_weight > 0:
-        coverages.append(0)
-        risks.append(risks[-1])
-        weights.append(tmp_weight / n)
-
-    # aurc is computed as a weighted average over risk scores analogously to the average precision score.
-    aurc = sum([a * w for a, w in zip(risks, weights)])
-
-    # compute e-aurc
-    err = np.mean(residuals)
-    kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
-    e_aurc = aurc - kappa_star_aurc
-
-    curve = (coverages, risks)
-    return curve, aurc, e_aurc
 
 
 # class BrierScore(Metric):

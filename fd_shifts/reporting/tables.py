@@ -82,28 +82,64 @@ LATEX_TABLE_TEMPLATE_LANDSCAPE = r"""
 """
 
 
-def aggregate_over_runs(data: pd.DataFrame) -> pd.DataFrame:
+def aggregate_over_runs(data: pd.DataFrame, metric_columns: list[str]) -> pd.DataFrame:
     """Compute means over equivalent runs
 
     Args:
         data (pd.DataFrame): experiment data
+        metric_columns (list[str]): metrics to keep & aggregate
 
     Returns:
         aggregated experiment data
     """
     logger.info("Aggregating over runs")
     fixed_columns = ["study", "confid"]
-    metrics_columns = ["accuracy", "aurc", "ece", "failauc", "fail-NLL"]
+    if "bootstrap_index" in data.columns:
+        fixed_columns.append("bootstrap_index")
 
     mean = (
-        data[fixed_columns + metrics_columns]
+        data[fixed_columns + metric_columns]
         .groupby(by=fixed_columns)
         .mean()
         .sort_values("confid")
         .reset_index()
     )
     std = (
-        data[fixed_columns + metrics_columns]
+        data[fixed_columns + metric_columns]
+        .groupby(by=fixed_columns)
+        .std()
+        .sort_values("confid")
+        .reset_index()
+    )
+    return mean, std
+
+
+def aggregate_over_bootstrap_index(
+    data: pd.DataFrame, metric_columns: list[str]
+) -> pd.DataFrame:
+    """Compute means over bootstrap_index
+
+    Args:
+        data (pd.DataFrame): experiment data
+        metric_columns (list[str]): metrics to keep & aggregate
+
+    Returns:
+        aggregated experiment data
+    """
+    logger.info("Aggregating over boostrap_index")
+    fixed_columns = ["study", "confid"]
+    if "run" in data.columns:
+        fixed_columns.append("run")
+
+    mean = (
+        data[fixed_columns + metric_columns]
+        .groupby(by=fixed_columns)
+        .mean()
+        .sort_values("confid")
+        .reset_index()
+    )
+    std = (
+        data[fixed_columns + metric_columns]
         .groupby(by=fixed_columns)
         .std()
         .sort_values("confid")
@@ -515,8 +551,11 @@ def paper_results(
     ltex[2] = ltex[2][: ltex[2].rfind("?")] + ltex[2][ltex[2].rfind("?") + 1 :]
 
     # Insert empty row before ViT part
-    i = ltex.index(next((x for x in ltex if "ViT" in x)))
-    ltex.insert(i, "\\midrule \\\\")
+    try:
+        i = ltex.index(next((x for x in ltex if "ViT" in x)))
+        ltex.insert(i, "\\midrule \\\\")
+    except StopIteration:
+        logger.info("No ViT experiment found in table")
 
     ltex = "\n".join(ltex)
 
@@ -546,26 +585,43 @@ def paper_results(
         )
 
 
-def rank_comparison_metric(data: pd.DataFrame, out_dir: Path):
+def rank_comparison_metric(
+    data: pd.DataFrame,
+    out_dir: Path,
+    metric1: str = "aurc",
+    metric2: str = "failauc",
+    metric1_higherbetter: bool = False,
+    metric2_higherbetter: bool = True,
+    data2: pd.DataFrame = None,
+):
     """Create colored results table in tex format to compare ranking between metrics
 
     Args:
         data (pd.DataFrame): cleaned up experiment data
         out_dir (Path): where to save the output to
+        metric1 (str, optional): Metric 1. Defaults to "aurc".
+        metric2 (str, optional): Metric 2. Defaults to "failauc".
+        metric1_higherbetter (bool, optional): Defaults to False.
+        metric2_higherbetter (bool, optional): Defaults to True.
     """
-    aurc_table = build_results_table(data, "aurc")
-    aurc_table = _add_rank_columns(aurc_table)
-    aurc_table.columns = pd.MultiIndex.from_tuples(
-        map(lambda t: t + (r"$\alpha$",), aurc_table.columns)
+    metric1_table = build_results_table(data, metric1)
+    metric1_table = _add_rank_columns(metric1_table, ascending=not metric1_higherbetter)
+    metric1_table.columns = pd.MultiIndex.from_tuples(
+        map(lambda t: t + (r"$\alpha$",), metric1_table.columns)
     )
 
-    failauc_table = build_results_table(data, "failauc")
-    failauc_table = _add_rank_columns(failauc_table, False)
-    failauc_table.columns = pd.MultiIndex.from_tuples(
-        map(lambda t: t + (r"$\beta$",), failauc_table.columns)
+    if data2 is not None:
+        metric2_table = build_results_table(data2, metric2)
+    else:
+        logger.info(f"Using the same data (and hparam selection) for metric {metric2}")
+        metric2_table = build_results_table(data, metric2)
+
+    metric2_table = _add_rank_columns(metric2_table, ascending=not metric2_higherbetter)
+    metric2_table.columns = pd.MultiIndex.from_tuples(
+        map(lambda t: t + (r"$\beta$",), metric2_table.columns)
     )
 
-    results_table = pd.concat((aurc_table, failauc_table), axis=1)
+    results_table = pd.concat((metric1_table, metric2_table), axis=1)
     results_table = _reorder_studies(results_table, add_level=[r"$\alpha$", r"$\beta$"])
 
     _formatter = lambda x: f"{int(x):>3d}"
@@ -581,15 +637,19 @@ def rank_comparison_metric(data: pd.DataFrame, out_dir: Path):
         lambda val: round(val, 2) if val < 10 else round(val, 1)
     )
 
-    gmap_vit = _compute_gmap(
-        results_table.loc[
-            results_table.index[
-                results_table.index.get_level_values(1).str.contains("ViT")
+    if results_table.index.get_level_values(1).str.contains("ViT").any():
+        gmap_vit = _compute_gmap(
+            results_table.loc[
+                results_table.index[
+                    results_table.index.get_level_values(1).str.contains("ViT")
+                ],
+                results_table.columns,
             ],
-            results_table.columns,
-        ],
-        True,
-    )
+            True,
+        )
+    else:
+        gmap_vit = []
+
     gmap_cnn = _compute_gmap(
         results_table.loc[
             results_table.index[
@@ -662,31 +722,41 @@ def rank_comparison_metric(data: pd.DataFrame, out_dir: Path):
     ltex[3] = ltex[3][: ltex[3].rfind("?")] + ltex[3][ltex[3].rfind("?") + 1 :]
 
     # Insert empty row before ViT part
-    i = ltex.index(next((x for x in ltex if "ViT" in x)))
-    ltex.insert(i, "\\midrule \\\\")
+    try:
+        i = ltex.index(next((x for x in ltex if "ViT" in x)))
+        ltex.insert(i, "\\midrule \\\\")
+    except StopIteration:
+        logger.info("No ViT experiment found in table")
 
     ltex = "\n".join(ltex)
 
-    with open(out_dir / f"rank_metric_comparison.tex", "w") as f:
+    if data2 is None:
+        filename = f"rank_metric_comparison_{metric1}_to_{metric2}"
+    else:
+        filename = f"rank_metric_comparison_{metric1}_to_{metric2}_optimized_both"
+
+    print(f"{filename = }")
+
+    with open(out_dir / f"{filename}.tex", "w") as f:
         f.write(ltex)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
         shutil.copy2(
-            out_dir / f"rank_metric_comparison.tex",
-            tmpdir / f"rank_metric_comparison.tex",
+            out_dir / f"{filename}.tex",
+            tmpdir / f"{filename}.tex",
         )
         with open(tmpdir / "render.tex", "w") as f:
             f.write(
                 LATEX_TABLE_TEMPLATE_LANDSCAPE.replace(
-                    "{input_file}", f"rank_metric_comparison.tex"
-                ).replace("{metric}", "")
+                    "{input_file}", f"{filename}.tex"
+                ).replace("{metric}", f"{metric1}/{metric2}")
             )
 
         subprocess.run(f"lualatex render.tex", shell=True, check=True, cwd=tmpdir)
         shutil.copy2(
             tmpdir / "render.pdf",
-            out_dir / f"rank_metric_comparison.pdf",
+            out_dir / f"{filename}.pdf",
         )
 
 
@@ -817,8 +887,11 @@ def rank_comparison_mode(data: pd.DataFrame, out_dir: Path, rank: bool = True):
     ltex[3] = ltex[3][: ltex[3].rfind("?")] + ltex[3][ltex[3].rfind("?") + 1 :]
 
     # Insert empty row before ViT part
-    i = ltex.index(next((x for x in ltex if "ViT" in x)))
-    ltex.insert(i, "\\midrule \\\\")
+    try:
+        i = ltex.index(next((x for x in ltex if "ViT" in x)))
+        ltex.insert(i, "\\midrule \\\\")
+    except StopIteration:
+        logger.info("No ViT experiment found in table")
 
     ltex = "\n".join(ltex)
 

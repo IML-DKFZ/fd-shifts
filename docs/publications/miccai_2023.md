@@ -4,4 +4,16 @@
 
 For installation and general usage, follow the [FD-Shifts instructions](https://github.com/IML-DKFZ/fd-shifts/blob/v0.1.1/README.md).
 
-> :construction: WIP
+## Citing this Work
+
+```bibtex
+@inproceedings{
+    bungert2023understanding,
+    title={Understanding silent failures in medical image classification},
+    author={Bungert, Till J and Kobelke, Levin and Jaeger, Paul F},
+    booktitle={International Conference on Medical Image Computing and Computer-Assisted Intervention},
+    pages={400--410},
+    year={2023},
+    organization={Springer}
+}
+```

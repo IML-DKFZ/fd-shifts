@@ -2,23 +2,27 @@ import concurrent.futures
 import functools
 import os
 from pathlib import Path
-from typing import cast
 
 import pandas as pd
+from pandarallel import pandarallel
 
 from fd_shifts import logger
 from fd_shifts.configs import Config
-from fd_shifts.experiments import Experiment, get_all_experiments
 from fd_shifts.experiments.configs import get_experiment_config, list_experiment_configs
-from fd_shifts.experiments.tracker import list_analysis_output_files
+from fd_shifts.experiments.tracker import (
+    list_analysis_output_files,
+    list_bootstrap_analysis_output_files,
+)
+
+pandarallel.initialize(verbose=1)
 
 DATASETS = (
     "svhn",
     "cifar10",
     "cifar100",
     "super_cifar100",
-    "camelyon",
-    "animals",
+    "wilds_camelyon",
+    "wilds_animals",
     "breeds",
 )
 
@@ -28,11 +32,11 @@ def __find_in_store(config: Config, file: str) -> Path | None:
     test_dir = config.test.dir.relative_to(os.getenv("EXPERIMENT_ROOT_DIR", ""))
     for store_path in store_paths:
         if (store_path / test_dir / file).is_file():
-            logger.info(f"Loading {store_path / test_dir / file}")
+            # logger.info(f"Loading {store_path / test_dir / file}")
             return store_path / test_dir / file
 
 
-def __load_file(config: Config, name: str, file: str):
+def _load_file(config: Config, name: str, file: str):
     if f := __find_in_store(config, file):
         return pd.read_csv(f)
     else:
@@ -40,21 +44,34 @@ def __load_file(config: Config, name: str, file: str):
         return None
 
 
-def __load_experiment(name: str) -> pd.DataFrame | None:
+def _load_experiment(
+    name: str, bootstrap_analysis: bool = False
+) -> pd.DataFrame | None:
     from fd_shifts.main import omegaconf_resolve
 
     config = get_experiment_config(name)
     config = omegaconf_resolve(config)
 
-    # data = list(executor.map(functools.partial(__load_file, config, name), list_analysis_output_files(config)))
-    data = list(
-        map(
-            functools.partial(__load_file, config, name),
-            list_analysis_output_files(config),
+    # data = list(executor.map(functools.partial(_load_file, config, name), list_analysis_output_files(config)))
+    if bootstrap_analysis:
+        data = list(
+            map(
+                functools.partial(_load_file, config, name),
+                list_bootstrap_analysis_output_files(config),
+            )
         )
-    )
-    if len(data) == 0 or any(map(lambda d: d is None, data)):
+    else:
+        data = list(
+            map(
+                functools.partial(_load_file, config, name),
+                list_analysis_output_files(config),
+            )
+        )
+
+    data = [d for d in data if d is not None]
+    if len(data) == 0:
         return
+
     data = pd.concat(data)  # type: ignore
     data = (
         data.assign(
@@ -65,12 +82,19 @@ def __load_experiment(name: str) -> pd.DataFrame | None:
             lr=config.trainer.optimizer.init_args["init_args"]["lr"],
         )
         .dropna(subset=["name", "model"])
-        .drop_duplicates(subset=["name", "study", "model", "network", "confid"])
+        .drop_duplicates(
+            subset=(
+                ["name", "study", "model", "network", "confid"]
+                if not bootstrap_analysis
+                else ["name", "study", "model", "network", "confid", "bootstrap_index"]
+            )
+        )
     )
+
     return data
 
 
-def load_all():
+def load_all(bootstrap_analysis: bool = False, include_vit: bool = True):
     dataframes = []
     # TODO: make this async
     with concurrent.futures.ProcessPoolExecutor(max_workers=12) as executor:
@@ -78,8 +102,17 @@ def load_all():
             filter(
                 lambda d: d is not None,
                 executor.map(
-                    __load_experiment,
-                    list_experiment_configs(),
+                    functools.partial(
+                        _load_experiment, bootstrap_analysis=bootstrap_analysis
+                    ),
+                    filter(
+                        (
+                            (lambda exp: True)
+                            if include_vit
+                            else lambda exp: not exp.startswith("vit")
+                        ),
+                        list_experiment_configs(),
+                    ),
                 ),
             )
         )
@@ -158,9 +191,6 @@ def assign_hparams_from_names(data: pd.DataFrame) -> pd.DataFrame:
         .mask(data["backbone"] == "vit", "vit_")
         + data.model.where(
             data.backbone == "vit", data.name.str.split("_", expand=True)[0]
-        ).mask(
-            data.backbone == "vit",
-            data.name.str.split("model", expand=True)[1].str.split("_", expand=True)[0],
         ),
         # Encode every detail into confid name
         _confid=data.confid,
@@ -188,7 +218,7 @@ def filter_best_lr(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFrame:
     Returns:
         filtered data
     """
-    logger.info("Filtering best learning rates")
+    logger.info(f"Filtering best learning rates, optimizing {metric}")
 
     def _filter_row(row, selection_df, optimization_columns, fixed_columns):
         if "openset" in row["study"]:
@@ -244,10 +274,12 @@ def filter_best_lr(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFrame:
         )
     ]
 
-    return data
+    return data, selection_df
 
 
-def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFrame:
+def filter_best_hparams(
+    data: pd.DataFrame, metric: str = "aurc", bootstrap_analysis: bool = False
+) -> pd.DataFrame:
     """
     for every study (which encodes dataset) and confidence (which encodes other stuff)
     select all runs with the best avg combo of reward and dropout
@@ -259,6 +291,7 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
     Returns:
         filtered data
     """
+    logger.info(f"Filtering best hyperparameters, optimizing {metric}")
 
     logger.info("Filtering best hyperparameters")
 
@@ -293,7 +326,10 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
         "model",
     ]
     optimization_columns = ["rew", "dropout"]
-    aggregation_columns = ["run", metric]
+    if bootstrap_analysis:
+        aggregation_columns = ["run", "bootstrap_index", metric]
+    else:
+        aggregation_columns = ["run", metric]
 
     # Only look at validation data and the relevant columns
     selection_df = data[data.study.str.contains("val_tuning")][
@@ -311,7 +347,7 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
     ]
 
     data = data[
-        data.apply(
+        data.parallel_apply(
             lambda row: _filter_row(
                 row, selection_df, optimization_columns, fixed_columns
             ),
@@ -319,7 +355,7 @@ def filter_best_hparams(data: pd.DataFrame, metric: str = "aurc") -> pd.DataFram
         )
     ]
 
-    return data
+    return data, selection_df
 
 
 def _confid_string_to_name(confid: pd.Series) -> pd.Series:
@@ -397,35 +433,50 @@ def str_format_metrics(data: pd.DataFrame) -> pd.DataFrame:
     Returns:
         experiment data with formatted metrics
     """
-    data = data.rename(columns={"fail-NLL": "failNLL"})
+    _columns = data.columns
+    dash_to_no_dash = {
+        c: c.replace("-", "") for c in _columns if isinstance(c, str) and "-" in c
+    }
+    # Remove dashes from column names
+    data = data.rename(columns=dash_to_no_dash)
 
-    data = data.assign(
-        accuracy=(data.accuracy * 100).map("{:>2.2f}".format),
-        aurc=data.aurc.map("{:>3.2f}".format).map(
-            lambda x: x[:4] if "." in x[:3] else x[:3]
+    # Formatting instructions for each metric
+    format_mapping = {
+        "accuracy": lambda x: "{:>2.2f}".format(x * 100),
+        "aurc": lambda x: (
+            "{:>3.2f}".format(x)[:4]
+            if "." in "{:>3.2f}".format(x)[:3]
+            else "{:>3.2f}".format(x)[:3]
         ),
-        failauc=(data.failauc * 100).map("{:>3.2f}".format),
-        ece=data.ece.map("{:>2.2f}".format),
-        failNLL=data.failNLL.map("{:>2.2f}".format),
-    )
-    data = data.rename(columns={"failNLL": "fail-NLL"})
+        "failauc": lambda x: "{:>3.2f}".format(x * 100),
+        "ece": lambda x: "{:>2.2f}".format(x),
+        "failNLL": lambda x: "{:>2.2f}".format(x),
+    }
+    format_mapping["eaurc"] = format_mapping["aurc"]
+    format_mapping["augrc"] = format_mapping["aurc"]
+    format_mapping["eaugrc"] = format_mapping["aurc"]
+    format_mapping["aurcba"] = format_mapping["aurc"]
+    format_mapping["augrcba"] = format_mapping["aurc"]
+
+    # Apply formatting if metric is present in the data
+    for col, formatting_func in format_mapping.items():
+        if col in data.columns:
+            data[col] = data[col].map(formatting_func)
+
+    # Apply inverse mapping, add dashes again
+    data = data.rename(columns={v: k for k, v in dash_to_no_dash.items()})
 
     return data
 
 
-def main(out_path: str | Path):
-    """Main entrypoint for CLI report generation
-
-    Args:
-        base_path (str | Path): path where experiment data lies
-    """
+def main(
+    out_path: str | Path = "./output",
+    metric_hparam_search: str = "augrc",
+):
+    """Main entrypoint for CLI report generation"""
     from fd_shifts.reporting import tables
     from fd_shifts.reporting.plots import plot_rank_style, vit_v_cnn_box
-    from fd_shifts.reporting.tables import (
-        paper_results,
-        rank_comparison_metric,
-        rank_comparison_mode,
-    )
+    from fd_shifts.reporting.tables import paper_results, rank_comparison_metric
 
     pd.set_option("display.max_rows", None)
     pd.set_option("display.max_columns", None)
@@ -433,32 +484,78 @@ def main(out_path: str | Path):
     pd.set_option("display.max_colwidth", None)
 
     data_dir: Path = Path(out_path).expanduser().resolve()
+    data_dir = data_dir / f"optimized-{metric_hparam_search}"
     data_dir.mkdir(exist_ok=True, parents=True)
 
     data = load_all()
-
     data = assign_hparams_from_names(data)
 
-    data = filter_best_lr(data)
-    data = filter_best_hparams(data)
+    # -- Select best hyperparameters ---------------------------------------------------
+    data, selection_df = filter_best_lr(data, metric=metric_hparam_search)
+    selection_df.to_csv(data_dir / "filter_best_lr.csv", decimal=".")
+    logger.info(f"Saved best lr to '{str(data_dir / 'filter_best_lr.csv')}'")
+    data, selection_df = filter_best_hparams(data, metric=metric_hparam_search)
+    selection_df.to_csv(data_dir / "filter_best_hparams.csv", decimal=".")
+    logger.info(f"Saved best hparams to '{str(data_dir / 'filter_best_hparams.csv')}'")
 
     data = _filter_unused(data)
+
+    # Filter MCD data
+    # data = data[~data.confid.str.contains("mcd")]
+
     data = rename_confids(data)
     data = rename_studies(data)
 
-    # plot_rank_style(data, "cifar10", "aurc", data_dir)
-    # vit_v_cnn_box(data, data_dir)
+    # -- Aggregate across runs ---------------------------------------------------------
+    data, std = tables.aggregate_over_runs(
+        data,
+        metric_columns=[
+            "accuracy",
+            "aurc",
+            "ece",
+            "failauc",
+            "fail-NLL",
+            "e-aurc",
+            "augrc",
+            "e-augrc",
+            "aurc-ba",
+            "augrc-ba",
+        ],
+    )
 
-    data, std = tables.aggregate_over_runs(data)
+    # -- Apply metric formatting -------------------------------------------------------
     data = str_format_metrics(data)
 
-    paper_results(data, "aurc", False, data_dir)
-    # paper_results(data, "aurc", False, data_dir, rank_cols=True)
-    # paper_results(data, "ece", False, data_dir)
-    # paper_results(data, "failauc", True, data_dir)
-    # paper_results(data, "accuracy", True, data_dir)
-    # paper_results(data, "fail-NLL", False, data_dir)
+    # # -- Relative error (evaluated across runs) --------------------------------------
+    metric_list = ["aurc", "e-aurc", "augrc", "e-augrc", "aurc-ba", "augrc-ba"]
 
-    # rank_comparison_metric(data, data_dir)
-    # rank_comparison_mode(data, data_dir)
-    # rank_comparison_mode(data, data_dir, False)
+    # data_dir_std = data_dir / "rel_std"
+    # data_dir_std.mkdir(exist_ok=True, parents=True)
+    # for m in metric_list:
+    #     std[m] = std[m].astype(float) / data[m].astype(float)
+    # std = str_format_metrics(std)
+
+    # for m in metric_list:
+    #     # lower is better for all these metrics
+    #     paper_results(std, m, False, data_dir_std)
+
+    # # -- Metric tables -----------------------------------------------------------------
+    for m in metric_list:
+        # lower is better for all these metrics
+        paper_results(data, m, False, data_dir)
+        paper_results(data, m, False, data_dir, rank_cols=True)
+
+    paper_results(data, "ece", False, data_dir)
+    paper_results(data, "failauc", True, data_dir)
+    paper_results(data, "accuracy", True, data_dir)
+    paper_results(data, "fail-NLL", False, data_dir)
+
+    # -- Ranking comparisons -----------------------------------------------------------
+    rank_comparison_metric(
+        data,
+        data_dir,
+        metric1="aurc",
+        metric2="augrc",
+        metric1_higherbetter=False,
+        metric2_higherbetter=False,
+    )

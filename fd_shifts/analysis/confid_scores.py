@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
 from scipy import special as scpspecial
+
+from fd_shifts import logger
 
 if TYPE_CHECKING:
     from fd_shifts.analysis import Analysis, ExperimentData
@@ -27,7 +28,7 @@ def _assert_softmax_numerically_stable(softmax: ArrayType):
     errors = (msr == 1) & ((softmax > 0) & (softmax < 1)).any(axis=1)
 
     if softmax.dtype != np.float64:
-        logging.warning("Softmax is not 64bit, not checking for numerical stability")
+        logger.warning("Softmax is not 64bit, not checking for numerical stability")
         return
 
     # alert if more than 10% are erroneous
@@ -279,6 +280,7 @@ def mcd_ext(mcd_softmax_mean: ArrayType, _: ArrayType) -> ArrayType:
 @register_confid_func("maha_qt")
 @register_confid_func("temp_mls")
 @register_confid_func("react_temp_mls")
+@register_confid_func("temp_logits")
 @register_confid_func("ext_qt")
 @register_confid_func("tcp")
 @register_confid_func("dg")

@@ -13,11 +13,7 @@ import torch
 import torchvision
 from medmnist.info import DEFAULT_ROOT, HOMEPAGE, INFO
 from PIL import Image, ImageFile
-from robustness.tools.breeds_helpers import (
-    ClassHierarchy,
-    make_entity13,
-    print_dataset_info,
-)
+from robustness.tools.breeds_helpers import make_entity13
 from robustness.tools.folder import ImageFolder
 from robustness.tools.helpers import get_label_mapping
 from torch.utils.data import Dataset
@@ -1041,6 +1037,8 @@ class WILDSAnimals(IWildCamDataset):
 class myWILDSSubset(WILDSSubset):
     def __init__(self, dataset, indices, transform):
         super().__init__(dataset, indices, transform)
+        if hasattr(dataset, "classes"):
+            self.classes = dataset.classes
 
     def __getitem__(self, idx):
         x, y, metadata = self.dataset[self.indices[idx]]
@@ -1677,4 +1675,6 @@ def get_dataset(
         return _dataset_factory[name](**pass_kwargs)
 
     else:
-        return _dataset_factory[name](**pass_kwargs)
+        return _dataset_factory[name](
+            **{**pass_kwargs, **(kwargs if kwargs is not None else {})}
+        )

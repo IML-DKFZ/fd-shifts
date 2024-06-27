@@ -40,7 +40,7 @@
 
 <p align="center">
     <figure class="image">
-        <img src="./docs/new_overview.png">
+        <img src="./docs/publications/iclr_2023_overview.png">
         <figcaption style="font-size: small;">
         Holistic perspective on failure detection. Detecting failures should be seen in the
         context of the overarching goal of preventing silent failures of a classifier, which includes two tasks:
@@ -79,7 +79,19 @@ If you use FD-Shifts please cite our [paper](https://openreview.net/pdf?id=YnkGM
 ```
 
 > **Note**  
-> This repository also contains the benchmarks for our follow-up study ["Understanding Silent Failures in Medical Image Classification"](https://arxiv.org/abs/2307.14729). For the visualization tool presented in that work please see [sf-visuals](https://github.com/IML-DKFZ/sf-visuals).
+> This repository also contains the benchmarks for our follow-up study ["Understanding Silent Failures in Medical Image Classification"](https://arxiv.org/abs/2307.14729) (for the visualization tool presented in that work please see [sf-visuals](https://github.com/IML-DKFZ/sf-visuals)) and for ["Overcoming Common Flaws in the Evaluation of Selective Classification Systems"]().
+
+```bibtex
+@inproceedings{
+    bungert2023understanding,
+    title={Understanding silent failures in medical image classification},
+    author={Bungert, Till J and Kobelke, Levin and Jaeger, Paul F},
+    booktitle={International Conference on Medical Image Computing and Computer-Assisted Intervention},
+    pages={400--410},
+    year={2023},
+    organization={Springer}
+}
+```
 
 ## Table Of Contents
 
@@ -128,6 +140,7 @@ scoring functions check out the
 This repository contains the benchmarks for the following publications:
 - ["A Call to Reflect on Evaluation Practices for Failure Detection in Image Classification"](https://openreview.net/pdf?id=YnkGMIh0gvX) &rarr; [Documentation for reproducing](./docs/publications/iclr_2023.md)
 - ["Understanding Silent Failures in Medical Image Classification"](https://arxiv.org/abs/2307.14729) (For the visualization tool presented in that work please see [sf-visuals](https://github.com/IML-DKFZ/sf-visuals).) &rarr; [Documentation for reproducing](./docs/publications/miccai_2023.md)
+- ["Overcoming Common Flaws in the Evaluation of Selective Classification Systems"]() &rarr; [Documentation for reproducing](./docs/publications/augrc_2024.md)
 
 While the following section on [working with FD-Shifts](#working-with-fd-shifts) describes the general usage, descriptions for reproducing specific publications are documented [here](./docs/publications).
 

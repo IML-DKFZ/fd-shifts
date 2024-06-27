@@ -483,8 +483,7 @@ def iterate_noise_study_data(
     for noise_set in getattr(analysis.query_studies, study_name):
         for intensity_level in range(5):
             logger.info(
-                "Starting noise study with intensitiy level %s",
-                intensity_level + 1,
+                f"Starting noise study with intensitiy level {intensity_level + 1}"
             )
 
             study_data = filter_func(
