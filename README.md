@@ -81,6 +81,18 @@ If you use FD-Shifts please cite our [paper](https://openreview.net/pdf?id=YnkGM
 > **Note**  
 > This repository also contains the benchmarks for our follow-up study ["Understanding Silent Failures in Medical Image Classification"](https://arxiv.org/abs/2307.14729) (for the visualization tool presented in that work please see [sf-visuals](https://github.com/IML-DKFZ/sf-visuals)) and for ["Overcoming Common Flaws in the Evaluation of Selective Classification Systems"]().
 
+```bibtex
+@inproceedings{
+    bungert2023understanding,
+    title={Understanding silent failures in medical image classification},
+    author={Bungert, Till J and Kobelke, Levin and Jaeger, Paul F},
+    booktitle={International Conference on Medical Image Computing and Computer-Assisted Intervention},
+    pages={400--410},
+    year={2023},
+    organization={Springer}
+}
+```
+
 ## Table Of Contents
 
 <!--toc:start-->
