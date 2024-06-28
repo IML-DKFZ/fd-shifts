@@ -1,18 +1,24 @@
+from __future__ import annotations
+
 import math
 import os
+from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy
 import seaborn
-import torch
 from sklearn import metrics as skm
 from sklearn.calibration import calibration_curve
-from torchmetrics import Metric
 
 from . import logger
 from .metrics import StatsCache, get_metric_function
+
+# from torchmetrics import Metric
+
+
+if TYPE_CHECKING:
+    import torch
 
 
 def _get_tb_hparams(cf):
@@ -29,6 +35,8 @@ def monitor_eval(
     do_plot=True,
     ext_confid_name=None,
 ):
+    import torch
+
     out_metrics = {}
     out_plots = {}
     bins = 20
@@ -125,7 +133,6 @@ class ConfidEvaluator:
         self.bin_confids = None
         self.fpr_list = None
         self.tpr_list = None
-        self.rc_curve = None
         self.precision_list = None
         self.recall_list = None
         self.labels = labels
@@ -159,18 +166,42 @@ class ConfidEvaluator:
             or "e-aurc" in self.query_metrics
             or "b-aurc" in self.query_metrics
         ):
-            if self.rc_curve is None:
-                self.get_rc_curve_stats()
             if "aurc" in self.query_metrics:
                 out_metrics["aurc"] = get_metric_function("aurc")(self.stats_cache)
             if "b-aurc" in self.query_metrics:
                 out_metrics["b-aurc"] = get_metric_function("b-aurc")(self.stats_cache)
             if "e-aurc" in self.query_metrics:
                 out_metrics["e-aurc"] = get_metric_function("e-aurc")(self.stats_cache)
+            if "aurc-ba" in self.query_metrics:
+                out_metrics["aurc-ba"] = get_metric_function("aurc-ba")(
+                    self.stats_cache
+                )
+            if "augrc" in self.query_metrics:
+                out_metrics["augrc"] = get_metric_function("augrc")(self.stats_cache)
+            if "augrc-CI95" in self.query_metrics:
+                out_metrics["augrc-CI95"] = get_metric_function("augrc-CI95")(
+                    self.stats_cache
+                )
+            if "augrc-CI95-l" in self.query_metrics:
+                out_metrics["augrc-CI95-l"] = get_metric_function("augrc-CI95-l")(
+                    self.stats_cache
+                )
+            if "augrc-CI95-h" in self.query_metrics:
+                out_metrics["augrc-CI95-h"] = get_metric_function("augrc-CI95-h")(
+                    self.stats_cache
+                )
+            if "e-augrc" in self.query_metrics:
+                out_metrics["e-augrc"] = get_metric_function("e-augrc")(
+                    self.stats_cache
+                )
+            if "augrc-ba" in self.query_metrics:
+                out_metrics["augrc-ba"] = get_metric_function("augrc-ba")(
+                    self.stats_cache
+                )
 
             if "risk@95cov" in self.query_metrics:
-                coverages = np.array(self.rc_curve[0])
-                risks = np.array(self.rc_curve[1])
+                coverages = self.stats_cache.coverages
+                risks = self.stats_cache.selective_risks
                 out_metrics["risk@100cov"] = (
                     np.min(risks[np.argwhere(coverages >= 1)]) * 100
                 )
@@ -201,9 +232,6 @@ class ConfidEvaluator:
 
         if "fail-NLL" in self.query_metrics:
             out_metrics["fail-NLL"] = get_metric_function("fail-NLL")(self.stats_cache)
-            logger.debug(
-                "CHECK FAIL NLL: \n{}\n{}", self.confids.max(), self.confids.min()
-            )
 
         return out_metrics
 
@@ -223,10 +251,8 @@ class ConfidEvaluator:
             plot_stats_dict["bin_confids"] = self.bin_confids
 
         if "rc_curve" in self.query_plots:
-            if self.rc_curve is None:
-                self.get_rc_curve_stats()
-            plot_stats_dict["coverage_list"] = np.array(self.rc_curve[0])
-            plot_stats_dict["selective_risk_list"] = np.array(self.rc_curve[1])
+            plot_stats_dict["coverage_list"] = self.stats_cache.coverages
+            plot_stats_dict["selective_risk_list"] = self.stats_cache.selective_risks
 
         if "prc_curve" in self.query_plots:
             if self.precision_list is None:
@@ -240,20 +266,9 @@ class ConfidEvaluator:
         try:
             self.fpr_list, self.tpr_list, _ = skm.roc_curve(self.correct, self.confids)
         except:
-            logger.debug(
-                "FAIL CHECK\n{}\n{}\n{}\n{}\n{}\n{}",
-                self.correct.shape,
-                self.confids.shape,
-                np.min(self.correct),
-                np.max(self.correct),
-                np.min(self.confids),
-                np.max(self.confids),
+            logger.error(
+                f"ROC Curve Failed: {self.correct.shape=}, {self.confids.shape=}, {np.min(self.correct)=}, {np.max(self.correct)=}, {np.min(self.confids)=}, {np.max(self.confids)=}"
             )
-
-    def get_rc_curve_stats(self):
-        self.rc_curve, self.aurc, self.eaurc = RC_curve(
-            (1 - self.correct), self.confids
-        )
 
     def get_err_prc_curve_stats(self):
         self.precision_list, self.recall_list, _ = skm.precision_recall_curve(
@@ -333,15 +348,6 @@ class ConfidEvaluator:
         val_risk_scores["val_risk"] = risk
         val_risk_scores["val_cov"] = coverage
         val_risk_scores["theta"] = theta
-        logger.debug(
-            "STRAIGHT FROM THRESH CALCULATION\n{}\n{}\n{}\n{}\n{}\n{}",
-            risk,
-            coverage,
-            theta,
-            rstar,
-            delta,
-            bound,
-        )
         return val_risk_scores
 
 
@@ -385,6 +391,8 @@ class ConfidPlotter:
         self.threshold = None
 
     def compose_plot(self):
+        import matplotlib.pyplot as plt
+
         seaborn.set(font_scale=self.fig_scale, style="whitegrid")
         self.colors_list = seaborn.hls_palette(len(self.confid_keys_list)).as_hex()
         n_columns = 2
@@ -659,69 +667,31 @@ class ConfidPlotter:
         self.ax.set_xlabel("Coverage")
 
 
-def RC_curve(residuals, confidence):
-    coverages = []
-    risks = []
-    n = len(residuals)
-    idx_sorted = np.argsort(confidence)
-    cov = n
-    error_sum = sum(residuals[idx_sorted])
-    coverages.append(cov / n),
-    risks.append(error_sum / n)
-    weights = []
-    tmp_weight = 0
-    for i in range(0, len(idx_sorted) - 1):
-        cov = cov - 1
-        error_sum = error_sum - residuals[idx_sorted[i]]
-        selective_risk = error_sum / (n - 1 - i)
-        tmp_weight += 1
-        if i == 0 or confidence[idx_sorted[i]] != confidence[idx_sorted[i - 1]]:
-            coverages.append(cov / n)
-            risks.append(selective_risk)
-            weights.append(tmp_weight / n)
-            tmp_weight = 0
+# class BrierScore(Metric):
+#     def __init__(self, num_classes, dist_sync_on_step=False):
+#         import torch
+#         # call `self.add_state`for every internal state that is needed for the metrics computations
+#         # dist_reduce_fx indicates the function that should be used to reduce
+#         # state from multiple processes
+#         super().__init__(dist_sync_on_step=dist_sync_on_step)
 
-    # add a well-defined final point to the RC-curve.
-    if tmp_weight > 0:
-        coverages.append(0)
-        risks.append(risks[-1])
-        weights.append(tmp_weight / n)
+#         self.num_classes = num_classes
+#         self.add_state("brier_score", default=torch.tensor(0.0), dist_reduce_fx="sum")
+#         self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
 
-    # aurc is computed as a weighted average over risk scores analogously to the average precision score.
-    aurc = sum([a * w for a, w in zip(risks, weights)])
+#     def update(self, preds: torch.Tensor, target: torch.Tensor):
+#         import torch
+#         # update metric states
 
-    # compute e-aurc
-    err = np.mean(residuals)
-    kappa_star_aurc = err + (1 - err) * (np.log(1 - err))
-    e_aurc = aurc - kappa_star_aurc
+#         y_one_hot = torch.nn.functional.one_hot(target, num_classes=self.num_classes)
+#         assert preds.shape == y_one_hot.shape
 
-    curve = (coverages, risks)
-    return curve, aurc, e_aurc
+#         self.brier_score += ((preds - y_one_hot) ** 2).sum(1).mean()
+#         self.total += 1
 
-
-class BrierScore(Metric):
-    def __init__(self, num_classes, dist_sync_on_step=False):
-        # call `self.add_state`for every internal state that is needed for the metrics computations
-        # dist_reduce_fx indicates the function that should be used to reduce
-        # state from multiple processes
-        super().__init__(dist_sync_on_step=dist_sync_on_step)
-
-        self.num_classes = num_classes
-        self.add_state("brier_score", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
-
-    def update(self, preds: torch.Tensor, target: torch.Tensor):
-        # update metric states
-
-        y_one_hot = torch.nn.functional.one_hot(target, num_classes=self.num_classes)
-        assert preds.shape == y_one_hot.shape
-
-        self.brier_score += ((preds - y_one_hot) ** 2).sum(1).mean()
-        self.total += 1
-
-    def compute(self):
-        # compute final result
-        return self.brier_score.float() / self.total
+#     def compute(self):
+#         # compute final result
+#         return self.brier_score.float() / self.total
 
 
 def clean_logging(log_dir):
@@ -730,17 +700,12 @@ def clean_logging(log_dir):
         df = df.groupby("step").max().round(3)
         df.to_csv(log_dir / "metrics.csv")
     except:
-        logger.warning("no metrics.csv found in clean logging!")
+        logger.warning("No metrics.csv found in clean logging!")
 
 
 def plot_input_imgs(x, y, out_path):
-    logger.debug(
-        "{}\n{}\n{}\n{}",
-        x.mean().item(),
-        x.std().item(),
-        x.min().item(),
-        x.max().item(),
-    )
+    import matplotlib.pyplot as plt
+
     f, axs = plt.subplots(nrows=4, ncols=4, figsize=(10, 10))
     for ix in range(len(f.axes)):
         ax = f.axes[ix]
@@ -753,6 +718,8 @@ def plot_input_imgs(x, y, out_path):
 
 
 def qual_plot(fp_dict, fn_dict, out_path):
+    import matplotlib.pyplot as plt
+
     n_rows = len(fp_dict["images"])
     f, axs = plt.subplots(nrows=n_rows, ncols=2, figsize=(6, 13))
     title_pad = 0.85
@@ -782,10 +749,12 @@ def qual_plot(fp_dict, fn_dict, out_path):
     plt.subplots_adjust(wspace=0.23, hspace=0.4)
     f.savefig(out_path)
     plt.close()
-    logger.debug("saved qual_plot to {}", out_path)
+    logger.debug("Saved qual_plot to {}", out_path)
 
 
 def ThresholdPlot(plot_dict):
+    import matplotlib.pyplot as plt
+
     scale = 10
     n_cols = len(plot_dict)
     n_rows = 1
@@ -794,9 +763,8 @@ def ThresholdPlot(plot_dict):
         nrows=n_rows, ncols=n_cols, figsize=(n_cols * scale * 0.6, n_rows * scale * 0.4)
     )
 
-    logger.debug("plot in {}", len(plot_dict))
     for ix, (study, study_dict) in enumerate(plot_dict.items()):
-        logger.debug("threshold plot {} {}", study, len(study_dict["confids"]))
+        logger.debug("Threshold plot {} {}", study, len(study_dict["confids"]))
         confids = study_dict["confids"]
         correct = study_dict["correct"]
         delta_threshs = study_dict["delta_threshs"]
@@ -824,7 +792,6 @@ def ThresholdPlot(plot_dict):
         )
 
         for idx, dt in enumerate(delta_threshs):
-            logger.debug("drawing line", idx, dt, delta_threshs, deltas)
             axs[ix].vlines(
                 dt,
                 ymin=0,

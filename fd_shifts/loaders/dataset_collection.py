@@ -2,7 +2,8 @@ import imghdr
 import io
 import os
 import pickle
-from typing import Any, Callable, Optional, Tuple, TypeVar
+from pathlib import Path
+from typing import Any, Callable, Literal, Optional, Tuple, TypeVar
 
 import albumentations
 import cv2
@@ -12,11 +13,7 @@ import torch
 import torchvision
 from medmnist.info import DEFAULT_ROOT, HOMEPAGE, INFO
 from PIL import Image, ImageFile
-from robustness.tools.breeds_helpers import (
-    ClassHierarchy,
-    make_entity13,
-    print_dataset_info,
-)
+from robustness.tools.breeds_helpers import make_entity13
 from robustness.tools.folder import ImageFolder
 from robustness.tools.helpers import get_label_mapping
 from torch.utils.data import Dataset
@@ -28,6 +25,8 @@ from wilds.datasets.wilds_dataset import WILDSSubset
 
 from fd_shifts import logger
 from fd_shifts.analysis import eval_utils
+from fd_shifts.configs import Config, DataConfig
+from fd_shifts.data import SVHN
 from fd_shifts.loaders import breeds_hierarchies
 
 
@@ -191,44 +190,6 @@ def get_transforms(image_size):
     return transforms_train, transforms_val
 
 
-class MelanomaDataset(Dataset):
-    def __init__(self, csv: pd.DataFrame, train: bool, transform=None):
-        self.csv = csv.reset_index(drop=True)
-        self.train = train
-        self.transform = transform
-        self.train_df = self.csv.sample(frac=0.8, random_state=200)
-        self.test_df = self.csv.drop(self.train_df.index)
-        if self.train:
-            self.csv = self.train_df
-        elif not self.train:
-            self.csv = self.test_df
-        self.targets = self.csv.target
-
-        self.imgs = self.csv["filepath"]
-        self.samples = self.imgs
-
-    def __len__(self):
-        return self.csv.shape[0]
-
-    def __getitem__(self, index):
-        row = self.csv.iloc[index]
-
-        image = cv2.imread(row.filepath)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        if self.transform is not None:
-            res = self.transform(image=image)
-            image = res["image"].astype(np.float32)
-        else:
-            image = image.astype(np.float32)
-
-        image = image.transpose(2, 0, 1)
-
-        data = torch.tensor(image).float()
-
-        return data, torch.tensor(self.csv.iloc[index].target).long()
-
-
 class Rxrx1Dataset(Dataset):
     """
     Returns 6-Channel image, not rgb but stacked greychannels from fluoresenzemicroscopy
@@ -258,12 +219,18 @@ class Rxrx1Dataset(Dataset):
             start, end = filepath.split("XXX")
             channel_path = start + str(channel) + end
             channels.append(channel_path)
-        blue = cv2.imread(channels[0])[:, :, 0]
-        green = cv2.imread(channels[1])[:, :, 0]
-        red = cv2.imread(channels[2])[:, :, 0]
-        cyan = cv2.imread(channels[3])[:, :, 0]
-        magenta = cv2.imread(channels[4])[:, :, 0]
-        yellow = cv2.imread(channels[5])[:, :, 0]
+        try:
+            blue = cv2.imread(channels[0])[:, :, 0]
+            green = cv2.imread(channels[1])[:, :, 0]
+            red = cv2.imread(channels[2])[:, :, 0]
+            cyan = cv2.imread(channels[3])[:, :, 0]
+            magenta = cv2.imread(channels[4])[:, :, 0]
+            yellow = cv2.imread(channels[5])[:, :, 0]
+        except TypeError:
+            logger.error(f"Error loading {filepath}")
+            self.csv.drop([index], inplace=True)
+            self.csv.reset_index(drop=True, inplace=True)
+            return self.__getitem__(index)
 
         image = np.stack((red, green, blue, cyan, magenta, yellow), axis=2)
 
@@ -297,6 +264,11 @@ class XrayDataset(Dataset):
         row = self.csv.iloc[index]
 
         image = cv2.imread(row.filepath)
+        if image is None:
+            logger.error(f"Error loading {row.filepath}")
+            self.csv.drop([index], inplace=True)
+            self.csv.reset_index(drop=True, inplace=True)
+            return self.__getitem__(index)
         if self.transform is not None:
             image = Image.fromarray(image)
             image = self.transform(image)
@@ -334,48 +306,6 @@ class Lidc_idriDataset(Dataset):
         else:
             image = image.astype(np.float32)
         data = image
-
-        return data, torch.tensor(self.csv.iloc[index].target).long()
-
-
-class BasicDataset(Dataset):
-    def __init__(
-        self,
-        csv: pd.DataFrame,
-        train: bool,
-        transform: Optional[Callable] = None,
-    ):
-        self.csv = csv.reset_index(drop=True)
-        self.train = train
-        self.transform = transform
-        self.train_df = self.csv.sample(frac=0.8, random_state=200)
-        self.test_df = self.csv.drop(self.train_df.index)
-        if self.train:
-            self.csv = self.train_df
-        elif not self.train:
-            self.csv = self.test_df
-        self.targets = self.csv.target
-        self.imgs = self.csv["filepath"]
-        self.samples = self.imgs
-
-    def __len__(self):
-        return self.csv.shape[0]
-
-    def __getitem__(self, index):
-        row = self.csv.iloc[index]
-
-        image = cv2.imread(row.filepath)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        if self.transform is not None:
-            res = self.transform(image=image)
-            image = res["image"].astype(np.float32)
-        else:
-            image = image.astype(np.float32)
-
-        image = image.transpose(2, 0, 1)
-
-        data = torch.tensor(image).float()
 
         return data, torch.tensor(self.csv.iloc[index].target).long()
 
@@ -430,340 +360,6 @@ class DermoscopyAllDataset(Dataset):
         data = torch.tensor(image).float()
 
         return data, torch.tensor(self.csv.iloc[index].target).long()
-
-
-class D7pDataset(Dataset):
-    def __init__(
-        self,
-        csv: pd.DataFrame,
-        train: bool,
-        transform: Optional[Callable] = None,
-    ):
-        self.csv = csv.reset_index(drop=True)
-        self.train = train
-        self.transform = transform
-        self.train_df = self.csv.sample(frac=0.8, random_state=200)
-        self.test_df = self.csv.drop(self.train_df.index)
-        if self.train:
-            self.csv = self.train_df
-        elif not self.train:
-            self.csv = self.test_df
-        self.targets = self.csv.target
-
-        self.imgs = self.csv["filepath"]
-        self.samples = self.imgs
-
-    def __len__(self):
-        return self.csv.shape[0]
-
-    def __getitem__(self, index):
-        row = self.csv.iloc[index]
-
-        image = cv2.imread(row.filepath)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        if self.transform is not None:
-            res = self.transform(image=image)
-            image = res["image"].astype(np.float32)
-        else:
-            image = image.astype(np.float32)
-
-        image = image.transpose(2, 0, 1)
-
-        data = torch.tensor(image).float()
-
-        return data, torch.tensor(self.csv.iloc[index].target).long()
-
-
-class Ham10000Dataset(Dataset):
-    def __init__(
-        self,
-        csv: pd.DataFrame,
-        train: bool,
-        transform: Optional[Callable] = None,
-    ):
-        self.csv = csv.reset_index(drop=True)
-        self.train = train
-        self.transform = transform
-        self.train_df = self.csv.sample(frac=0.8, random_state=200)
-        self.test_df = self.csv.drop(self.train_df.index)
-        if self.train:
-            self.csv = self.train_df
-        elif not self.train:
-            self.csv = self.test_df
-        self.targets = self.csv.target
-
-        self.imgs = self.csv["filepath"]
-        self.samples = self.imgs
-
-    def __len__(self):
-        return self.csv.shape[0]
-
-    def __getitem__(self, index):
-        row = self.csv.iloc[index]
-
-        image = cv2.imread(row.filepath)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        if self.transform is not None:
-            res = self.transform(image=image)
-            image = res["image"].astype(np.float32)
-        else:
-            image = image.astype(np.float32)
-
-        image = image.transpose(2, 0, 1)
-
-        data = torch.tensor(image).float()
-
-        return data, torch.tensor(self.csv.iloc[index].target).long()
-
-
-class Ham10000DatasetSubbig(Dataset):
-    def __init__(
-        self,
-        csv: pd.DataFrame,
-        train: bool,
-        transform: Optional[Callable] = None,
-    ):
-        self.csv = csv.reset_index(drop=True)
-        self.train = train
-        self.transform = transform
-        self.train_df = self.csv.sample(frac=0.8, random_state=200)
-        self.test_df = self.csv.drop(self.train_df.index)
-        if self.train:
-            self.csv = self.train_df
-        elif not self.train:
-            self.csv = self.test_df
-        self.targets = self.csv.target
-
-        self.imgs = self.csv["filepath"]
-        self.samples = self.imgs
-
-    def __len__(self):
-        return self.csv.shape[0]
-
-    def __getitem__(self, index):
-        row = self.csv.iloc[index]
-
-        image = cv2.imread(row.filepath)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        if self.transform is not None:
-            res = self.transform(image=image)
-            image = res["image"].astype(np.float32)
-        else:
-            image = image.astype(np.float32)
-
-        image = image.transpose(2, 0, 1)
-
-        data = torch.tensor(image).float()
-
-        return data, torch.tensor(self.csv.iloc[index].target).long()
-
-
-class Ham10000DatasetSubsmall(Dataset):
-    def __init__(
-        self,
-        csv: pd.DataFrame,
-        train: bool,
-        transform: Optional[Callable] = None,
-    ):
-        self.csv = csv.reset_index(drop=True)
-        self.train = train
-        self.transform = transform
-        self.targets = self.csv.target
-
-        self.imgs = self.csv["filepath"]
-        self.samples = self.imgs
-
-    def __len__(self):
-        return self.csv.shape[0]
-
-    def __getitem__(self, index):
-        row = self.csv.iloc[index]
-
-        image = cv2.imread(row.filepath)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        if self.transform is not None:
-            res = self.transform(image=image)
-            image = res["image"].astype(np.float32)
-        else:
-            image = image.astype(np.float32)
-
-        image = image.transpose(2, 0, 1)
-
-        data = torch.tensor(image).float()
-
-        return data, torch.tensor(self.csv.iloc[index].target).long()
-
-
-class Isic2020Dataset(Dataset):
-    def __init__(
-        self,
-        csv: pd.DataFrame,
-        train: bool,
-        transform: Optional[Callable] = None,
-    ):
-        self.csv = csv.reset_index(drop=True)
-        self.train = train
-        self.transform = transform
-        self.train_df = self.csv.sample(frac=0.8, random_state=200)
-        self.test_df = self.csv.drop(self.train_df.index)
-        if self.train:
-            self.csv = self.train_df
-        elif not self.train:
-            self.csv = self.test_df
-        self.targets = self.csv.target
-
-        self.imgs = self.csv["filepath"]
-        self.samples = self.imgs
-
-    def __len__(self):
-        return self.csv.shape[0]
-
-    def __getitem__(self, index):
-        row = self.csv.iloc[index]
-
-        image = cv2.imread(row.filepath)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        if self.transform is not None:
-            res = self.transform(image=image)
-            image = res["image"].astype(np.float32)
-        else:
-            image = image.astype(np.float32)
-
-        image = image.transpose(2, 0, 1)
-
-        data = torch.tensor(image).float()
-
-        return data, torch.tensor(self.csv.iloc[index].target).long()
-
-
-class Ph2Dataset(Dataset):
-    def __init__(
-        self,
-        csv: pd.DataFrame,
-        train: bool,
-        transform: Optional[Callable] = None,
-    ):
-        self.csv = csv.reset_index(drop=True)
-        self.train = train
-        self.transform = transform
-        self.train_df = self.csv.sample(frac=0.8, random_state=200)
-        self.test_df = self.csv.drop(self.train_df.index)
-        if self.train:
-            self.csv = self.train_df
-        elif not self.train:
-            self.csv = self.test_df
-        self.targets = self.csv.target
-
-        self.imgs = self.csv["filepath"]
-        self.samples = self.imgs
-
-    def __len__(self):
-        return self.csv.shape[0]
-
-    def __getitem__(self, index):
-        row = self.csv.iloc[index]
-
-        image = cv2.imread(row.filepath)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-        if self.transform is not None:
-            res = self.transform(image=image)
-            image = res["image"].astype(np.float32)
-        else:
-            image = image.astype(np.float32)
-
-        image = image.transpose(2, 0, 1)
-
-        data = torch.tensor(image).float()
-
-        return data, torch.tensor(self.csv.iloc[index].target).long()
-
-
-class Isicv01(Dataset):
-    "Class with binary classification benign vs malignant of skin cancer and control"
-
-    def __init__(
-        self,
-        csv_file: str,
-        root: str,
-        transform: Optional[Callable] = None,
-        target_transforms: Optional[Callable] = None,
-        train: bool = True,
-        download: bool = False,
-    ):
-        """
-        Args:
-            csv_file (string): Path to csv with metadata and images
-            root_dir (string): Directory with the images
-            transforms (Callable, optional): Torchvision transforms to apply
-            target_transforms (Callable): target transforms to apply
-            train (bool): If true traindata if false test data
-            download (bool): toDo
-        """
-        self.isicv01_df = pd.read_csv(csv_file)
-
-        if isinstance(root, torch._six.string_classes):
-            root = os.path.expanduser(root)
-        self.root = root
-        self.download = download
-
-        self.target_transforms = target_transforms
-        self.transforms = transform
-        self.train = train
-        self.resample_malignant: int = 4
-        self.data, self.targets = self._load_data()
-        self.classes = {"bening": 0, "malignant": 1}
-
-    def __len__(self):
-        return len(self.targets)
-
-    def _load_data(self) -> Tuple[Any, Any]:
-        self.train_df = self.isicv01_df.sample(frac=0.8, random_state=200)
-        self.test_df = self.isicv01_df.drop(self.train_df.index)
-        if self.resample_malignant > 0:
-            mal = self.train_df["class"] == 1
-            mal_df = self.train_df[mal]
-            self.train_df = self.train_df.append(
-                [mal_df] * self.resample_malignant, ignore_index=True
-            )
-        if self.train:
-            image_files = self.train_df["isic_id"]
-            target_series = self.train_df["class"]
-        elif not self.train:
-            image_files = self.test_df["isic_id"]
-            target_series = self.test_df["class"]
-        img_path = self.root + image_files + ".jpg"
-        data = []
-        target = []
-        for x in range(len(image_files)):
-            target.append(target_series.iloc[x])
-            image = cv2.imread(img_path.iloc[x])
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            data.append(image)
-            # data.append(Image.open(img_path.iloc[x]))
-        return data, target
-
-    def __getitem__(self, index: int) -> Tuple[Any, Any]:
-        ImageFile.LOAD_TRUNCATED_IMAGES = True
-
-        """
-        Args:
-            index (int): image and label index in the dataframe to return
-        Returns:
-            tupel (image, target): where target is the label of the target class
-        """
-        img, target = self.data[index], int(self.targets[index])
-        if self.transforms is not None:
-            img = self.transforms(img)
-        if self.target_transforms is not None:
-            target = self.target_transforms(target)
-
-        return img, target
 
 
 class MedMNIST_mod(Dataset):
@@ -1203,6 +799,7 @@ class CorruptCIFAR(datasets.VisionDataset):
         download: bool,
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
+        subsample: int = 1,
         kwargs: Optional[Callable] = None,
     ) -> None:
         super(CorruptCIFAR, self).__init__(
@@ -1241,7 +838,47 @@ class CorruptCIFAR(datasets.VisionDataset):
             self.targets.extend(labels)
 
         self.data = np.vstack(self.data)
+        self.targets = np.array(self.targets)
+
+        if subsample > 1:
+            self.data, self.targets = self.subsample(self.data, self.targets, subsample)
         self.classes = eval_utils.cifar100_classes
+
+    @staticmethod
+    def subsample_idx(data, targets, subsample):
+        n_classes = len(np.unique(targets))
+        n_cor_kinds = 15
+        n_cor_levels = 5
+        n_samples_per_cor = len(targets) // n_cor_kinds // n_cor_levels
+        n_samples_per_class_per_cor = n_samples_per_cor // n_classes
+
+        single_targets = targets[:n_samples_per_cor]
+
+        sort_idx = np.argsort(single_targets, kind="stable")
+        single_idx = np.sort(
+            np.concatenate(
+                [
+                    i * n_samples_per_class_per_cor
+                    + np.arange(n_samples_per_class_per_cor // subsample)
+                    for i in range(n_classes)
+                ]
+            )
+        )
+        idx = np.concatenate(
+            [
+                cor_kind_idx * n_samples_per_cor * n_cor_levels
+                + cor_level_idx * n_samples_per_cor
+                + single_idx
+                for cor_kind_idx in range(n_cor_kinds)
+                for cor_level_idx in range(n_cor_levels)
+            ]
+        )
+        return idx
+
+    @staticmethod
+    def subsample(data, targets, subsample):
+        idx = CorruptCIFAR.subsample_idx(data, targets, subsample)
+        return data[idx, :], targets[idx]
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         """
@@ -1364,6 +1001,15 @@ class WILDSAnimals(IWildCamDataset):
         )
 
         logger.debug("CHECK ROOT !!! {}", root)
+        if isinstance(root, str):
+            root = Path(root)
+        categories = {
+            r[1]: r[2]
+            for r in pd.read_csv(root / "iwildcam_v2.0" / "categories.csv")[
+                ["y", "name"]
+            ].to_records()
+        }
+        self.classes = [categories[i] for i in range(self.n_classes)]
 
     def get_subset(self, split, frac=1.0, transform=None):
         """
@@ -1391,6 +1037,8 @@ class WILDSAnimals(IWildCamDataset):
 class myWILDSSubset(WILDSSubset):
     def __init__(self, dataset, indices, transform):
         super().__init__(dataset, indices, transform)
+        if hasattr(dataset, "classes"):
+            self.classes = dataset.classes
 
     def __getitem__(self, idx):
         x, y, metadata = self.dataset[self.indices[idx]]
@@ -1470,37 +1118,11 @@ class WILDSAnimalsOpenSet(IWildCamDataset):
         return subset
 
 
-class SVHNOpenSet(datasets.SVHN):
-    def __init__(
-        self,
-        root: str,
-        split: str = "train",
-        transform: Optional[Callable] = None,
-        target_transform: Optional[Callable] = None,
-        download: bool = False,
-        out_classes: list[int] = [0, 1, 2, 3],
-    ) -> None:
-        super().__init__(
-            root,
-            split=split,
-            transform=transform,
-            target_transform=target_transform,
-            download=download,
-        )
-
-        self.out_classes = out_classes
-        logger.info("SVHN holdout classes {}", self.out_classes)
-
-        if split == "train":
-            self.data = self.data[~np.isin(self.labels, self.out_classes)]
-            self.labels = self.labels[~np.isin(self.labels, self.out_classes)]
-
-
 _dataset_factory: dict[str, type] = {
-    "svhn": datasets.SVHN,
-    "svhn_384": datasets.SVHN,
-    "svhn_openset": SVHNOpenSet,
-    "svhn_openset_384": SVHNOpenSet,
+    "svhn": SVHN,
+    "svhn_384": SVHN,
+    "svhn_openset": SVHN,
+    "svhn_openset_384": SVHN,
     "tinyimagenet_384": datasets.ImageFolder,
     "tinyimagenet_resize": datasets.ImageFolder,
     "emnist_byclass": datasets.EMNIST,
@@ -1583,9 +1205,6 @@ _dataset_factory: dict[str, type] = {
     "lidc_idriall_spiculation_ood": Lidc_idriDataset,
     "lidc_idriall_texture_iid": Lidc_idriDataset,
     "lidc_idriall_texture_ood": Lidc_idriDataset,
-    "isic_v01": Isicv01,
-    "isic_v01_cr": Isicv01,
-    "isic_winner": MelanomaDataset,
     "dermoscopyall": DermoscopyAllDataset,
     "dermoscopyalld7p": DermoscopyAllDataset,
     "dermoscopyallph2": DermoscopyAllDataset,
@@ -1614,8 +1233,6 @@ _dataset_factory: dict[str, type] = {
     "dermoscopyallcorrelastichigh": DermoscopyAllDataset,
     "dermoscopyallcorrelastichighhigh": DermoscopyAllDataset,
     "dermoscopy_isic_2020": DermoscopyAllDataset,
-    "ph2": Ph2Dataset,
-    "d7p": D7pDataset,
     "dermoscopyallham10000multi": DermoscopyAllDataset,
     "dermoscopyallham10000subbig": DermoscopyAllDataset,
     "dermoscopyallham10000subsmall": DermoscopyAllDataset,
@@ -1677,6 +1294,7 @@ def get_dataset(
     transform: Callable,
     target_transform: Callable | None,
     kwargs: dict[str, Any],
+    subsample_corruptions: int = 1,
 ) -> Any:
     """Return a new instance of a dataset
 
@@ -1698,10 +1316,19 @@ def get_dataset(
         "download": download,
         "transform": transform,
     }
+    if name.startswith("corrupt_cifar"):
+        pass_kwargs = {
+            "root": root,
+            "train": train,
+            "download": download,
+            "transform": transform,
+            "subsample": subsample_corruptions,
+        }
     if name.startswith("svhn"):
         pass_kwargs = {
             "root": root,
-            "split": "train" if train else "test",
+            "split": "openset" if "openset" in name else "all",
+            "train": train,
             "download": download,
             "transform": transform,
         }
@@ -1785,84 +1412,6 @@ def get_dataset(
         dataset = _dataset_factory[name](split=split, **pass_kwargs)
         return dataset
 
-    elif name == "isicv01":
-        pass_kwargs = {
-            "root": root,
-            "train": train,
-            "download": download,
-            "transform": transform,
-            "csv_file": "/home/l049e/Projects/ISIC/isic_v01_dataframe.csv",
-        }
-        return _dataset_factory[name](**pass_kwargs)
-    elif name == "isic_v01_cr":
-        pass_kwargs = {
-            "root": root,
-            "train": train,
-            "download": download,
-            "transform": transform,
-            "csv_file": "/home/l049e/Projects/ISIC/isic_v01_dataframe.csv",
-        }
-        return _dataset_factory[name](**pass_kwargs)
-
-    elif name == "isic_winner":
-        out_dim = 9
-        data_dir = root
-        data_folder = "512"  # input image size
-        df_train, df_test, meta_features, n_meta_features, mel_idx = get_df(
-            out_dim, data_dir, data_folder
-        )
-        transforms_train, transforms_val = get_transforms(512)
-        if train:
-            transforms = transforms_train
-        else:
-            transforms = transforms_val
-        pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return _dataset_factory[name](**pass_kwargs)
-
-    elif name == "d7p":
-        out_dim = 2
-        data_dir = root
-        data_folder = "512"  # input image size
-        csv_file = f"{root}/d7p_binaryclass"
-        df_train = pd.read_csv(csv_file)
-        df_train["filepath"] = root + "/" + df_train["filepath"]
-        transforms_train, transforms_val = get_transforms(512)
-        if train:
-            transforms = transforms_train
-        else:
-            transforms = transforms_val
-        pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return _dataset_factory[name](**pass_kwargs)
-
-    elif name == "isic_2020":
-        out_dim = 2
-        data_dir = root
-        data_folder = "512"  # input image size
-        csv_file = f"{root}/isic2020_binaryclass"
-        df_train = pd.read_csv(csv_file)
-        df_train["filepath"] = root + "/" + df_train["filepath"]
-
-        transforms_train, transforms_val = get_transforms(512)
-        if train:
-            transforms = transforms_train
-        else:
-            transforms = transforms_val
-        pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return _dataset_factory[name](**pass_kwargs)
-    elif name == "ph2":
-        out_dim = 2
-        data_dir = root
-        data_folder = "512"  # input image size
-        csv_file = f"{root}/ph2_binaryclass"
-        df_train = pd.read_csv(csv_file)
-        df_train["filepath"] = root + "/" + df_train["filepath"]
-        transforms_train, transforms_val = get_transforms(512)
-        if train:
-            transforms = transforms_train
-        else:
-            transforms = transforms_val
-        pass_kwargs = {"csv": df_train, "train": train, "transform": transforms}
-        return _dataset_factory[name](**pass_kwargs)
     elif "dermoscopyall" in name:
         oversampeling = 0
         binary = "binaryclass"
@@ -1954,31 +1503,21 @@ def get_dataset(
             dataset_name = "all"
         dataroot = os.environ["DATASET_ROOT_DIR"]
         csv_file = f"{dataroot}/{dataset}/{dataset_name}_{binary}_{mode}.csv"
+        if "corr" in name:
+            _, cor = name.split("xray_chestallcorr")
+            cor = "_" + cor
+        else:
+            cor = ""
         df = pd.read_csv(csv_file)
-
-        for i in range(len(df)):
-            atti = df["attribution"].iloc[i]
-            dataset = atti
-            datafolder = "/" + dataset
-            data_dir = os.path.join(dataroot + datafolder)
-            img_sub_path = df["filepath"].iloc[i]
-            img_path = data_dir + "/" + img_sub_path
-            if ".png" in img_path:
-                start, _ = img_path.split(".png")
-                end = "png"
-            if ".jpg" in img_path:
-                start, _ = img_path.split(".jpg")
-                end = "jpg"
-
-            # create new path for corrupted images
-            if "corr" in name:
-                _, cor = name.split("xray_chestallcorr")
-                cor = "_" + cor
-            else:
-                cor = ""
-            df.iloc[i, df.columns.get_loc("filepath")] = (
-                start + "_256" + cor + "." + end
-            )
+        df["filepath"] = (
+            str(Path(dataroot))
+            + "/"
+            + df.attribution.str.strip("/")
+            + "/"
+            + df.filepath.str.strip("/")
+        )
+        split = df.filepath.str.rsplit(".", expand=True, n=1)
+        df["filepath"] = split[0] + "_256" + cor + "." + split[1]
 
         pass_kwargs = {"csv": df, "train": train, "transform": transform}
         return _dataset_factory[name](**pass_kwargs)
@@ -2136,4 +1675,6 @@ def get_dataset(
         return _dataset_factory[name](**pass_kwargs)
 
     else:
-        return _dataset_factory[name](**pass_kwargs)
+        return _dataset_factory[name](
+            **{**pass_kwargs, **(kwargs if kwargs is not None else {})}
+        )

@@ -3,9 +3,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-import hydra
-import pl_bolts
-import pytorch_lightning as pl
+import lightning as L
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -13,12 +11,13 @@ from tqdm import tqdm
 
 from fd_shifts import logger
 from fd_shifts.models.networks import get_network
+from fd_shifts.utils import to_dict
 
 if TYPE_CHECKING:
     from fd_shifts import configs
 
 
-class net(pl.LightningModule):
+class net(L.LightningModule):
     """
 
     Attributes:
@@ -44,7 +43,9 @@ class net(pl.LightningModule):
     def __init__(self, cf: configs.Config):
         super(net, self).__init__()
 
-        self.save_hyperparameters()
+        self.save_hyperparameters(to_dict(cf))
+
+        self.cf = cf
 
         self.optimizer_cfgs = cf.trainer.optimizer
         self.lr_scheduler_cfgs = cf.trainer.lr_scheduler
@@ -109,14 +110,14 @@ class net(pl.LightningModule):
                 soutputs = F.softmax(outputs, dim=1)
                 softmax, reservation = soutputs[:, :-1], soutputs[:, -1]
                 confidence = 1 - reservation
-                softmax_list.append(outputs[:, :-1].unsqueeze(2))
-                conf_list.append(confidence.unsqueeze(1))
+                softmax_list.append(outputs[:, :-1].unsqueeze(2).detach())
+                conf_list.append(confidence.unsqueeze(1).detach())
 
         self.model.encoder.disable_dropout()
 
         return torch.cat(softmax_list, dim=2), torch.cat(conf_list, dim=1)
 
-    def on_epoch_end(self):
+    def on_train_epoch_end(self):
         if (
             self.ext_confid_name == "dg"
             and (
@@ -126,7 +127,7 @@ class net(pl.LightningModule):
                 )
                 or (
                     self.pretrain_steps is not None
-                    and self.global_step >= self.pretrain_steps - 1
+                    and self.global_step == self.pretrain_steps - 1
                 )
             )
             and self.save_dg_backbone_path is not None
@@ -279,7 +280,7 @@ class net(pl.LightningModule):
     def validation_step_end(self, batch_parts):
         return batch_parts
 
-    def test_step(self, batch, batch_idx, *args):
+    def test_step(self, batch, batch_idx, dataloader_idx, *args):
         x, y = batch
         z = self.model.forward_features(x)
         if self.ext_confid_name == "devries":
@@ -287,21 +288,23 @@ class net(pl.LightningModule):
             confidence = torch.sigmoid(confidence).squeeze(1)
         elif self.ext_confid_name == "dg":
             outputs = self.model.head(z)
-            outputs = F.softmax(outputs, dim=1)
-            softmax, reservation = outputs[:, :-1], outputs[:, -1]
             logits = outputs[:, :-1]
+            soutputs = F.softmax(outputs, dim=1)
+            softmax, reservation = soutputs[:, :-1], soutputs[:, -1]
             confidence = 1 - reservation
         else:
             raise NotImplementedError
 
         logits_dist = None
         confid_dist = None
-        if any("mcd" in cfd for cfd in self.query_confids.test):
+        if any("mcd" in cfd for cfd in self.query_confids.test) and (
+            not (self.cf.test.compute_train_encodings and dataloader_idx == 0)
+        ):
             logits_dist, confid_dist = self.mcd_eval_forward(
                 x=x, n_samples=self.test_mcd_samples
             )
 
-        self.test_results = {
+        return {
             "logits": logits,
             "labels": y,
             "confid": confidence,
@@ -311,17 +314,28 @@ class net(pl.LightningModule):
         }
 
     def configure_optimizers(self):
+        # optimizers = [
+        #     hydra.utils.instantiate(self.optimizer_cfgs, _partial_=True)(
+        #         self.model.parameters()
+        #     )
+        # ]
+
+        # schedulers = [
+        #     {
+        #         "scheduler": hydra.utils.instantiate(self.lr_scheduler_cfgs)(
+        #             optimizer=optimizers[0]
+        #         ),
+        #         "interval": self.lr_scheduler_interval,
+        #     },
+        # ]
+
         optimizers = [
-            hydra.utils.instantiate(self.optimizer_cfgs, _partial_=True)(
-                self.model.parameters()
-            )
+            self.optimizer_cfgs(self.model.parameters()),
         ]
 
         schedulers = [
             {
-                "scheduler": hydra.utils.instantiate(self.lr_scheduler_cfgs)(
-                    optimizer=optimizers[0]
-                ),
+                "scheduler": self.lr_scheduler_cfgs(optimizers[0]),
                 "interval": self.lr_scheduler_interval,
             },
         ]
@@ -339,6 +353,14 @@ class net(pl.LightningModule):
 
         # For backwards-compatibility with before commit 1bdc717
         for param in list(ckpt["state_dict"].keys()):
+            if param.startswith("model.classifier.module.model.features"):
+                del ckpt["state_dict"][param]
+                continue
+            if param.startswith("model.classifier.module.model.classifier"):
+                correct_param = param.replace(".model.classifier", "")
+                ckpt["state_dict"][correct_param] = ckpt["state_dict"][param]
+                del ckpt["state_dict"][param]
+                param = correct_param
             if pattern.match(param):
                 correct_param = re.sub(pattern, r"\1_\2\3", param)
                 ckpt["state_dict"][correct_param] = ckpt["state_dict"][param]
@@ -346,3 +368,21 @@ class net(pl.LightningModule):
 
         logger.info("loading checkpoint from epoch {}".format(ckpt["epoch"]))
         self.load_state_dict(ckpt["state_dict"], strict=True)
+
+    def last_layer(self):
+        state = self.state_dict()
+        model_prefix = "model"
+        if f"{model_prefix}._classifier.module.weight" in state:
+            w = state[f"{model_prefix}._classifier.module.weight"]
+            b = state[f"{model_prefix}._classifier.module.bias"]
+        elif f"{model_prefix}._classifier.fc.weight" in state:
+            w = state[f"{model_prefix}._classifier.fc.weight"]
+            b = state[f"{model_prefix}._classifier.fc.bias"]
+        elif f"{model_prefix}._classifier.fc2.weight" in state:
+            w = state[f"{model_prefix}._classifier.fc2.weight"]
+            b = state[f"{model_prefix}._classifier.fc2.bias"]
+        else:
+            print(list(state.keys()))
+            raise RuntimeError("No classifier weights found")
+
+        return w, b

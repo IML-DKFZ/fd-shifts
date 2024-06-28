@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
+from scipy import special as scpspecial
+
+from fd_shifts import logger
 
 if TYPE_CHECKING:
     from fd_shifts.analysis import Analysis, ExperimentData
 
-EXTERNAL_CONFIDS = ["ext", "bpd", "maha", "tcp", "dg", "devries"]
+EXTERNAL_CONFIDS = ["ext", "bpd", "tcp", "dg", "devries"]
 
 ArrayType = npt.NDArray[np.floating]
 T = TypeVar(
@@ -26,7 +28,7 @@ def _assert_softmax_numerically_stable(softmax: ArrayType):
     errors = (msr == 1) & ((softmax > 0) & (softmax < 1)).any(axis=1)
 
     if softmax.dtype != np.float64:
-        logging.warning("Softmax is not 64bit, not checking for numerical stability")
+        logger.warning("Softmax is not 64bit, not checking for numerical stability")
         return
 
     # alert if more than 10% are erroneous
@@ -112,6 +114,8 @@ def get_confid_function(confid_name) -> Callable:
 @register_confid_func("det_mcp")
 @validate_softmax
 @register_confid_func("det_mls")
+@register_confid_func("react_det_mcp")
+@register_confid_func("react_det_mls")
 def maximum_softmax_probability(
     softmax: ArrayType,
 ) -> ArrayType:
@@ -124,6 +128,14 @@ def maximum_softmax_probability(
         maximum score array of shape N
     """
     return np.max(softmax, axis=1)
+
+
+@register_confid_func("energy_mls")
+@register_confid_func("react_energy_mls")
+def energy(
+    softmax: ArrayType,
+) -> ArrayType:
+    return scpspecial.logsumexp(softmax, axis=1)
 
 
 @register_confid_func("mcd_mcp")
@@ -263,7 +275,11 @@ def mcd_ext(mcd_softmax_mean: ArrayType, _: ArrayType) -> ArrayType:
 @register_confid_func("ext")
 @register_confid_func("bpd")
 @register_confid_func("maha")
+@register_confid_func("vim")
+@register_confid_func("dknn")
 @register_confid_func("maha_qt")
+@register_confid_func("temp_mls")
+@register_confid_func("react_temp_mls")
 @register_confid_func("temp_logits")
 @register_confid_func("ext_qt")
 @register_confid_func("tcp")
@@ -296,6 +312,7 @@ class ConfidScore:
         analysis: Analysis,
     ) -> None:
         if is_mcd_confid(query_confid):
+            print(query_confid)
             assert study_data.mcd_softmax_mean is not None
             assert study_data.mcd_softmax_dist is not None
             self.softmax = study_data.mcd_softmax_mean
@@ -330,7 +347,10 @@ class ConfidScore:
             self.softmax = study_data.softmax_output
             self.correct = study_data.correct
             self.labels = study_data.labels
-            self.confid_args = (study_data.softmax_output,)
+            if "react" in query_confid:
+                self.confid_args = (study_data.react_softmax,)
+            else:
+                self.confid_args = (study_data.softmax_output,)
             self.performance_args = (
                 study_data.softmax_output,
                 study_data.labels,
@@ -340,10 +360,18 @@ class ConfidScore:
             if is_external_confid(query_confid):
                 assert study_data.external_confids is not None
                 self.confid_args = (study_data.external_confids,)
-
+            elif "maha" in query_confid:
+                self.confid_args = (study_data.maha_dist,)
+            elif "vim" in query_confid:
+                self.confid_args = (study_data.vim_score,)
+            elif "dknn" in query_confid:
+                self.confid_args = (study_data.dknn_dist,)
             elif "mls" in query_confid:
                 assert study_data.logits is not None
-                self.confid_args = (study_data.logits,)
+                if "react" in query_confid:
+                    self.confid_args = (study_data.react_logits,)
+                else:
+                    self.confid_args = (study_data.logits,)
 
         self.confid_func = get_confid_function(query_confid)
         self.analysis = analysis

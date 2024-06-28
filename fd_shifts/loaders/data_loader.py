@@ -2,9 +2,11 @@ import logging
 import os
 import pickle
 from copy import deepcopy
+from dataclasses import asdict
+from pathlib import Path
 
+import lightning as L
 import numpy as np
-import pytorch_lightning as pl
 import torch
 from omegaconf import OmegaConf
 from sklearn.model_selection import KFold
@@ -12,67 +14,83 @@ from torch.utils.data import WeightedRandomSampler
 from torch.utils.data.sampler import SubsetRandomSampler
 
 import fd_shifts.configs.data as data_configs
-from fd_shifts import configs
+from fd_shifts import configs, logger
 from fd_shifts.loaders.dataset_collection import get_dataset
 from fd_shifts.utils.aug_utils import get_transform, target_transforms_collection
 
 
-class FDShiftsDataLoader(pl.LightningDataModule):
+class FDShiftsDataLoader(L.LightningDataModule):
     """Data module class for combination of multiple datasets for testing with shifts"""
 
     def __init__(self, cf: configs.Config, no_norm_flag=False):
         super().__init__()
+        self.cf = cf
         self.crossval_ids_path = cf.exp.crossval_ids_path
         self.crossval_n_folds = cf.exp.crossval_n_folds
         self.fold = cf.exp.fold
-        self.data_dir = cf.data.data_dir
-        self.data_root_dir = cf.exp.data_root_dir
-        self.dataset_name = cf.data.dataset
+        self.data_dir: Path = cf.data.data_dir
+        self.data_root_dir: Path = cf.exp.data_root_dir
+        self.dataset_name: str = cf.data.dataset
         self.batch_size = cf.trainer.batch_size
         self.pin_memory = cf.data.pin_memory
         self.num_workers = cf.data.num_workers
         self.reproduce_confidnet_splits = cf.data.reproduce_confidnet_splits
         self.dataset_kwargs = cf.data.kwargs
         self.devries_repro_ood_split = cf.test.devries_repro_ood_split
-        self.val_split = cf.trainer.val_split.name
+        self.val_split = (
+            cf.trainer.val_split
+            if isinstance(cf.trainer.val_split, str)
+            else cf.trainer.val_split.name
+        )
         self.test_iid_split = cf.test.iid_set_split
         self.assim_ood_norm_flag = cf.test.assim_ood_norm_flag
         self.balanced_sampeling = cf.model.balanced_sampeling
         self.add_val_tuning = cf.eval.val_tuning
-        self.query_studies = dict(cf.eval.query_studies)
+        self.query_studies = cf.eval.query_studies
+        print(f"{self.query_studies=}")
         if self.query_studies is not None:
             self.external_test_sets = []
-            for key, values in self.query_studies.items():
-                if key != "iid_study" and values is not None:
+            for key, values in self.query_studies:
+                if (
+                    isinstance(values, configs.DataConfig)
+                    and values.dataset is not None
+                ):
+                    self.external_test_sets.append(values)
+                elif isinstance(values, list):
                     self.external_test_sets.extend(list(values))
-            logging.debug(
-                "CHECK flat list of external datasets %s", self.external_test_sets
+            logger.debug(
+                f"CHECK flat list of external datasets {self.external_test_sets}"
             )
 
             if len(self.external_test_sets) > 0:
-                self.external_test_configs = {}
-                for ext_set in self.external_test_sets:
+                self.external_test_configs: dict[str, configs.DataConfig] = {}
+                for i, ext_set in enumerate(self.external_test_sets):
                     overwrite_dataset = False
-                    if ext_set.startswith("dermoscopyall"):
-                        file_set = "dermoscopyall"
-                        overwrite_dataset = False
-                    elif ext_set.startswith("rxrx1all"):
-                        file_set = "rxrx1all"
-                        overwrite_dataset = False
-                    elif ext_set.startswith("lidc_idriall"):
-                        file_set = "lidc_idriall"
-                        overwrite_dataset = False
-                    elif ext_set.startswith("xray_chestall"):
-                        file_set = "xray_chestall"
-                        overwrite_dataset = False
-                    else:
-                        file_set = ext_set
-                    self.external_test_configs[ext_set] = OmegaConf.load(
-                        os.path.join(
-                            os.path.abspath(os.path.dirname(data_configs.__file__)),
-                            "{}_data.yaml".format(file_set),
-                        )
-                    ).data
+                    if isinstance(ext_set, str):
+                        if ext_set.startswith("dermoscopyall"):
+                            file_set = "dermoscopyall"
+                            overwrite_dataset = False
+                        elif ext_set.startswith("rxrx1all"):
+                            file_set = "rxrx1all"
+                            overwrite_dataset = False
+                        elif ext_set.startswith("lidc_idriall"):
+                            file_set = "lidc_idriall"
+                            overwrite_dataset = False
+                        elif ext_set.startswith("xray_chestall"):
+                            file_set = "xray_chestall"
+                            overwrite_dataset = False
+                        else:
+                            file_set = ext_set
+                        self.external_test_configs[ext_set] = OmegaConf.load(
+                            os.path.join(
+                                os.path.abspath(os.path.dirname(data_configs.__file__)),
+                                "{}_data.yaml".format(file_set),
+                            )
+                        ).data
+
+                    elif isinstance(ext_set, configs.DataConfig):
+                        self.external_test_configs[ext_set.dataset] = deepcopy(ext_set)
+                        self.external_test_sets[i] = ext_set.dataset
                     if overwrite_dataset:
                         self.external_test_configs[ext_set].dataset = ext_set
         # set up target transforms
@@ -100,7 +118,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                         target_transforms_collection[tt_key](tt_param)
                     )
             self.target_transforms[datasplit_k] = target_transforms[0]
-        print(
+        logging.debug(
             "CHECK TARGET TRANSFORMS", self.assim_ood_norm_flag, self.target_transforms
         )
 
@@ -159,6 +177,9 @@ class FDShiftsDataLoader(pl.LightningDataModule):
             kwargs=self.dataset_kwargs,
         )
 
+        logger.info(f"{self.train_dataset = }")
+        logger.info(f"{self.iid_test_set = }")
+
         if self.test_iid_split == "tenPercent":
             length_test = len(self.iid_test_set)
             split = int(length_test * 0.1)
@@ -190,47 +211,31 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 kwargs=self.dataset_kwargs,
             )
             if "wilds" in self.dataset_name:
-                self.iid_test_set.indices = self.iid_test_set.indices[100:150]
+                self.iid_test_set.indices = self.iid_test_set.indices[1000:]
                 self.iid_test_set.__len__ = len(self.iid_test_set.indices)
+                self.val_dataset.indices = self.val_dataset.indices[:1000]
+                self.val_dataset.__len__ = len(self.val_dataset.indices)
             else:
                 try:
                     self.iid_test_set.imgs = self.iid_test_set.imgs[1000:]
                     self.iid_test_set.samples = self.iid_test_set.samples[1000:]
                     self.iid_test_set.targets = self.iid_test_set.targets[1000:]
                     self.iid_test_set.__len__ = len(self.iid_test_set.imgs)
+                    self.val_dataset.imgs = self.val_dataset.imgs[:1000]
+                    self.val_dataset.samples = self.val_dataset.samples[:1000]
+                    self.val_dataset.targets = self.val_dataset.targets[:1000]
+                    self.val_dataset.__len__ = len(self.val_dataset.imgs)
                 except:
                     self.iid_test_set.data = self.iid_test_set.data[1000:]
+                    self.val_dataset.data = self.val_dataset.data[:1000]
                     try:
                         self.iid_test_set.targets = self.iid_test_set.targets[1000:]
+                        self.val_dataset.targets = self.val_dataset.targets[:1000]
                     except:
                         self.iid_test_set.labels = self.iid_test_set.labels[1000:]
+                        self.val_dataset.labels = self.val_dataset.labels[:1000]
                     self.iid_test_set.__len__ = len(self.iid_test_set.data)
-            if self.val_split == "devries":
-                self.val_dataset = get_dataset(
-                    name=self.dataset_name,
-                    root=self.data_dir,
-                    train=False,
-                    download=True,
-                    target_transform=self.target_transforms.get("val"),
-                    transform=self.augmentations["val"],
-                    kwargs=self.dataset_kwargs,
-                )
-                if "wilds" in self.dataset_name:
-                    self.val_dataset.indices = self.val_dataset.indices[:1000]
-                    self.val_dataset.__len__ = len(self.val_dataset.indices)
-                else:
-                    try:
-                        self.val_dataset.imgs = self.val_dataset.imgs[:1000]
-                        self.val_dataset.samples = self.val_dataset.samples[:1000]
-                        self.val_dataset.targets = self.val_dataset.targets[:1000]
-                        self.val_dataset.__len__ = len(self.val_dataset.imgs)
-                    except:
-                        self.val_dataset.data = self.val_dataset.data[:1000]
-                        try:
-                            self.val_dataset.targets = self.val_dataset.targets[:1000]
-                        except:
-                            self.val_dataset.labels = self.val_dataset.labels[:1000]
-                        self.val_dataset.__len__ = len(self.val_dataset.data)
+                    self.val_dataset.__len__ = len(self.val_dataset.data)
 
         else:
             self.val_dataset = get_dataset(
@@ -248,15 +253,20 @@ class FDShiftsDataLoader(pl.LightningDataModule):
 
         self.test_datasets = []
 
+        if self.cf.test.compute_train_encodings:
+            self.test_datasets.append(self.train_dataset)
+            logging.debug(
+                "Adding training data. (preliminary) len: %s",
+                len(self.test_datasets[-1]),
+            )
+
         if self.add_val_tuning:
             self.test_datasets.append(self.val_dataset)
             logging.debug(
                 "Adding tuning data. (preliminary) len: %s", len(self.test_datasets[-1])
             )
 
-        if not (
-            self.query_studies is not None and "iid_study" not in self.query_studies
-        ):
+        if self.query_studies is None or self.query_studies.iid_study is not None:
             self.test_datasets.append(self.iid_test_set)
             logging.debug(
                 "Adding internal test dataset. %s", len(self.test_datasets[-1])
@@ -267,14 +277,15 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 logging.debug("Adding external test dataset: %s", ext_set)
                 tmp_external_set = get_dataset(
                     name=ext_set,
-                    root=os.path.join(
-                        self.data_root_dir, self.external_test_configs[ext_set].dataset
-                    ),
+                    root=self.external_test_configs[ext_set].data_dir,
                     train=False,
                     download=True,
                     target_transform=self.target_transforms,
                     transform=self.augmentations["external_{}".format(ext_set)],
                     kwargs=self.dataset_kwargs,
+                    subsample_corruptions=self.external_test_configs[
+                        ext_set
+                    ].subsample_corruptions,
                 )
                 if (
                     self.devries_repro_ood_split
@@ -296,11 +307,12 @@ class FDShiftsDataLoader(pl.LightningDataModule):
                 self.test_datasets.append(tmp_external_set)
                 logging.debug("Len external Test data: %s", len(self.test_datasets[-1]))
 
-        if self.val_split is None or self.val_split == "devries":
+        if self.val_split in ("none", "devries"):
             val_idx = []
             train_idx = []
             self.val_sampler = None
             self.train_sampler = None
+
             if self.balanced_sampeling:
                 # do class balanced sampeling
                 val_idx = []
@@ -355,6 +367,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
         logging.debug("len val sampler %s", len(val_idx))
 
     def train_dataloader(self):
+        logger.info(f"Loading train data with {self.batch_size=}")
         return torch.utils.data.DataLoader(
             dataset=self.train_dataset,
             batch_size=self.batch_size,
@@ -392,6 +405,7 @@ class FDShiftsDataLoader(pl.LightningDataModule):
     def test_dataloader(
         self,
     ):
+        logger.info(f"Loading test data with {self.batch_size=}")
         test_loaders = []
         for ix, test_dataset in enumerate(self.test_datasets):
             test_loaders.append(

@@ -5,42 +5,47 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fd_shifts"
 dynamic = ["version"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
   "albumentations>=1.0.3",
   "deepdiff",
+  "faiss-cpu",
   "hydra-colorlog>=1.1.0",
   "hydra-core>=1.1.1",
   "hydra-zen",
   "imageio>=2.9.0",
   "ipython",
+  "jsonargparse[signatures]>=4.29.0,<4.30.0",
   "loguru",
   "matplotlib>=3.3.4",
   "medmnist",
-  "numpy>=1.22.2",
+  "numpy>=1.22.2,<2.0.0",
   "ogb>=1.3.1",
   "omegaconf>=2.1.1",
   "opencv-python-headless",
+  "pandarallel>=1.6.5",
   "pandas>=1.2.3",
-  "Pillow==9.5.0",
+  "Pillow>=9.5.0",
   "protobuf<=3.20.0",
   "pydantic>=1.10.0,<2.0.0",
-  "pytorch-lightning-bolts>=0.3.2",
-  "pytorch-lightning==1.6.5",
+  "lightning-bolts==0.7.0",
+  "lightning==2.2.1",
   "rich>=10.7.0",
   "robustness @ https://github.com/MadryLab/robustness/archive/master.tar.gz",
   "scikit-image>=0.18.2",
   "scikit-learn>=0.24.2",
   "scipy>=1.6.1",
   "seaborn>=0.11.1",
+  "shtab",
   "tensorboard>=2.4.1",
-  "timm==0.5.4",
+  "timm>=0.5.4",
   "toml>=0.10.2",
-  "torch>=1.11.0,<2.0.0",
+  "torch>=2.0.0",
   "torchmetrics>=0.2.0",
   "torchvision>=0.12.0",
   "tqdm>=4.62.0",
   "typing_extensions>=4.1.1",
+  "wandb",
   "warmup_scheduler",
   "wilds>=1.1.0",
 ]
@@ -54,20 +59,13 @@ dev = [
   "pylint",
   "black",
   "debugpy",
-  "pre-commit"
+  "pre-commit",
 ]
-docs = [
-  "jupyterlab",
-  "notebook",
-  "ipykernel",
-]
-launcher = [
-  "parallel-ssh",
-]
+docs = ["jupyterlab", "notebook", "ipykernel"]
+launcher = ["parallel-ssh"]
 
 [project.scripts]
-fd_shifts = "fd_shifts.cli:main"
-_fd_shifts_exec = "fd_shifts.exec:main"
+fd-shifts = "fd_shifts.main:main"
 
 [tool.setuptools_scm]
 write_to = "fd_shifts/_version.py"
@@ -95,14 +93,20 @@ exclude = '''
 '''
 
 [tool.pyright]
+exclude = [
+    "experiments*",
+    "analysis_outputs",
+]
 reportOptionalSubscript = "warning"
 reportOptionalMemberAccess = "warning"
 reportOptionalCall = "warning"
 reportOptionalIterable = "warning"
 reportOptionalContextManager = "warning"
 reportOptionalOperand = "warning"
+# useLibraryCodeForTypes = false
 
 [tool.pytest.ini_options]
+testpaths = [ "fd_shifts" ]
 addopts = [
   "--import-mode=importlib",
 ]

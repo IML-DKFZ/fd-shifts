@@ -231,10 +231,7 @@ class Experiment:
 
         if "medshifts" in str(self.group_dir.stem):
             return self.group_dir / (
-                f"ms_{self.dataset}/"
-                f"{self.model}_"
-                f"bb{self.backbone}_"
-                f"run{self.run + 1}"
+                f"ms_{self.dataset}_run_{self.run + 1}/{self.model}_mcd"
             )
 
         return self.group_dir / (
@@ -422,7 +419,10 @@ def get_ms_experiments() -> list[Experiment]:
 
 
 def get_all_experiments(
-    with_hyperparameter_sweep=False, with_vit_special_runs=True, with_ms_runs=True
+    with_hyperparameter_sweep=False,
+    with_vit_special_runs=True,
+    with_ms_runs=True,
+    with_precision_study=False,
 ) -> list[Experiment]:
     _experiments = []
 
@@ -1059,123 +1059,124 @@ def get_all_experiments(
         )
     )
 
-    # precision study
-    _experiments.extend(
-        Experiment.from_iterables(
-            group_dir=Path("fd-shifts/svhn_precision_study16"),
-            datasets=("svhn",),
-            models=("confidnet",),
-            backbones=("svhn_small_conv",),
-            dropouts=(0, 1),
-            runs=range(5),
-            rewards=(2.2,),
-            learning_rates=(None,),
+    if with_precision_study:
+        # precision study
+        _experiments.extend(
+            Experiment.from_iterables(
+                group_dir=Path("fd-shifts/svhn_precision_study16"),
+                datasets=("svhn",),
+                models=("confidnet",),
+                backbones=("svhn_small_conv",),
+                dropouts=(0, 1),
+                runs=range(5),
+                rewards=(2.2,),
+                learning_rates=(None,),
+            )
         )
-    )
 
-    _experiments.extend(
-        Experiment.from_iterables(
-            group_dir=Path("fd-shifts/svhn_precision_study32"),
-            datasets=("svhn",),
-            models=("confidnet",),
-            backbones=("svhn_small_conv",),
-            dropouts=(0, 1),
-            runs=range(5),
-            rewards=(2.2,),
-            learning_rates=(None,),
+        _experiments.extend(
+            Experiment.from_iterables(
+                group_dir=Path("fd-shifts/svhn_precision_study32"),
+                datasets=("svhn",),
+                models=("confidnet",),
+                backbones=("svhn_small_conv",),
+                dropouts=(0, 1),
+                runs=range(5),
+                rewards=(2.2,),
+                learning_rates=(None,),
+            )
         )
-    )
 
-    _experiments.extend(
-        Experiment.from_iterables(
-            group_dir=Path("fd-shifts/svhn_precision_study64"),
-            datasets=("svhn",),
-            models=("confidnet",),
-            backbones=("svhn_small_conv",),
-            dropouts=(0, 1),
-            runs=range(5),
-            rewards=(2.2,),
-            learning_rates=(None,),
+        _experiments.extend(
+            Experiment.from_iterables(
+                group_dir=Path("fd-shifts/svhn_precision_study64"),
+                datasets=("svhn",),
+                models=("confidnet",),
+                backbones=("svhn_small_conv",),
+                dropouts=(0, 1),
+                runs=range(5),
+                rewards=(2.2,),
+                learning_rates=(None,),
+            )
         )
-    )
 
-    _experiments.extend(
-        Experiment.from_iterables(
-            group_dir=Path("fd-shifts/camelyon_precision_study16"),
-            datasets=("camelyon",),
-            models=("confidnet",),
-            backbones=("resnet50",),
-            dropouts=(0, 1),
-            runs=range(5),
-            rewards=(2.2,),
-            learning_rates=(None,),
+        _experiments.extend(
+            Experiment.from_iterables(
+                group_dir=Path("fd-shifts/camelyon_precision_study16"),
+                datasets=("camelyon",),
+                models=("confidnet",),
+                backbones=("resnet50",),
+                dropouts=(0, 1),
+                runs=range(5),
+                rewards=(2.2,),
+                learning_rates=(None,),
+            )
         )
-    )
 
-    _experiments.extend(
-        Experiment.from_iterables(
-            group_dir=Path("fd-shifts/camelyon_precision_study32"),
-            datasets=("camelyon",),
-            models=("confidnet",),
-            backbones=("resnet50",),
-            dropouts=(0, 1),
-            runs=range(5),
-            rewards=(2.2,),
-            learning_rates=(None,),
+        _experiments.extend(
+            Experiment.from_iterables(
+                group_dir=Path("fd-shifts/camelyon_precision_study32"),
+                datasets=("camelyon",),
+                models=("confidnet",),
+                backbones=("resnet50",),
+                dropouts=(0, 1),
+                runs=range(5),
+                rewards=(2.2,),
+                learning_rates=(None,),
+            )
         )
-    )
 
-    _experiments.extend(
-        Experiment.from_iterables(
-            group_dir=Path("fd-shifts/camelyon_precision_study64"),
-            datasets=("camelyon",),
-            models=("confidnet",),
-            backbones=("resnet50",),
-            dropouts=(0, 1),
-            runs=range(5),
-            rewards=(2.2,),
-            learning_rates=(None,),
+        _experiments.extend(
+            Experiment.from_iterables(
+                group_dir=Path("fd-shifts/camelyon_precision_study64"),
+                datasets=("camelyon",),
+                models=("confidnet",),
+                backbones=("resnet50",),
+                dropouts=(0, 1),
+                runs=range(5),
+                rewards=(2.2,),
+                learning_rates=(None,),
+            )
         )
-    )
 
-    _experiments.extend(
-        Experiment.from_iterables(
-            group_dir=Path("fd-shifts/vit_precision_study16"),
-            datasets=("svhn",),
-            models=("vit",),
-            backbones=("vit",),
-            learning_rates=(1e-2,),
-            dropouts=(0, 1),
-            runs=range(5),
-            rewards=(0,),
+        _experiments.extend(
+            Experiment.from_iterables(
+                group_dir=Path("fd-shifts/vit_precision_study16"),
+                datasets=("svhn",),
+                models=("vit",),
+                backbones=("vit",),
+                learning_rates=(1e-2,),
+                dropouts=(0, 1),
+                runs=range(5),
+                rewards=(0,),
+            )
         )
-    )
 
-    _experiments.extend(
-        Experiment.from_iterables(
-            group_dir=Path("fd-shifts/vit_precision_study32"),
-            datasets=("svhn",),
-            models=("vit",),
-            backbones=("vit",),
-            learning_rates=(1e-2,),
-            dropouts=(0, 1),
-            runs=range(5),
-            rewards=(0,),
+        _experiments.extend(
+            Experiment.from_iterables(
+                group_dir=Path("fd-shifts/vit_precision_study32"),
+                datasets=("svhn",),
+                models=("vit",),
+                backbones=("vit",),
+                learning_rates=(1e-2,),
+                dropouts=(0, 1),
+                runs=range(5),
+                rewards=(0,),
+            )
         )
-    )
 
-    _experiments.extend(
-        Experiment.from_iterables(
-            group_dir=Path("fd-shifts/vit_precision_study64"),
-            datasets=("svhn",),
-            models=("vit",),
-            backbones=("vit",),
-            learning_rates=(1e-2,),
-            dropouts=(0, 1),
-            runs=range(5),
-            rewards=(0,),
+        _experiments.extend(
+            Experiment.from_iterables(
+                group_dir=Path("fd-shifts/vit_precision_study64"),
+                datasets=("svhn",),
+                models=("vit",),
+                backbones=("vit",),
+                learning_rates=(1e-2,),
+                dropouts=(0, 1),
+                runs=range(5),
+                rewards=(0,),
+            )
         )
-    )
 
     if not with_vit_special_runs:
         _experiments = list(
@@ -1186,10 +1187,6 @@ def get_all_experiments(
         )
 
     # if with_ms_runs:
-    _experiments.extend(get_ms_experiments())
+    # _experiments.extend(get_ms_experiments())
 
     return _experiments
-
-
-if __name__ == "__main__":
-    pprint(get_all_experiments())

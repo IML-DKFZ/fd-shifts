@@ -2,23 +2,24 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from itertools import product
 from numbers import Number
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, overload
 
+import faiss
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import torch
 from loguru import logger
-from omegaconf import DictConfig, ListConfig, OmegaConf
+from omegaconf import ListConfig
 from rich import inspect
 from scipy import special as scpspecial
 from sklearn.calibration import _sigmoid_calibration as calib
 
 from fd_shifts import configs
+from fd_shifts.analysis.rc_stats import RiskCoverageStats
 
-from . import metrics
 from .confid_scores import ConfidScore, SecondaryConfidScore, is_external_confid
 from .eval_utils import (
     ConfidEvaluator,
@@ -51,6 +52,20 @@ class ExperimentData:
     _mcd_correct: npt.NDArray[Any] | None = field(default=None)
     _mcd_labels: npt.NDArray[Any] | None = field(default=None)
     _correct: npt.NDArray[Any] | None = field(default=None)
+
+    _features: npt.NDArray[Any] | None = field(default=None)
+    _train_features: npt.NDArray[Any] | None = field(default=None)
+    _last_layer: tuple[npt.NDArray[Any], npt.NDArray[Any]] | None = field(default=None)
+
+    _react_logits: npt.NDArray[Any] | None = field(default=None)
+    _maha_dist: npt.NDArray[Any] | None = field(default=None)
+    _vim_score: npt.NDArray[Any] | None = field(default=None)
+    _dknn_dist: npt.NDArray[Any] | None = field(default=None)
+    _react_softmax: npt.NDArray[Any] | None = field(default=None)
+
+    @property
+    def predicted(self) -> npt.NDArray[Any]:
+        return np.argmax(self.softmax_output, axis=1)
 
     @property
     def correct(self) -> npt.NDArray[Any]:
@@ -86,6 +101,88 @@ class ExperimentData:
             return None
         return self.labels
 
+    @property
+    def features(self) -> npt.NDArray[Any] | None:
+        return self._features
+
+    @property
+    def last_layer(self) -> tuple[npt.NDArray[Any], npt.NDArray[Any]] | None:
+        return self._last_layer
+
+    @property
+    def vim_score(self):
+        if self._vim_score is None:
+            if self.features is None:
+                return None
+
+            self._vim_score = _vim(
+                train_features=self._train_features,
+                features=self.features,
+                logits=self.logits,
+                last_layer=self.last_layer,
+            )
+
+        return self._vim_score
+
+    @property
+    def maha_dist(self):
+        if self._maha_dist is None:
+            if self.features is None:
+                return None
+
+            self._maha_dist = _maha_dist(
+                train_features=self._train_features,
+                features=self.features,
+                labels=self.labels,
+                predicted=self.predicted,
+                dataset_idx=self.dataset_idx,
+            )
+
+        return self._maha_dist
+
+    @property
+    def dknn_dist(self):
+        if self._dknn_dist is None:
+            if self.features is None:
+                return None
+
+            self._dknn_dist = _deep_knn(
+                train_features=self._train_features,
+                features=self.features,
+                labels=self.labels,
+                predicted=self.predicted,
+                dataset_idx=self.dataset_idx,
+            )
+
+        return self._dknn_dist
+
+    @property
+    def react_logits(self):
+        if self._react_logits is None:
+            if self.features is None:
+                return None
+
+            self._react_logits = _react(
+                last_layer=self.last_layer,
+                features=self.features,
+                train_features=self._train_features,
+                dataset_idx=self.dataset_idx,
+            )
+
+        return self._react_logits
+
+    @property
+    def react_softmax(self):
+        if self.react_logits is None:
+            return None
+
+        if self._react_softmax is None:
+            self._react_softmax = scpspecial.softmax(
+                self.react_logits.astype(np.float64), axis=1
+            )
+
+        return self._react_softmax
+
     def dataset_name_to_idx(self, dataset_name: str) -> int:
         if dataset_name == "val_tuning":
             return 0
@@ -93,9 +190,19 @@ class ExperimentData:
         flat_test_set_list = []
         for _, datasets in self.config.eval.query_studies:
             if isinstance(datasets, (list, ListConfig)):
-                flat_test_set_list.extend(list(datasets))
-            else:
+                if len(datasets) > 0:
+                    if isinstance(datasets[0], configs.DataConfig):
+                        datasets = map(lambda d: d.dataset, datasets)
+                    flat_test_set_list.extend(list(datasets))
+            elif (
+                isinstance(datasets, configs.DataConfig)
+                and datasets.dataset is not None
+            ):
+                flat_test_set_list.append(datasets.dataset)
+            elif isinstance(datasets, str):
                 flat_test_set_list.append(datasets)
+
+        logger.info(f"{flat_test_set_list=}")
 
         dataset_idx = flat_test_set_list.index(dataset_name)
 
@@ -124,8 +231,13 @@ class ExperimentData:
             mcd_softmax_dist=_filter_if_exists(self.mcd_softmax_dist),
             mcd_logits_dist=_filter_if_exists(self.mcd_logits_dist),
             external_confids=_filter_if_exists(self.external_confids),
+            _react_logits=_filter_if_exists(self.react_logits),
+            _maha_dist=_filter_if_exists(self.maha_dist),
+            _dknn_dist=_filter_if_exists(self.dknn_dist),
+            _vim_score=_filter_if_exists(self.vim_score),
             mcd_external_confids_dist=_filter_if_exists(self.mcd_external_confids_dist),
             config=self.config,
+            _train_features=self._train_features,
         )
 
     @staticmethod
@@ -136,43 +248,118 @@ class ExperimentData:
         with np.load(path) as npz:
             return npz.f.arr_0
 
+    @overload
+    @staticmethod
+    def __load_from_store(
+        config: configs.Config, file: str
+    ) -> npt.NDArray[np.float64] | None: ...
+
+    @overload
+    @staticmethod
+    def __load_from_store(
+        config: configs.Config, file: str, dtype: type, unpack: Literal[False]
+    ) -> dict[str, npt.NDArray[np.float64]] | None: ...
+
+    @overload
+    @staticmethod
+    def __load_from_store(
+        config: configs.Config, file: str, dtype: type
+    ) -> npt.NDArray[np.float64] | None: ...
+
+    @staticmethod
+    def __load_from_store(
+        config: configs.Config, file: str, dtype: type = np.float64, unpack: bool = True
+    ) -> npt.NDArray[np.float64] | dict[str, npt.NDArray[np.float64]] | None:
+        # Look for store paths in 'FD_SHIFTS_STORE_PATH', if not specified default to
+        # 'EXPERIMENT_ROOT_DIR'.
+        store_paths = map(
+            Path,
+            os.getenv(
+                "FD_SHIFTS_STORE_PATH", os.getenv("EXPERIMENT_ROOT_DIR", "")
+            ).split(":"),
+        )
+
+        test_dir = config.test.dir.relative_to(os.getenv("EXPERIMENT_ROOT_DIR", ""))
+
+        for store_path in store_paths:
+            if (store_path / test_dir / file).is_file():
+                logger.debug(f"Loading {store_path / test_dir / file}")
+                with np.load(store_path / test_dir / file) as npz:
+                    if unpack:
+                        return npz.f.arr_0.astype(dtype)
+                    else:
+                        return dict(npz.items())
+
+        return None
+
     @staticmethod
     def from_experiment(
         test_dir: Path,
         config: configs.Config,
         holdout_classes: list | None = None,
     ) -> ExperimentData:
+        from fd_shifts.loaders.dataset_collection import CorruptCIFAR
+
         if not isinstance(test_dir, Path):
             test_dir = Path(test_dir)
 
-        if (test_dir / "raw_logits.npz").is_file():
-            with np.load(test_dir / "raw_logits.npz") as npz:
-                raw_output = npz.f.arr_0
-
+        if (
+            raw_output := ExperimentData.__load_from_store(config, "raw_logits.npz")
+        ) is not None:
             logits = raw_output[:, :-2]
             softmax = scpspecial.softmax(logits, axis=1)
 
-            if (
-                mcd_logits_dist := ExperimentData.__load_npz_if_exists(
-                    test_dir / "raw_logits_dist.npz"
+            if any(
+                "mcd" in confid for confid in config.eval.confidence_measures.test
+            ) and (
+                (
+                    mcd_logits_dist := ExperimentData.__load_from_store(
+                        config, "raw_logits_dist.npz", dtype=np.float16
+                    )
                 )
-            ) is not None:
+                is not None
+            ):
+                if mcd_logits_dist.shape[0] > logits.shape[0]:
+                    dset = CorruptCIFAR(
+                        config.eval.query_studies.noise_study.data_dir,
+                        train=False,
+                        download=False,
+                    )
+                    idx = (
+                        CorruptCIFAR.subsample_idx(
+                            dset.data,
+                            dset.targets,
+                            config.eval.query_studies.noise_study.subsample_corruptions,
+                        )
+                        + raw_output[raw_output[:, -1] < 2].shape[0]
+                    )
+                    idx = np.concatenate(
+                        [
+                            np.argwhere(raw_output[:, -1] < 2).flatten(),
+                            idx,
+                            np.argwhere(raw_output[:, -1] > 2).flatten()
+                            + mcd_logits_dist.shape[0]
+                            - raw_output.shape[0],
+                        ]
+                    )
+                    mcd_logits_dist = mcd_logits_dist[idx]
+                mcd_logits_dist = mcd_logits_dist.astype(np.float64)
                 mcd_softmax_dist = scpspecial.softmax(mcd_logits_dist, axis=1)
             else:
+                mcd_logits_dist = None
                 mcd_softmax_dist = None
 
-        elif (test_dir / "raw_output.npz").is_file():
-            with np.load(test_dir / "raw_output.npz") as npz:
-                raw_output = npz.f.arr_0
-
+        elif (
+            raw_output := ExperimentData.__load_from_store(config, "raw_output.npz")
+        ) is not None:
             logits = None
             mcd_logits_dist = None
             softmax = raw_output[:, :-2]
-            mcd_softmax_dist = ExperimentData.__load_npz_if_exists(
-                test_dir / "raw_output_dist.npz"
+            mcd_softmax_dist = ExperimentData.__load_from_store(
+                config, "raw_output_dist.npz"
             )
         else:
-            raise FileNotFoundError("Could not find model output")
+            raise FileNotFoundError(f"Could not find model output in {test_dir}")
 
         if holdout_classes is not None:
             softmax[:, holdout_classes] = 0
@@ -188,12 +375,59 @@ class ExperimentData:
                 mcd_logits_dist[:, holdout_classes, :] = -np.inf
                 mcd_softmax_dist = scpspecial.softmax(mcd_logits_dist, axis=1)
 
-        external_confids = ExperimentData.__load_npz_if_exists(
-            test_dir / "external_confids.npz"
+        external_confids = ExperimentData.__load_from_store(
+            config, "external_confids.npz"
         )
-        mcd_external_confids_dist = ExperimentData.__load_npz_if_exists(
-            test_dir / "external_confids_dist.npz"
-        )
+        if (
+            any("mcd" in confid for confid in config.eval.confidence_measures.test)
+            and (
+                mcd_external_confids_dist := ExperimentData.__load_from_store(
+                    config, "external_confids_dist.npz", dtype=np.float16
+                )
+            )
+            is not None
+        ):
+            if mcd_external_confids_dist.shape[0] > logits.shape[0]:
+                dset = CorruptCIFAR(
+                    config.eval.query_studies.noise_study.data_dir,
+                    train=False,
+                    download=False,
+                )
+                idx = (
+                    CorruptCIFAR.subsample_idx(
+                        dset.data,
+                        dset.targets,
+                        config.eval.query_studies.noise_study.subsample_corruptions,
+                    )
+                    + raw_output[raw_output[:, -1] < 2].shape[0]
+                )
+                idx = np.concatenate(
+                    [
+                        np.argwhere(raw_output[:, -1] < 2).flatten(),
+                        idx,
+                        np.argwhere(raw_output[:, -1] > 2).flatten()
+                        + mcd_logits_dist.shape[0]
+                        - raw_output.shape[0],
+                    ]
+                )
+                mcd_external_confids_dist = mcd_external_confids_dist[idx]
+            mcd_external_confids_dist = mcd_external_confids_dist.astype(np.float64)
+        else:
+            mcd_external_confids_dist = None
+
+        if (
+            features := ExperimentData.__load_from_store(config, "encoded_output.npz")
+        ) is not None:
+            features = features[:, :-1]
+
+        if (
+            last_layer := ExperimentData.__load_from_store(
+                config, "last_layer.npz", unpack=False
+            )
+        ) is not None:
+            last_layer = tuple(last_layer.values())
+
+        train_features = ExperimentData.__load_from_store(config, "train_features.npz")
 
         return ExperimentData(
             softmax_output=softmax,
@@ -205,6 +439,9 @@ class ExperimentData:
             external_confids=external_confids,
             mcd_external_confids_dist=mcd_external_confids_dist,
             config=config,
+            _features=features,
+            _train_features=train_features,
+            _last_layer=last_layer,  # type: ignore
         )
 
 
@@ -224,6 +461,172 @@ class PlattScaling:
 
     def __call__(self, confids: npt.NDArray[Any]) -> npt.NDArray[Any]:
         return 1 / (1 + np.exp(confids * self.a + self.b))
+
+
+class TemperatureScaling:
+    def __init__(self, val_logits: npt.NDArray[Any], val_labels: npt.NDArray[Any]):
+        import torch
+
+        logger.info("Fit temperature to validation logits")
+        self.temperature = torch.ones(1).requires_grad_(True)
+
+        logits = torch.tensor(val_logits)
+        labels = torch.tensor(val_labels).long()
+
+        optimizer = torch.optim.LBFGS([self.temperature], lr=0.01, max_iter=50)
+
+        def _eval():
+            optimizer.zero_grad()
+            loss = torch.nn.functional.cross_entropy(logits / self.temperature, labels)
+            loss.backward()
+            return loss
+
+        optimizer.step(_eval)  # type: ignore
+
+        self.temperature = self.temperature.item()
+
+    def __call__(self, logits: npt.NDArray[Any]) -> npt.NDArray[Any]:
+        import torch
+
+        return np.max(
+            torch.softmax(torch.tensor(logits) / self.temperature, dim=1).numpy(),
+            axis=1,
+        )
+
+
+def _react(
+    last_layer: tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]],
+    train_features: npt.NDArray[np.float_] | None,
+    features: npt.NDArray[np.float_],
+    dataset_idx: npt.NDArray[np.integer],
+    clip_quantile=99,
+    val_set_index=0,
+    is_dg=False,
+):
+    import torch
+
+    logger.info("Compute REACT logits")
+
+    clip = torch.tensor(np.quantile(train_features[:, :-1], clip_quantile / 100))
+
+    w, b = last_layer
+    w = torch.tensor(w, dtype=torch.float)
+    w = torch.tensor(w, dtype=torch.float)
+
+    logits = (
+        torch.matmul(
+            torch.clip(torch.tensor(features, dtype=torch.float), min=None, max=clip),
+            w.T,
+        )
+        + b
+    )
+    if is_dg:
+        logits = logits[:, :-1]
+    return logits.numpy()
+
+
+def _maha_dist(
+    train_features: npt.NDArray[np.float_] | None,
+    features: npt.NDArray[np.float_],
+    labels: npt.NDArray[np.int_],
+    predicted: npt.NDArray[np.int_],
+    dataset_idx: npt.NDArray[np.int_],
+):
+    import torch
+
+    logger.info("Compute Mahalanobis distance")
+
+    val_features = train_features[:, :-1]
+    val_labels = train_features[:, -1]
+
+    means = torch.tensor(
+        np.array(
+            [val_features[val_labels == i].mean(axis=0) for i in np.unique(val_labels)]
+        )
+    )
+    icov = torch.pinverse(torch.cov(torch.tensor(val_features).float().T))
+
+    tpredicted = torch.tensor(predicted).long()
+    zm = torch.tensor(features) - means[tpredicted]
+    zm = zm.float()
+
+    maha = -(torch.einsum("ij,jk,ik->i", zm, icov, zm))
+    maha = maha.numpy()
+    return maha
+
+
+def _vim(
+    last_layer: tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]],
+    train_features: npt.NDArray[np.float_] | None,
+    features: npt.NDArray[np.float_],
+    logits: npt.NDArray[np.float_],
+    is_dg=False,
+):
+    import torch
+
+    logger.info("Compute ViM score")
+    if features.shape[-1] >= 2048:
+        D = 1000
+    elif features.shape[-1] >= 768:
+        D = 512
+    else:
+        D = features.shape[-1] // 2
+
+    w, b = last_layer
+    w = torch.tensor(w, dtype=torch.float)
+    b = torch.tensor(b, dtype=torch.float)
+
+    logger.debug("ViM: Compute NS")
+    u = -torch.pinverse(w) @ b
+    train_f = torch.tensor(train_features[:, :-1], dtype=torch.float)
+    cov = torch.cov((train_f - u).T)
+    eig_vals, eigen_vectors = torch.linalg.eig(cov)
+    eig_vals = eig_vals.real
+    eigen_vectors = eigen_vectors.real
+    NS = (eigen_vectors.T[torch.argsort(eig_vals * -1)[D:]]).T
+
+    logger.debug("ViM: Compute alpha")
+    logit_train = torch.matmul(train_f, w.T) + b
+
+    if is_dg:
+        logit_train = logit_train[:, :-1]
+
+    vlogit_train = torch.linalg.norm(torch.matmul(train_f - u, NS), dim=-1)
+    alpha = logit_train.max(dim=-1)[0].mean() / vlogit_train.mean()
+
+    tlogits = torch.tensor(logits, dtype=torch.float)
+    tfeatures = torch.tensor(features, dtype=torch.float)
+
+    logger.debug("ViM: Compute score")
+    energy = torch.logsumexp(tlogits, dim=-1)
+    vlogit = torch.linalg.norm(torch.matmul(tfeatures - u, NS), dim=-1) * alpha
+    score = -vlogit + energy
+    return score.numpy()
+
+
+def _deep_knn(
+    train_features: npt.NDArray[np.float_] | None,
+    features: npt.NDArray[np.float_],
+    labels: npt.NDArray[np.int_],
+    predicted: npt.NDArray[np.int_],
+    dataset_idx: npt.NDArray[np.int_],
+    val_set_index=0,
+):
+    logger.info("Compute DeepKNN distance")
+    # index = faiss.IndexFlatL2(ftrain.shape[1])
+    # index.add(ftrain)
+    K = 50
+    # neigh = neighbors.NearestNeighbors(n_neighbors=K, metric="euclidean", n_jobs=-1)
+    # neigh.fit(train_features[:, :-1])
+    # D, _ = neigh.kneighbors(features, return_distance=True)
+
+    train_features = train_features[:1000, :-1]
+    index = faiss.IndexFlatL2(train_features.shape[1])
+    index.add(train_features.astype(np.float32))
+    D, _ = index.search(features.astype(np.float32), K)
+
+    score = -D[:, -1]
+    return score
 
 
 @dataclass
@@ -276,10 +679,12 @@ class Analysis:
         if self.experiment_data.mcd_softmax_dist is None:
             self.method_dict["query_confids"] = list(
                 filter(
-                    lambda confid: "mcd" not in confid,
+                    lambda confid: "mcd" not in confid and "waic" not in confid,
                     self.method_dict["query_confids"],
                 )
             )
+
+        # self.method_dict["query_confids"].append("temp_logits")
 
         self.secondary_confids = []
 
@@ -299,11 +704,25 @@ class Analysis:
 
         if self.experiment_data.logits is not None:
             self.method_dict["query_confids"].append("det_mls")
+            self.method_dict["query_confids"].append("temp_mls")
+            self.method_dict["query_confids"].append("energy_mls")
+
+        if (
+            self.experiment_data.features is not None
+            and self.experiment_data.last_layer is not None
+        ):
+            self.method_dict["query_confids"].append("maha")
+            self.method_dict["query_confids"].append("dknn")
+            self.method_dict["query_confids"].append("vim")
+            self.method_dict["query_confids"].append("react_det_mcp")
+            self.method_dict["query_confids"].append("react_det_mls")
+            self.method_dict["query_confids"].append("react_temp_mls")
+            self.method_dict["query_confids"].append("react_energy_mls")
 
         if self.experiment_data.mcd_logits_dist is not None:
             self.method_dict["query_confids"].append("mcd_mls")
 
-        logger.debug("CHECK QUERY CONFIDS\n{}", self.method_dict["query_confids"])
+        logger.debug("CSFs: {}", ", ".join(self.method_dict["query_confids"]))
 
         self.query_performance_metrics = query_performance_metrics
         self.query_confid_metrics = query_confid_metrics
@@ -311,6 +730,34 @@ class Analysis:
         self.query_studies = (
             self.cfg.eval.query_studies if query_studies is None else query_studies
         )
+        for study_name, datasets in self.query_studies:
+            if isinstance(datasets, (list, ListConfig)) and len(datasets) > 0:
+                if isinstance(datasets[0], configs.DataConfig):
+                    self.query_studies.__dict__[study_name] = list(
+                        map(
+                            lambda d: d.dataset
+                            + (
+                                "_384"
+                                if d.img_size[0] == 384 and "384" not in d.dataset
+                                else ""
+                            ),
+                            datasets,
+                        )
+                    )
+            if isinstance(datasets, configs.DataConfig):
+                if datasets.dataset is not None:
+                    self.query_studies.__dict__[study_name] = [
+                        datasets.dataset
+                        + (
+                            "_384"
+                            if datasets.img_size[0] == 384
+                            and "384" not in datasets.dataset
+                            else ""
+                        )
+                    ]
+                else:
+                    self.query_studies.__dict__[study_name] = []
+
         self.analysis_out_dir = analysis_out_dir
         self.calibration_bins = 20
         self.val_risk_scores = {}
@@ -353,6 +800,7 @@ class Analysis:
 
     def _perform_study(self, study_name, study_data: ExperimentData):
         self.study_name = study_name
+        logger.info("Performing study {}", study_name)
         self._get_confidence_scores(study_data)
         self._compute_confid_metrics()
         self._create_results_csv(study_data)
@@ -375,6 +823,7 @@ class Analysis:
 
     def _get_confidence_scores(self, study_data: ExperimentData):
         for query_confid in self.method_dict["query_confids"]:
+            logger.debug(f"Compute score {query_confid}")
             if query_confid in self.secondary_confids:
                 continue
 
@@ -393,7 +842,7 @@ class Analysis:
                     self.normalization_functions[query_confid] = QuantileScaling(
                         confids
                     )
-                elif query_confid == "temp_logits":
+                elif "temp_mls" in query_confid:
                     self.normalization_functions[query_confid] = TemperatureScaling(
                         confids, study_data.labels
                     )
@@ -467,27 +916,8 @@ class Analysis:
 
     def _compute_confid_metrics(self):
         for confid_key in self.method_dict["query_confids"]:
-            logger.debug("{}\n{}", self.study_name, confid_key)
+            logger.debug("{}: evaluating {}", self.study_name, confid_key)
             confid_dict = self.method_dict[confid_key]
-            if confid_key == "bpd" or confid_key == "maha":
-                logger.debug(
-                    "CHECK BEFORE NORM VALUES CORRECT\n{}",
-                    np.median(confid_dict["confids"][confid_dict["correct"] == 1]),
-                )
-                logger.debug(
-                    "CHECK BEFORE NORM VALUES INCORRECT\n{}",
-                    np.median(confid_dict["confids"][confid_dict["correct"] == 0]),
-                )
-
-            if confid_key == "bpd" or confid_key == "maha":
-                logger.debug(
-                    "CHECK AFTER NORM VALUES CORRECT\n{}",
-                    np.median(confid_dict["confids"][confid_dict["correct"] == 1]),
-                )
-                logger.debug(
-                    "CHECK AFTER NORM VALUES INCORRECT\n{}",
-                    np.median(confid_dict["confids"][confid_dict["correct"] == 0]),
-                )
 
             eval = ConfidEvaluator(
                 confids=confid_dict["confids"],
@@ -541,7 +971,6 @@ class Analysis:
                         ]
                     )
 
-            logger.debug("checking in\n{}\n{}", self.threshold_plot_confid, confid_key)
             if (
                 self.threshold_plot_confid is not None
                 and confid_key == self.threshold_plot_confid
@@ -558,19 +987,11 @@ class Analysis:
                     self.threshold_plot_dict = {}
                     self.plot_threshs = []
                     self.true_covs = []
-                    logger.debug("creating threshold_plot_dict....")
                     plot_val_risk_scores = eval.get_val_risk_scores(
                         self.rstar, self.rdelta
                     )
                     self.plot_threshs.append(plot_val_risk_scores["theta"])
                     self.true_covs.append(plot_val_risk_scores["val_cov"])
-                    logger.debug(
-                        "{}\n{}\n{}\n{}",
-                        self.rstar,
-                        self.rdelta,
-                        plot_val_risk_scores["theta"],
-                        plot_val_risk_scores["val_risk"],
-                    )
 
                 plot_string = "r*: {:.2f}  \n".format(self.rstar)
                 for ix, thresh in enumerate(self.plot_threshs):
@@ -605,7 +1026,6 @@ class Analysis:
                     self.rstar, 0.1, no_bound_mode=True
                 )["theta"]
 
-                logger.debug("creating new dict entry\n{}", self.study_name)
                 self.threshold_plot_dict[self.study_name] = {}
                 self.threshold_plot_dict[self.study_name]["confids"] = confid_dict[
                     "confids"
@@ -713,9 +1133,7 @@ class Analysis:
                         corr_ix = self.dummy_noise_ixs[ix] % 50000
                         corr_ix = corr_ix // 10000
                         logger.debug(
-                            "noise sanity check\n{}\n{}",
-                            corr_ix,
-                            self.dummy_noise_ixs[ix],
+                            f"Noise sanity check: {corr_ix=}, {self.dummy_noise_ixs[ix]=}"
                         )
 
                 out_path = os.path.join(
@@ -751,9 +1169,11 @@ class Analysis:
                 backbone,
                 self.cfg.exp.fold,
                 confid_key,
-                study_data.mcd_softmax_mean.shape[0]
-                if "mcd" in confid_key
-                else study_data.softmax_output.shape[0],
+                (
+                    study_data.mcd_softmax_mean.shape[0]
+                    if "mcd" in confid_key
+                    else study_data.softmax_output.shape[0]
+                ),
             ]
             submit_list += [
                 self.method_dict[confid_key]["metrics"][x] for x in all_metrics
@@ -766,22 +1186,22 @@ class Analysis:
             float_format="%.5f",
             decimal=".",
         )
-        logger.debug(
-            "saved csv to {}",
+        logger.info(
+            "Saved csv to {}",
             os.path.join(
                 self.analysis_out_dir, "analysis_metrics_{}.csv".format(self.study_name)
             ),
         )
 
-        group_file_path = os.path.join(
-            self.cfg.exp.group_dir, "group_analysis_metrics.csv"
-        )
-        if os.path.exists(group_file_path):
-            with open(group_file_path, "a") as f:
-                df.to_csv(f, float_format="%.5f", decimal=".", header=False)
-        else:
-            with open(group_file_path, "w") as f:
-                df.to_csv(f, float_format="%.5f", decimal=".")
+        # group_file_path = os.path.join(
+        #     self.cfg.exp.group_dir, "group_analysis_metrics.csv"
+        # )
+        # if os.path.exists(group_file_path):
+        #     with open(group_file_path, "a") as f:
+        #         df.to_csv(f, float_format="%.5f", decimal=".", header=False)
+        # else:
+        #     with open(group_file_path, "w") as f:
+        #         df.to_csv(f, float_format="%.5f", decimal=".")
 
     def _create_threshold_plot(self):
         f = ThresholdPlot(self.threshold_plot_dict)
@@ -791,8 +1211,8 @@ class Analysis:
                 "threshold_plot_{}.png".format(self.threshold_plot_confid),
             )
         )
-        logger.debug(
-            "saved threshold_plot to {}",
+        logger.info(
+            "Saved threshold_plot to {}",
             os.path.join(
                 self.analysis_out_dir,
                 "threshold_plot_{}.png".format(self.threshold_plot_confid),
@@ -813,8 +1233,8 @@ class Analysis:
                 self.analysis_out_dir, "master_plot_{}.png".format(self.study_name)
             )
         )
-        logger.debug(
-            "saved masterplot to {}",
+        logger.info(
+            "Saved masterplot to {}",
             os.path.join(
                 self.analysis_out_dir, "master_plot_{}.png".format(self.study_name)
             ),
@@ -835,7 +1255,7 @@ def main(
     cf: configs.Config,
     query_studies: configs.QueryStudiesConfig,
     add_val_tuning: bool = True,
-    threshold_plot_confid: str | None = "tcp_mcd",
+    threshold_plot_confid: str | None = None,
     qual_plot_confid=None,
 ):
     path_to_test_dir = in_path
@@ -853,6 +1273,13 @@ def main(
         "e-aurc",
         "b-aurc",
         "aurc",
+        "augrc",
+        # "augrc-CI95-l",
+        # "augrc-CI95-h",
+        # "augrc-CI95",
+        "e-augrc",
+        "augrc-ba",
+        "aurc-ba",
         "fpr@95tpr",
         "risk@100cov",
         "risk@95cov",
@@ -867,8 +1294,8 @@ def main(
     if not os.path.exists(analysis_out_dir):
         os.mkdir(analysis_out_dir)
 
-    logger.debug(
-        "starting analysis with in_path {}, out_path {}, and query studies {}".format(
+    logger.info(
+        "Starting analysis with in_path {}, out_path {}, and query studies {}".format(
             path_to_test_dir, analysis_out_dir, query_studies
         )
     )

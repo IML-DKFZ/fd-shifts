@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Callable, Iterator, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Tuple, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -218,6 +218,11 @@ def filter_new_class_study_data(
         _correct=__filter_if_exists(correct, select_ix_all),
         _mcd_correct=__filter_if_exists(mcd_correct, select_ix_all_mcd),
         _mcd_labels=__filter_if_exists(labels, select_ix_all_mcd),
+        _react_logits=__filter_if_exists(data.react_logits, select_ix_all),
+        _maha_dist=__filter_if_exists(data.maha_dist, select_ix_all),
+        _vim_score=__filter_if_exists(data.vim_score, select_ix_all),
+        _dknn_dist=__filter_if_exists(data.dknn_dist, select_ix_all),
+        _train_features=data._train_features,
     )
 
 
@@ -380,7 +385,21 @@ def filter_noise_study_data(
             :, noise_level
         ].reshape(-1, data.shape[-2], data.shape[-1])
 
-    def __filter_intensity_2d(data, mask, noise_level):
+    @overload
+    def __filter_intensity_2d(
+        data: npt.NDArray[Any], mask: npt.NDArray[Any], noise_level: int
+    ) -> npt.NDArray[Any]:
+        ...
+
+    @overload
+    def __filter_intensity_2d(
+        data: None, mask: npt.NDArray[Any], noise_level: int
+    ) -> None:
+        ...
+
+    def __filter_intensity_2d(
+        data: npt.NDArray[Any] | None, mask: npt.NDArray[Any], noise_level: int
+    ) -> npt.NDArray[Any] | None:
         if data is None:
             return None
 
@@ -392,6 +411,18 @@ def filter_noise_study_data(
         return data.reshape(15, 5, -1, data.shape[-1])[:, noise_level].reshape(
             -1, data.shape[-1]
         )
+
+    @overload
+    def __filter_intensity_1d(
+        data: npt.NDArray[Any], mask: npt.NDArray[Any], noise_level: int
+    ) -> npt.NDArray[Any]:
+        ...
+
+    @overload
+    def __filter_intensity_1d(
+        data: None, mask: npt.NDArray[Any], noise_level: int
+    ) -> None:
+        ...
 
     def __filter_intensity_1d(data, mask, noise_level):
         if data is None:
@@ -424,6 +455,14 @@ def filter_noise_study_data(
             data.mcd_logits_dist, select_ix, noise_level
         ),
         config=data.config,
+        _correct=__filter_intensity_1d(data._correct, select_ix, noise_level),
+        _mcd_correct=__filter_intensity_1d(data._mcd_correct, select_ix, noise_level),
+        _mcd_labels=__filter_intensity_1d(data._mcd_labels, select_ix, noise_level),
+        _react_logits=__filter_intensity_2d(data._react_logits, select_ix, noise_level),
+        _maha_dist=__filter_intensity_1d(data._maha_dist, select_ix, noise_level),
+        _vim_score=__filter_intensity_1d(data._vim_score, select_ix, noise_level),
+        _dknn_dist=__filter_intensity_1d(data._dknn_dist, select_ix, noise_level),
+        _train_features=data._train_features,
     )
 
 
@@ -443,9 +482,8 @@ def iterate_noise_study_data(
     filter_func: Callable[..., "ExperimentData"] = get_filter_function(study_name)
     for noise_set in getattr(analysis.query_studies, study_name):
         for intensity_level in range(5):
-            logger.debug(
-                "starting noise study with intensitiy level %s",
-                intensity_level + 1,
+            logger.info(
+                f"Starting noise study with intensitiy level {intensity_level + 1}"
             )
 
             study_data = filter_func(

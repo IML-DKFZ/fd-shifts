@@ -448,3 +448,128 @@ def vit_v_cnn_box(data: pd.DataFrame, out_dir: Path) -> None:
 
     plt.tight_layout()
     plt.savefig(out_dir / f"vit_v_cnn.png")
+
+
+def acc_auroc_plot(data: pd.DataFrame, metric, out_dir):
+    """"""
+    data = data[~data.study.str.contains("proposed_mode")]
+
+    for _, group in data.groupby("study"):
+        plt.scatter(
+            np.array(group["accuracy"], dtype=float),
+            np.array(group["failauc"], dtype=float),
+            c=np.array(group[metric], dtype=float),
+            vmin=0,
+            vmax=300 if metric == "aurc" else 150,
+            s=2,
+            cmap="turbo",
+        )
+
+    plt.colorbar()
+    plt.savefig(out_dir / f"pareto_plot_{metric}.pdf")
+    plt.close()
+
+
+def ranking_change_arrows(
+    data1: pd.DataFrame,
+    data2: pd.DataFrame,
+    metric1,
+    metric2,
+    out_dir,
+):
+    """"""
+    from fd_shifts.reporting.tables import (
+        _add_rank_columns,
+        _dataset_to_display_name,
+        build_results_table,
+    )
+
+    _DATASETS = ["animals", "breeds", "camelyon", "cifar10", "cifar100", "svhn"]
+
+    results_table1 = build_results_table(data1, metric1)
+    results_table1 = _add_rank_columns(results_table1)
+    results_table1 = results_table1.iloc[
+        :, results_table1.columns.get_level_values(0).isin(_DATASETS)
+    ]
+    results_table1 = results_table1.rename(columns=_dataset_to_display_name, level=0)
+
+    results_table2 = build_results_table(data2, metric2)
+    results_table2 = _add_rank_columns(results_table2)
+    results_table2 = results_table2.iloc[
+        :, results_table2.columns.get_level_values(0).isin(_DATASETS)
+    ]
+    results_table2 = results_table2.rename(columns=_dataset_to_display_name, level=0)
+
+    confid_to_label = {
+        c: f"C{i+1}"
+        for i, c in enumerate(results_table1.index.get_level_values(0).values)
+    }
+    n_confid = len(confid_to_label)
+
+    for c, l in confid_to_label.items():
+        print(f"{l}: {c}")
+    print(results_table1.columns)
+    print("Left: aurc, Right: augrc")
+
+    for exp in results_table1.columns:
+        if metric1 == "augrc" and metric2 == "aurc":
+            ranking2 = results_table1[exp].sort_values()
+            ranking1 = results_table2[exp].sort_values()
+        else:
+            ranking1 = results_table1[exp].sort_values()
+            ranking2 = results_table2[exp].sort_values()
+
+        arrow_offset = 0.01
+        column_distance = 0.1
+
+        def to_label_string(c):
+            if c.size == 0:
+                return ""
+            return ", ".join(
+                [confid_to_label[csf_cnn[0]] for csf_cnn in c.index.to_list()]
+            )
+
+        # Loop 1 for the labels (loop over rank values)
+        for r in np.arange(n_confid) + 1:
+            plt.text(
+                x=0,
+                y=n_confid - r,
+                s=to_label_string(ranking1[ranking1 == r]),
+                horizontalalignment="right",
+                verticalalignment="center",
+            )
+            plt.text(
+                x=column_distance,
+                y=n_confid - r,
+                s=to_label_string(ranking2[ranking2 == r]),
+                horizontalalignment="left",
+                verticalalignment="center",
+            )
+
+        # Loop 2 for the arrows (loop over confids)
+        for confid in confid_to_label:
+            y1 = ranking1.loc[(confid, "CNN")]
+            y2 = ranking2.loc[(confid, "CNN")]
+
+            if y1 != y2:
+                plt.arrow(
+                    x=arrow_offset,
+                    y=n_confid - y1,
+                    dx=column_distance - 2 * arrow_offset,
+                    dy=y1 - y2,
+                    length_includes_head=True,
+                    width=0.00015,
+                    head_width=0.01,
+                    head_length=0.05,
+                    overhang=0.1,
+                    color="tab:red",
+                )
+
+        plt.xlim(-0.5, 0.6)
+        plt.ylim(-0.2, n_confid - 0.4)
+        plt.axis("off")
+        plt.savefig(
+            out_dir / f"ranking_change_{metric1}_{metric2}_arrows_{'_'.join(exp)}.pdf",
+            bbox_inches="tight",
+        )
+        plt.close()
