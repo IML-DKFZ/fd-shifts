@@ -16,6 +16,22 @@
 </p>
 
 ---
+**Official Benchmark Implementation**
+
+### :scroll: A Call to Reflect on Evaluation Practices for Failure Detection in Image Classification
+The original paper establishing the FD-Shifts benchmark was presented as an Oral at ICLR 2023 (top 5%).
+
+[&rarr; project page](./docs/publications/iclr_2023.md) [&rarr; paper link](https://openreview.net/pdf?id=YnkGMIh0gvX)
+### :scroll: Understanding Silent Failures in Medical Image Classification
+Our follow-up study on Failure Detection in Medical Image Classification was presented at MICCAI 2023.
+
+[&rarr; project page](./docs/publications/miccai_2023.md) [&rarr; paper link](https://arxiv.org/abs/2307.14729) [&rarr; interactive tool SF-Visuals](https://github.com/IML-DKFZ/sf-visuals)
+### :scroll: Overcoming Common Flaws in the Evaluation of Selective Classification Systems
+Our paper on a revised evaluation protocol for Selective Classification Systems was accepted as Spotlight paper at NeurIPS 2024.
+
+[&rarr; project page](./docs/publications/neurips_2024.md) [&rarr; paper link](https://arxiv.org/abs/2407.01032) [&rarr; AUGRC implementation](./docs/publications/neurips_2024.md#using-the-augrc-in-your-work)
+
+---
 
 > Reliable application of machine learning-based decision systems in the wild is
 > one of the major challenges currently investigated by the field. A large
@@ -78,25 +94,12 @@ If you use FD-Shifts please cite our [paper](https://openreview.net/pdf?id=YnkGM
 }
 ```
 
-> **Note**  
-> This repository also contains the benchmarks for our follow-up study ["Understanding Silent Failures in Medical Image Classification"](https://arxiv.org/abs/2307.14729) (for the visualization tool presented in that work please see [sf-visuals](https://github.com/IML-DKFZ/sf-visuals)) and for ["Overcoming Common Flaws in the Evaluation of Selective Classification Systems"]().
-
-```bibtex
-@inproceedings{
-    bungert2023understanding,
-    title={Understanding silent failures in medical image classification},
-    author={Bungert, Till J and Kobelke, Levin and Jaeger, Paul F},
-    booktitle={International Conference on Medical Image Computing and Computer-Assisted Intervention},
-    pages={400--410},
-    year={2023},
-    organization={Springer}
-}
-```
-
 ## Table Of Contents
 
 <!--toc:start-->
 
+- [Citing This Work](#citing-this-work)
+- [Table Of Contents](#table-of-contents)
 - [Installation](#installation)
 - [How to Integrate Your Own Usecase](#how-to-integrate-your-own-usecase)
 - [Reproducing our results](#reproducing-our-results)
@@ -137,12 +140,10 @@ scoring functions check out the
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iml-dkfz/fd-shifts/blob/main/docs/extending_fd-shifts.ipynb).
 
 ## Reproducing our results
-This repository contains the benchmarks for the following publications:
-- ["A Call to Reflect on Evaluation Practices for Failure Detection in Image Classification"](https://openreview.net/pdf?id=YnkGMIh0gvX) &rarr; [Documentation for reproducing](./docs/publications/iclr_2023.md)
-- ["Understanding Silent Failures in Medical Image Classification"](https://arxiv.org/abs/2307.14729) (For the visualization tool presented in that work please see [sf-visuals](https://github.com/IML-DKFZ/sf-visuals).) &rarr; [Documentation for reproducing](./docs/publications/miccai_2023.md)
-- ["Overcoming Common Flaws in the Evaluation of Selective Classification Systems"]() &rarr; [Documentation for reproducing](./docs/publications/augrc_2024.md)
-
-While the following section on [working with FD-Shifts](#working-with-fd-shifts) describes the general usage, descriptions for reproducing specific publications are documented [here](./docs/publications).
+While the following section on [working with FD-Shifts](#working-with-fd-shifts) describes the general usage, descriptions for reproducing specific publications are documented on the respective project page:
+- ["A Call to Reflect on Evaluation Practices for Failure Detection in Image Classification"](./docs/publications/iclr_2023.md)
+- ["Understanding Silent Failures in Medical Image Classification"](./docs/publications/miccai_2023.md)
+- ["Overcoming Common Flaws in the Evaluation of Selective Classification Systems"](./docs/publications/neurips_2024.md)
 
 ## Working with FD-Shifts
 
