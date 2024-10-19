@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
 from scipy.stats import kendalltau, wilcoxon
+from statsmodels.stats.multitest import multipletests
 
 plt.rcParams.update(
     {
@@ -127,7 +128,7 @@ def bs_podium_plot(
         if len(group) != n_confid:
             raise ValueError(
                 f"Missing results for the following group (expected {n_confid} "
-                f"confids):\n\n{group}"
+                f"confids, got {len(group)}):\n\n{group}"
             )
         for i in range(n_confid - 1):
             plt.plot(
@@ -269,16 +270,20 @@ def bs_significance_map(
             data.groupby("confid")
             .get_group(confid_names[i])
             .sort_values(
-                by=["bootstrap_index"]
-                if "run" not in data.columns
-                else ["bootstrap_index", "run"]
+                by=(
+                    ["bootstrap_index"]
+                    if "run" not in data.columns
+                    else ["bootstrap_index", "run"]
+                )
             )[metric],
             data.groupby("confid")
             .get_group(confid_names[j])
             .sort_values(
-                by=["bootstrap_index"]
-                if "run" not in data.columns
-                else ["bootstrap_index", "run"]
+                by=(
+                    ["bootstrap_index"]
+                    if "run" not in data.columns
+                    else ["bootstrap_index", "run"]
+                )
             )[metric],
         ):
             significance[i, j] = 0
@@ -290,16 +295,20 @@ def bs_significance_map(
                     data.groupby("confid")
                     .get_group(confid_names[i])
                     .sort_values(
-                        by=["bootstrap_index"]
-                        if "run" not in data.columns
-                        else ["bootstrap_index", "run"]
+                        by=(
+                            ["bootstrap_index"]
+                            if "run" not in data.columns
+                            else ["bootstrap_index", "run"]
+                        )
                     )[metric],
                     data.groupby("confid")
                     .get_group(confid_names[j])
                     .sort_values(
-                        by=["bootstrap_index"]
-                        if "run" not in data.columns
-                        else ["bootstrap_index", "run"]
+                        by=(
+                            ["bootstrap_index"]
+                            if "run" not in data.columns
+                            else ["bootstrap_index", "run"]
+                        )
                     )[metric],
                     correction=False,
                     alternative="less",
@@ -401,16 +410,20 @@ def bs_significance_map_colored(
             data.groupby("confid")
             .get_group(confid_names[i])
             .sort_values(
-                by=["bootstrap_index"]
-                if "run" not in data.columns
-                else ["bootstrap_index", "run"]
+                by=(
+                    ["bootstrap_index"]
+                    if "run" not in data.columns
+                    else ["bootstrap_index", "run"]
+                )
             )[metric],
             data.groupby("confid")
             .get_group(confid_names[j])
             .sort_values(
-                by=["bootstrap_index"]
-                if "run" not in data.columns
-                else ["bootstrap_index", "run"]
+                by=(
+                    ["bootstrap_index"]
+                    if "run" not in data.columns
+                    else ["bootstrap_index", "run"]
+                )
             )[metric],
         ):
             significance[i, j] = 0
@@ -422,16 +435,20 @@ def bs_significance_map_colored(
                     data.groupby("confid")
                     .get_group(confid_names[i])
                     .sort_values(
-                        by=["bootstrap_index"]
-                        if "run" not in data.columns
-                        else ["bootstrap_index", "run"]
+                        by=(
+                            ["bootstrap_index"]
+                            if "run" not in data.columns
+                            else ["bootstrap_index", "run"]
+                        )
                     )[metric],
                     data.groupby("confid")
                     .get_group(confid_names[j])
                     .sort_values(
-                        by=["bootstrap_index"]
-                        if "run" not in data.columns
-                        else ["bootstrap_index", "run"]
+                        by=(
+                            ["bootstrap_index"]
+                            if "run" not in data.columns
+                            else ["bootstrap_index", "run"]
+                        )
                     )[metric],
                     correction=False,
                     alternative="less",
@@ -628,6 +645,203 @@ def bs_significance_map_colored(
     plt.xlim(-0.6, n_confid - 0.4)
     plt.ylim(-0.6, n_confid - 0.4)
     # plt.title(filename)
+    plt.tight_layout()
+    plt.savefig(out_dir / filename)
+    plt.close()
+
+
+def bs_significance_map_colored_corrected(
+    data: pd.DataFrame,
+    metric: str,
+    histograms: pd.DataFrame,
+    out_dir: Path,
+    filename: str,
+    no_labels: bool = True,
+    flip_horizontally: bool = False,
+    correction: str = "holm",
+) -> None:
+    """"""
+    # significance level
+    alpha = 0.05
+    n_confid = histograms.shape[0]
+    rank_values = np.arange(1, n_confid + 1)
+    confid_indices = np.arange(n_confid)
+
+    # Reindex columns handling the case of shared last ranks
+    histograms = histograms.reindex(columns=rank_values, fill_value=0)
+    colors_dict = _make_color_dict(histograms.index)
+
+    # Compute significance map
+    significance = np.zeros((n_confid, n_confid))
+    p_values = np.zeros((n_confid, n_confid))
+    confid_names = histograms.index.values
+
+    for i, j in product(range(n_confid), range(n_confid)):
+        if i == j:
+            significance[i, j] = np.nan
+            continue
+
+        # Catch the case where all values are the same and set significance to 0
+        if np.allclose(
+            data.groupby("confid")
+            .get_group(confid_names[i])
+            .sort_values(
+                by=(
+                    ["bootstrap_index"]
+                    if "run" not in data.columns
+                    else ["bootstrap_index", "run"]
+                )
+            )[metric],
+            data.groupby("confid")
+            .get_group(confid_names[j])
+            .sort_values(
+                by=(
+                    ["bootstrap_index"]
+                    if "run" not in data.columns
+                    else ["bootstrap_index", "run"]
+                )
+            )[metric],
+        ):
+            significance[i, j] = 0
+            p_values[i, j] = 99.0
+
+            if i < j:
+                print(
+                    f"TIED RANK in {filename}: {i}-{confid_names[i]} == {j}-{confid_names[j]}"
+                )
+        else:
+            # Get the two confid-groups and sort the values by bootstrap index and run to
+            # ensure that they are aligned.
+            p_values[i, j] = wilcoxon(
+                data.groupby("confid")
+                .get_group(confid_names[i])
+                .sort_values(
+                    by=(
+                        ["bootstrap_index"]
+                        if "run" not in data.columns
+                        else ["bootstrap_index", "run"]
+                    )
+                )[metric],
+                data.groupby("confid")
+                .get_group(confid_names[j])
+                .sort_values(
+                    by=(
+                        ["bootstrap_index"]
+                        if "run" not in data.columns
+                        else ["bootstrap_index", "run"]
+                    )
+                )[metric],
+                correction=False,
+                alternative="less",
+            ).pvalue
+
+    significance, p_values, _, _ = multipletests(
+        p_values.flatten(),
+        alpha=alpha,
+        method=correction,
+        is_sorted=False,
+        returnsorted=False,
+    )
+    significance = significance.reshape((n_confid, n_confid)) * 1.0
+    p_values = p_values.reshape((n_confid, n_confid))
+
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.gca()
+
+    if flip_horizontally:
+        for i, (c, confid) in enumerate(zip(significance, confid_names)):
+            for j, s in enumerate(c):
+                if i == j:
+                    continue
+
+                if s:
+                    ax.add_patch(
+                        Rectangle(
+                            # (i - 0.5, j - 0.5),
+                            (j - 0.5, n_confid - 1 - i - 0.5),
+                            width=1,
+                            height=1,
+                            color=colors_dict[confid],
+                            alpha=0.5,
+                            lw=0,
+                            fill=True,
+                            zorder=-2,
+                        )
+                    )
+                else:
+                    ax.scatter(
+                        # [i],
+                        # [j],
+                        [j],
+                        [n_confid - 1 - i],
+                        marker="X",
+                        s=300,
+                        c=colors_dict[confid],
+                        alpha=0.5,
+                    )
+        plt.plot(
+            [-0.6, n_confid - 0.4],
+            [n_confid - 0.4, -0.6],
+            color="k",
+            lw=0.5,
+            zorder=10,
+        )
+        plt.grid(color="whitesmoke")
+
+        plt.gca().tick_params(axis="x", which="minor", bottom=False)
+        plt.xticks(ticks=confid_indices, labels=n_confid * [])
+        plt.gca().tick_params(axis="y", which="minor", left=False)
+        plt.yticks(ticks=confid_indices, labels=n_confid * [])
+        plt.gca().tick_params(axis="y", which="major", left=False, right=True)
+
+    else:
+        for i, (c, confid) in enumerate(zip(significance, confid_names)):
+            for j, s in enumerate(c):
+                if i == j:
+                    continue
+
+                if s:
+                    ax.add_patch(
+                        Rectangle(
+                            # (i - 0.5, j - 0.5),
+                            (n_confid - 1 - j - 0.5, n_confid - 1 - i - 0.5),
+                            width=1,
+                            height=1,
+                            color=colors_dict[confid],
+                            alpha=0.5,
+                            lw=0,
+                            fill=True,
+                            zorder=-2,
+                        )
+                    )
+                else:
+                    ax.scatter(
+                        # [i],
+                        # [j],
+                        [n_confid - 1 - j],
+                        [n_confid - 1 - i],
+                        marker="X",
+                        s=300,
+                        c=colors_dict[confid],
+                        alpha=0.5,
+                    )
+
+        plt.plot(
+            [-0.6, n_confid - 0.4],
+            [-0.6, n_confid - 0.4],
+            color="k",
+            lw=0.5,
+            zorder=10,
+        )
+        plt.grid(color="whitesmoke")
+
+        plt.gca().tick_params(axis="x", which="minor", bottom=False)
+        plt.xticks(ticks=confid_indices, labels=n_confid * [])
+        plt.gca().tick_params(axis="y", which="minor", left=False)
+        plt.yticks(ticks=confid_indices, labels=n_confid * [])
+
+    plt.xlim(-0.6, n_confid - 0.4)
+    plt.ylim(-0.6, n_confid - 0.4)
     plt.tight_layout()
     plt.savefig(out_dir / filename)
     plt.close()

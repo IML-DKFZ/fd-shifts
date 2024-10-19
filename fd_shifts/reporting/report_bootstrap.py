@@ -29,6 +29,7 @@ from fd_shifts.reporting.plots_bootstrap import (
     bs_podium_plot,
     bs_significance_map,
     bs_significance_map_colored,
+    bs_significance_map_colored_corrected,
 )
 
 
@@ -44,7 +45,15 @@ def _load_bootstrap_experiment(
     config = omegaconf_resolve(config)
 
     if filter_dataset is not None and config.data.dataset not in filter_dataset:
-        return
+        # handle super-cifar100 experiments
+        if (
+            filter_dataset == ["cifar100"]
+            and config.data.dataset == "super_cifar100"
+            and filter_study_name == ["in_class_study"]
+        ):
+            filter_study_name = ["iid_study"]
+        else:
+            return
 
     data = list(
         map(
@@ -159,7 +168,8 @@ def create_plots_per_study(
     metrics: list,
     out_dir: Path,
     original_new_class_mode: bool = False,
-    metric_hparam_search: str = None,
+    metric_hparam_search: str | None = None,
+    new_class_study_dset: str | None = None,
 ):
     logger.info(f"Reporting bootstrap results for dataset '{dset}', study '{study}'")
 
@@ -169,6 +179,35 @@ def create_plots_per_study(
         original_new_class_mode=original_new_class_mode,
         include_vit=False,
     )
+
+    study_name = study  # used for file names
+
+    if study == "new_class_study":
+        if new_class_study_dset is None:
+            for nc_study in data_raw["study"].unique():
+                logger.info(f"Creating plots for {nc_study}...")
+                create_plots_per_study(
+                    study,
+                    dset,
+                    metrics,
+                    out_dir,
+                    original_new_class_mode,
+                    metric_hparam_search,
+                    str(nc_study),
+                )
+            return
+        else:
+            study_name = new_class_study_dset  # used for file names
+            data_raw = data_raw[
+                data_raw["study"].str.contains(new_class_study_dset)
+                | data_raw["study"].str.contains("val_tuning")
+            ]
+
+    if not any(data_raw["study"].str.contains(study)):
+        logger.info(
+            f"No {study} data found for dataset {dset}, new_class_study_dset {new_class_study_dset}. Skipping."
+        )
+        return
 
     data_raw = assign_hparams_from_names(data_raw)
 
@@ -200,12 +239,10 @@ def create_plots_per_study(
         logger.info("Removing 'val_tuning' studies and aggregating noise studies")
         data = data[~data["study"].str.contains("val_tuning")]
 
+        # Rename the <dset>_noise_study_X entries to the same value such that the groupby
+        # operation automatically averages over the 5 different noise levels.
         if study == "noise_study":
-            data = (
-                data.groupby(["study", "confid", "run", "bootstrap_index"])
-                .mean()
-                .reset_index()
-            )
+            data["study"] = "noise_study"
 
         # First, do all plots without aggregation across runs, then aggregate
         # for aggregate_runs in (False, True):
@@ -248,14 +285,13 @@ def create_plots_per_study(
             histograms["median_rank"] = (
                 data.groupby("confid")["rank"].median().astype(int)
             )
-            # histograms = histograms.sort_values(by=["median_rank", "mean_rank"])
             histograms = histograms.sort_values(by=["mean_rank", "median_rank"])
 
             medians = histograms.median_rank
             histograms = histograms.drop(columns="mean_rank")
             histograms = histograms.drop(columns="median_rank")
 
-            filename = f"blob_plot_{dset}_{study}_{metric}.pdf"
+            filename = f"blob_plot_{dset}_{study_name}_{metric}.pdf"
             bs_blob_plot(
                 histograms=histograms,
                 medians=medians,
@@ -263,7 +299,7 @@ def create_plots_per_study(
                 filename=filename,
             )
 
-            filename = f"podium_plot_{dset}_{study}_{metric}.pdf"
+            filename = f"podium_plot_{dset}_{study_name}_{metric}.pdf"
             bs_podium_plot(
                 data=data,
                 metric=metric,
@@ -272,7 +308,7 @@ def create_plots_per_study(
                 filename=filename,
             )
 
-            filename = f"box_plot_{dset}_{study}_{metric}.pdf"
+            filename = f"box_plot_{dset}_{study_name}_{metric}.pdf"
             bs_box_scatter_plot(
                 data=data,
                 metric=metric,
@@ -280,28 +316,54 @@ def create_plots_per_study(
                 filename=filename,
             )
 
-            # filename = f"significance_map_{dset}_{study}_{metric}.pdf"
-            # bs_significance_map(
-            #     data=data,
-            #     metric=metric,
-            #     histograms=histograms,
-            #     out_dir=significance_map_dir,
-            #     filename=filename,
-            # )
+            filename = f"significance_map_{dset}_{study_name}_{metric}.pdf"
+            bs_significance_map(
+                data=data,
+                metric=metric,
+                histograms=histograms,
+                out_dir=significance_map_dir,
+                filename=filename,
+            )
 
-            filename = f"colored_significance_map_{dset}_{study}_{metric}.pdf"
+            filename = f"colored_significance_map_{dset}_{study_name}_{metric}.pdf"
             bs_significance_map_colored(
                 data=data,
                 metric=metric,
                 histograms=histograms,
                 out_dir=significance_map_dir,
                 filename=filename,
-                no_labels=False,
-                flip_horizontally=False,
+                no_labels=True,
+                flip_horizontally=(metric == "aurc"),
+            )
+
+            filename = f"colored_significance_map_holm_{dset}_{study_name}_{metric}.pdf"
+            bs_significance_map_colored_corrected(
+                data=data,
+                metric=metric,
+                histograms=histograms,
+                out_dir=significance_map_dir,
+                filename=filename,
+                no_labels=True,
+                flip_horizontally=(metric == "aurc"),
+                correction="holm",
+            )
+
+            filename = (
+                f"colored_significance_map_bonferroni_{dset}_{study_name}_{metric}.pdf"
+            )
+            bs_significance_map_colored_corrected(
+                data=data,
+                metric=metric,
+                histograms=histograms,
+                out_dir=significance_map_dir,
+                filename=filename,
+                no_labels=True,
+                flip_horizontally=(metric == "aurc"),
+                correction="bonferroni",
             )
 
             if "aurc" in metrics and "augrc" in metrics:
-                filename = f"kendall_violin_{dset}_{study}_{metric}.pdf"
+                filename = f"kendall_violin_{dset}_{study_name}_{metric}.pdf"
                 bs_kendall_tau_violin(
                     data=data,
                     metric=metric,
@@ -529,12 +591,14 @@ def report_bootstrap_results(
     data_dir: Path = Path(out_path).expanduser().resolve()
     data_dir.mkdir(exist_ok=True, parents=True)
 
+    # Select all studies, datasets, and metrics
     datasets = [d for d in DATASETS if d != "super_cifar100"]
-    studies = ["iid_study"]
+    studies = ["iid_study", "in_class_study", "new_class_study", "noise_study"]
     metrics = ["aurc", "augrc"]
 
     logger.info(
-        f"Reporting bootstrap results for datasets '{datasets}', studies '{studies}'"
+        f"Reporting bootstrap results for datasets '{datasets}', studies '{studies}'.\n"
+        f"output directory: {data_dir}"
     )
 
     try:
@@ -552,14 +616,6 @@ def report_bootstrap_results(
                 ): dict(study=study, dset=dset)
                 for dset, study in product(datasets, studies)
             }
-            # future_to_arg[
-            #     executor.submit(ranking_change_arrows, out_dir=data_dir)
-            # ] = "<bootstrap-ranking-changes>"
-
-            # if "aurc" in metrics and "augrc" in metrics:
-            #     future_to_arg[
-            #         executor.submit(create_kendall_tau_plot, out_dir=data_dir)
-            #     ] = dict(study="iid_study", dset=datasets)
 
             try:
                 for future in tqdm(
