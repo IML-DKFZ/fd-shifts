@@ -346,6 +346,10 @@ def filter_best_hparams(
         selection_df.groupby(fixed_columns)[metric].idxmin()
     ]
 
+    # NOTE This mysteriously fixed an EOFError for `report_bootstrap`. Alternatively, use
+    #      the pandas `apply` but pandarallel's `parallel_apply` is much faster.
+    print(selection_df.head(n=1))
+
     data = data[
         data.parallel_apply(
             lambda row: _filter_row(
